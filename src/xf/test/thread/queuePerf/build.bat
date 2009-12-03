@@ -1,0 +1,1 @@
+xfbuild Main.d +oMain -inline -release -O -I../../../..

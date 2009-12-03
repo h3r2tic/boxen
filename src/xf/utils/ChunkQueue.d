@@ -2,6 +2,7 @@ module xf.utils.ChunkQueue;
 
 private {
 	import xf.utils.ThreadChunkAllocator;
+	import xf.utils.ChunkCache;
 }
 
 
@@ -30,17 +31,18 @@ struct ChunkQueue(T) {
 		Chunk* chunk = void;
 
 		if (_tail is null) {
-			_head = _tail = chunk = cast(Chunk*)chunkCache.get();
+			_head = _tail = chunk = cast(Chunk*)chunkCache!(_pageSize).get();
 			chunk.length = 0;
 			chunk.capacity = (chunk.capacityBytes - Chunk.sizeof) / T.sizeof;
 			chunk.next = null;
 		} else {
 			chunk = _tail;
 			if (chunk.capacity == chunk.length) {
-				chunk = cast(Chunk*)chunkCache.get();
+				chunk = cast(Chunk*)chunkCache!(_pageSize).get();
 				chunk.length = 0;
 				chunk.capacity = (chunk.capacityBytes - Chunk.sizeof) / T.sizeof;
 				_tail.next = chunk;
+				_tail = chunk;
 			}
 		}
 		
@@ -77,12 +79,12 @@ struct ChunkQueue(T) {
 	void clear() {
 		if (_head) {
 			Chunk* cur = _head;
-			auto cache = chunkCache;
+			auto cache = &chunkCache!(_pageSize);
 			
 			while (cur) {
 				Chunk* next = cur.next;
 				cur.next = null;
-				cache.dispose(cast(ChunkCache.Chunk*)cur);
+				cache._disposeChunkPtr(cast(void*)cur);
 				cur = next;
 			}
 			
@@ -92,39 +94,4 @@ struct ChunkQueue(T) {
 
 	Chunk*	_head;
 	Chunk*	_tail;
-}
-
-
-private {
-	struct ChunkCache {
-		struct Chunk {
-			Chunk*	next;
-			size_t	capacity;
-		}
-
-		Chunk* next;
-
-		Chunk* get() {
-			if (auto res = next) {
-				next = res.next;
-				res.next = null;
-				return res;
-			} else {
-				auto rawChunk = threadChunkAllocator.alloc(_pageSize);
-				auto chunk = cast(Chunk*)rawChunk.ptr;
-				chunk.capacity = rawChunk.size;
-				return chunk;
-			}
-		}
-		
-		void dispose(Chunk* chunk) {
-			assert (chunk !is null);
-			assert (chunk.next is null);
-			chunk.next = next;
-			next = chunk;
-		}
-	}
-	
-	
-	__thread ChunkCache chunkCache;
 }

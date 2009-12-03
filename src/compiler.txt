@@ -1,0 +1,1 @@
+dmd 1.051 on win32 with added __thread
