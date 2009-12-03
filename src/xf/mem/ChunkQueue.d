@@ -1,8 +1,8 @@
-module xf.utils.ChunkQueue;
+module xf.mem.ChunkQueue;
 
 private {
-	import xf.utils.ThreadChunkAllocator;
-	import xf.utils.ChunkCache;
+	import xf.mem.ThreadChunkAllocator;
+	import xf.mem.ChunkCache;
 }
 
 

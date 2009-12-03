@@ -1,4 +1,4 @@
-module xf.utils.ThreadChunkAllocator;
+module xf.mem.ThreadChunkAllocator;
 
 private {
 	struct winapi {

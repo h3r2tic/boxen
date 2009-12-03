@@ -2,7 +2,7 @@ module Main;
 
 import xf.test.Common;
 
-import xf.utils.ChunkQueue;
+import xf.mem.ChunkQueue;
 import tango.util.container.more.Vector;
 
 
