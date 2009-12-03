@@ -3,7 +3,7 @@ module Main;
 import tango.io.Stdout;
 import tango.core.Thread;
 
-import xf.utils.ChunkQueue;
+import xf.mem.ChunkQueue;
 import xf.utils.GlobalThreadDataRegistry;
 
 private {

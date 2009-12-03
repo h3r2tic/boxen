@@ -2,8 +2,8 @@ module Main;
 
 import xf.test.Common;
 
-import xf.utils.ThreadChunkAllocator;
-import xf.utils.ChunkCache;
+import xf.mem.ThreadChunkAllocator;
+import xf.mem.ChunkCache;
 import tango.stdc.stdlib : malloc, free;
 
 
