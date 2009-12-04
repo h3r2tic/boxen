@@ -96,4 +96,7 @@ void main() {
 			}
 		}
 	}
+	
+	StackBuffer.releaseThreadData();
+	Trace.formatln("Test completed!");
 }
