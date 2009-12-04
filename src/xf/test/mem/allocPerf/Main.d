@@ -4,6 +4,7 @@ import xf.test.Common;
 
 import xf.mem.ThreadChunkAllocator;
 import xf.mem.ChunkCache;
+import tango.core.Memory;
 import tango.stdc.stdlib : malloc, free;
 
 
@@ -37,5 +38,10 @@ void main() {
 			auto chunk = new ubyte[](chunkSize);
 			delete chunk;
 		}, numTests / i, i, "new");
+
+		measure({
+			auto chunk = GC.malloc(chunkSize);
+			GC.free(chunk);
+		}, numTests / i, i, "GC.malloc");
 	}
 }
