@@ -18,7 +18,11 @@ void measure(void delegate() dg, int iters, int threads, char[] info) {
 	}
 	
 	StopWatch t;
-	Trace.formatln("Testing {} in {} threads, {} iterations each", info, threads, iters);
+	if (iters != 1) {
+		Trace.formatln("Testing {} in {} threads, {} iterations each", info, threads, iters);
+	} else {
+		Trace.formatln("Testing {} in {} threads", info, threads);
+	}
 	t.start;
 	
 	struct ThreadWrap {

@@ -1,1 +1,1 @@
-xfbuild +oMain Main.d -I../../../.. -g %*
+xfbuild +oMain +xtango Main.d -I../../../.. -g %*

@@ -7,8 +7,7 @@ import tango.util.container.more.Vector;
 
 
 void main() {
-	const int numTests = 1_000_000;
-	const int chunkSize = 4 * 1024;
+	const int numTests = 2_000_000;
 	
 	Trace.formatln("Testing simple queue allocation and release performance for {} items", numTests);
 	Trace.formatln("");
