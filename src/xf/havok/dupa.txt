@@ -1,0 +1,428 @@
+class hkBaseObject
+
+# ----------------------------------------------------------------
+
+class hkReferencedObject hkBaseObject
+	func getAllocatedSize
+		return int
+
+	func getReferenceCount
+		return int
+
+	func addReference
+	func removeReference
+
+# ----------------------------------------------------------------
+
+class hkpWorldObject hkReferencedObject
+	func getUserData
+		return hkUlong
+
+	func setUserData
+		param data hkUlong
+
+# ----------------------------------------------------------------
+
+class hkpEntity hkpWorldObject
+	func activate
+
+	func setProcessContactCallbackDelay
+		param delay hkUint16
+
+# ----------------------------------------------------------------
+
+class hkpRigidBody hkpEntity
+	func this
+		param info hkpRigidBodyCinfo&
+
+	func getPosition
+		return const hkVector4&
+
+	func getRotation
+		return const hkQuaternion&
+
+	func getTransform
+		return const hkTransform&
+
+# ----------------------------------------------------------------
+
+class hkpAction hkReferencedObject
+	func getWorld
+		return hkpWorld*
+
+	func getUserData
+		return hkUlong
+
+	func setUserData
+		param data hkUlong
+
+	func getName
+		return const char*
+
+	# IMPORTANT: not cleaned by the dtor
+	func setName
+		param name const char*
+
+# ----------------------------------------------------------------
+
+class hkpUnaryAction hkpAction
+	func setEntity
+		param entity hkpEntity*
+
+	func getEntity
+		return hkpEntity*
+
+	func getRigidBody
+		return hkpRigidBody*
+
+# ----------------------------------------------------------------
+
+class hkpMotorAction hkpUnaryAction
+	func this
+		param body_ hkpRigidBody*
+		param axis const hkVector4&
+		param spinRate hkReal
+		# TODO: default = 2.0f
+		param gain hkReal
+
+	func getSpinRate
+		return hkReal
+
+	func setSpinRate
+		param new_rate hkReal
+
+	func getGain
+		return hkReal
+
+	func setGain
+		param new_rate hkReal
+
+	func getAxis
+		return hkVector4
+
+	func setAxis
+		param axis const hkVector4&
+
+	func isActive
+		return hkBool
+
+	func setActivation
+		param b hkBool
+
+# ----------------------------------------------------------------
+
+class hkpWorldCinfo hkReferencedObject
+	func this
+
+	field m_simulationType SimulationType
+		hkType hkInt8
+		forceCast
+
+	field m_broadPhaseBorderBehaviour BroadPhaseBorderBehaviour
+		hkType hkInt8
+		forceCast
+
+# ----
+
+class hkpWorld hkReferencedObject
+	func this
+		param info hkpWorldCinfo&
+
+	func markForRead
+	func markForWrite
+	func unmarkForRead
+	func unmarkForWrite
+
+	func getCollisionDispatcher
+		return hkpCollisionDispatcher*
+
+	func registerWithJobQueue
+		param jobQueue hkJobQueue*
+
+	func setCollisionFilter
+		param filer hkpCollisionFilter*
+
+	func stepMultithreaded
+		param jobQueue hkJobQueue*
+		param threadPool hkJobThreadPool*
+		param physicsDeltaTime hkReal
+
+	func addEntity
+		param entity hkpEntity*
+		return hkpEntity*
+
+	func addEntityBatch
+		param entityBatch hkpEntity*const*
+		param numEntities int
+
+	func castRay
+		param input const hkpWorldRayCastInput&
+		param output hkpWorldRayCastOutput&
+
+	func createAndAddConstraintInstance
+		return hkpConstraintInstance*
+		param bodyA hkpRigidBody*
+		param bodyB hkpRigidBody*
+		param constraintData hkpConstraintData*
+
+	func addAction
+		return hkpAction*
+		param action hkpAction*
+
+	func addCollisionListener
+		param worldListener hkpCollisionListener*
+
+# ----------------------------------------------------------------
+
+class hkpCollisionDispatcher
+
+# ----------------------------------------------------------------
+
+class hkpCollisionFilter
+
+# ----------------------------------------------------------------
+
+class hkpGroupFilter hkpCollisionFilter
+	func this
+
+	func getNewSystemGroup
+		return int
+
+	func calcFilterInfo
+		static
+		param layer int
+		param systemGroup int
+#		param subSystemId int = 0
+#		param subSystemDontCollideWith int = 0
+		return hkUint32
+
+# ----------------------------------------------------------------
+
+class hkpAgentRegisterUtil
+	func registerAllAgents
+		static
+		param dis hkpCollisionDispatcher*
+
+# ----------------------------------------------------------------
+
+class hkJobThreadPool hkReferencedObject
+	func clearTimerData
+
+class hkJobQueue
+
+class hkProcessContext
+	abstract
+
+	func syncTimers
+		param threadPool hkJobThreadPool*
+
+class hkpWorldDeletionListener
+	abstract
+
+class hkpEntityListener
+	abstract
+
+class hkpPhantomListener
+	abstract
+
+class hkpConstraintListener
+	abstract
+
+class hkpActionListener
+	abstract
+
+class hkpPhysicsContext hkReferencedObject hkProcessContext hkpWorldDeletionListener hkpEntityListener hkpPhantomListener hkpConstraintListener hkpActionListener
+	func this
+
+	func registerAllPhysicsProcesses
+		static
+
+	func addWorld
+		param newWorld hkpWorld*
+
+# ----------------------------------------------------------------
+
+class hkPtrArray
+	hk hkArray<void*>
+
+	func this
+
+	func pushBack
+		param e void*
+
+# ----------------------------------------------------------------
+
+class hkVisualDebugger hkReferencedObject
+	func this
+		param contexts hkPtrArray*
+			hkType hkArray<hkProcessContext*>*
+			pass *contexts
+
+	func serve
+	func step
+
+# ----------------------------------------------------------------
+
+class hkMonitorStream
+	func getInstance
+		static
+		return hkMonitorStream&
+
+	func reset
+
+# ----------------------------------------------------------------
+
+class HavokInitData
+	func threadPool
+		return hkJobThreadPool*
+	func jobQueue
+		return hkJobQueue*
+
+func initHavok
+	return HavokInitData*
+
+# ----------------------------------------------------------------
+
+class hkpBoxShape hkpConvexShape
+	func this
+		param halfExtents const hkVector4&
+		param radius hkReal
+
+class hkpCylinderShape hkpConvexShape
+	func this
+		param vertexA const hkVector4&
+		param vertexB const hkVector4&
+		param radius hkReal
+
+class hkpConvexShape hkpSphereRepShape
+	func getRadius
+		return hkReal
+
+class hkpSphereRepShape hkpShape
+
+class hkpShape hkReferencedObject
+
+# ----------------------------------------------------------------
+
+class hkpRigidBodyCinfo
+	func this
+
+	field m_shape const hkpShape*
+	field m_motionType MotionType
+		hkType hkInt8
+		forceCast
+	field m_position hkVector4
+	field m_qualityType hkpCollidableQualityType
+		hkType hkInt8
+		forceCast
+	field m_restitution hkReal
+	field m_friction hkReal
+	field m_mass hkReal
+	field m_centerOfMass hkVector4
+	field m_inertiaTensor hkMatrix3
+	field m_solverDeactivation SolverDeactivation
+		hkType hkInt8
+		forceCast
+	field m_collisionFilterInfo hkUint32
+
+# ----------------------------------------------------------------
+
+class hkpWorldRayCastInput
+	# TODO: POD
+	field m_from hkVector4
+	field m_to hkVector4
+	func this
+
+
+class hkpWorldRayCastOutput
+	field m_hitFraction hkReal
+	func this
+
+# ----------------------------------------------------------------
+
+class hkpMassProperties
+	# TODO: POD
+	field m_mass hkReal
+	field m_centerOfMass hkVector4
+	field m_inertiaTensor hkMatrix3
+	func this
+	
+# ----------------------------------------------------------------
+
+class hkpInertiaTensorComputer
+	func computeBoxVolumeMassProperties
+		static
+		param halfExtents const hkVector4&
+		param mass hkReal
+		param result hkpMassProperties&
+		return hkResult
+
+	func computeCylinderVolumeMassProperties
+		static
+		param startAxis const hkVector4&
+		param endAxis const hkVector4&
+		param radius hkReal
+		param mass hkReal
+		param result hkpMassProperties&
+		return hkResult
+		
+# ----------------------------------------------------------------
+
+class hkpConstraintData
+
+class hkpWheelConstraintData hkpConstraintData
+	func this
+
+	func setInWorldSpace
+		param bodyATransform const hkTransform&
+		param bodyBTransform const hkTransform&
+		param pivot const hkVector4&
+		param axle const hkVector4&
+		param suspensionAxis const hkVector4&
+		param steeringAxis const hkVector4&
+
+	func setSuspensionMaxLimit
+		param maxLimit hkReal
+			
+	func setSuspensionMinLimit
+		param minLimit hkReal
+
+	func setSuspensionStrength
+		param tau hkReal
+
+	func setSuspensionDamping
+		param damping hkReal
+
+
+class hkpConstraintInstance hkReferencedObject
+
+# ----------------------------------------------------------------
+
+class hkThread
+	func getMyThreadId
+		static
+		return hkUint64
+
+# ----------------------------------------------------------------
+
+class hkpCollisionListener
+
+class EntityCollisionListener hkpCollisionListener
+	func this
+		param dListener const DCollisionListener&
+
+
+<D
+	extern (C) {
+		alias void function(void*, hkpEntity, hkpEntity, hkUlong*) DEntityCollisionFunc;
+	}
+
+
+	struct DCollisionListener {
+		void* thisptr;
+		DEntityCollisionFunc added;
+		DEntityCollisionFunc confirmed;
+		DEntityCollisionFunc removed;
+		DEntityCollisionFunc process;
+	}
+D>
