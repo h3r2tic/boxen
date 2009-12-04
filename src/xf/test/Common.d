@@ -51,3 +51,12 @@ void measure(void delegate() dg, int iters, int threads, char[] info) {
 	Trace.formatln("Done in {} sec.", t.stop);
 	Trace.formatln("");
 }
+
+
+void assertEqual(T)(T a, T b) {
+	if (a != b) {
+		throw new Exception(Format(
+			"assertEqual failed: {} != {}", a, b
+		));
+	}
+}
