@@ -19,7 +19,7 @@ private {
 /**
 	An allocator utilizing thread-local heaps. When only using one thread, the performance is similar
 	to malloc / new, but scales gracefully with multithreading, beating DMD-Win's malloc by a factor
-	of about 6.5 with 4 threads.
+	of about 6.5 with 4 threads on a single-core machine and an order of over 50-200 on a quad-core.
 */
 struct ThreadChunkAllocator {
 	const size_t maxChunkOverhead = Chunk.sizeof + defaultAllocationAlignment-1;
