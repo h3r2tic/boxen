@@ -8,6 +8,11 @@ private {
 }
 
 
+/**
+	ChunkCache allows the caching and on-demand allocation of memory chunks.
+	The actual allocation is delegated to the allocator specified as a template alias parameter
+	the parameter will usually be a symbol of a thread-local or global allocator instance.
+*/
 private struct ChunkCache(int _pageSize, alias _allocator) {
 	static assert ((_pageSize + _allocator.maxChunkOverhead) % minDefaultPageSize == 0);
 	const size_t maxChunkOverhead = _allocator.maxChunkOverhead;

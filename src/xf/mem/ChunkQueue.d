@@ -9,6 +9,11 @@ private {
 
 
 
+/**
+	An efficient implementation of a queue to which one may only append items and iterate over them.
+	Internally it's based on chunked memory allocation from the ThreadChunkAllocator and connecting
+	the chunks in a uni-directional linked list.
+*/
 struct ChunkQueue(T) {
 	const size_t _pageSize = minDefaultPageSize;
 	

@@ -1,4 +1,18 @@
-module xf.boxen.game.AuthStorage;
+/**
+	Efficient storage for physical contacts between objects. The stored data type for one contact is an uint,
+	which is meant to represent a packed 24-bit object id and the remaining ticks for this contact to persist.
+	
+	Internally, each object has an associated ContactBin instance with max 7 external contacts. It also stores
+	a flag to be used for traversing this data and a length. The structure fits nicely in 32 bytes, which is small enough
+	to fit within any modern CPU's cache line (64B on a Core2). In the rare event of 7 contacts not being enough,
+	auxiliary space is referenced from a global pool to form a chunked linked list with 31 items per chunk.
+	
+	Contact bins support the insertion of new items, iteration, removal and updating in a few specialized versions.
+	
+	The total storage is completely pre-allocated at program startup to the size of 1MB.
+*/
+
+module xf.boxen.game.ContactStorage;
 
 
 private const int numInitialBins = 8;
@@ -8,10 +22,10 @@ private const int numAuxRefs = numAuxBins - 1;
 
 
 
-struct AuthBin {
+struct ContactBin {
 	private {
 		uint[numInitialBins]	_bins;
-		const uint				_visitedFlag = 0x8000_0000;
+		const uint					_visitedFlag = 0x8000_0000;
 	}
 
 	bool readVisitedFlag() {
@@ -109,7 +123,7 @@ nextAuxId:
 				}
 
 				// failed to find it, add it
-				(cast(AuthAuxBin*)aux.ptr).add(newItem, len);
+				(cast(ContactAuxBin*)aux.ptr).add(newItem, len);
 				++*cast(ushort*)&_bins[0];
 			}
 		} else {
@@ -240,7 +254,7 @@ private void relaseAuxBinStorage(uint idx) {
 }
 
 
-private struct AuthAuxBin {
+private struct ContactAuxBin {
 	private {
 		// when unused, the first item contains the index of the next free aux bin
 		uint[numAuxBins]	_bins;
@@ -259,8 +273,8 @@ private struct AuthAuxBin {
 }
 
 
-private AuthAuxBin[]	auxBinStorage;
-private AuthBin[]		binStorage;
+private ContactAuxBin[]	auxBinStorage;
+private ContactBin[]		binStorage;
 private uint			nextFreeAuxBin;
 private Object			auxBinAllocMutex;
 
@@ -274,8 +288,8 @@ private extern (C) extern {
 static this() {
 	const size_t halfSize = 512 * 1024;
 	void* chunk = malloc(halfSize * 2);
-	auxBinStorage = cast(AuthAuxBin[])chunk[0..halfSize];
-	binStorage = cast(AuthBin[])chunk[halfSize..halfSize*2];
+	auxBinStorage = cast(ContactAuxBin[])chunk[0..halfSize];
+	binStorage = cast(ContactBin[])chunk[halfSize..halfSize*2];
 
 	auxBinAllocMutex = new Object;
 
@@ -294,7 +308,7 @@ unittest { new class {
 	import tango.core.tools.TraceExceptions;
 
 	this() {
-		Stdout.formatln("Testing xf.boxen.AuthStorage...");
+		Stdout.formatln("Testing xf.boxen.ContactStorage...");
 
 		void doTest() {
 			auto bs = &binStorage[0];

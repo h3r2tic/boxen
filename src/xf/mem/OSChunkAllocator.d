@@ -14,6 +14,10 @@ private {
 
 
 
+/**
+	An allocator that directly requests memory pages from the OS. Slow, but makes it possible
+	to return the memory to the OS and has very little extra data overhead.
+*/
 struct OSChunkAllocator {
 	const size_t maxChunkOverhead = Chunk.sizeof + defaultAllocationAlignment-1;
 
