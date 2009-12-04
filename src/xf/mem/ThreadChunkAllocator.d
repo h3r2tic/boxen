@@ -28,7 +28,7 @@ struct ThreadChunkAllocator {
 	
 	
 	Chunk* alloc(size_t size = 0) {
-		const size_t alignment = 16;
+		const size_t alignment = defaultAllocationAlignment;
 		
 		if (0 == size) {
 			size = _pageSize;

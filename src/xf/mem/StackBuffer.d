@@ -6,7 +6,7 @@ private {
 	import xf.mem.ChunkCache;
 	import xf.mem.Common;
 	
-	// import tango.util.log.Trace;
+	import tango.util.log.Trace;
 }
 
 
@@ -23,6 +23,13 @@ private {
 	There's a one-time allocation limit at the max chunk size being 2MB and a maximum number of
 	chunks to be used in MainStackBuffer at 128 per-thread.
 	
+	The only place where disposal of resources is required is at the end of a thread's life. It's necessary
+	to call StackBuffer.releaseThreadData there because by default each thread-local stack buffer
+	retains one 2MB chunk of memory so it doesn't have to access the global pool constantly. This memory
+	will be leaked if StackBuffer.releaseThreadData is not called.
+	
+	// TODO: some more elaborate pooling strategy can be implemented should 'keeping one chunk' fail.
+
 	----
 	scope buf = new StackBuffer;		// stack-based instance
 	int* foo = buf.alloc!(int)();
@@ -45,6 +52,11 @@ scope class StackBuffer {
 		} else {
 			alias T* RefType;
 		}
+	}
+	
+	
+	static void releaseThreadData() {
+		g_mainStackBuffer.releaseThreadData();
 	}
 	
 	
@@ -84,14 +96,19 @@ scope class StackBuffer {
 	
 	
 	T[] allocArray(T)(size_t len) {
-		size_t size = len * T.sizeof;
-		auto res = cast(T[])_mainBuffer.alloc(size);
+		auto res = allocArrayNoInit!(T)(len);
 		foreach (ref r; res) {
 			r = T.init;
 		}
 		return res;
 	}
 	
+
+	T[] allocArrayNoInit(T)(size_t len) {
+		size_t size = len * T.sizeof;
+		return cast(T[])_mainBuffer.alloc(size);
+	}
+
 	
 	~this() {
 		_mainBuffer.releaseChunksDownToButExcluding(_chunkMark);
@@ -127,15 +144,31 @@ private struct MainStackBuffer {
 	}
 	
 	
-	void releaseChunksDownToButExcluding(size_t mark) {
+	void releaseThreadData() {
+		releaseChunksDownToButExcluding(size_t.max, false);
+	}
+	
+	
+	void releaseChunksDownToButExcluding(size_t mark, bool keepOne = true) {
 		if (size_t.max == _topChunk) {
 			assert (size_t.max == mark);
 		}
-		assert (size_t.max == mark || _topChunk >= mark);
 		
-		synchronized (g_mutex) {
-			for (; _topChunk != mark; --_topChunk) {
-				_chunks[_topChunk].dispose();
+		// hold at least one buffer on the TLS so we don't constantly re-acquire it
+		if (size_t.max == mark) {
+			if (keepOne) {
+				mark = 0;
+			}
+		} else {
+			assert (_topChunk >= mark);
+		}
+		
+		// try to avoid taking the lock
+		if (_topChunk != mark) {
+			synchronized (g_mutex) {
+				for (; _topChunk != mark; --_topChunk) {
+					_chunks[_topChunk].dispose();
+				}
 			}
 		}
 	}
@@ -150,7 +183,7 @@ private struct MainStackBuffer {
 		
 		if (bytes > maxAllocSize - _chunkTop || size_t.max == _topChunk) {
 			synchronized (g_mutex) {
-				// Trace.formatln("MainStackBuffer: allocating a new chunk");
+				//Trace.formatln("MainStackBuffer: allocating a new chunk");
 				chunk = g_chunkCache.alloc(maxAllocSize);
 			}
 			if (_topChunk == _chunks.length-1) {
