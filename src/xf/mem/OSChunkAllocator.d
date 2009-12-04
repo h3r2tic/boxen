@@ -1,4 +1,4 @@
-module xf.mem.ThreadChunkAllocator;
+module xf.mem.OSChunkAllocator;
 
 private {
 	import xf.mem.Chunk;
@@ -10,16 +10,14 @@ private {
 		import xf.platform.win32.winnt;
 	}
 	static import tango.core.Exception;
-	
-	//import tango.util.log.Trace;
 }
 
 
 
-struct ThreadChunkAllocator {
+struct OSChunkAllocator {
 	const size_t maxChunkOverhead = Chunk.sizeof + defaultAllocationAlignment-1;
 
-	static assert(implementsChunkAllocator!(ThreadChunkAllocator));
+	static assert(implementsChunkAllocator!(OSChunkAllocator));
 	
 	
 	Chunk* alloc(size_t size = 0) {
@@ -47,12 +45,7 @@ struct ThreadChunkAllocator {
 		size /= _pageSize;
 		size *= _pageSize;
 
-		if (_heapId is null) {
-			initialize();
-		}
-
-		//Trace.formatln("ThreadChunkAllocator: allocating {} bytes", size);
-		void* ptr = .winapi.HeapAlloc(_heapId, 0, size);
+		void* ptr = .winapi.VirtualAlloc(null, size, .winapi.MEM_COMMIT, .winapi.PAGE_READWRITE);
 		
 		if (ptr is null) {
 			tango.core.Exception.onOutOfMemoryError();
@@ -68,16 +61,10 @@ struct ThreadChunkAllocator {
 	
 	
 	void freeRaw(void* ptr) {
-		assert (_heapId !is null);
-		.winapi.HeapFree(_heapId, 0, ptr);
+		.winapi.VirtualFree(ptr, 0, .winapi.MEM_RELEASE);
 	}
 
 
-	bool initialized() {
-		return _heapId !is null;
-	}
-	
-	
 	size_t pageSize() {
 		return _pageSize;
 	}
@@ -99,11 +86,23 @@ struct ThreadChunkAllocator {
 }
 
 
-__thread ThreadChunkAllocator threadChunkAllocator;
+OSChunkAllocator osChunkAllocator;
 
 
 static this() {
 	.winapi.SYSTEM_INFO info;
 	.winapi.GetSystemInfo(&info);
-	ThreadChunkAllocator._pageSize = info.dwPageSize;
+	OSChunkAllocator._pageSize = info.dwPageSize;
 }
+
+
+
+/+
+	import tango.io.Stdout;
+
+	void main() {
+		auto chunk = threadChunkAllocator.alloc();
+		Stdout.formatln("Allocated a chunk with {} bytes", chunk.size);
+		chunk.dispose();
+	}
++/

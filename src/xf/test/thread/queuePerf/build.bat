@@ -1,1 +1,1 @@
-xfbuild Main.d +oMain -inline -release -O -I../../../..
+xfbuild Main.d +oMain +xtango -inline -release -O -I../../../..

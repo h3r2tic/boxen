@@ -1,46 +1,59 @@
 module xf.mem.ChunkQueue;
 
 private {
-	import xf.mem.ThreadChunkAllocator;
 	import xf.mem.ChunkCache;
+	import xf.mem.ThreadChunkAllocator : _chunkQueueInternalAllocator = threadChunkAllocator;
+	import xf.mem.Common;
+	import xf.mem.Chunk;
 }
 
 
 
-private const int _pageSize = 4096;
-
-
 struct ChunkQueue(T) {
-	static assert (T.sizeof <= _pageSize - Chunk.sizeof);
+	const size_t _pageSize = minDefaultPageSize;
+	
+	static assert (T.sizeof <= _pageSize - Chunk.sizeof - 15 - QueueChunk.sizeof);
+	
+	private alias _chunkQueueInternalAllocator
+		_subAllocator;
+		
+	private alias chunkCache!(_pageSize - _subAllocator.maxChunkOverhead, _subAllocator)
+		_allocator;
+		
 	private alias ChunkQueue PtrType;
 	
 	
-	private struct Chunk {
-		Chunk*	next;
-		size_t	capacityBytes;
-		size_t	capacity;
-		size_t	length;
+	private struct QueueChunk {
+		QueueChunk*	next;
+		size_t				capacity;
+		size_t				length;
 
 		T[] data() {
-			return (cast(T*)(cast(void*)this + Chunk.sizeof))[0 .. this.length];
+			return (cast(T*)(cast(void*)this + QueueChunk.sizeof))[0 .. this.length];
 		}
 	}
 
 
 	void opCatAssign(T item) {
-		Chunk* chunk = void;
+		QueueChunk* chunk = void;
 
 		if (_tail is null) {
-			_head = _tail = chunk = cast(Chunk*)chunkCache!(_pageSize).get();
+			auto raw = _allocator.alloc();
+			assert (raw !is null);
+			assert (raw.ptr !is null);
+			_head = _tail = chunk = cast(QueueChunk*)raw.ptr;
 			chunk.length = 0;
-			chunk.capacity = (chunk.capacityBytes - Chunk.sizeof) / T.sizeof;
+			chunk.capacity = (raw.size - QueueChunk.sizeof) / T.sizeof;
 			chunk.next = null;
 		} else {
 			chunk = _tail;
 			if (chunk.capacity == chunk.length) {
-				chunk = cast(Chunk*)chunkCache!(_pageSize).get();
+				auto raw = _allocator.alloc();
+				assert (raw !is null);
+				assert (raw.ptr !is null);
+				chunk = cast(QueueChunk*)raw.ptr;
 				chunk.length = 0;
-				chunk.capacity = (chunk.capacityBytes - Chunk.sizeof) / T.sizeof;
+				chunk.capacity = (raw.size - QueueChunk.sizeof) / T.sizeof;
 				_tail.next = chunk;
 				_tail = chunk;
 			}
@@ -52,7 +65,7 @@ struct ChunkQueue(T) {
 	
 	int opApply(int delegate(ref int, ref T) dg) {
 		int i = 0;
-		for (Chunk* cur = _head; cur; cur = cur.next) {
+		for (QueueChunk* cur = _head; cur; cur = cur.next) {
 			foreach (ref item; cur.data()) {
 				if (auto r = dg(i, item)) {
 					return r;
@@ -65,7 +78,7 @@ struct ChunkQueue(T) {
 
 
 	int opApply(int delegate(ref T) dg) {
-		for (Chunk* cur = _head; cur; cur = cur.next) {
+		for (QueueChunk* cur = _head; cur; cur = cur.next) {
 			foreach (ref item; cur.data()) {
 				if (auto r = dg(item)) {
 					return r;
@@ -78,13 +91,12 @@ struct ChunkQueue(T) {
 
 	void clear() {
 		if (_head) {
-			Chunk* cur = _head;
-			auto cache = &chunkCache!(_pageSize);
+			QueueChunk* cur = _head;
+			auto cache = &_allocator;
 			
 			while (cur) {
-				Chunk* next = cur.next;
-				cur.next = null;
-				cache._disposeChunkPtr(cast(void*)cur);
+				QueueChunk* next = cur.next;
+				Chunk.fromPtr(cast(void*)cur).dispose();
 				cur = next;
 			}
 			
@@ -92,6 +104,6 @@ struct ChunkQueue(T) {
 		}
 	}
 
-	Chunk*	_head;
-	Chunk*	_tail;
+	QueueChunk*	_head;
+	QueueChunk*	_tail;
 }

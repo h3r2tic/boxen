@@ -16,12 +16,15 @@ void main() {
 	
 	for (int i = 1; i <= 4; i *= 2) {
 		measure({
-			auto chunk = threadChunkAllocator.alloc(chunkSize);
+			auto chunk = threadChunkAllocator.alloc();
 			chunk.dispose();
 		}, numTests / i, i, "ThreadChunkAllocator");
 
 		measure({
-			auto chunk = chunkCache!(chunkSize).get();
+			auto chunk = chunkCache!(
+				chunkSize - threadChunkAllocator.maxChunkOverhead,
+				threadChunkAllocator
+			).alloc();
 			chunk.dispose();
 		}, numTests / i, i, "ChunkCache");
 
