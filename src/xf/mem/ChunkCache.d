@@ -4,6 +4,7 @@ private {
 	import xf.mem.Chunk;
 	import xf.mem.Common;
 	import tango.text.convert.Format;
+	static import tango.core.Exception;
 }
 
 

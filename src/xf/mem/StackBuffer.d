@@ -58,11 +58,15 @@ private struct MainStackBuffer {
 				// Trace.formatln("MainStackBuffer: allocating a new chunk");
 				chunk = g_chunkCache.alloc(maxAllocSize);
 			}
+			if (_topChunk == _chunks.length-1) {
+				//tango.core.Exception.onOutOfMemoryError();
+				throw new Exception("Ran out of stack chunks.");
+			}
 			_chunks[++_topChunk] = chunk;
 			_chunkTop = 0;
 		} else {
 			chunk = _chunks[_topChunk];
-		}		
+		}
 		
 		size_t bottom = _chunkTop;
 		_chunkTop += bytes;
@@ -91,8 +95,8 @@ scope class StackBuffer {
 	}
 	
 	
-	template New(T) {
-		RefType!(T) New(Args ...)(Args args) {
+	template alloc(T) {
+		RefType!(T) alloc(Args ...)(Args args) {
 			size_t size = void;
 			
 			static if (is(T == class)) {
@@ -107,9 +111,10 @@ scope class StackBuffer {
 				buf[] = T.classinfo.init[];
 				auto res = cast(T)cast(void*)buf.ptr;
 				res._ctor(args);
+				return res;
 			} else static if (is(T == struct)) {
 				T* res = cast(T*)buf.ptr;
-				*ptr = T(args);
+				*res = T(args);
 				return res;
 			} else {
 				T* res = cast(T*)buf.ptr;
@@ -125,7 +130,7 @@ scope class StackBuffer {
 	}
 	
 	
-	T[] NewArray(T)(size_t len) {
+	T[] allocArray(T)(size_t len) {
 		size_t size = len * T.sizeof;
 		auto res = cast(T[])_mainBuffer.alloc(size);
 		foreach (ref r; res) {
