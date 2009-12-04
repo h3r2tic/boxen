@@ -24,4 +24,7 @@ syntax: glob
 *.shader*
 *.bsp
 *.*~
+*.pyc
+src/xf/havok/HavokC.cpp.i
+src/xf/havok/Havok.d
 .deps
