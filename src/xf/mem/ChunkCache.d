@@ -3,6 +3,7 @@ module xf.mem.ChunkCache;
 private {
 	import xf.mem.Chunk;
 	import xf.mem.Common;
+	import tango.text.convert.Format;
 }
 
 
@@ -23,8 +24,12 @@ private struct ChunkCache(int _pageSize, alias _allocator) {
 	
 
 	Chunk* alloc(size_t size = 0) {
-		if (size + _allocator.maxChunkOverhead > _pageSize) {
-			throw new Exception("The ChunkCache cannot allocate more data than it was statically parametrized for");
+		if (size > _pageSize) {
+			throw new Exception(Format(
+				"The ChunkCache cannot allocate more data ({}) than it was statically parametrized for ({})",
+				size,
+				_pageSize
+			));
 		}
 		
 		if (auto res = next) {

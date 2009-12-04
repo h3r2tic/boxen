@@ -23,4 +23,5 @@ syntax: glob
 *.hdr
 *.shader*
 *.bsp
+*.*~
 .deps
