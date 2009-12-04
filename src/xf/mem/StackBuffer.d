@@ -2,7 +2,7 @@ module xf.mem.StackBuffer;
 
 private {
 	import xf.mem.Chunk;
-	import xf.mem.ThreadChunkAllocator : _stackBufferInternalAllocator = threadChunkAllocator;
+	import xf.mem.ThreadChunkAllocator : _StackBufferInternalAllocator = ThreadChunkAllocator;
 	import xf.mem.ChunkCache;
 	import xf.mem.Common;
 	
@@ -10,22 +10,21 @@ private {
 }
 
 
+const int		minStaticMemory = 2 * 1024 * 1024;
+const size_t	maxAllocSize = minStaticMemory - g_subAllocator.maxChunkOverhead;
+
+private {
+	_StackBufferInternalAllocator										g_subAllocator;
+	static ChunkCache!(maxAllocSize, g_subAllocator)		g_chunkCache;
+	static Object																g_mutex;
+}
+
+
 private struct MainStackBuffer {
-	const int			minStaticMemory = 2 * 1024 * 1024;
-
-	private alias _stackBufferInternalAllocator
-							_subAllocator;
-
-	const size_t		maxAllocSize = minStaticMemory - _subAllocator.maxChunkOverhead;
-	const int			maxChunks = 128;
-	
-	static ChunkCache!(maxAllocSize, _subAllocator)
-							g_chunkCache;
-
+	const int						maxChunks = 128;	
 	Chunk*[maxChunks]		_chunks;
 	size_t							_topChunk = size_t.max;
 	size_t							_chunkTop;
-	static Object					g_mutex;
 	
 	static this() {
 		g_mutex = new Object;
