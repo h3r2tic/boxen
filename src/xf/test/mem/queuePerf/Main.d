@@ -15,7 +15,7 @@ void main() {
 	for (int i = 1; i <= 4; i *= 2) {
 		measure({
 			ChunkQueue!(int) q;
-			for (int x = 0; x < numTests; ++x) {
+			for (int x = 0; x < numTests / i; ++x) {
 				q ~= x;
 			}
 			q.clear();
@@ -23,7 +23,7 @@ void main() {
 
 		measure({
 			int[] q;
-			for (int x = 0; x < numTests; ++x) {
+			for (int x = 0; x < numTests / i; ++x) {
 				q ~= x;
 			}
 			delete q;
@@ -31,7 +31,7 @@ void main() {
 
 		measure({
 			Vector!(int) q;
-			for (int x = 0; x < numTests; ++x) {
+			for (int x = 0; x < numTests / i; ++x) {
 				q.add(x);
 			}
 			q.clear();
