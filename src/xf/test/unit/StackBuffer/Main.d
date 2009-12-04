@@ -14,6 +14,8 @@ void main() {
 		
 		int* i1 = addr1 = buf.alloc!(int)(123);
 		assertEqual(123, *i1);
+		
+		int* i2 = buf.alloc!(int)();
 	}
 
 	{

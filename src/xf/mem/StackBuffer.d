@@ -10,73 +10,27 @@ private {
 }
 
 
-const int		minStaticMemory = 2 * 1024 * 1024;
-const size_t	maxAllocSize = minStaticMemory - g_subAllocator.maxChunkOverhead;
 
-private {
-	_StackBufferInternalAllocator										g_subAllocator;
-	static ChunkCache!(maxAllocSize, g_subAllocator)		g_chunkCache;
-	static Object																g_mutex;
-}
-
-
-private struct MainStackBuffer {
-	const int						maxChunks = 128;	
-	Chunk*[maxChunks]		_chunks;
-	size_t							_topChunk = size_t.max;
-	size_t							_chunkTop;
+/**
+	An utility for creating local stack-based allocations in the gist of alloca(), yet without the
+	severe limitations of the native stack nor the unfortunate awkward interface to it.
 	
-	static this() {
-		g_mutex = new Object;
-	}
+	Internally StackBuffer is a thin interface to MainStackBuffer, which uses chunk-based
+	globally-cached allocation of large stack segments. StackBuffer simply stores the 'stack pointer'
+	of MainStackBuffer in the ctor and restores it in the dtor. Due to how the scope storage class works,
+	it's possible to nest multiple StackBuffer instances in program flow.
 	
+	There's a one-time allocation limit at the max chunk size being 2MB and a maximum number of
+	chunks to be used in MainStackBuffer at 128 per-thread.
 	
-	void releaseChunksDownToButExcluding(size_t mark) {
-		if (size_t.max == _topChunk) {
-			assert (size_t.max == mark);
-		}
-		assert (size_t.max == mark || _topChunk >= mark);
-		
-		synchronized (g_mutex) {
-			for (; _topChunk != mark; --_topChunk) {
-				_chunks[_topChunk].dispose();
-			}
-		}
-	}
-	
-	
-	void[] alloc(size_t bytes) {
-		if (bytes > maxAllocSize) {
-			throw new Exception("My spoon is too big!");
-		}
-		
-		Chunk* chunk = void;
-		
-		if (bytes > maxAllocSize - _chunkTop || size_t.max == _topChunk) {
-			synchronized (g_mutex) {
-				// Trace.formatln("MainStackBuffer: allocating a new chunk");
-				chunk = g_chunkCache.alloc(maxAllocSize);
-			}
-			if (_topChunk == _chunks.length-1) {
-				//tango.core.Exception.onOutOfMemoryError();
-				throw new Exception("Ran out of stack chunks.");
-			}
-			_chunks[++_topChunk] = chunk;
-			_chunkTop = 0;
-		} else {
-			chunk = _chunks[_topChunk];
-		}
-		
-		size_t bottom = _chunkTop;
-		_chunkTop += bytes;
-		return chunk.ptr()[bottom .. _chunkTop];
-	}
-}
-
-
-private __thread MainStackBuffer g_mainStackBuffer;
-
-
+	----
+	scope buf = new StackBuffer;		// stack-based instance
+	int* foo = buf.alloc!(int)();
+	int[] arr = buf.allocArray!(int)(500_000);
+	auto bar = buf.alloc!(Bar)(3.14f, "poop");
+	// all allocated entities are gone at the end of scope, no manual disposal required
+	----
+*/
 scope class StackBuffer {
 	this() {
 		_mainBuffer = &g_mainStackBuffer;
@@ -149,3 +103,71 @@ scope class StackBuffer {
 	size_t					_chunkMark;
 	size_t					_topMark;
 }
+
+
+
+const int		minStaticMemory = 2 * 1024 * 1024;
+const size_t	maxAllocSize = minStaticMemory - g_subAllocator.maxChunkOverhead;
+
+private {
+	_StackBufferInternalAllocator										g_subAllocator;
+	static ChunkCache!(maxAllocSize, g_subAllocator)		g_chunkCache;
+	static Object																g_mutex;
+}
+
+
+private struct MainStackBuffer {
+	const int						maxChunks = 128;	
+	Chunk*[maxChunks]		_chunks;
+	size_t							_topChunk = size_t.max;
+	size_t							_chunkTop;
+	
+	static this() {
+		g_mutex = new Object;
+	}
+	
+	
+	void releaseChunksDownToButExcluding(size_t mark) {
+		if (size_t.max == _topChunk) {
+			assert (size_t.max == mark);
+		}
+		assert (size_t.max == mark || _topChunk >= mark);
+		
+		synchronized (g_mutex) {
+			for (; _topChunk != mark; --_topChunk) {
+				_chunks[_topChunk].dispose();
+			}
+		}
+	}
+	
+	
+	void[] alloc(size_t bytes) {
+		if (bytes > maxAllocSize) {
+			throw new Exception("My spoon is too big!");
+		}
+		
+		Chunk* chunk = void;
+		
+		if (bytes > maxAllocSize - _chunkTop || size_t.max == _topChunk) {
+			synchronized (g_mutex) {
+				// Trace.formatln("MainStackBuffer: allocating a new chunk");
+				chunk = g_chunkCache.alloc(maxAllocSize);
+			}
+			if (_topChunk == _chunks.length-1) {
+				//tango.core.Exception.onOutOfMemoryError();
+				throw new Exception("Ran out of stack chunks.");
+			}
+			_chunks[++_topChunk] = chunk;
+			_chunkTop = 0;
+		} else {
+			chunk = _chunks[_topChunk];
+		}
+		
+		size_t bottom = _chunkTop;
+		_chunkTop += bytes;
+		return chunk.ptr()[bottom .. _chunkTop];
+	}
+}
+
+
+private __thread MainStackBuffer g_mainStackBuffer;
