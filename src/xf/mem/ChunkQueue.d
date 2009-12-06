@@ -8,6 +8,8 @@ private {
 }
 
 
+// TODO: rename ChunkQueue to ThreadLocalChunkQueue and add a version with a global allocator (GlobalChunkQueue)
+
 
 /**
 	An efficient implementation of a queue to which one may only append items and iterate over them.

@@ -152,6 +152,7 @@ private struct MainStackBuffer {
 	void releaseChunksDownToButExcluding(size_t mark, bool keepOne = true) {
 		if (size_t.max == _topChunk) {
 			assert (size_t.max == mark);
+			return;
 		}
 		
 		// hold at least one buffer on the TLS so we don't constantly re-acquire it
