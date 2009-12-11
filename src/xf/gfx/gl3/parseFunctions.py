@@ -13,6 +13,7 @@ class Function:
         self.extension = False
         self.category= None
         self.attribs = {}
+        self.deprecated = None
 
     def addParam(self, param):
         self.params.append(param)
@@ -100,8 +101,14 @@ def parseFuncAttrib(line, func):
         func.category = m.group(1)
         return
 
+    for m in rematch(r"deprecated (.*)", line):
+        func.deprecated = m.group(1)
+        return
+
     for m in rematch(r"param (\w+) (.*)", line):
         pname = m.group(1)
+        if 'ref' == pname:
+			pname = '_ref'
         ptype = parseParamType(m.group(2).strip())
         func.addParam(Param(ptype, pname))
         return
