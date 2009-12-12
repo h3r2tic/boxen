@@ -148,14 +148,15 @@ def emitWGL():
 	types, coreFuncs, coreEnums, extensions = prepareForEmission(
 			['wglenum.spec', 'wglenumext.spec'],
 			['gl.tm', 'wgl.tm'],
-			['wgl.spec', 'wglext.spec'],
+			['wglext.spec'],
 			'WGL_',
 			'^wgl$'
 	)
 	emitModule('WGL', coreEnums, types, coreFuncs,
 		extraImports=[
 			'xf.gfx.gl3.WGLTypes'
-		])
+		],
+		errorCheckFilter = lambda fname: False)
 
 	try:
 		os.makedirs('ext')
@@ -166,7 +167,8 @@ def emitWGL():
 		emitModule('ext.' + e.name, e.enums, types, e.funcs,
 				extraImports=[
 					'xf.gfx.gl3.WGLTypes'
-				])
+				],
+				errorCheckFilter = lambda fname: False)
 
 
 def emitCore():
@@ -177,7 +179,8 @@ def emitCore():
 			'',
 			'^VERSION_[1-3]_[0-9]$'
 	)
-	emitModule('GL', coreEnums, types, coreFuncs)
+	emitModule('GL', coreEnums, types, coreFuncs,
+			errorCheckFilter = lambda fname: fname != "GetError")
 
 	try:
 		os.makedirs('ext')

@@ -54,7 +54,7 @@ def formatFuncName(n):
 modPrefix = 'xf.gfx.gl3.'
 
 
-def emitModule(modName, enums, types, funcs, extraImports = []):
+def emitModule(modName, enums, types, funcs, extraImports = [], errorCheckFilter = lambda fname: True):
 	f = strfmt()
 
 	definedEnumNames = set()
@@ -112,7 +112,7 @@ def emitModule(modName, enums, types, funcs, extraImports = []):
 #		renamedFuncName = formatFuncName(func.name)
 		
 		ret = formatType(func.returnType, types)
-		args = ', '.join(['GL gl'] + [formatType(p.type_, types) + ' ' + p.name for p in func.params] + ['size_t _extraSpace = 0'])
+		args = ', '.join(['GL gl'] + [formatType(p.type_, types) + ' ' + p.name for p in func.params] + ['_GL3ExtraSpace _extraSpace = _GL3ExtraSpace.init'])
 		f('%s %s(%s) {', ret, renamedFuncName, args)
 		f.push()
 
@@ -126,19 +126,28 @@ def emitModule(modName, enums, types, funcs, extraImports = []):
 		f.pop()
 		f.pop()
 
-		f('''
+		body = '''
 	asm {
 		naked;
 
+		// get the return address into the _extraSpace slot
 		pop dword ptr [ESP + _frameSize];
 
-		// obtain the function pointer
+		// get the GL handle
 		pop EAX;
 		mov EAX, [EAX];
+
+		// obtain the function pointer
 		push dword ptr [fname_%(fname)s];
 		push dword ptr %(fid)s;
 		call gl_getCoreFuncPtr;
+
+		// call the GL function
 		call EAX;
+		'''
+
+		if errorCheckFilter(func.name):
+			body += '''
 	}
 	version (ValidateFuncCalls) {
 		asm {
@@ -152,7 +161,18 @@ def emitModule(modName, enums, types, funcs, extraImports = []):
 			ret;
 		}
 	}
-}''' % {'fname' : func.name, 'fid' : funcId})
+}
+	'''
+		else:
+			body += '''
+		ret;
+	}
+}
+		'''
+
+		body = body % {'fname' : func.name, 'fid' : funcId}
+
+		f(body)
 		f('alias %s %s;' % (renamedFuncName, formatFuncName(func.name)))
 		f.nl()
 

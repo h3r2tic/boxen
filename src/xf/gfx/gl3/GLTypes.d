@@ -1,5 +1,9 @@
 module xf.gfx.gl3.GLTypes;
 
+public {
+	import xf.gfx.gl3.Common;
+}
+
 
 public {
 	alias uint		GLenum;
@@ -27,8 +31,6 @@ public {
 
 	alias char GLcharARB;
 	alias uint GLhandleARB;
-	
-	alias ubyte[4] GL;
 }
 
 public {
@@ -88,4 +90,9 @@ validated:
 		add ESP, ECX;	// <--- remove the arguments of the GL function
 		ret;
 	}
+}
+
+
+struct _GL3ExtraSpace {
+	size_t dummy = 0xdeadc0de;
 }
