@@ -163,7 +163,7 @@ def parseAnnotItem(annot):
 		return TypeAnnotation(m.group(2), int(m.group(1)))
 
 	for m in rematch(r"alias (\w+)$", annot):
-		return AliasAnnotation(m.group(1))
+		return AliasAnnotation(sanitizeEnumName(m.group(1)))
 
 	for m in rematch(r"Different from .* value$", annot):
 		return

@@ -46,22 +46,21 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 	toResolve = []
 
 	for ename in enums.keys():
-		if ename in types:
-			enum = enums[ename]
-			foo = {}
-			for i in range(len(enum.names)):
+		enum = enums[ename]
+		foo = {}
+		for i in range(len(enum.names)):
 #			for n in enum.names:
-				n = enum.names[i]
-				if (isinstance(n, NameAlias)):
-					n._owner = enum
-					n._ownerIdx = i
-					toResolve.append(n)
-				elif (isinstance(n, SpecialNameAlias)):
-					n._owner = enum
-					n._ownerIdx = i
-					n.enum = ename
-					toResolve.append(n)
-				foo[n.name] = n
+			n = enum.names[i]
+			if (isinstance(n, NameAlias)):
+				n._owner = enum
+				n._ownerIdx = i
+				toResolve.append(n)
+			elif (isinstance(n, SpecialNameAlias)):
+				n._owner = enum
+				n._ownerIdx = i
+				n.enum = ename
+				toResolve.append(n)
+			foo[n.name] = n
 
 	while len(toResolve) > 0:
 		newToResolve = []
@@ -75,7 +74,7 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 					if isinstance(n, NameAlias):
 						if src.name != n.name: continue
 					elif isinstance(n, SpecialNameAlias):
-						if src.src != n.name: continue
+						if src.name != n.src: continue
 					else: assert False
 
 					if isinstance(src, DirectName):
@@ -88,6 +87,10 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 
 				if not found:
 					newToResolve.append(n)
+			else:
+				assert False, "Could not resolve %s (the source '%s' was not found)" % (
+						n.name, n.enum
+				)
 
 		if not resolvedAnything:
 			print "Couldn't resolve enums: %s" % [e.name for e in newToResolve]
@@ -101,6 +104,9 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 	eid = 0
 	for ename in enums.keys():
 		e = enums[ename]
+		for n in e.names:
+			assert n is None or isinstance(n, DirectName), `n`
+
 		if ename in types:
 			pass
 		elif re.match(coreCatRegex, ename) or (ename[0:len(extPrefix)] != extPrefix and len(extPrefix) != 0):

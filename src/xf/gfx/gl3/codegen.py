@@ -78,9 +78,8 @@ def emitModule(modName, enums, types, funcs, extraImports = []):
 				if isinstance(n, DirectName):
 					vals.append((n.name, n.value))
 					definedEnumNames.add(n.name)
-				elif isinstance(n, SpecialNameAlias):
-					vals.append((n.name, n.src))
-					definedEnumNames.add(n.name)
+				else:
+					assert False, `n`
 
 		if len(vals) > 0:
 			f('enum {')
