@@ -1,302 +1,186 @@
 import re
 
-from parseEnums import parseEnums, DirectName, SpecialNameAlias
+from parseEnums import parseEnums, DirectName, NameAlias, SpecialNameAlias
 from parseTypes import parseTypes
 from parseFunctions import parseFunctions, ArrayType, PointerType, IdentMultArraySize
 from utils import LineIter
+from codegen import emitModule
+import os
 
-
-enums = parseEnums(LineIter(open('enum.spec').read()))
-types = parseTypes(LineIter(open('gl.tm').read()))
-funcs = parseFunctions(LineIter(open('gl.spec').read()))
-requiredTypes = {}
-builtinEnumNames = []
-
-hazEnumNames = set()
-for en in enums.keys():
-	e = enums[en]
-	if (not re.search(r"DEPRECATED", en)) and re.search(r"VERSION_", en):
-		for n in e.names:
-			if not n.name in hazEnumNames:
-				builtinEnumNames.append(n)
-				hazEnumNames.add(n.name)
-del hazEnumNames
-
-
-def formatType(t, wantArray = False):
-	if isinstance(t, type('')):
-		if t in types:
-			basic = types[t]
-			if ("GLenum" == basic or "GLbitfield" == basic) and not ("GLenum" == t or "GLbitfield" == t):
-				requiredTypes[t] = basic
-#				return t
-			return basic
-		return t
-	elif isinstance(t, ArrayType):
-		if wantArray:
-			return formatType(t.basic) + "[]"
-		else:
-			return formatType(t.basic) + "*"
-	elif isinstance(t, PointerType):
-		return formatType(t.basic) + "*"
+def parseSpecs(func, *files):
+	res = func(LineIter(open(files[0]).read()))
+	if type(res) == type([]):
+		for f in files[1:]:
+			print 'parsing', f
+			res += func(LineIter(open(f).read()))
 	else:
-		assert False, `t`
-
-
-def formatCType(t):
-	if isinstance(t, type('')):
-		if t in types:
-			basic = types[t]
-			if "GLenum" == basic or "GLbitfield" == basic:
-				return t
-			return basic
-		return t
-	elif isinstance(t, ArrayType):
-		return formatCType(t.basic) + "*"
-	elif isinstance(t, PointerType):
-		return formatCType(t.basic) + "*"
-	else:
-		assert False, `t`
-
-
-def paramToCArg(t, n):
-	if isinstance(t, type('')):
-		return n
-	elif isinstance(t, ArrayType):
-		return n + ".ptr"
-	elif isinstance(t, PointerType):
-		return n
-	else:
-		assert False, `t`
-
-
-def formatFuncName(n):
-	return n[0].lower() + n[1:]
-
+		for f in files[1:]:
+			print 'parsing', f
+			res.update(func(LineIter(open(f).read())))
+	return res
 
 class Extension:
-	def __init__(self, id):
+	def __init__(self, name, id):
+		self.name = name
 		self.id = id
 		self.funcs = []
 		self.enums = []
 
+extId = 0
 
-extensions = []
-for func in funcs:
-	if (not re.search(r"DEPRECATED", func.category)) and (not re.search(r"VERSION_", func.category)) and not func.deprecated:
-		if not ([func.category, None] in extensions):
-			extensions.append([func.category, None])
 
-for i in range(len(extensions)):
-	e = extensions[i]
-	e[1] = Extension(i)
+def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex):
+	global extId
 
-ex = {}
-for n, e in extensions:
-	ex[n] = e;
-extensions = ex
-del ex
+	enums = apply(parseSpecs, [parseEnums] + enumSpecs)
+	types = apply(parseSpecs, [parseTypes] + typeSpecs)
+	funcs = apply(parseSpecs, [parseFunctions] + funcSpecs)
 
-print extensions
+	coreFuncs = [f for f in funcs if re.match(coreCatRegex, f.category) and not f.deprecated]
+	coreEnums = []
+	extensions = []
 
-print 'import GLTypes;'
+	name2ext = {}
 
-if 1:
-	funcsToEmit = [ \
-		func for func in funcs \
-			if (not re.search(r"DEPRECATED", func.category)) \
-				and re.search(r"VERSION_", func.category) \
-				and not func.deprecated
-	]
-		
+	enumLookup = {}
+	toResolve = []
 
-	for func in funcsToEmit:
-		formatType(func.returnType)
-		for p in func.params:
-			formatType(p.type_)
+	for ename in enums.keys():
+		if ename in types:
+			enum = enums[ename]
+			foo = {}
+			for i in range(len(enum.names)):
+#			for n in enum.names:
+				n = enum.names[i]
+				if (isinstance(n, NameAlias)):
+					n._owner = enum
+					n._ownerIdx = i
+					toResolve.append(n)
+				elif (isinstance(n, SpecialNameAlias)):
+					n._owner = enum
+					n._ownerIdx = i
+					n.enum = ename
+					toResolve.append(n)
+				foo[n.name] = n
 
-	definedEnumNames = set([])
+	while len(toResolve) > 0:
+		newToResolve = []
+		resolvedAnything = False
+		for n in toResolve:
+			if n.enum in enums:
+				srcEnum = enums[n.enum]
+				found = False
 
-	if len(builtinEnumNames) > 0:
-#		print 'pragma (ctfe) GLenum'
-		print 'enum : GLenum {'
-
-		vals = []
-		for n in builtinEnumNames:
-			if not n in definedEnumNames:
-				if isinstance(n, DirectName):
-					vals.append((n.name, n.value))
-					definedEnumNames.add(n.name)
-				elif isinstance(n, SpecialNameAlias):
-					vals.append((n.name, n.src.value))
-					definedEnumNames.add(n.name)
-
-		assert len(vals) > 0
-
-		for e in vals[:-1]:
-			print '\t%s = %s,' % e
-		if 1:
-			e = vals[-1]
-			print '\t%s = %s' % e
-
-		print '}'
-
-	for td in requiredTypes.keys():
-#		print 'typedef %s %s;' % (requiredTypes[td], td)
-		vals = []
-		if td in enums:
-			enum = enums[td]
-			for n in enum.names:
-				if not n in definedEnumNames:
-					if isinstance(n, DirectName):
-						vals.append((n.name, n.value))
-						definedEnumNames.add(n.name)
+				for src in srcEnum.names:
+					if isinstance(n, NameAlias):
+						if src.name != n.name: continue
 					elif isinstance(n, SpecialNameAlias):
-						vals.append((n.name, n.src.value))
-						definedEnumNames.add(n.name)
+						if src.src != n.name: continue
+					else: assert False
 
-			if len(vals) > 0:
-				print 'enum :  %s {' % requiredTypes[td]
-				for e in vals[:-1]:
-					print '\t%s = %s,' % e
-				if 1:
-					e = vals[-1]
-					print '\t%s = %s' % e
-				print '}'
+					if isinstance(src, DirectName):
+#						print 'Resolved %s from %s' % (n.name, n.enum)
+						e = DirectName(n.name, src.value, None)
+						n._owner.names[n._ownerIdx] = e
+						resolvedAnything = True
+						found = True
+						break
 
+				if not found:
+					newToResolve.append(n)
 
-	print
-	print
-
-
-	if 0:	
-		print 'extern (System) {'
-		for func in funcsToEmit:
-			ret = formatCType(func.returnType)
-			args = ', '.join((formatCType(p.type_) + ' ' + p.name for p in func.params))
-			print '\t%s function(%s) pf_gl%s;' % (ret, args, func.name)
-		print '}'
-
-	print
-	print
+		if not resolvedAnything:
+			print "Couldn't resolve enums: %s" % [e.name for e in newToResolve]
+			for n in toResolve:
+				n._owner.names[n._ownerIdx] = None
+			break
+		else:
+			toResolve = newToResolve
 
 
+	eid = 0
+	for ename in enums.keys():
+		e = enums[ename]
+		if ename in types:
+			pass
+		elif re.match(coreCatRegex, ename) or (ename[0:len(extPrefix)] != extPrefix and len(extPrefix) != 0):
+			coreEnums.append((ename, e))
+		else:
+			assert not (ename in name2ext)
+			ext = Extension(ename, extId)
+			extId += 1
+			ext.enums.append((ename, e))
+			extensions.append(ext)
+			name2ext[ename] = ext
 
-	for func in funcsToEmit:
-		print 'char* fname_%s = "gl%s";' % (func.name, func.name)
+	for f in funcs:
+		if f.deprecated:
+			continue
+
+		if re.search(r"DEPRECATED", f.category):
+			continue
+
+		assert len(extPrefix) == 0 or f.category[0:len(extPrefix)] != extPrefix
+		if re.match(coreCatRegex, f.category):
+			continue
+		ename = extPrefix + f.category
+		ext = None
+
+		if not ename in name2ext:
+			ext = Extension(ename, extId)
+			extId += 1
+			extensions.append(ext)
+			name2ext[ename] = ext
+		else:
+			ext = name2ext[ename]
+
+		ext.funcs.append(f)
+
+	return (types, coreFuncs, coreEnums, extensions)
+
+def emitWGL():
+	types, coreFuncs, coreEnums, extensions = prepareForEmission(
+			['wglenum.spec', 'wglenumext.spec'],
+			['gl.tm', 'wgl.tm'],
+			['wgl.spec', 'wglext.spec'],
+			'WGL_',
+			'^wgl$'
+	)
+	emitModule('WGL', coreEnums, types, coreFuncs,
+		extraImports=[
+			'xf.gfx.gl3.WGLTypes'
+		])
+
+	try:
+		os.makedirs('ext')
+	except:
+		pass
+
+	for e in extensions:
+		emitModule('ext.' + e.name, e.enums, types, e.funcs,
+				extraImports=[
+					'xf.gfx.gl3.WGLTypes'
+				])
 
 
-	print
+def emitCore():
+	types, coreFuncs, coreEnums, extensions = prepareForEmission(
+			['enum.spec'],
+			['gl.tm'],
+			['gl.spec'],
+			'',
+			'^VERSION_[1-3]_[0-9]$'
+	)
+	emitModule('GL', coreEnums, types, coreFuncs)
 
-	print 'extern (System) {'
+	try:
+		os.makedirs('ext')
+	except:
+		pass
 
-	funcId = -1;
-	for func in funcsToEmit:
-		funcId += 1
-		renamedFuncName = "glwrap_%s" % func.name
-#		renamedFuncName = formatFuncName(func.name)
-		
-		ret = formatType(func.returnType)
-		args = ', '.join(['GL gl'] + [formatType(p.type_) + ' ' + p.name for p in func.params] + ['size_t _extraSpace = 0'])
-		print '%s %s(%s) {' % (ret, renamedFuncName, args)
+	for e in extensions:
+		emitModule('ext.' + e.name, e.enums, types, e.funcs)
 
-		print '\tconst int _frameSize = '
-		print '\t\tupTo4(GL.sizeof)'
-		for p in func.params:
-			print '\t+\tupTo4(typeof(%s).sizeof)' % p.name
-		print '\t;'
+emitCore()
+emitWGL()
 
-		print '''
-	asm {
-		naked;
-
-		pop dword ptr [ESP + _frameSize];
-
-		// obtain the function pointer
-		pop EAX;
-		mov EAX, [EAX];
-		push dword ptr [fname_%(fname)s];
-		push dword ptr %(fid)s;
-		call gl_getCoreFuncPtr;
-		call EAX;
-	}
-	version (ValidateFuncCalls) {
-		asm {
-			mov ECX, _frameSize - GL.sizeof;
-			sub ESP, ECX;
-			mov EDX, [fname_%(fname)s];
-			jmp [validateFuncCallProc];
-		}
-	} else {
-		asm {
-			ret;
-		}
-	}
-}''' % {'fname' : func.name, 'fid' : funcId}
-		print 'alias %s %s;' % (renamedFuncName, formatFuncName(func.name))
-		print
-
-	print '}'
-
-
-	if 0:
-		for func in funcsToEmit:
-			renamedFuncName = formatFuncName(func.name)
-			
-			ret = formatType(func.returnType)
-			args = ', '.join((formatType(p.type_) + ' ' + p.name for p in func.params if not p.inferredFrom))
-			print '%s %s(%s) {' % (ret, renamedFuncName, args)
-			for param in func.params:
-				if param.inferredFrom:
-					mult = param.inferredFrom.type_.size.mult
-					if mult != 1:
-						print '\tassert (0 == %s.length %% %s);' % (
-							param.inferredFrom.name,
-							mult
-						)
-						
-					print '\tfinal %s %s = %s.length%s;' % (
-						formatType(param.type_),
-						param.name,
-						param.inferredFrom.name,
-						'' if mult == 1 else ' / %s' % mult
-					)
-				
-				sizeCheck = None
-				
-				if isinstance(param.type_, ArrayType):
-					size = param.type_.size
-					if isinstance(size, type(0)):
-						sizeCheck = `size`
-		#				elif isinstance(size, IdentMultArraySize):
-		#					sizeCheck = size.ident if 1 == size.mult else '%s * %s' % (size.ident, size.mult)
-
-				if sizeCheck:
-					print '\tassert (%s == %s.length)' % (sizeCheck, param.name)
-
-			cargs = ', '.join((paramToCArg(p.type_, p.name) for p in func.params))
-
-			retValue = ''
-			if ret != 'void':
-				retValue = '%s _returnValue = ' % ret
-			
-			print '\t%sfp_gl%s(%s);' % (retValue, func.name, cargs)
-
-			print '\tcheckErrors("%s", (Formatter _fmt) {' % renamedFuncName
-			for param in func.params:
-				if not param.inferredFrom:
-					if isinstance(param.type_, ArrayType):
-						print '\t\tif (%s.length <= 16) {' % param.name
-						print '\t\t\t_fmt.format("%s: {}", %s);' % (param.name, param.name)
-						print '\t\t} else {'
-						print '\t\t\t_fmt.format("%s: {} ... ({} more)", %s[0..16], %s.length - 16);' % (param.name, param.name, param.name)
-						print '\t\t}'
-					else:
-						print '\t\t_fmt.format("%s: {}", %s);' % (param.name, param.name)
-			print '\t});'
-
-			if ret != 'void':
-				print 'return _returnValue;'
-				
-			print '}'
-				

@@ -61,6 +61,7 @@ DescribePixelFormat( hdc, ipfd, cjpfd, ppfd )
 	param		ipfd		int in value
 	param		cjpfd		UINT in value
 	param		ppfd		PIXELFORMATDESCRIPTOR in reference
+	category	wgl
 
 GetCurrentDC( )
 	return		HDC
