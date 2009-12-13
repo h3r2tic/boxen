@@ -27,10 +27,8 @@ public {
 
 
 version (Windows) {
-	public {
-		import xf.gfx.gl3.WGL;
-		import xf.gfx.gl3.platform.Win32;	// HACK
-	}
+	public import xf.gfx.gl3.WGL;
+	private import xf.gfx.gl3.platform.Win32;	// HACK
 }
 else {
 	static assert (false);		// TODO

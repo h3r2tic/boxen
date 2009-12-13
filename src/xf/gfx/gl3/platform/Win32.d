@@ -63,7 +63,7 @@ void loadPlatformFunctions_(void* function(char*) loadFuncFromLib) {
 
 public void* getExtensionFuncPtr(char* name) {
 	auto foo = wglGetProcAddress(name);
-	assert (foo, `couldnt load: '` ~ fromStringz(name) ~ `'`);
+	assert (foo, `wglGetProcAddress couldnt load: '` ~ fromStringz(name) ~ `'`);
 	return foo;
 }
 

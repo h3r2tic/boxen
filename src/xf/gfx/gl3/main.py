@@ -165,6 +165,10 @@ def emitWGL():
 		pass
 
 	for e in extensions:
+		# buggy spec is buggy
+		for f in e.funcs:
+			f.extension = True
+
 		emitModule('ext.' + e.name, e.enums, types, e.funcs, extId,
 				extraImports=[
 					'xf.gfx.gl3.WGLTypes'
