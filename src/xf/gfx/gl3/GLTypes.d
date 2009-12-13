@@ -183,24 +183,24 @@ void* gl_getExtensionFuncPtr(char* name, uint fnId_, GLContextData* gl) {
 }
 
 
-extern (C) size_t poopie(char* fname, int frameSize, size_t retVal) {
+/+extern (C) size_t poopie(char* fname, int frameSize, size_t retVal) {
 	printf(
 		"validate func call called with %s, %d and %d\n",
 		fname, frameSize, retVal
 	);
 	return retVal;
-}
+}+/
 
 void validateFuncCallProc() {
 	asm {
 		naked;
-		push EAX;
+		/+push EAX;
 		push ECX;
 		push EDX;
 		call poopie;
 		pop EDX;
 		pop ECX;
-		pop EAX;
+		pop EAX;+/
 
 		/+cmp EAX, 123;
 		je validated;

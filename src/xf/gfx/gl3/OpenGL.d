@@ -10,8 +10,6 @@ private {
 	
 	import tango.io.Stdout;
 
-	import GLTypes = xf.gfx.gl3.GLTypes;
-	
 	import xf.gfx.gl3.Exceptions;
 	import xf.gfx.gl3.LoaderCommon;
 	//import xf.dog.GLExt;
@@ -21,6 +19,7 @@ public {
 	import xf.gfx.gl3.Common;
 	import xf.gfx.gl3.GL;
 	import xf.gfx.gl3.Window;
+	import xf.gfx.gl3.GLTypes;
 	//import xf.gfx.gl3.backend.Native;		// HACK
 	//import xf.gfx.gl3.GLUFunctions;
 	//import xf.gfx.gl3.GLFunctions;
@@ -142,7 +141,7 @@ void findAndLoadLibs() {
 		load(libNames, { loadGLFunctionsFromLib_(&loadFuncFromLib); }, &loadGlLib_);
 		//load(gluLibNames, { loadGluFunctions_(&loadFuncFromGluLib); }, &loadGluLib_);
 		
-		GLTypes._getCoreFuncPtr = &loadFuncFromLib;
+		xf.gfx.gl3.GLTypes._getCoreFuncPtr = &loadFuncFromLib;
 	}
 }
 
