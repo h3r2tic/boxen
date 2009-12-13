@@ -116,7 +116,7 @@ def parseFuncAttrib(line, func):
 		func.addParam(Param(ptype, pname))
 		return
 
-	if "extension" == line:
+	for m in rematch(r"extension\b", line):
 		func.extension = True
 		return
 

@@ -7,6 +7,7 @@ private {
 	import xf.gfx.gl3.GLContext;
 	import xf.gfx.gl3.OpenGL;
 	import xf.gfx.gl3.ext.WGL_ARB_pixel_format;
+	import xf.gfx.gl3.ext.WGL_ARB_create_context;
 	import xf.gfx.gl3.GLContextData;
 	
 	import xf.input.Input;
@@ -48,6 +49,11 @@ private extern (Windows) int windowProc(HWND hwnd, uint umsg, WPARAM wparam, LPA
 	} else {
 		return DefWindowProc(hwnd, umsg, wparam, lparam);
 	}
+}
+
+
+extern (Windows) {
+	HGLRC function(HDC hDC, HGLRC hShareContext, int *attribList) wglCreateContextAttribsARB;
 }
 
 
@@ -607,10 +613,40 @@ class GLWindow : GLContext, Window {
 		}
 
 		
-		_hrc = cast(typeof(_hrc))xf.gfx.gl3.platform.Win32.wglCreateContext(_hdc);
+		{
+			auto tmpRc = cast(typeof(_hrc))xf.gfx.gl3.platform.Win32.wglCreateContext(_hdc);
+			if (tmpRc is null) {
+				throw new Exception("wglCreateContext failed");
+			}
+			
+			xf.gfx.gl3.platform.Win32.wglMakeCurrent(_hdc, tmpRc);
+			
+			wglCreateContextAttribsARB = cast(typeof(wglCreateContextAttribsARB))
+				xf.gfx.gl3.platform.Win32.wglGetProcAddress("wglCreateContextAttribsARB");
+				
+			if (wglCreateContextAttribsARB is null) {
+				throw new Exception("The WGL_ARB_create_context extension is missing. If your GPU has OpenGL 3.x support, your drivers are probably out of date.");
+			}
+			
+			xf.gfx.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
+			xf.gfx.gl3.platform.Win32.wglDeleteContext(tmpRc);
+			
+			assert (wglCreateContextAttribsARB !is null);
+			
+			int[] attribList;
+			attribList ~= WGL_CONTEXT_MAJOR_VERSION_ARB;
+			attribList ~= 3;
+			attribList ~= WGL_CONTEXT_MINOR_VERSION_ARB;
+			attribList ~= 1;
+			// Cg doesn't like it :F
+			/+attribList ~= WGL_CONTEXT_FLAGS_ARB;
+			attribList ~= xf.gfx.gl3.WGL.WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;+/
+			attribList ~= 0;
+			_hrc = wglCreateContextAttribsARB(_hdc, null, attribList.ptr);
+		}
 		if (_hrc is null) {
 			printWinError();
-			throw new Exception("wglCreateContext failed");
+			throw new Exception("wglCreateContextAttribsARB failed. You probably don't have OpenGL 3.x support");
 		}
 		
 		scope (failure) {

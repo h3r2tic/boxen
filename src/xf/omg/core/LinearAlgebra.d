@@ -1103,6 +1103,21 @@ struct Matrix(flt_, int rows_, int cols_) {
 			}
 
 
+			static Matrix lookAt(Vector!(flt, 3) eye, Vector!(flt, 3) target, Vector!(flt, 3) up = Vector!(flt, 3).unitY) {
+				alias Vector!(flt, 3) vec3;
+
+				vec3 bck	= (eye - target).normalized;
+				vec3 right	= cross(up, bck).normalized;
+				Matrix mat	= Matrix.identity;
+				
+				auto rot = Matrix!(flt, 3, 3).fromVectors(right, cross(bck, right), bck);
+				mat.setRotation(rot.transposed);
+				mat.setTranslation(-eye * rot);
+
+				return mat;
+			}
+
+
 			static Matrix ortho(real left, real right, real bottom, real top, real near, real far) {
 				assert (left <>= 0 && right <>= 0 && bottom <>= 0 && top <>= 0 && near <>= 0 && far <>= 0);
 				Matrix res = Matrix.identity;

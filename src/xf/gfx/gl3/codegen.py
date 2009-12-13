@@ -175,7 +175,7 @@ def emitModule(modName, enums, types, funcs, extId, extraImports = [], errorChec
 				'fname' : func.name,
 				'fid' : funcId,
 				'extId' : extId,
-				'getProcFunc' : 'gl_getCoreFuncPtr' if extId == 0 else 'gl_getExtensionFuncPtr'}
+				'getProcFunc' : 'gl_getExtensionFuncPtr' if func.extension else 'gl_getCoreFuncPtr'}
 
 		f(body)
 		f('alias %s %s;' % (renamedFuncName, formatFuncName(func.name)))
