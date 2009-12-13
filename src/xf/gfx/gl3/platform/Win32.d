@@ -6,6 +6,10 @@ public {
 	import xf.platform.win32.wingdi : LAYERPLANEDESCRIPTOR, COLORREF, GLYPHMETRICSFLOAT, PIXELFORMATDESCRIPTOR;
 }
 
+private {
+	import GLTypes = xf.gfx.gl3.GLTypes;
+	import tango.stdc.stringz;
+}
 
 
 public static extern (System) {
@@ -58,7 +62,9 @@ void loadPlatformFunctions_(void* function(char*) loadFuncFromLib) {
 
 
 public void* getExtensionFuncPtr(char* name) {
-	return wglGetProcAddress(name);
+	auto foo = wglGetProcAddress(name);
+	assert (foo, `couldnt load: '` ~ fromStringz(name) ~ `'`);
+	return foo;
 }
 
 
@@ -66,4 +72,6 @@ static this() {
 	appendLibSearchPaths(`.`, ``);
 	appendLibNames(`opengl32.dll`);
 	appendGluLibNames(`glu32.dll`);
+	
+	GLTypes._getExtensionFuncPtr = &getExtensionFuncPtr;
 }

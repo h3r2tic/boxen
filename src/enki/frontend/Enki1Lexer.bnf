@@ -1,0 +1,112 @@
+
+.all-copyright = "
+	Copyright (c) 2008 Eric Anderton
+	
+	Permission is hereby granted, free of charge, to any person
+	obtaining a copy of this software and associated documentation
+	files (the \"Software\"), to deal in the Software without
+	restriction, including without limitation the rights to use,
+	copy, modify, merge, publish, distribute, sublicense, and/or
+	sell copies of the Software, and to permit persons to whom the
+	Software is furnished to do so, subject to the following
+	conditions:
+	
+	The above copyright notice and this permission notice shall be
+	included in all copies or substantial portions of the Software.
+	
+	THE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,
+	EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+	OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+	NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+	HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+	WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+	FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+	OTHER DEALINGS IN THE SOFTWARE.
+";
+.d-header = "module enki.frontend.Enki1Lexer;
+private import enki.EnkiToken;
+private import enki.frontend.EnkiLexerBase;
+";
+.d-filename = "enki/frontend/Enki1Lexer.d";
+.d-baseclass = "EnkiLexerBaseT!(CharT)";
+.d-classname = "Enki1LexerT(CharT)";
+
+Tokens
+	= EnkiToken[] tokens
+	::= [PoundComment] (Whitespace | SlashStarComment | SlashSlashComment |
+	RegexLiteral:~tokens | StringLiteral:~tokens | CurlyLiteral:~tokens | Number:~tokens | Hex:~tokens | 
+	SpecialToken:~tokens | Identifier:~tokens | LiteralToken:~tokens | @err!("Unexpected char"))* eoi;
+
+Newline
+	::= ("\n" | "\r\n" | "\n\r") [PoundComment];
+	
+Whitespace
+	::= {" " | "\t" | Newline};
+
+SlashStarComment
+	$String err="Expected closing */"
+	::= "/*" ?!(err) any* "*/";
+
+SlashSlashComment
+	$String err="Expected terminating newline"
+	::= "//" ?!(err) any* (Newline | eoi);
+
+PoundComment
+	::= "#" any* (Newline | eoi);
+
+RegexLiteral
+	= EnkiToken RegexToken(String text)
+	$String err1="Expected closing `"
+	$String err2="Expected closing \""
+	$String err3="Expected closing \'"
+	::= "`" ?!(err1) (any:text)* "`" |
+		"r" ("\"" ?!(err2) (StringChar:~text)* "\"") | 
+		"r" ("\'" ?!(err2) (StringChar:~text)* "\'");
+
+StringLiteral
+	= EnkiToken StringToken(String text)
+	$String err1="Expected closing \""
+	$String err2="Expected closing \'"
+	::= ("\"" ?!(err1) (StringChar:~text)* "\"") | ("\'" ?!(err2) (StringChar:~text)* "\'");
+
+CurlyLiteral
+	= EnkiToken[] tokens
+	$String err1="Expected closing '}}}'"
+	::= CurlyLiteralStart:~tokens ?!(err1) CurlyLiteralContent:~tokens CurlyLiteralEnd:~tokens;
+	
+CurlyLiteralStart
+	= EnkiToken LiteralToken(String text)
+	::= "{{{":text;
+	
+CurlyLiteralContent
+	= EnkiToken StringToken(String text)
+	::= ((^"}}}"):~text)*;
+	
+CurlyLiteralEnd
+	= EnkiToken LiteralToken(String text)
+	::= "}}}":text;
+	
+StringChar
+	= String ch
+	::= "\\" ("n" @NEWLINE:ch | "r" @CARRAIGE_RETURN:ch | "t" @TAB:ch | "\"" @DOUBLE_QUOTE:ch | "\'" @SINGLE_QUOTE:ch | "\\" @SLASH:ch | @err!("Unexpected escape sequence")) | any:ch;
+
+Hex
+	= EnkiToken HexToken(String text)
+	$String err="Expected two, four or eight hex digits"
+	::= "#" ?!(err) ({#30-#39 | #41-#46 | #61-#66}<2,4,8>):text;
+
+Number
+	= EnkiToken NumberToken(String text)
+	::= (#30-#39:text)+;
+
+Identifier
+	= EnkiToken IdentifierToken(String text)
+	::= ((#41-#5A | #61-#7A | "_") (#30-#39 | #41-#5A | #61-#7A | "_")*):text;
+
+SpecialToken
+	= EnkiToken CreateToken(String text,EnkiToken.ValueType tok)
+	::= "new":text @TOK_NEW:tok | "::=":text @TOK_RULEASSIGN:tok | "!(":text @TOK_LITERAL:tok;
+
+LiteralToken
+	= EnkiToken LiteralToken(String text)
+	::= (#21-#2F | #3A-#40 | #5B-#60 | #7B-#7E):text;

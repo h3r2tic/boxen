@@ -2,6 +2,8 @@ module xf.gfx.gl3.GLTypes;
 
 public {
 	import xf.gfx.gl3.Common;
+	import xf.gfx.gl3.ExtensionGenConsts;
+	import xf.gfx.gl3.Exceptions;
 }
 
 
@@ -52,17 +54,134 @@ private {
 }
 
 
+void* function(char*)	_getCoreFuncPtr;
+void* function(char*)	_getExtensionFuncPtr;
+
+
 
 // up-align to 4
 pragma (ctfe) uint upTo4(uint x) {
 	return (x + 3) & ~cast(uint)3;
 }
 
-void* gl_getCoreFuncPtr(char* name, int fnId, GLContextData* gl) {
-	assert (gl !is null);
-	assert (false);
-	return null;		// TODO
+
+void* gl_getCoreFuncPtr(char* name, uint fnId_, GLContextData* gl) {
+	const int extFuncsOffsetof = gl.extFunctions.offsetof;
+	const int arrSizeOf = (void*[]).sizeof;
+	const int frameSize = typeof(name).sizeof + typeof(fnId_).sizeof;
+	const int maxExtensions = extensionFuncCounts.length;
+	
+	asm {
+		naked;
+	}
+	version (GL3AsmChecks) asm {
+		cmp EAX, 0;
+		jne glHandleOK;
+	}
+	asm {
+	glHandleOK:
+		mov EDX, dword ptr [ESP+size_t.sizeof];		// fnId
+		mov ECX, EDX;
+		and EDX, 0xffff;		// EDX == extIdx
+		shr ECX, 16;			// ECX == fnIdx
+	}
+	version (GL3AsmChecks) asm {
+		cmp EDX, maxExtensions;
+		jge onoz;
+	}
+	asm {
+		mov EAX, [EAX + extFuncsOffsetof + size_t.sizeof];
+		mov EAX, [EAX + EDX * arrSizeOf + size_t.sizeof];
+		lea EAX, [EAX + ECX * size_t.sizeof];		// EAX == pointer to the func pointer in the context data
+		
+		cmp [EAX], 0;
+		je mustLoad;
+		mov EAX, [EAX];
+		ret frameSize;
+		
+	mustLoad:
+		mov EDX, EAX;
+		mov EAX, [ESP+frameSize];
+		
+		push EDX;
+		call _getCoreFuncPtr;
+		pop EDX;
+		
+		mov [EDX], EAX;
+		jz procMissing;
+		ret frameSize;
+		
+	procMissing:
+		mov EAX, [ESP+frameSize];	// name
+		call handleMissingProc;
+		mov EAX, 0;
+		ret frameSize;
+	}
+	version (GL3AsmChecks) asm {
+	onoz:
+		int 3;
+	}
 }
+
+
+void* gl_getExtensionFuncPtr(char* name, uint fnId_, GLContextData* gl) {
+	const int extFuncsOffsetof = gl.extFunctions.offsetof;
+	const int arrSizeOf = (void*[]).sizeof;
+	const int frameSize = typeof(name).sizeof + typeof(fnId_).sizeof;
+	const int maxExtensions = extensionFuncCounts.length;
+	
+	asm {
+		naked;
+	}
+	version (GL3AsmChecks) asm {
+		cmp EAX, 0;
+		jne glHandleOK;
+	}
+	asm {
+	glHandleOK:
+		mov EDX, dword ptr [ESP+size_t.sizeof];		// fnId
+		mov ECX, EDX;
+		and EDX, 0xffff;		// EDX == extIdx
+		shr ECX, 16;			// ECX == fnIdx
+	}
+	version (GL3AsmChecks) asm {
+		cmp EDX, maxExtensions;
+		jge onoz;
+	}
+	asm {
+		mov EAX, [EAX + extFuncsOffsetof + size_t.sizeof];
+		mov EAX, [EAX + EDX * arrSizeOf + size_t.sizeof];
+		lea EAX, [EAX + ECX * size_t.sizeof];		// EAX == pointer to the func pointer in the context data
+		
+		cmp [EAX], 0;
+		je mustLoad;
+		mov EAX, [EAX];
+		ret frameSize;
+		
+	mustLoad:
+		mov EDX, EAX;
+		mov EAX, [ESP+frameSize];
+		
+		push EDX;
+		call _getExtensionFuncPtr;
+		pop EDX;
+		
+		mov [EDX], EAX;
+		jz procMissing;
+		ret frameSize;
+		
+	procMissing:
+		mov EAX, [ESP+frameSize];	// name
+		call handleMissingProc;
+		mov EAX, 0;
+		ret frameSize;
+	}
+	version (GL3AsmChecks) asm {
+	onoz:
+		int 3;
+	}
+}
+
 
 extern (C) size_t poopie(char* fname, int frameSize, size_t retVal) {
 	printf(

@@ -566,7 +566,9 @@ class GLWindow : GLContext, Window {
 		}
 		
 		if (isGLContextDataSet(_gl)) {
-			setGLContextData(_gl, new GLContextData);
+			auto ctx = new GLContextData;
+			ctx.initialize();
+			setGLContextData(_gl, ctx);
 			assert (isGLContextDataSet(_gl));
 			findAndLoadLibs();
 		}

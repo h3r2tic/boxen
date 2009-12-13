@@ -9,6 +9,8 @@ private {
 	import tango.util.PathUtil;
 	
 	import tango.io.Stdout;
+
+	import GLTypes = xf.gfx.gl3.GLTypes;
 	
 	import xf.gfx.gl3.Exceptions;
 	import xf.gfx.gl3.LoaderCommon;
@@ -139,6 +141,8 @@ void findAndLoadLibs() {
 
 		load(libNames, { loadGLFunctionsFromLib_(&loadFuncFromLib); }, &loadGlLib_);
 		//load(gluLibNames, { loadGluFunctions_(&loadFuncFromGluLib); }, &loadGluLib_);
+		
+		GLTypes._getCoreFuncPtr = &loadFuncFromLib;
 	}
 }
 
