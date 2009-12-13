@@ -1,3 +1,4 @@
 module xf.gfx.gl3.Common;
 
-alias ubyte[4] GL;
+private typedef ubyte GLContextHandle;
+alias GLContextHandle[size_t.sizeof] GL;
