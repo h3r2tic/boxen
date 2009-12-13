@@ -3,7 +3,7 @@ import re
 from parseEnums import parseEnums, DirectName, NameAlias, SpecialNameAlias
 from parseTypes import parseTypes
 from parseFunctions import parseFunctions, ArrayType, PointerType, IdentMultArraySize
-from utils import LineIter
+from utils import LineIter, strfmt
 from codegen import emitModule
 import os
 
@@ -20,18 +20,12 @@ def parseSpecs(func, *files):
 	return res
 
 class Extension:
-	def __init__(self, name, id):
+	def __init__(self, name):
 		self.name = name
-		self.id = id
 		self.funcs = []
 		self.enums = []
 
-extId = 0
-
-
 def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex):
-	global extId
-
 	enums = apply(parseSpecs, [parseEnums] + enumSpecs)
 	types = apply(parseSpecs, [parseTypes] + typeSpecs)
 	funcs = apply(parseSpecs, [parseFunctions] + funcSpecs)
@@ -111,8 +105,7 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 			coreEnums.append((ename, e))
 		else:
 			assert not (ename in name2ext)
-			ext = Extension(ename, extId)
-			extId += 1
+			ext = Extension(ename)
 			ext.enums.append((ename, e))
 			extensions.append(ext)
 			name2ext[ename] = ext
@@ -131,8 +124,7 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 		ext = None
 
 		if not ename in name2ext:
-			ext = Extension(ename, extId)
-			extId += 1
+			ext = Extension(ename)
 			extensions.append(ext)
 			name2ext[ename] = ext
 		else:
@@ -142,7 +134,14 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 
 	return (types, coreFuncs, coreEnums, extensions)
 
+
+extFuncCounts = []
+extId = 0
+
+
 def emitWGL():
+	global extFuncCounts, extId
+
 	types, coreFuncs, coreEnums, extensions = prepareForEmission(
 			['wglenum.spec', 'wglenumext.spec'],
 			['gl.tm', 'wgl.tm'],
@@ -150,11 +149,15 @@ def emitWGL():
 			'WGL_',
 			'^wgl$'
 	)
-	emitModule('WGL', coreEnums, types, coreFuncs,
+
+	emitModule('WGL', coreEnums, types, coreFuncs, extId,
 		extraImports=[
 			'xf.gfx.gl3.WGLTypes'
 		],
-		errorCheckFilter = lambda fname: False)
+		errorCheckFilter = lambda fname: False,
+		funcNamePrefix = 'wgl')
+	extFuncCounts.append(len(coreFuncs))
+	extId += 1
 
 	try:
 		os.makedirs('ext')
@@ -162,14 +165,19 @@ def emitWGL():
 		pass
 
 	for e in extensions:
-		emitModule('ext.' + e.name, e.enums, types, e.funcs,
+		emitModule('ext.' + e.name, e.enums, types, e.funcs, extId,
 				extraImports=[
 					'xf.gfx.gl3.WGLTypes'
 				],
-				errorCheckFilter = lambda fname: False)
+				errorCheckFilter = lambda fname: False,
+				funcNamePrefix = 'wgl')
+		extFuncCounts.append(len(e.funcs))
+		extId += 1
 
 
 def emitCore():
+	global extFuncCounts, extId
+
 	types, coreFuncs, coreEnums, extensions = prepareForEmission(
 			['enum.spec'],
 			['gl.tm'],
@@ -177,8 +185,10 @@ def emitCore():
 			'',
 			'^VERSION_[1-3]_[0-9]$'
 	)
-	emitModule('GL', coreEnums, types, coreFuncs,
+	emitModule('GL', coreEnums, types, coreFuncs, extId,
 			errorCheckFilter = lambda fname: fname != "GetError")
+	extFuncCounts.append(len(coreFuncs))
+	extId += 1
 
 	try:
 		os.makedirs('ext')
@@ -186,8 +196,21 @@ def emitCore():
 		pass
 
 	for e in extensions:
-		emitModule('ext.' + e.name, e.enums, types, e.funcs)
+		emitModule('ext.' + e.name, e.enums, types, e.funcs, extId)
+		extFuncCounts.append(len(e.funcs))
+		extId += 1
+
 
 emitCore()
 emitWGL()
-
+f = strfmt()
+f('module xf.gfx.gl3.ExtensionGenConsts;')
+f.nl()
+f('const int[] extensionFuncCounts = [')
+f.push()
+for c in extFuncCounts[:-1]:
+	f('%d,', c)
+f('%d', extFuncCounts[-1])
+f.pop()
+f('];')
+open('ExtensionGenConsts.d', 'w').write(f.data)

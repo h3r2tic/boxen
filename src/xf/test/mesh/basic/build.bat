@@ -1,0 +1,1 @@
+xfbuild ModelViewer2.d -oR:\ModelViewer2.exe -- -I../../../.. -I../../../ext TangoTrace3.obj -g

@@ -29,5 +29,6 @@ src/xf/havok/HavokC.cpp.i
 src/xf/havok/Havok.d
 src/xf/gfx/gl3/GL.d
 src/xf/gfx/gl3/WGL.d
+src/xf/gfx/gl3/ExtensionGenConsts.d
 src/xf/gfx/gl3/ext/*.d
 .deps

@@ -197,7 +197,7 @@ StencilFunction,*,*,		    GLenum,*,*
 StencilFaceDirection,*,*,	    GLenum,*,*
 StencilOp,*,*,			    GLenum,*,*
 StencilValue,*,*,		    GLint,*,*
-String,*,*,			    const GLubyte *,*,*
+String,*,*,			    const GLchar *,*,*
 StringName,*,*,			    GLenum,*,*
 TangentPointerTypeEXT,*,*,	    GLenum,*,*
 TessCallback,*,*,		    GLenum,*,*

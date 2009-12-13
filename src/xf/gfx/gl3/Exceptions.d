@@ -8,7 +8,7 @@ private {
 
 
 void handleMissingProc(char* name) {
-	throw new Exception(`Proc not found: ` ~ fromStringz(name));
+	throw new Exception(`Proc not found: '` ~ fromStringz(name) ~ `'`);
 }
 
 

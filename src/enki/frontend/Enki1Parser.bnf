@@ -1,0 +1,249 @@
+.all-copyright="""
+    Copyright (c) 2008 Eric Anderton
+
+    Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation
+    files (the "Software"), to deal in the Software without
+    restriction, including without limitation the rights to use,
+    copy, modify, merge, publish, distribute, sublicense, and/or
+    sell copies of the Software, and to permit persons to whom the
+    Software is furnished to do so, subject to the following
+    conditions:
+
+    The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+    EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+    OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+    NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+    HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+    WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+    OTHER DEALINGS IN THE SOFTWARE.
+""";
+
+.all-help="""
+Rendition of the Enki V1 grammar, for backwards compatibility.  
+Users are strongly discouraged from using this grammar due to its 
+numerous grammatical faults and quirks.  Please see the 'enki2' frontend.
+""";
+
+.d-header = "module enki.frontend.Enki1Parser;
+private import enki.frontend.Enki1ParserBase;
+private import enki.EnkiToken;
+private import enki.Binding;
+private import enki.Expression;
+private import enki.Param;
+private import enki.ProductionArg;
+private import enki.Rule;
+private import enki.RulePredicate;
+";
+.d-filename = "enki/frontend/Enki1Parser.d";
+.d-classname="Enki1ParserT(CharT)";
+.d-baseclass="Enki1ParserBaseT!(CharT)";
+
+Keyword = String;
+
+Syntax
+	::= (Rule | Directive)* eoi;
+
+/* 
+ Rule and Predicate
+*/ 
+
+Rule
+	= void addRule(String name,Param[] decl,RulePredicate pred,Param[] vars,Expression expr)
+	::= Identifier:name [ RuleDecl:decl ] [ RulePredicate:pred]  &TOK_RULEASSIGN  Expression:expr  ";";
+
+RuleDecl
+	= Param[] params
+	::= ParamsExpr:params;
+
+RulePredicate
+	= RulePredicate pred
+	::= "=" ( ClassPredicate:pred | FunctionPredicate:pred | BindingPredicate:pred);
+
+ClassPredicate
+	= new ClassPredicate(String name,Param[] params)
+	::= &TOK_NEW Identifier:name  ParamsExpr:params;
+
+FunctionPredicate
+	= new FunctionPredicate(Param decl,Param[] params)
+	::= ExplicitParam:decl  ParamsExpr:params;
+
+BindingPredicate
+	= new BindingPredicate(Param param)
+	::= Param:param;
+
+ParamsExpr
+	= Param[] params
+	::= "(" {Param:~params} % "," ")";
+
+Param
+	= Param param
+	::= ExplicitParam:param | WeakParam:param;
+
+WeakParam
+	= new Param(String name,String value)
+	::= Identifier:name;
+
+ExplicitParam
+	= new Param(String type,String name,String value)
+	::= ParamType:type Identifier:name ["=" &TOK_STRING:value];
+
+ParamType
+	::= Identifier Brackets;
+
+Brackets
+	::= ["[" "]" Brackets];
+
+/*
+ Expressions
+*/ 
+
+
+Expression ::= OrGroup;
+
+OrGroup
+	= new OrGroup(Expression[] exprs)
+	::= (AndGroup:~exprs)+ % "|";
+
+AndGroup
+	= new AndGroup(Expression[] exprs)
+	::= (SubExpression:~exprs)+;
+
+SubExpression
+	= Expression expr
+	::= Production:expr | Substitution:expr | Terminal:expr | Range:expr | Regexp:expr | GroupExpr:expr | OptionalExpr:expr | ZeroOrMoreExpr:expr | NegateExpr:expr | TestExpr:expr | LiteralExpr:expr | CustomTerminal:expr;
+
+Production
+	= new Production(String name,Binding binding,ProductionArg[] args)
+	::= Identifier:name [ "!(" (ProductionArg:~args)+ % "," ")"] [ Binding:binding];
+
+ProductionArg
+	= ProductionArg arg
+	::= StringProductionArg:arg | BindingProductionArg:arg;
+
+StringProductionArg
+	= new StringProductionArg(String value)
+	::= &TOK_STRING:value;
+
+BindingProductionArg
+	= new BindingProductionArg(String value)
+	::= Identifier:value;
+
+Substitution
+	= new Substitution(String name,Binding binding)
+	::= "." Identifier:name [Binding:binding];
+
+GroupExpr
+	= new Group(Expression expr,Binding binding)
+	::= "(" Expression:expr ")" [Binding:binding];
+
+OptionalExpr
+	= new Optional(Expression expr,Binding binding)
+	::= "[" Expression:expr "]" [Binding:binding];
+
+ZeroOrMoreExpr
+	= new Group(Expression expr,Binding binding)
+	::= ZeroOrMoreExprCore!(binding):expr;
+
+ZeroOrMoreExprCore(Binding binding)
+	= new OneOrMoreExpr(Expression expr)
+	::= "{" Expression:expr "}" [ Binding:binding ];
+	
+Terminal
+	= new Terminal(String text,Binding binding)
+	::= &TOK_STRING:text [ Binding:binding];
+
+Range
+	= new CharRange(String start,String end,Binding binding)
+	::= /&TOK_HEX:end &TOK_HEX:start ["-" &TOK_HEX:end] [Binding:binding];
+
+Regexp
+	= new RegularExpression(String text,Binding binding)
+	::= &TOK_REGEX:text [Binding:binding];
+
+NegateExpr
+	= new Negate(Expression expr)
+	::= "!"  SubExpression:expr;
+
+TestExpr
+	= new Test(Expression expr)
+	::= "/"  SubExpression:expr;
+
+LiteralExpr
+	= new Literal(String name,Binding binding,ProductionArg[] args)
+	::= "@" Identifier:name ["!(" (ProductionArg:~args)* % "," ")"] [Binding:binding];
+	
+CustomTerminal
+	= new CustomTerminal(String name,Binding binding)
+	::= "&" Identifier:name [ Binding:binding];
+
+Binding
+	= new Binding(String name,bool isConcat)
+	::= ":" ["~" @true:isConcat] Identifier:name;
+
+Identifier
+	= String value
+	::= ({&TOK_IDENT} % "."):value;
+
+/*
+ Directives
+*/ 
+
+Directive
+	::= "." ( ImportDirective:~dir | BaseClassDirective:~dir | ClassnameDirective:~dir | DefineDirective:~dir | IncludeDirective:~dir | AliasDirective:~dir | ModuleDirective:~dir | CodeDirective:~dir | TypelibDirective:~dir | ParseTypeDirective:~dir | BoilerplateDirective:~dir | HeaderDirective:~dir | UTFDirective:~dir);
+
+ImportDirective
+	= void addImport(String imp)
+	::= Keyword!("import") "("  DirectiveArg:imp  ")"  ";";
+
+BaseClassDirective	
+	= void setBaseClass(String imp)
+	::= Keyword!("baseclass") "("  DirectiveArg:name  ")"  ";";
+
+ClassnameDirective
+	= void setClassname(String imp)
+	::= Keyword!("classname") "("  DirectiveArg:name  ")"  ";";
+
+DefineDirective
+	= void addPrototype(String name,String returnType)
+	::= Keyword!("define") "("  DirectiveArg:returnType  ","  DirectiveArg:name  ","  DirectiveArg:isTerminal [ ","  DirectiveArg:description ] ")"  ";";
+
+IncludeDirective
+	= void includeDirective(String filename)
+	::= Keyword!("include") "("  &TOK_STRING:filename  ")"  ";";
+
+AliasDirective
+	= void addAlias(String ruleAlias,String rule)
+	::= Keyword!("alias") "("  DirectiveArg:rule  ","  DirectiveArg:ruleAlias  ")"  ";";
+
+ModuleDirective
+	= void setModulename(String moduleName)
+	::= Keyword!("module") "("  DirectiveArg:moduleName  ")"  ";";
+
+CodeDirective
+	::= Keyword!("code")  "{{{" &TOK_STRING "}}}";
+
+TypelibDirective
+	::= Keyword!("typelib") "("  DirectiveArg:importName  ")"  ";";
+
+ParseTypeDirective
+	::= Keyword!("parsetype") "("  DirectiveArg:typeName  ")"  ";";
+
+BoilerplateDirective
+	= void setBoilerplate(String code)
+	::= Keyword!("boilerplate") "{{{" &TOK_STRING:code "}}}";
+
+HeaderDirective
+	= void setHeader(String code)
+	::= Keyword!("header") "{{{" &TOK_STRING:code "}}}";
+
+UTFDirective
+	::= Keyword!("utf") "(" DirectiveArg:value  ")"  ";";
+
+DirectiveArg
+	= String arg
+	::= Identifier:arg | &TOK_STRING:arg;

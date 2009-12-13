@@ -55,7 +55,7 @@ def formatFuncName(n):
 modPrefix = 'xf.gfx.gl3.'
 
 
-def emitModule(modName, enums, types, funcs, extraImports = [], errorCheckFilter = lambda fname: True):
+def emitModule(modName, enums, types, funcs, extId, extraImports = [], errorCheckFilter = lambda fname: True, funcNamePrefix = 'gl'):
 	f = strfmt()
 
 	definedEnumNames = set()
@@ -98,7 +98,7 @@ def emitModule(modName, enums, types, funcs, extraImports = [], errorCheckFilter
 	f.nl()
 
 	for func in funcs:
-		f('char* fname_%s = "gl%s";', func.name, func.name)
+		f('char* fname_%s = "%s%s";', func.name, funcNamePrefix, func.name)
 
 
 	f.nl()
@@ -140,8 +140,8 @@ def emitModule(modName, enums, types, funcs, extraImports = [], errorCheckFilter
 
 		// obtain the function pointer
 		push dword ptr [fname_%(fname)s];
-		push dword ptr %(fid)s;
-		call gl_getCoreFuncPtr;
+		push dword ptr 0x%(fid)4.4x%(extId)4.4x;
+		call %(getProcFunc)s;
 
 		// call the GL function
 		call EAX;
@@ -171,7 +171,11 @@ def emitModule(modName, enums, types, funcs, extraImports = [], errorCheckFilter
 }
 		'''
 
-		body = body % {'fname' : func.name, 'fid' : funcId}
+		body = body % {
+				'fname' : func.name,
+				'fid' : funcId,
+				'extId' : extId,
+				'getProcFunc' : 'gl_getCoreFuncPtr' if extId == 0 else 'gl_getExtensionFuncPtr'}
 
 		f(body)
 		f('alias %s %s;' % (renamedFuncName, formatFuncName(func.name)))

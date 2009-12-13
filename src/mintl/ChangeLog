@@ -1,0 +1,106 @@
+2.7.2
+	* all: update to dmd.1.014
+	
+2.7.1
+	* all: update to dmd.129
+	* share, set, multiaa: add static make() that calls add(...)
+	* hashaa, sortedaa: add block allocated nodes and recycling. add trim()
+
+2.7
+	* arraylist/deque: mixin RandomAccessSort
+	* list/hashaa: mixin SequentialSort
+	* sorting: new templates for sorting algorithms
+	* hashaa: fix insertion bug with rehashing
+	
+2.6.2
+	* hashaa/sortedaa: remove enum from 2.6.1 and make get() and put().
+	* multiaa: re-enable and uncomment unittests
+	* set: clean up mixins were for builtin AA support
+	* all: shorten opApply code by relying on opApplyIter
+	* arraylist, deque: fix len wrapping code and next() bug
+	* all.d: added "no warrenty" clause
+	
+2.6.1
+	* deque/arraylist: switched to start/len instead of head/tail to 
+	make wrapping easier
+	* hashaa/sortedaa: redo indexing api to allow NullOnMiss, ThrowOnMiss
+	and InsertOnMiss for get(). Replace opIn with contains. Remove lookup.
+	Add 'missing' property for lookups that miss.
+
+2.6
+	* all: simplify mixins by adding type aliases ContainerType, ValueType
+	IndexType, IterType
+	* lists: add value getter/setter for one-item slices
+	* all: add opCmp
+	* all: add ReadOnly parameter and readonly/readwrite property
+	* lists: add opIn, count, swap, find, fill, copy algorithms
+	* hashaa: for consistency with other containers rename LinkedAA 
+	to HashAA and make the default for adapters
+	* all: update to dmd.126
+	
+2.5
+	* list.d: CList to CircularList and CSList to CircularSList
+	* all: change move(), moveHead(), moveTail() to next()
+	* all: added take() and takeHead/Tail to return value if any
+	* concurrent/aa.d: ConcurrentAA changes to implement Collection
+	* arraylist.d: grow ArrayList capacity geometrically
+	* all: remove toArray and replace with values
+	* all: remove toSeq since instantiating CFoo is equivalent
+	* linked/sortedaa.d: change fromHead, fromTail to head/tail
+	* lists: add head/tail properties to get one-item slices of head/tail
+	* list.d: remove length setter and make length==0 mean unknown length
+	that gets computed only when required
+	* list.d: make head null indicate empty list, tail hold cache
+	* sortedaa.d: add from(key) and to(key)
+	* deque.d: simplify code by not resizing block size and making it cyclic
+	* arraylist.d: fix copyBlock bug copying between arrays of different size
+	* adapter.d: mixins for adapters
+	* stack.d: adapter for stack
+	* queue.d: adapter for queue
+	* set.d: adapter for sets and multi-sets
+	* multiaa.d: adapter for multi-aa
+	* index.html: update for above and add class.html.
+	* mintl.cls: new package containing interfaces and classes - 
+	separate download
+	* mem.d: new module for customer allocators
+	* all: add clear() to support custom allocators
+	
+2.2
+	* all: replaced length sizes with size_t instead of uint and be careful
+	about overflows
+	* arraylist.d: change ArrayList to dynamically grow instead of error
+	* util.d: removed and moved aliases to target's module
+	* seq.d: removed and moved contents to share.d
+	* all: unify bounds checking code into a shared fcn for each module
+	* opIn: return a pointer to the element or null.
+	* index.html: update for above and document MinTLNoIndexChecking.
+	
+2.1.1
+	* list.d: moved mixin in list.d and slist.d to match new dmd 
+	behavior dmd.119
+	* array.d: removed obsolete AA helper functions
+	* arraylist.d: added capacity, length setter and array to ArrayList 
+	to let it
+	act more like an array-with-capacity. The only overhead is an extra
+	head value that is always 0.
+	* arraylist.d: fixed bug in ArrayList moveBlock when copying to end 
+	of array
+	
+2.1
+	* concurrent: split out concurrent containers into a different 
+	distribution
+
+2.02
+	* libmintl_debug.a and mintl_debug.lib debug builds of library
+
+2.01
+	* array.d: remove AA utilities by default since the new implementation
+	breaks the old routines. old code is available with version AllowAAUtils
+	* arraylist.d: update for int/uint implicit conversion rules
+	* win32.mak: update to build unittest with SRC instead of mintl.lib
+	* linux.mak: same
+	* concurrent/*.d: add volatile statements back in
+	* concurrent/dualstack.d: removeTail gets result from t not next
+	* concurrent/aa.d: add debug print statements
+	* concurrent/priorityqueue.d: add slower yields to unittest
+	* concurrent/linkedqueue.d: add slower yields to unittest
