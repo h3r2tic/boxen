@@ -10,95 +10,25 @@ private {
 	
 	import tango.io.Stdout;
 	
-	import xf.gfx.gl3.Common;
 	import xf.gfx.gl3.Exceptions;
 	import xf.gfx.gl3.LoaderCommon;
 	//import xf.dog.GLExt;
 }
 
 public {
+	import xf.gfx.gl3.Common;
+	import xf.gfx.gl3.GL;
+	import xf.gfx.gl3.Window;
+	//import xf.gfx.gl3.backend.Native;		// HACK
 	//import xf.gfx.gl3.GLUFunctions;
-	import xf.gfx.gl3.GLFunctions;
+	//import xf.gfx.gl3.GLFunctions;
 }
-
-
-version (DogNoExtSupportAsserts) {
-} else {
-	version = DogExtSupportAsserts;
-}
-
-
-struct ExtContext {
-	version (DogExtSupportAsserts) {
-		GLHandle	glh;
-		ushort[30]	extList;
-		ushort		numExt;
-	}
-	
-	bool supported;
-	
-	bool opIn(void delegate() dg) {
-		if (supported) {
-			version (DogNoExtSupportAsserts) {
-				dg();
-			}
-			version (DogExtSupportAsserts) {
-				foreach (e; extList[0..numExt]) {
-					++glh.extEnabled[e];
-				}
-				dg();
-				foreach (e; extList[0..numExt]) {
-					--glh.extEnabled[e];
-				}
-			}
-			return true;
-		} else {
-			return false;
-		}
-	}
-}
-
-
-ExtContext ext(GL gl, ushort[] extList ...) {
-	bool supported = true;
-	foreach (e; extList) {
-		auto f = __extSupportCheckingFuncs[e];
-		assert (f !is null);
-		if (!f(gl)) {
-			supported = false;
-			break;
-		}
-	}
-
-	ExtContext res = void;
-	
-	if (supported) {
-		res.supported = true;
-		
-		version (DogExtSupportAsserts) {
-			res.glh = _getGL(gl);
-			assert (extList.length < 30, `will any more be needed? :P`);
-			res.extList[0..extList.length] = extList;
-			res.numExt = extList.length;
-		}
-	} else {
-		res.supported = false;
-	}
-	
-	return res;
-}
-
 
 
 version (Windows) {
-	public import xf.dog.platform.Win32;
-}
-else version (Posix) {
-	version (linux) {
-		public import xf.dog.platform.GLX;
-	}
-	else version (darwin) {
-		public import xf.dog.platform.OSX;
+	public {
+		import xf.gfx.gl3.WGL;
+		import xf.gfx.gl3.platform.Win32;	// HACK
 	}
 }
 else {
@@ -110,11 +40,11 @@ else {
 private {
 	void loadGLFunctionsFromLib_(void* function(char*) loadFuncFromLib) {
 		loadPlatformFunctions_(loadFuncFromLib);
-		loadCoreFunctions_(loadFuncFromLib);
+		//loadCoreFunctions_(loadFuncFromLib);
 	}
 
 	SharedLib	glLib;
-	SharedLib	gluLib;
+	//SharedLib	gluLib;
 
 
 	bool loadGlLib_(char[] src) {
@@ -136,7 +66,7 @@ private {
 	}
 
 
-	bool loadGluLib_(char[] src) {
+	/+bool loadGluLib_(char[] src) {
 		unloadGluLib_();
 		try {
 			gluLib = SharedLib.load(src);
@@ -152,7 +82,7 @@ private {
 			gluLib.unload();
 			gluLib = null;
 		}
-	}
+	}+/
 }
 
 
@@ -208,7 +138,7 @@ void findAndLoadLibs() {
 		}
 
 		load(libNames, { loadGLFunctionsFromLib_(&loadFuncFromLib); }, &loadGlLib_);
-		load(gluLibNames, { loadGluFunctions_(&loadFuncFromGluLib); }, &loadGluLib_);
+		//load(gluLibNames, { loadGluFunctions_(&loadFuncFromGluLib); }, &loadGluLib_);
 	}
 }
 
@@ -229,7 +159,7 @@ bool extractVersionNumbers(char[] str, char delim, int* major, int* minor) {
 }
 
 
-bool isOpenGLVersionSupported(char[] versionStr, char delim) {
+/+bool isOpenGLVersionSupported(char[] versionStr, char delim) {
 	int implMajor, implMinor;
 	int chkMajor, chkMinor;
 	
@@ -243,7 +173,7 @@ bool isOpenGLVersionSupported(char[] versionStr, char delim) {
 	}
 	
 	return false;
-}
+}+/
 
 
 void* loadFuncFromLib(char* name) {
@@ -258,7 +188,7 @@ void* loadFuncFromLib(char* name) {
 }
 
 
-void* loadFuncFromGluLib(char* name) {
+/+void* loadFuncFromGluLib(char* name) {
 	void* func = gluLib.getSymbol(name);
 	
 	if (func is null) {
@@ -269,3 +199,4 @@ void* loadFuncFromGluLib(char* name) {
 	}
 	return null;
 }
++/
