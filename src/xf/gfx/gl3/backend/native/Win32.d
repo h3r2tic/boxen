@@ -7,15 +7,19 @@ private {
 	import xf.gfx.gl3.GLContext;
 	import xf.gfx.gl3.OpenGL;
 	import xf.gfx.gl3.ext.WGL_ARB_pixel_format;
+	import xf.gfx.gl3.GLContextData;
 	
 	import xf.input.Input;
-	import Input = xf.dog.backend.native.Win32Input;
+	import Input = xf.gfx.gl3.backend.native.Win32Input;
 	
 	import xf.platform.win32.wingdi;
 	import xf.platform.win32.winuser;
 	import xf.platform.win32.winnt;
 	import xf.platform.win32.windef;
 	import xf.platform.win32.winbase;
+	alias xf.platform.win32.windef.POINT POINT;
+	
+	import xf.gfx.gl3.platform.Win32;
 	
 	import tango.stdc.stringz : fromStringz;
 	
@@ -500,6 +504,7 @@ class GLWindow : GLContext, Window {
 		if (!_fullscreen) {
 			AdjustWindowRectEx(&windowRect, windowStyle, 0, windowExtendedStyle);
 		}
+
 	
 		union CastHack {
 			GLWindow thisptr;
@@ -560,8 +565,9 @@ class GLWindow : GLContext, Window {
 			_hdc = null;
 		}
 		
-		if (_gl is null) {
-			_gl._setGL(new GLHandle);
+		if (isGLContextDataSet(_gl)) {
+			setGLContextData(_gl, new GLContextData);
+			assert (isGLContextDataSet(_gl));
 			findAndLoadLibs();
 		}
 
@@ -571,7 +577,7 @@ class GLWindow : GLContext, Window {
 		
 		PIXELFORMATDESCRIPTOR pfd;
 		if (preInitDone) {
-			if (!_gl.wglSetPixelFormat(_hdc, overridePixelFormat, &pfd)) {
+			if (!wglSetPixelFormat(_hdc, overridePixelFormat, &pfd)) {
 				throw new Exception("wglSetPixelFormat failed");
 			}
 		} else {
@@ -597,20 +603,21 @@ class GLWindow : GLContext, Window {
 				throw new Exception("SetPixelFormat failed");
 			}
 		}
+
 		
-		_hrc = cast(typeof(_hrc))xf.dog.platform.Win32.wglCreateContext(_gl, _hdc);
+		_hrc = cast(typeof(_hrc))xf.gfx.gl3.platform.Win32.wglCreateContext(_hdc);
 		if (_hrc is null) {
 			printWinError();
 			throw new Exception("wglCreateContext failed");
 		}
 		
 		scope (failure) {
-			xf.dog.platform.Win32.wglDeleteContext(_gl, _hrc);
+			xf.gfx.gl3.platform.Win32.wglDeleteContext(_hrc);
 			_hrc = null;
 		}
 	
 	
-		if (!xf.dog.platform.Win32.wglMakeCurrent(_gl, _hdc, _hrc)) {
+		if (!xf.gfx.gl3.platform.Win32.wglMakeCurrent(_hdc, _hrc)) {
 			printWinError();
 			throw new Exception("wglMakeCurrent failed");
 		}
@@ -618,11 +625,12 @@ class GLWindow : GLContext, Window {
 		if (!preInitDone) {
 			preInitDone = true;
 			bool recreate = false;
-			if (!(_gl.ext(WGL_ARB_pixel_format) in {
+			//if (!(_gl.ext(WGL_ARB_pixel_format) in {
+			{
 				static float[] fAttributes = [ 0.f, 0.f ];
 				int[] formatAttribs; {
 					formatAttribs ~= WGL_DRAW_TO_WINDOW_ARB;
-					formatAttribs ~= GL_TRUE;
+					formatAttribs ~= xf.gfx.gl3.GL.TRUE;
 					formatAttribs ~= WGL_ACCELERATION_ARB;
 					formatAttribs ~= WGL_FULL_ACCELERATION_ARB;
 					formatAttribs ~= WGL_COLOR_BITS_ARB;
@@ -634,20 +642,21 @@ class GLWindow : GLContext, Window {
 					formatAttribs ~= WGL_STENCIL_BITS_ARB;
 					formatAttribs ~= _stencilBits;
 					formatAttribs ~= WGL_DOUBLE_BUFFER_ARB;
-					formatAttribs ~= GL_TRUE;
+					formatAttribs ~= xf.gfx.gl3.GL.TRUE;
 					formatAttribs ~= 0;
 					formatAttribs ~= 0;
 				}
 				
 				uint numFormats = 0;
-				if (!xf.dog.ext.WGL_ARB_pixel_format.wglChoosePixelFormat(_gl, _hdc, formatAttribs.ptr, fAttributes.ptr, 1, &overridePixelFormat, &numFormats) || 0 == numFormats) {
+				if (!_gl.ChoosePixelFormatARB(_hdc, formatAttribs.ptr, fAttributes.ptr, 1, &overridePixelFormat, &numFormats) || 0 == numFormats) {
 					// throw new Exception("wglChoosePixelFormat failed");
 				} else {
 					recreate = true;
 				}
-			})) {
-				Stdout.formatln("[GLWindow] WARNING: WGL_ARB_pixel_format not supported");
 			}
+			/+})) {
+				Stdout.formatln("[GLWindow] WARNING: WGL_ARB_pixel_format not supported");
+			}+/
 			
 			if (recreate) {
 				destroyWindowOnly();
@@ -700,9 +709,9 @@ class GLWindow : GLContext, Window {
 		if (_hwnd !is null) {
 			if (_hdc !is null)
 			{
-				xf.dog.platform.Win32.wglMakeCurrent(_gl, _hdc, null);
+				xf.gfx.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
 				if (_hrc !is null) {
-					xf.dog.platform.Win32.wglDeleteContext(_gl, _hrc);
+					xf.gfx.gl3.platform.Win32.wglDeleteContext(_hrc);
 					_hrc = null;
 				}
 
@@ -769,16 +778,14 @@ class GLWindow : GLContext, Window {
 		
 		return this;
 	}
-	
 
-	override GL begin() {
-		assert (_gl !is null);
-		xf.dog.platform.Win32.wglMakeCurrent(_gl, _hdc, _hrc);
-		return _gl;
-	}
-	
-	
-	override void end() {
+
+	override void useInHandler(void delegate(GL) dg) {
+		synchronized (this) {
+			assert (isGLContextDataSet(_gl));
+			xf.gfx.gl3.platform.Win32.wglMakeCurrent(_hdc, _hrc);
+			dg(_gl);
+		}
 	}
 /+	
 	
@@ -838,7 +845,7 @@ class GLWindow : GLContext, Window {
 
 
 	protected {
-		char[]	_title	= "xf.dog.GLWindow";
+		char[]	_title	= "xf.gfx.gl3.GLWindow";
 		bool		_fullscreen		= false;
 		bool		_decorations		= true;
 		bool		_visible				= false;

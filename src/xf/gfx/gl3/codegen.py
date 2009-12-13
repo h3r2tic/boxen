@@ -48,7 +48,8 @@ def paramToCArg(t, n):
 
 
 def formatFuncName(n):
-	return n[0].lower() + n[1:]
+	return n;
+#	return n[0].lower() + n[1:]
 
 
 modPrefix = 'xf.gfx.gl3.'

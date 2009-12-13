@@ -11,16 +11,7 @@ abstract class GLContext {
 	abstract GLContext	create();
 	abstract GLContext	destroy();
 	abstract GLContext	show();
-	abstract GL				begin();
-	abstract void				end();
-	
-	
-	void useInHandler(void delegate(GL) dg) {
-		synchronized (this) {
-			dg(begin());
-			end();
-		}
-	}
+	abstract void				useInHandler(void delegate(GL) dg);
 
 
 	GLContext width(uint w) {

@@ -48,6 +48,7 @@ public {
 
 private {
 	import tango.stdc.stdio;
+	import xf.gfx.gl3.GLContextData;
 }
 
 
@@ -57,7 +58,8 @@ pragma (ctfe) uint upTo4(uint x) {
 	return (x + 3) & ~cast(uint)3;
 }
 
-void* gl_getCoreFuncPtr(char* name, int fnId, void* GLptr) {
+void* gl_getCoreFuncPtr(char* name, int fnId, GLContextData* gl) {
+	assert (gl !is null);
 	assert (false);
 	return null;		// TODO
 }

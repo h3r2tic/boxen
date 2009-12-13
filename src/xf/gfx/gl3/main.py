@@ -107,9 +107,7 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 		for n in e.names:
 			assert n is None or isinstance(n, DirectName), `n`
 
-		if ename in types:
-			pass
-		elif re.match(coreCatRegex, ename) or (ename[0:len(extPrefix)] != extPrefix and len(extPrefix) != 0):
+		if ename in types or re.match(coreCatRegex, ename) or (ename[0:len(extPrefix)] != extPrefix and len(extPrefix) != 0):
 			coreEnums.append((ename, e))
 		else:
 			assert not (ename in name2ext)
