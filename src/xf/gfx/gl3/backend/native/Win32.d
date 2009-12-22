@@ -8,6 +8,7 @@ private {
 	import xf.gfx.gl3.OpenGL;
 	import xf.gfx.gl3.ext.WGL_ARB_pixel_format;
 	import xf.gfx.gl3.ext.WGL_ARB_create_context;
+	import xf.gfx.gl3.ext.WGL_EXT_framebuffer_sRGB;
 	import xf.gfx.gl3.GLContextData;
 	
 	import xf.input.Input;
@@ -613,7 +614,7 @@ class GLWindow : GLContext, Window {
 		}
 
 		
-		{
+		/+{
 			auto tmpRc = cast(typeof(_hrc))xf.gfx.gl3.platform.Win32.wglCreateContext(_hdc);
 			if (tmpRc is null) {
 				throw new Exception("wglCreateContext failed");
@@ -629,7 +630,6 @@ class GLWindow : GLContext, Window {
 			}
 			
 			xf.gfx.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
-			xf.gfx.gl3.platform.Win32.wglDeleteContext(tmpRc);
 			
 			assert (wglCreateContextAttribsARB !is null);
 			
@@ -643,6 +643,9 @@ class GLWindow : GLContext, Window {
 			attribList ~= xf.gfx.gl3.WGL.WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;+/
 			attribList ~= 0;
 			_hrc = wglCreateContextAttribsARB(_hdc, null, attribList.ptr);
+		}+/
+		{
+			_hrc = cast(typeof(_hrc))xf.gfx.gl3.platform.Win32.wglCreateContext(_hdc);
 		}
 		if (_hrc is null) {
 			printWinError();
@@ -681,6 +684,12 @@ class GLWindow : GLContext, Window {
 					formatAttribs ~= _stencilBits;
 					formatAttribs ~= WGL_DOUBLE_BUFFER_ARB;
 					formatAttribs ~= xf.gfx.gl3.GL.TRUE;
+
+					if (_sRGB) {
+						formatAttribs ~= WGL_FRAMEBUFFER_SRGB_CAPABLE_EXT;
+						formatAttribs ~= xf.gfx.gl3.GL.TRUE;
+					}
+					
 					formatAttribs ~= 0;
 					formatAttribs ~= 0;
 				}

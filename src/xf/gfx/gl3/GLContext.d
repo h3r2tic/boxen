@@ -84,6 +84,17 @@ abstract class GLContext {
 		return _created;
 	}
 	
+	
+	GLContext sRGB(bool b) {
+		_sRGB = b;
+		return this;
+	}
+	
+	
+	bool sRGB() {
+		return _sRGB;
+	}
+	
 
 	void reshape(void delegate(uint width, uint height) dg) {
 		_reshapeCallback = dg;
@@ -97,6 +108,7 @@ abstract class GLContext {
 		uint		_depthBits		= 16;
 		uint		_alphaBits		= 0;
 		uint		_stencilBits	= 0;
+		bool		_sRGB			= true;
 		
 		bool		_created = false;
 
