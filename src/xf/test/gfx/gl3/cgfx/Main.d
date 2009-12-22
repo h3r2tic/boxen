@@ -2,6 +2,8 @@ module Main;
 
 import xf.gfx.gl3.OpenGL;
 import xf.gfx.gl3.backend.Native;
+import xf.gfx.gl3.ext.EXT_framebuffer_sRGB;
+import xf.gfx.gl3.ext.WGL_EXT_swap_control;
 import xf.gfx.gl3.Cg;
 
 import xf.omg.core.Misc;
@@ -42,6 +44,8 @@ void main() {
 	
 	use(context) in (GL gl) {
 		gl.ClearColor(1, 1, 1, 1);
+		gl.Enable(FRAMEBUFFER_SRGB_EXT);
+		gl.SwapIntervalEXT(0);
 
 		initCg(gl);
 		initOpenGL(gl);
@@ -170,7 +174,7 @@ void initOpenGL(GL gl)
 	uint size, level, face;
 	GLubyte *image;
 
-	gl.ClearColor(0.1, 0.3, 0.6, 0.0);	/* Blue background */
+	gl.ClearColor(0.03, 0.1, 0.4, 0.0);	/* Blue background */
 	gl.Enable(DEPTH_TEST);
 	gl.PixelStorei(UNPACK_ALIGNMENT, 1); /* Tightly packed texture data. */
 

@@ -15,7 +15,7 @@ private {
 
 
 
-private struct OSHeap {
+struct OSHeap {
 	private template RefType(T) {
 		static if (is(T == class)) {
 			alias T RefType;
@@ -76,12 +76,22 @@ private struct OSHeap {
 
 
 	void* allocRaw(size_t size) {
-		if (_heapId is null) {
+		if (!initialized) {
 			initialize();
 		}
 		return .winapi.HeapAlloc(_heapId, 0, size);
 	}
 	
+
+	void* reallocRaw(void* ptr, size_t size) {
+		if (ptr !is null) {
+			assert (initialized);
+			return .winapi.HeapReAlloc (_heapId, 0, ptr, size);
+		} else {
+			return allocRaw(size);
+		}
+	}
+
 
 	void freeRaw(void* ptr) {
 		assert (_heapId !is null);

@@ -21,7 +21,7 @@ float Ambient<
   string type = "ambient";
   float minValue = 0.0;
   float maxValue = 1.0;
-> = 0.3;
+> = 0.04;
 
 float Shininess <
   string type = "shininess";
@@ -39,7 +39,7 @@ float3 DiffuseMaterial<
   string type = "color";
   float3 minValue = float3(0,0,0);
   float3 maxValue = float3(1,1,1);
-> = { 0.9, 0.6, 0.3 };
+> = { 0.9, 0.4, 0.1 };
 
 float3 SpecularMaterial<
   string type = "color";
