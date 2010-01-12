@@ -4,6 +4,7 @@ private {
 	import xf.Common;
 	import xf.gfx.VertexBuffer;
 	import xf.utils.MultiArray;
+	import xf.utils.FreeList;
 }
 
 
@@ -25,7 +26,7 @@ struct UniformParamGroup {
 	`));
 	
 	
-	bool invalidate() {
+	void invalidate() {
 		_dirty = true;
 	}
 	
@@ -48,6 +49,7 @@ struct UniformParamGroup {
 	}
 }
 
+
 /*
  * Q: Where do we store varying inputs finally?
  * A: In the instance. Rationale follows:
@@ -65,8 +67,12 @@ struct UniformParamGroup {
  * VaO binding. This should in theory make the rendering faster.
  */
 
+abstract class GPUEffect {
+	abstract void setArraySize(cstring name, size_t size);
+	abstract void setUniformType(cstring name, cstring typeName);
+	abstract GPUEffect copy();
 
-class GPUEffect {
+	
 	size_t	numVertexBuffers;
 	size_t	instanceDataSize;
 
@@ -86,13 +92,13 @@ class GPUEffect {
 	mixin(multiArray(`instances`, `
 		VertexBuffer{numVertexBuffers}	curVertexBuffers
 		VertexBuffer{numVertexBuffers}	nextVertexBuffers
-		boolnumVertexBuffers}			vertexBuffersDirty
+		bool{numVertexBuffers}			vertexBuffersDirty
 		void{instanceDataSize}			uniformData
 	`));
 	
 	
 	UniformDataSlice getUniformDataSlice(cstring name) {
-		foreach (i, n; uniformParams.name) {
+		foreach (i, n; uniformParams.name[0..uniformParams.length]) {
 			if (n == name) {
 				return uniformParams.dataSlice[i];
 			}
@@ -106,7 +112,7 @@ class GPUEffect {
 	}
 	
 	GPUEffectInstance* instantiate() {
-		GPUEffectInstance* inst = instanceFreeList.alloc(totalInstanceSize);
+		auto inst = cast(GPUEffectInstance*)instanceFreeList.alloc(totalInstanceSize);
 		*inst = GPUEffectInstance.init;
 		void* unifData = cast(void*)(inst+1);
 		memset(unifData, 0, instanceDataSize);
@@ -133,7 +139,7 @@ struct GPUEffectInstance {
 	
 	void setUniform(T)(cstring name, T value) {
 		*cast(T*)(
-			cast(void*)this + _proto.getUniformDataSlice(name).offset;
+			cast(void*)this + _proto.getUniformDataSlice(name).offset
 		) = value;
 	}
 	
