@@ -67,7 +67,7 @@ private pragma(ctfe) MultiArrayField[] parseMultiArrayFields(cstring def) {
 	Generated public methods:
 	
 	void resize(size_t)
-	size_t growBy(size_t)
+	size_t growBy(size_t)	- returns the index of the first newly added item
 	size_t length()
 	... TODO ...
 */

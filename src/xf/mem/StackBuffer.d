@@ -117,8 +117,8 @@ scope class StackBuffer {
 	
 	
 	MainStackBuffer*	_mainBuffer;
-	size_t					_chunkMark;
-	size_t					_topMark;
+	size_t				_chunkMark;
+	size_t				_topMark;
 }
 
 
