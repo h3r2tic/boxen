@@ -3,10 +3,10 @@ module Main;
 import tango.core.tools.TraceExceptions;
 
 import
-	xf.gfx.gl3.OpenGL,
-	xf.gfx.gl3.ext.WGL_EXT_swap_control,
-	xf.gfx.gl3.ext.WGL_EXT_extensions_string,
-	xf.gfx.gl3.backend.Native;
+	xf.gfx.api.gl3.OpenGL,
+	xf.gfx.api.gl3.ext.WGL_EXT_swap_control,
+	xf.gfx.api.gl3.ext.WGL_EXT_extensions_string,
+	xf.gfx.api.gl3.backend.Native;
 
 import tango.io.Stdout		: Stdout;
 import tango.stdc.stringz	: fromStringz;

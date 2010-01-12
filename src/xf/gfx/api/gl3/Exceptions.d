@@ -1,4 +1,4 @@
-module xf.gfx.gl3.Exceptions;
+module xf.gfx.api.gl3.Exceptions;
 
 private {
 	import tango.stdc.stringz;

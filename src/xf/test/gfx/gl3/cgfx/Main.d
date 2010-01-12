@@ -1,10 +1,10 @@
 module Main;
 
-import xf.gfx.gl3.OpenGL;
-import xf.gfx.gl3.backend.Native;
-import xf.gfx.gl3.ext.EXT_framebuffer_sRGB;
-import xf.gfx.gl3.ext.WGL_EXT_swap_control;
-import xf.gfx.gl3.Cg;
+import xf.gfx.api.gl3.OpenGL;
+import xf.gfx.api.gl3.backend.Native;
+import xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB;
+import xf.gfx.api.gl3.ext.WGL_EXT_swap_control;
+import xf.gfx.api.gl3.Cg;
 
 import xf.omg.core.Misc;
 import xf.omg.core.LinearAlgebra;

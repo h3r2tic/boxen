@@ -1,7 +1,7 @@
-module xf.gfx.gl3.GLContext;
+module xf.gfx.api.gl3.GLContext;
 
 public {
-	import xf.gfx.gl3.Common;
+	import xf.gfx.api.gl3.Common;
 	import xf.utils.Use;
 }
 

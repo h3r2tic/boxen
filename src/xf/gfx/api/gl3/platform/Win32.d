@@ -1,13 +1,13 @@
-module xf.gfx.gl3.platform.Win32;
+module xf.gfx.api.gl3.platform.Win32;
 
 public {
-	import xf.gfx.gl3.LoaderCommon;
+	import xf.gfx.api.gl3.LoaderCommon;
 	import xf.platform.win32.windef;
 	import xf.platform.win32.wingdi : LAYERPLANEDESCRIPTOR, COLORREF, GLYPHMETRICSFLOAT, PIXELFORMATDESCRIPTOR;
 }
 
 private {
-	import GLTypes = xf.gfx.gl3.GLTypes;
+	import GLTypes = xf.gfx.api.gl3.GLTypes;
 	import tango.stdc.stringz;
 }
 
