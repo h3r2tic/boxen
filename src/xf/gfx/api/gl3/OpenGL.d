@@ -1,4 +1,4 @@
-module xf.gfx.gl3.OpenGL;
+module xf.gfx.api.gl3.OpenGL;
 
 private {
 	import tango.io.FileScan;
@@ -10,25 +10,25 @@ private {
 	
 	import tango.io.Stdout;
 
-	import xf.gfx.gl3.Exceptions;
-	import xf.gfx.gl3.LoaderCommon;
+	import xf.gfx.api.gl3.Exceptions;
+	import xf.gfx.api.gl3.LoaderCommon;
 	//import xf.dog.GLExt;
 }
 
 public {
-	import xf.gfx.gl3.Common;
-	import xf.gfx.gl3.GL;
-	import xf.gfx.gl3.Window;
-	import xf.gfx.gl3.GLTypes;
-	//import xf.gfx.gl3.backend.Native;		// HACK
-	//import xf.gfx.gl3.GLUFunctions;
-	//import xf.gfx.gl3.GLFunctions;
+	import xf.gfx.api.gl3.Common;
+	import xf.gfx.api.gl3.GL;
+	import xf.gfx.api.gl3.Window;
+	import xf.gfx.api.gl3.GLTypes;
+	//import xf.gfx.api.gl3.backend.Native;		// HACK
+	//import xf.gfx.api.gl3.GLUFunctions;
+	//import xf.gfx.api.gl3.GLFunctions;
 }
 
 
 version (Windows) {
-	public import xf.gfx.gl3.WGL;
-	private import xf.gfx.gl3.platform.Win32;	// HACK
+	public import xf.gfx.api.gl3.WGL;
+	private import xf.gfx.api.gl3.platform.Win32;	// HACK
 }
 else {
 	static assert (false);		// TODO
@@ -139,7 +139,7 @@ void findAndLoadLibs() {
 		load(libNames, { loadGLFunctionsFromLib_(&loadFuncFromLib); }, &loadGlLib_);
 		//load(gluLibNames, { loadGluFunctions_(&loadFuncFromGluLib); }, &loadGluLib_);
 		
-		xf.gfx.gl3.GLTypes._getCoreFuncPtr = &loadFuncFromLib;
+		xf.gfx.api.gl3.GLTypes._getCoreFuncPtr = &loadFuncFromLib;
 	}
 }
 

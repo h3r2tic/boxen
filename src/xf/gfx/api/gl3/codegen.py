@@ -52,7 +52,7 @@ def formatFuncName(n):
 #	return n[0].lower() + n[1:]
 
 
-modPrefix = 'xf.gfx.gl3.'
+modPrefix = 'xf.gfx.api.gl3.'
 
 
 def emitModule(modName, enums, types, funcs, extId, extraImports = [], errorCheckFilter = lambda fname: True, funcNamePrefix = 'gl'):
