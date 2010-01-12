@@ -21,7 +21,7 @@ private struct MultiArrayField {
 	cstring	type;
 	cstring	name;
 	cstring	chunkSizeVar;
-	bool		isChunk;
+	bool	isChunk;
 }
 
 
@@ -37,6 +37,7 @@ private pragma(ctfe) MultiArrayField[] parseMultiArrayFields(cstring def) {
 			
 			if (type[$-1] == '}') {
 				int i = locateCT(type, '{');
+				assert (i < type.length, "Expected to find a '{' in the string. Got: " ~ type);
 				res ~= MultiArrayField(type[0..i], name, "_thisOuter."~type[i+1..$-1], true);
 			} else {
 				res ~= MultiArrayField(type, name, "1", false);
@@ -59,7 +60,7 @@ private pragma(ctfe) MultiArrayField[] parseMultiArrayFields(cstring def) {
 	---
 	mixin(multiArray(`uniformParams`, `
 		UniformParam		param
-		cstring					name
+		cstring				name
 		UniformDataSlice	dataSlice
 	`));
 	---
