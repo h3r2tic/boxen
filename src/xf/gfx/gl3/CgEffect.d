@@ -136,7 +136,29 @@ class CgEffect : GPUEffect {
 	
 	
 	final override CgEffect copy() {
-		assert (false, "TODO");
+		auto nh = cgCopyEffect(_handle);
+
+		auto err = cgGetError();
+		switch (err) {
+			case CG_INVALID_EFFECT_HANDLE_ERROR: {
+				error("Effect handle passed to cgCopyEffect was not valid");
+			} break;
+			
+			case CG_NO_ERROR: {
+			} break;
+			
+			default: {
+				error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
+			}
+		}
+		
+		if (nh is null) {
+			error("Error copying Cg effect '{}': unknown reason :(", _name);
+		}
+
+		auto res = new CgEffect(_name, nh);
+		this.copyToNew(res);
+		return res;
 	}
 	
 	
