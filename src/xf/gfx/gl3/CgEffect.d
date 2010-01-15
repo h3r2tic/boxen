@@ -148,9 +148,11 @@ class CgEffect : GPUEffect {
 			);
 		}
 		
-		foreach (prog; &iterCgPrograms) {
+		foreach (domain, prog; &iterCgPrograms) {
 			if (!cgIsProgramCompiled(prog)) {
-				log.info("Compiling a Cg program.");
+				auto dname = GPUDomainName(domain);
+				
+				log.info("Compiling a Cg program for the {} domain.", dname);
 				cgCompileProgram(prog);
 
 				auto err = cgGetError();
@@ -161,7 +163,8 @@ class CgEffect : GPUEffect {
 					
 					case CG_COMPILER_ERROR: {
 						error(
-							"Compilation error\n{}",
+							"Program compilation error for domain {}\n{}",
+							dname,
 							fromStringz(cgGetLastListing(cgGetEffectContext(_handle)))
 						);
 					} break;
@@ -227,6 +230,10 @@ class CgEffect : GPUEffect {
 				default: {
 					error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
 				} break;
+			}
+			
+			if (prog is null) {
+				error("Program '{}' not found", fromStringz(name));
 			}
 			
 			return prog;
@@ -304,15 +311,20 @@ class CgEffect : GPUEffect {
 		}
 		
 		
-		int iterCgPrograms(int delegate(ref CGprogram) dg) {
+		int iterCgPrograms(int delegate(ref GPUDomain, ref CGprogram) dg) {
+			GPUDomain d;
+			
 			if (_vertexProgram !is null) {
-				if (auto r = dg(_vertexProgram))	return r;
+				d = GPUDomain.Vertex;
+				if (auto r = dg(d, _vertexProgram)) return r;
 			}
-			if (_geometryProgram !is null) {
-				if (auto r = dg(_geometryProgram))	return r;
+			if (_useGeometryProgram && _geometryProgram !is null) {
+				d = GPUDomain.Geometry;
+				if (auto r = dg(d, _geometryProgram)) return r;
 			}
 			if (_fragmentProgram !is null) {
-				if (auto r = dg(_fragmentProgram))	return r;
+				d = GPUDomain.Fragment;
+				if (auto r = dg(d, _fragmentProgram)) return r;
 			}
 			return 0;
 		}
