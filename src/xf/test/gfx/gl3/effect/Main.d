@@ -39,6 +39,7 @@ void main() {
 		effect.setArraySize("FragmentProgram.lights", 2);
 		effect.setUniformType("FragmentProgram.lights[0]", "AmbientLight");
 		effect.setUniformType("FragmentProgram.lights[1]", "PointLight");
+		
 		effect.compile();
 	};
 	

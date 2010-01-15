@@ -93,12 +93,19 @@ abstract class GPUEffect {
 	abstract void setUniformType(cstring name, cstring typeName);
 	abstract GPUEffect copy();
 	abstract void compile();
-
+	
 	
 	size_t	numVertexBuffers;
 	size_t	instanceDataSize;
 	
 	protected {
+		void copyToNew(GPUEffect ef) {
+			ef._useGeometryProgram = _useGeometryProgram;
+			ef._domainProgramNames[] = _domainProgramNames;
+			// TODO: any more?
+		}
+		
+
 		bool _useGeometryProgram = true;
 		char*[GPUDomain.max+1] _domainProgramNames = [
 			"VertexProgram".ptr,
