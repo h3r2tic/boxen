@@ -1,0 +1,68 @@
+interface ILight {
+	float4 illuminate(float3 pos, float3 norm);
+};
+
+
+struct AmbientLight : ILight {
+	float4 color;
+
+	float4 illuminate(float3 pos, float3 norm) {
+		return color;
+	}
+};
+
+
+struct PointLight : ILight {
+	float3 position;
+	float4 color;
+
+	float4 illuminate(float3 pos, float3 norm) {
+		float3 toLight = position - pos;
+		float4 falloff = dot(normalize(toLight), norm).xxxx;
+		return color * falloff / dot(toLight, toLight);
+	}
+};
+
+
+// not supposed to do anything useful, just a mock
+
+
+struct vertInput {
+	float3 position : POSITION;
+	float3 normal : TEXCOORD0;
+};
+
+struct fragInput {
+	float3 position : TEXCOORD0;
+	float3 normal : TEXCOORD1;
+};
+
+
+float4x4 modelToWorld;
+float4x4 worldToScreen;
+
+
+void VertexProgram(
+	in vertInput input,
+	out float4 outPos : POSITION,
+	out fragInput output
+) {
+	outPos = mul(modelToWorld, float4(input.position, 1.0f));
+	output.position = outPos.xyz;
+	outPos = mul(worldToScreen, outPos);
+	output.normal = mul(modelToWorld, float4(input.normal, 0.0f)).xyz;
+}
+
+
+void FragmentProgram(
+	in fragInput input,
+	out float4 output,
+	
+	uniform ILight[] lights
+) {
+	output = float4(0, 0, 0, 0);
+	for (int i = 0; i < lights.length; ++i) {
+		output += lights[i].illuminate(input.position, input.normal);
+		//output += zomgfuck;
+	}
+}

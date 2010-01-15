@@ -50,6 +50,13 @@ struct UniformParamGroup {
 }
 
 
+enum GPUDomain {
+	Vertex,
+	Geometry,
+	Fragment
+}
+
+
 /*
  * Q: Where do we store varying inputs finally?
  * A: In the instance. Rationale follows:
@@ -71,10 +78,33 @@ abstract class GPUEffect {
 	abstract void setArraySize(cstring name, size_t size);
 	abstract void setUniformType(cstring name, cstring typeName);
 	abstract GPUEffect copy();
+	abstract void compile();
 
 	
 	size_t	numVertexBuffers;
 	size_t	instanceDataSize;
+	
+	protected {
+		bool _useGeometryProgram = false;
+		char*[GPUDomain.max+1] _domainProgramNames = [
+			"VertexProgram".ptr,
+			"GeometryProgram".ptr,
+			"FragmentProgram".ptr
+		];
+
+		static assert (0 == GPUDomain.Vertex);
+		static assert (1 == GPUDomain.Geometry);
+		static assert (2 == GPUDomain.Fragment);
+		static assert (2 == GPUDomain.max);
+	}
+	
+	public void useGeometryProgram(bool b) {
+		_useGeometryProgram = b;
+	}
+	
+	public void setDomainProgramName(GPUDomain d, char* name) {
+		_domainProgramNames[d] = name;
+	}
 
 	mixin(multiArray(`uniformParams`, `
 		cstring				name

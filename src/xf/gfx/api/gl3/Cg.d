@@ -28,13 +28,12 @@ private {
 
 void initCgBinding() {
 	if (cgDyLib !is null) {
-		cgDyLib.unload();
+		return;
 	}
+	
 	cgDyLib = SharedLib.load(cgDyLibFileName);
 
-	if (cgGLDyLib !is null) {
-		cgGLDyLib.unload();
-	}
+	assert (cgGLDyLib is null);
 	cgGLDyLib = SharedLib.load(cgGLDyLibFileName);
 	
 	
