@@ -57,6 +57,20 @@ enum GPUDomain {
 }
 
 
+cstring GPUDomainName(GPUDomain d) {
+	switch (d) {
+		case GPUDomain.Vertex:
+			return "Vertex";
+		case GPUDomain.Geometry:
+			return "Geometry";
+		case GPUDomain.Fragment:
+			return "Fragment";
+		default:
+			assert (false);
+	}
+}
+
+
 /*
  * Q: Where do we store varying inputs finally?
  * A: In the instance. Rationale follows:
@@ -85,7 +99,7 @@ abstract class GPUEffect {
 	size_t	instanceDataSize;
 	
 	protected {
-		bool _useGeometryProgram = false;
+		bool _useGeometryProgram = true;
 		char*[GPUDomain.max+1] _domainProgramNames = [
 			"VertexProgram".ptr,
 			"GeometryProgram".ptr,
