@@ -101,7 +101,10 @@ abstract class GPUEffect {
 	size_t	instanceDataSize;
 	
 	protected {
+		bool _compiled = false;
+
 		void copyToNew(GPUEffect ef) {
+			assert (!_compiled);
 			ef._useGeometryProgram = _useGeometryProgram;
 			ef._domainProgramNames[] = _domainProgramNames;
 			// TODO: any more?
@@ -123,6 +126,10 @@ abstract class GPUEffect {
 	
 	public void useGeometryProgram(bool b) {
 		_useGeometryProgram = b;
+	}
+	
+	public char* getDomainProgramName(GPUDomain d) {
+		return _domainProgramNames[d];
 	}
 	
 	public void setDomainProgramName(GPUDomain d, char* name) {

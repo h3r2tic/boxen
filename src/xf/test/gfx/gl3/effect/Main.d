@@ -4,14 +4,14 @@ import tango.core.tools.TraceExceptions;
 
 import
 	xf.Common,
+	
 	xf.gfx.api.gl3.OpenGL,
 	xf.gfx.api.gl3.ext.WGL_EXT_swap_control,
 	xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
 	xf.gfx.api.gl3.backend.Native,
-	xf.gfx.gl3.Cg;
+	xf.gfx.gl3.Cg,
 	
-import xf.gfx.api.gl3.Cg;
-import tango.io.Stdout;
+	tango.io.Stdout;
 
 
 void main() {
@@ -51,6 +51,16 @@ void main() {
 		}
 		catch (Exception e) {
 			Stdout.formatln("Effect error reporting OK.");
+		}
+		
+		Stdout.formatln("Effect uniforms:");
+		for (int i = 0; i < effect.uniformParams.length; ++i) {
+			Stdout.formatln("\t{}", effect.uniformParams.name[i]);
+		}
+
+		Stdout.formatln("Effect varyings:");
+		for (int i = 0; i < effect.varyingParams.length; ++i) {
+			Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 		}
 	};
 	

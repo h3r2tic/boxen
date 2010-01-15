@@ -449,13 +449,17 @@ class CgEffect : GPUEffect {
 						}
 					}
 					
-					builder.registerFoundParam(p, false, domain);
+					builder.registerFoundParam(
+						p,
+						false, 
+						domain,
+						fromStringz(getDomainProgramName(domain))
+					);
 				}
 			}
 		}
 		
 				
-		bool		_compiled = false;
 		cstring		_name;
 		CGeffect	_handle;
 		CGprogram	_vertexProgram;
@@ -488,12 +492,28 @@ struct CgEffectBuilder {
 		return p;
 	}
 
-	void registerFoundParam(CGparameter param, bool share, GPUDomain domain) {
+	void registerFoundParam(
+		CGparameter param,
+		bool share,
+		GPUDomain domain,
+		cstring scopeName = null
+	) {
 		final variability = cgGetParameterVariability(param);
+		
+		cstring name = fromStringz(cgGetParameterName(param));
+		if (scopeName.length > 0) {
+			cstring n2 = mem.allocArray!(char)(
+				scopeName.length + 1 + name.length
+			);
+			
+			n2[0..scopeName.length] = scopeName;
+			n2[scopeName.length] = '.';
+			n2[scopeName.length+1..$] = name;
+			name = n2;
+		}
+
 		switch (variability) {
 			case CG_VARYING: {
-				cstring name = fromStringz(cgGetParameterName(param));
-				
 				log.trace(
 					"Varying {} input param: {}",
 					share ? "Shared" : GPUDomainName(domain),
@@ -511,8 +531,6 @@ struct CgEffectBuilder {
 			
 			case CG_UNIFORM:
 			case CG_LITERAL: {
-				cstring name = fromStringz(cgGetParameterName(param));
-
 				log.trace(
 					"Uniform {} input param: {}",
 					share ? "Shared" : GPUDomainName(domain),
