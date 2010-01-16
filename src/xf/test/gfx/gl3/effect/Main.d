@@ -10,6 +10,7 @@ import
 	xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
 	xf.gfx.api.gl3.backend.Native,
 	xf.gfx.gl3.Cg,
+	xf.omg.core.LinearAlgebra,
 	
 	tango.io.Stdout;
 
@@ -44,9 +45,9 @@ void main() {
 		effect.setUniformType("lights[1]", "PointLight");
 		effect.compile();
 		
-		effect.getUniformDataSlice("lights[0].color");
+		effect.getUniformIndex("lights[0].color");
 		try {
-			effect.getUniformDataSlice("lights[0].error");
+			effect.getUniformIndex("lights[0].error");
 			Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
 		}
 		catch (Exception e) {
@@ -64,6 +65,8 @@ void main() {
 		}
 		
 		auto efInst = effect.instantiate();
+		
+		efInst.setUniform("lights[0].color", vec4.one);
 	};
 	
 

@@ -4,7 +4,7 @@ rendering game plan:
 * step 1: low level stuff
 	+ read .cgfx files and extract their data
 	+ allow array resizing and interface specification
-	give access to uniforms
+	+ give access to uniforms
 	give access to varyings
 		steal VBOs from Heresy/Deadlock for now
 	per-shader uniforms
