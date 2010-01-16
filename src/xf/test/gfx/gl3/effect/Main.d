@@ -9,6 +9,9 @@ import
 	xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
 	xf.gfx.api.gl3.backend.Native,
 	xf.gfx.gl3.Cg;
+	
+import xf.gfx.api.gl3.Cg;
+import tango.io.Stdout;
 
 
 void main() {
@@ -36,11 +39,19 @@ void main() {
 		);
 
 		effect.useGeometryProgram = false;
-		effect.setArraySize("FragmentProgram.lights", 2);
-		effect.setUniformType("FragmentProgram.lights[0]", "AmbientLight");
-		effect.setUniformType("FragmentProgram.lights[1]", "PointLight");
-		
+		effect.setArraySize("lights", 2);
+		effect.setUniformType("lights[0]", "AmbientLight");
+		effect.setUniformType("lights[1]", "PointLight");
 		effect.compile();
+		
+		effect.getUniformDataSlice("lights[0].color");
+		try {
+			effect.getUniformDataSlice("lights[0].error");
+			Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
+		}
+		catch (Exception e) {
+			Stdout.formatln("Effect error reporting OK.");
+		}
 	};
 	
 

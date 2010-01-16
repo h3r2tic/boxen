@@ -9,8 +9,8 @@ private {
 
 
 
-struct UniformParam { size_t id; }
-struct VaryingParam { size_t id; }
+typedef void* UniformParam;
+typedef void* VaryingParam;
 
 struct UniformDataSlice {
 	size_t	offset;
@@ -19,6 +19,8 @@ struct UniformDataSlice {
 
 
 struct UniformParamGroup {
+	// name data allocated using osHeap
+	// names null-terminated at [$]  ( thus safe with both C and D )
 	mixin(multiArray(`params`, `
 		cstring				name
 		UniformParam		param
@@ -127,6 +129,8 @@ abstract class GPUEffect {
 		_domainProgramNames[d] = name;
 	}
 
+	// name data allocated using osHeap
+	// names null-terminated at [$]  ( thus safe with both C and D )
 	mixin(multiArray(`uniformParams`, `
 		cstring				name
 		UniformParam		param
@@ -135,6 +139,8 @@ abstract class GPUEffect {
 	
 	UniformParamGroup[] uniformBuffers;
 
+	// name data allocated using osHeap
+	// names null-terminated at [$]  ( thus safe with both C and D )
 	mixin(multiArray(`varyingParams`, `
 		cstring			name
 		VaryingParam	param
