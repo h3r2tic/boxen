@@ -63,7 +63,7 @@ void main() {
 			Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 		}
 		
-		// auto efInst = effect.instantiate();
+		auto efInst = effect.instantiate();
 	};
 	
 

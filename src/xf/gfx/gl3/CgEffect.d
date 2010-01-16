@@ -216,8 +216,8 @@ class CgEffect : GPUEffect {
 		findSharedEffectParams(&builder);
 		findEffectParams(&builder);
 		
-
 		builder.finish(this);
+		this.instanceFreeList.itemSize = this.totalInstanceSize();
 		
 		_compiled = true;
 	}
