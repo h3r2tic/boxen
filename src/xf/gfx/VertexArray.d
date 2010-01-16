@@ -10,5 +10,7 @@ struct VertexArray {
 	typedef ResourceHandle Handle;
 	mixin MResource;
 	
-	
+	void bind() {
+		// TODO
+	}
 }

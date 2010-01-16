@@ -9,11 +9,15 @@ import
 	xf.gfx.api.gl3.ext.WGL_EXT_swap_control,
 	xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
 	xf.gfx.api.gl3.backend.Native,
+	xf.gfx.gl3.Renderer,
 	xf.gfx.gl3.Cg,
 	xf.omg.core.LinearAlgebra,
 	
 	xf.gfx.api.gl3.Cg,
 	tango.io.Stdout;
+	
+import intrinsic = std.intrinsic;
+
 
 
 void main() {
@@ -27,16 +31,16 @@ void main() {
 	.create();
 	
 
-	CgCompiler compiler;
+	Renderer renderer;
 	GPUEffectInstance* efInst;
 
 	use(context) in (GL gl) {
+		renderer = new Renderer;
+		
 		gl.SwapIntervalEXT(1);
 		gl.Enable(FRAMEBUFFER_SRGB_EXT);
 		
-		compiler = new CgCompiler;
-		
-		auto effect = compiler.createEffect(
+		auto effect = renderer.createEffect(
 			"sample",
 			EffectSource.filePath("sample.cgfx")
 		);
@@ -66,7 +70,7 @@ void main() {
 			Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 		}
 		
-		efInst = effect.instantiate();
+		efInst = renderer.instantiateEffect(effect);
 		efInst.setUniform("lights[0].color", vec4.one);
 	};
 	
@@ -110,7 +114,7 @@ void render(GPUEffectInstance*[] objects ...) {
 	void setObjUniforms(GPUEffectInstance* obj) {
 		final up = &effect.uniformParams;
 		final numUniforms = up.length;
-		void* base = obj.instanceDataPtr();
+		void* base = obj.getUniformsDataPtr();
 		
 		for (int ui = 0; ui < numUniforms; ++ui) {
 			switch (up.baseType[ui]) {
@@ -135,8 +139,64 @@ void render(GPUEffectInstance*[] objects ...) {
 		}
 	}
 	
+	void setObjVaryings(GPUEffectInstance* obj) {
+		final vp = &effect.varyingParams;
+		final numVaryings = vp.length;
+		
+		auto flags = obj.getVaryingParamDirtyFlagsPtr();
+		auto varyingData = obj.getVaryingParamDataPtr();
+		
+		alias typeof(*flags) flagFieldType;
+		const buffersPerFlag = flagFieldType.sizeof * 8;
+		
+		for (
+			int varyingBase = 0;
+			
+			varyingBase < numVaryings;
+			
+			varyingBase += buffersPerFlag,
+			++flags,
+			varyingData += buffersPerFlag
+		) {
+			if (*flags != 0) {
+				// one of the buffers in varyingBase .. varyingBase + buffersPerFlag
+				// needs to be updated
+				
+				static if (
+					ParameterTupleOf!(intrinsic.bsf)[0].sizeof
+					==
+					flagFieldType.sizeof
+				) {
+					auto flag = *flags;
+
+				updateSingle:
+					final idx = intrinsic.bsf(flag);
+					final data = varyingData + idx;
+					
+					if (data.currentBuffer.valid) {
+						data.currentBuffer.dispose();
+					}
+					
+					data.currentBuffer = data.newBuffer;
+					
+					log.warn("TODO: set the parameter pointer in Cg/OpenGL");
+					
+					// should be a SUB instruction followed by JZ
+					flag -= cast(flagFieldType)1 << idx;
+					if (flag != 0) {
+						goto updateSingle;
+					}
+				} else {
+					static assert (false, "TODO");
+				}
+			}
+		}
+	}
+	
 	foreach (obj; objects) {
 		setObjUniforms(obj);
+		obj._vertexArray.bind();
+		setObjVaryings(obj);
 		// TODO: render obj
 	}
 }
