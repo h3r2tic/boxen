@@ -61,7 +61,7 @@ enum BufferAccess {
 interface IBufferMngr {
 	void	mapRange(BufferHandle handle, size_t offset, size_t length, BufferAccess access, void delegate(void[]) dg);
 	void	flushMappedRange(BufferHandle handle, size_t offset, size_t length);
-	size_t	getApiHandle();
+	size_t	getApiHandle(BufferHandle handle);
 }
 
 
@@ -84,7 +84,7 @@ template MBuffer() {
 	size_t getApiHandle() {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
-		return (cast(IVertexBufferMngr)_resMngr).getApiHandle();
+		return (cast(IVertexBufferMngr)_resMngr).getApiHandle(_resHandle);
 	}
 	
 	bool valid() {
