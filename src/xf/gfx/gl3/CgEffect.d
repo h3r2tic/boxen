@@ -240,9 +240,8 @@ class CgEffect : GPUEffect {
 		defaultHandleCgError();
 	}
 	
-
-//	private {
-	public {
+	
+	private {
 		CGprogram extractProgram(char* name, GPUDomain domain) {
 			final profile = getProfileForDomain(domain);
 			
@@ -783,12 +782,34 @@ struct CgEffectBuilder {
 			foreach (i, ref p; varyings.list) {
 				arr.name[i] = convertParamName(p.name);
 				arr.param[i] = cast(VaryingParam)p.handle;
-				arr.dataOffset[i] = effect.instanceDataSize;
-				effect.instanceDataSize += VertexBuffer.sizeof;
 			}
 		}
-		
+
 		assert (nameData is nameDataEnd);
+
+		effect.varyingParamsOffset = effect.instanceDataSize;
+		effect.instanceDataSize += VaryingParamData.sizeof * numVaryings;
+		
+		{
+			// pad flags to size_t.sizeof
+			effect.instanceDataSize += size_t.sizeof - 1;
+			effect.instanceDataSize &= ~(size_t.sizeof - 1);
+			
+			effect.varyingParamsDirtyOffset = effect.instanceDataSize;
+			
+			const flagFieldBits = size_t.sizeof * 8;
+			
+			size_t numFlagFields =
+				(numVaryings + (flagFieldBits - 1))
+				/ flagFieldBits;
+			
+			effect.instanceDataSize += numFlagFields * flagFieldBits / 8;
+		}
+		
+		log.info(
+			"Total bytes needed for effect instance: {}.",
+			effect.instanceDataSize
+		);
 	}
 	
 	RegisteredParam* uniforms = null;

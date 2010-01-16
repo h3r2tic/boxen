@@ -4,6 +4,8 @@ private {
 	import xf.Common;
 
 	import xf.gfx.VertexBuffer;
+	import xf.gfx.VertexArray;
+	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 
 	import xf.utils.MultiArray;
@@ -16,8 +18,13 @@ typedef void* UniformParam;
 typedef void* VaryingParam;
 
 struct UniformDataSlice {
-	size_t	offset;
-	size_t	length;
+	size_t offset;
+	size_t length;
+}
+
+struct VaryingParamData {
+	VertexBuffer currentBuffer;
+	VertexBuffer newBuffer;
 }
 
 
@@ -109,10 +116,10 @@ abstract class GPUEffect {
 	abstract void compile();
 	abstract void bind();
 	
-	
-	//size_t	numVertexBuffers;
 	size_t	instanceDataSize;
-	
+	size_t	varyingParamsOffset;
+	size_t	varyingParamsDirtyOffset;
+ 	
 	protected {
 		bool _compiled = false;
 
@@ -167,16 +174,8 @@ abstract class GPUEffect {
 	mixin(multiArray(`varyingParams`, `
 		cstring			name
 		VaryingParam	param
-		size_t			dataOffset
 	`));
 
-	/+mixin(multiArray(`instances`, `
-		VertexBuffer{numVertexBuffers}	curVertexBuffers
-		VertexBuffer{numVertexBuffers}	nextVertexBuffers
-		bool{numVertexBuffers}			vertexBuffersDirty
-		void{instanceDataSize}			uniformData
-	`));+/
-	
 	
 	size_t getUniformIndex(cstring name) {
 		foreach (i, n; uniformParams.name[0..uniformParams.length]) {
@@ -185,14 +184,26 @@ abstract class GPUEffect {
 			}
 		}
 		
-		throw new Exception("shit hit the fan (TODO: better error lul)");
+		error("Uniform named '{}' doesn't exist.", name);
+		assert(false);
 	}
 	
+	size_t getVaryingIndex(cstring name) {
+		foreach (i, n; varyingParams.name[0..varyingParams.length]) {
+			if (n == name) {
+				return i;
+			}
+		}
+		
+		error("Varying named '{}' doesn't exist.", name);
+		assert(false);
+	}
+
 	final size_t totalInstanceSize() {
 		return instanceDataSize + GPUEffectInstance.sizeof;
 	}
 	
-	GPUEffectInstance* instantiate() {
+	GPUEffectInstance* createRawInstance() {
 		auto inst = cast(GPUEffectInstance*)instanceFreeList.alloc();
 		*inst = GPUEffectInstance.init;
 		void* unifData = cast(void*)(inst+1);
@@ -215,9 +226,17 @@ abstract class GPUEffect {
  * Allocated in bulks by the GPUEffect. The total allocated size for one
  * instance is GPUEffectInstance.sizeof + instanceDataSize, thus the uniform
  * data is right after the this pointer of the struct
+ * 
+ * Layout:
+ * [0]									GPUEffectInstance struct
+ * [GPUEffectInstance.sizeof]			uniforms ( raw data )
+ * [_proto.varyingParamsOffset]			varyings ( VaryingParamData[] )
+ *										pad to size_t.sizeof
+ * [_proto.varyingParamsDirtyOffset]	varyings dirty flags ( size_t[] )
  */
 struct GPUEffectInstance {
 	GPUEffect	_proto;
+	VertexArray	_vertexArray;
 	
 	void setUniform(T)(cstring name, T value) {
 		final i = _proto.getUniformIndex(name);
@@ -232,13 +251,113 @@ struct GPUEffectInstance {
 		}
 		
 		*cast(T*)(
-			instanceDataPtr() + up.dataSlice[i].offset
+			getUniformsDataPtr() + up.dataSlice[i].offset
 		) = value;
 	}
 	
 	
-	void* instanceDataPtr() {
+	/// Returns true if the buffer could be acquired and was successfully set
+	bool setVarying(cstring name, VertexBuffer buf) {
+		final i = _proto.getVaryingIndex(name);
+		final vp = &_proto.varyingParams;
+		
+		final data = getVaryingParamData(i);
+		
+		// mark the buffer as dirty
+		auto flags = getVaryingParamDirtyFlagsPtr();
+		flags += i / (size_t.sizeof * 8);
+
+		auto curFlag = *flags;
+		
+		final thisFlag = cast(size_t)1 << (i % (size_t.sizeof * 8));
+		
+		// whether the specific varying param is already set to be
+		// replaced with a new vertex buffer
+		final bool thisAlreadySet = (curFlag & thisFlag) != 0;
+		
+		// the currently set buffer is the same as what we're trying to reset it to
+		if (data.currentBuffer._resHandle is buf._resHandle) {
+			// some buffer has already been set for this varying before rendering
+			// thus we will have to release it and clear the flag
+			if (thisAlreadySet) {
+				curFlag -= thisFlag;
+				if (data.newBuffer.valid) {
+					data.newBuffer.dispose();
+				}
+			} else {
+				// we tried setting the varying to what it's already set to
+				// and didn't try changing it to anything else before that
+				// thus it's already acquired and there's nothing to do
+				return true;
+			}
+		} else {
+			// the currently set buffer is something else than the param
+			
+			// ... but we already told the effect instance to use it
+			if (data.newBuffer._resHandle is buf._resHandle) {
+				if (thisAlreadySet) {
+					// looks like a redudant call
+					return true;
+				} else {
+					// this may happen if we set the buffer to something new
+					// then reset it to what it was originally before calling
+					// any rendering functions which would flush the flags.
+					// That operation has released the buffer, so we need to
+					// acquire it once again
+					
+					if (buf.acquire()) {
+						// the buffer is already set to be replaced with our
+						// current func param. We only need to update the flag
+						curFlag |= thisFlag;
+					} else {
+						return false;
+					}
+				}
+			} else {
+				// an entirely new buffer different from the 'current' and
+				// 'new' ones, thus we dispose the 'new' if it's valid, acquire
+				// the parameter's buffer, put int into 'new' and set the flag
+				
+				if (buf.acquire()) {
+					if (data.newBuffer.valid) {
+						data.newBuffer.dispose();
+					}
+					
+					data.newBuffer = buf;
+					curFlag |= thisFlag;
+				} else {
+					return false;
+				}
+			}
+		}
+		
+		// write back the flag
+		*flags = curFlag;
+		return true;
+	}
+	
+	
+	void* getUniformsDataPtr() {
 		return cast(void*)this + GPUEffectInstance.sizeof;
+	}
+	
+	
+	VaryingParamData* getVaryingParamDataPtr() {
+		return cast(VaryingParamData*)(
+			cast(void*)this + GPUEffectInstance.sizeof + _proto.varyingParamsOffset
+		);
+	}
+	
+	
+	VaryingParamData* getVaryingParamData(int i) {
+		return getVaryingParamDataPtr() + i;
+	}
+	
+	
+	size_t* getVaryingParamDirtyFlagsPtr() {
+		return cast(size_t*)(
+			cast(void*)this + GPUEffectInstance.sizeof + _proto.varyingParamsDirtyOffset
+		);
 	}
 	
 	
