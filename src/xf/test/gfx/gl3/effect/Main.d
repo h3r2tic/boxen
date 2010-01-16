@@ -16,8 +16,6 @@ import
 	xf.gfx.api.gl3.Cg,
 	tango.io.Stdout;
 	
-import intrinsic = std.intrinsic;
-
 
 
 void main() {

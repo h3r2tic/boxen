@@ -70,24 +70,24 @@ template MBuffer() {
 	static assert (0 == Handle.init);
 	
 	void mapRange(size_t offset, size_t length, BufferAccess access, void delegate(void[]) dg) {
-		assert (_resHandle != Handle.init);
+		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IBufferMngr)_resMngr).mapRange(_resHandle, offset, length, access, dg);
 	}
 	
 	void flushMappedRange(size_t offset, size_t length) {
-		assert (_resHandle != Handle.init);
+		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IBufferMngr)_resMngr).flushMappedRange(_resHandle, offset, length);
 	}
 
 	size_t getApiHandle() {
-		assert (_resHandle != Handle.init);
+		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IVertexBufferMngr)_resMngr).getApiHandle();
 	}
 	
 	bool valid() {
-		return _resHandle != Handle.init;
+		return _resHandle !is Handle.init;
 	}
 }
