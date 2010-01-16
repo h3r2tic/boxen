@@ -513,6 +513,7 @@ void loadCgGLFunctions_(void* function(char*) loadFuncFromLib) {
 
 	*cast(void**)&fp_cgGLGetLatestProfile = loadFuncFromLib("cgGLGetLatestProfile");;
 	*cast(void**)&fp_cgGLSetOptimalOptions = loadFuncFromLib("cgGLSetOptimalOptions");;
+	*cast(void**)&fp_cgGLGetOptimalOptions = loadFuncFromLib("cgGLGetOptimalOptions");;
 
 	/******************************************************************************
 	 *** Program Managment Functions 
@@ -1742,6 +1743,9 @@ CGprofile cgGLGetLatestProfile(ParameterTupleOf!(fp_cgGLGetLatestProfile) params
 }
 void cgGLSetOptimalOptions(ParameterTupleOf!(fp_cgGLSetOptimalOptions) params__) {
 	return checkedCall("cgGLSetOptimalOptions", fp_cgGLSetOptimalOptions, params__);
+}
+char** cgGLGetOptimalOptions(ParameterTupleOf!(fp_cgGLGetOptimalOptions) params__) {
+	return checkedCall("cgGLGetOptimalOptions", fp_cgGLGetOptimalOptions, params__);
 }
 
 /******************************************************************************
