@@ -18,12 +18,20 @@ struct UniformDataSlice {
 }
 
 
+enum ParamBaseType : ushort {
+	Float,
+	Int
+}
+
+
 struct UniformParamGroup {
 	// name data allocated using osHeap
 	// names null-terminated at [$]  ( thus safe with both C and D )
 	mixin(multiArray(`params`, `
 		cstring				name
 		UniformParam		param
+		ushort				numFields
+		ParamBaseType		baseType
 		UniformDataSlice	dataSlice
 	`));
 	
@@ -97,7 +105,7 @@ abstract class GPUEffect {
 	abstract void compile();
 	
 	
-	size_t	numVertexBuffers;
+	//size_t	numVertexBuffers;
 	size_t	instanceDataSize;
 	
 	protected {
@@ -141,6 +149,8 @@ abstract class GPUEffect {
 	mixin(multiArray(`uniformParams`, `
 		cstring				name
 		UniformParam		param
+		ushort				numFields
+		ParamBaseType		baseType
 		UniformDataSlice	dataSlice
 	`));
 	
@@ -151,14 +161,15 @@ abstract class GPUEffect {
 	mixin(multiArray(`varyingParams`, `
 		cstring			name
 		VaryingParam	param
+		size_t			dataOffset
 	`));
 
-	mixin(multiArray(`instances`, `
+	/+mixin(multiArray(`instances`, `
 		VertexBuffer{numVertexBuffers}	curVertexBuffers
 		VertexBuffer{numVertexBuffers}	nextVertexBuffers
 		bool{numVertexBuffers}			vertexBuffersDirty
 		void{instanceDataSize}			uniformData
-	`));
+	`));+/
 	
 	
 	UniformDataSlice getUniformDataSlice(cstring name) {

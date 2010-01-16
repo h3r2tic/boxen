@@ -170,6 +170,8 @@ void loadCgFunctions_(void* function(char*) loadFuncFromLib) {
 	*cast(void**)&fp_cgGetParameterType = loadFuncFromLib("cgGetParameterType");;
 	*cast(void**)&fp_cgGetParameterBaseType = loadFuncFromLib("cgGetParameterBaseType");;
 	*cast(void**)&fp_cgGetParameterClass = loadFuncFromLib("cgGetParameterClass");;
+	*cast(void**)&fp_cgGetParameterClassString = loadFuncFromLib("cgGetParameterClassString");;
+
 	*cast(void**)&fp_cgGetParameterRows = loadFuncFromLib("cgGetParameterRows");;
 	*cast(void**)&fp_cgGetParameterColumns = loadFuncFromLib("cgGetParameterColumns");;
 	*cast(void**)&fp_cgGetParameterNamedType = loadFuncFromLib("cgGetParameterNamedType");;
@@ -888,6 +890,9 @@ CGtype cgGetParameterBaseType(ParameterTupleOf!(fp_cgGetParameterBaseType) param
 }
 CGparameterclass cgGetParameterClass(ParameterTupleOf!(fp_cgGetParameterClass) params__) {
 	return checkedCall("cgGetParameterClass", fp_cgGetParameterClass, params__);
+}
+char * cgGetParameterClassString(ParameterTupleOf!(fp_cgGetParameterClassString) params__) {
+	return checkedCall("cgGetParameterClassString", fp_cgGetParameterClassString, params__);
 }
 int cgGetParameterRows(ParameterTupleOf!(fp_cgGetParameterRows) params__) {
 	return checkedCall("cgGetParameterRows", fp_cgGetParameterRows, params__);

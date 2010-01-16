@@ -91,6 +91,8 @@ char * function(CGparameter param)	fp_cgGetParameterName;
 CGtype function(CGparameter param)	fp_cgGetParameterType;
 CGtype function(CGparameter param)	fp_cgGetParameterBaseType;
 CGparameterclass function(CGparameter param)	fp_cgGetParameterClass;
+char * function(CGparameterclass parameterclass)	fp_cgGetParameterClassString;
+
 int function(CGparameter param)	fp_cgGetParameterRows;
 int function(CGparameter param)	fp_cgGetParameterColumns;
 CGtype function(CGparameter param)	fp_cgGetParameterNamedType;

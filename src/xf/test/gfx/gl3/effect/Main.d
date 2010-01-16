@@ -62,10 +62,12 @@ void main() {
 		for (int i = 0; i < effect.varyingParams.length; ++i) {
 			Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 		}
+		
+		// auto efInst = effect.instantiate();
 	};
 	
 
-	while(context.created) {
+	while (context.created) {
 		use(context) in (GL gl) {
 			draw(gl);
 		};
