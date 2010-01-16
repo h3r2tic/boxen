@@ -33,7 +33,7 @@ void main() {
 	GPUEffectInstance* efInst;
 
 	use(context) in (GL gl) {
-		renderer = new Renderer;
+		renderer = new Renderer(gl);
 		
 		gl.SwapIntervalEXT(1);
 		gl.Enable(FRAMEBUFFER_SRGB_EXT);
