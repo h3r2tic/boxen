@@ -8,6 +8,9 @@ private {
 	import xf.Common;	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 	import xf.gfx.api.gl3.Cg;
+	import xf.mem.StackBuffer;
+	import xf.mem.OSHeap;
+	import xf.utils.IntrusiveList;
 }
 
 
@@ -39,13 +42,13 @@ class CgEffect : GPUEffect {
 	
 	
 	final override void setArraySize(cstring name, size_t size) {
-		auto array = _getEffectParameter(name);
+		final array = _getEffectParameter(name);
 		if (array is null) {
 			error("setArraySize: Invalid parameter '{}'", name);
 		}
 		
 		cgSetArraySize(array, size);
-		auto err = cgGetError();
+		final err = cgGetError();
 		switch (err) {
 			case CG_ARRAY_PARAM_ERROR: {
 				error("The parameter '{}' is not an array", name);
@@ -67,17 +70,17 @@ class CgEffect : GPUEffect {
 			}
 		}
 
-		log.info("Resized array '{}' to {} elements", name, size);
+		log.trace("Resized array '{}' to {} elements", name, size);
 	}
 	
 	
 	final override void setUniformType(cstring name, cstring typeName) {
-		auto param = _getEffectParameter(name);
+		final param = _getEffectParameter(name);
 		if (param is null) {
 			error("setUniformType: Invalid parameter '{}'", name);
 		}
 		
-		auto type = cgGetNamedUserType(cast(CGhandle)_handle, toStringz(typeName));
+		final type = cgGetNamedUserType(cast(CGhandle)_handle, toStringz(typeName));
 		auto err = cgGetError();
 		switch (err) {
 			case CG_INVALID_PARAMETER_ERROR: {
@@ -92,7 +95,7 @@ class CgEffect : GPUEffect {
 			}
 		}
 		
-		auto param2 = cgCreateParameter(
+		final param2 = cgCreateParameter(
 			cgGetEffectContext(_handle),
 			type
 		);
@@ -114,8 +117,7 @@ class CgEffect : GPUEffect {
 			case CG_PARAMETERS_DO_NOT_MATCH_ERROR: {
 				error(
 					"setUniformType: Parameters have different"
-					" or their topologies do not match",
-					typeName
+					" or their topologies do not match"
 				);
 			} break;
 
@@ -127,7 +129,7 @@ class CgEffect : GPUEffect {
 			}
 		}
 		
-		log.info(
+		log.trace(
 			"Set the type of uniform '{}' to '{}'.",
 			name,
 			typeName
@@ -136,7 +138,7 @@ class CgEffect : GPUEffect {
 	
 	
 	final override CgEffect copy() {
-		auto nh = cgCopyEffect(_handle);
+		final nh = cgCopyEffect(_handle);
 
 		auto err = cgGetError();
 		switch (err) {
@@ -156,7 +158,7 @@ class CgEffect : GPUEffect {
 			error("Error copying Cg effect '{}': unknown reason :(", _name);
 		}
 
-		auto res = new CgEffect(_name, nh);
+		final res = new CgEffect(_name, nh);
 		this.copyToNew(res);
 		return res;
 	}
@@ -169,7 +171,7 @@ class CgEffect : GPUEffect {
 				_name
 			);
 		}
-		
+
 		foreach (domain, prog; &iterCgPrograms) {
 			if (!cgIsProgramCompiled(prog)) {
 				auto dname = GPUDomainName(domain);
@@ -199,19 +201,27 @@ class CgEffect : GPUEffect {
 					}
 				}
 			} else {
-				log.info("Good, Cg program already compiled.");
+				log.trace("Good, Cg program already compiled.");
 			}
 		}
 		
-		findEffectParameters();
+		scope buf = new StackBuffer;
+		auto builder = CgEffectBuilder(buf);
+		
+		findSharedEffectParams(&builder);
+		findEffectParams(&builder);
+		
+
+		builder.finish(this);
 		
 		_compiled = true;
 	}
 	
 
-	private {
+//	private {
+	public {
 		CGprogram extractProgram(char* name, GPUDomain domain) {
-			auto prog = cgCreateProgramFromEffect(
+			final prog = cgCreateProgramFromEffect(
 				_handle,
 				getProfileForDomain(domain),
 				name,
@@ -239,6 +249,7 @@ class CgEffect : GPUEffect {
 					);
 				} break;
 				
+				// NOTE: This error of is undocumented in Cg.
 				case CG_INVALID_PROGRAM_HANDLE_ERROR: {
 					error(
 						"Compilation error\n{}",
@@ -348,15 +359,102 @@ class CgEffect : GPUEffect {
 				d = GPUDomain.Fragment;
 				if (auto r = dg(d, _fragmentProgram)) return r;
 			}
+			
 			return 0;
 		}
 		
-		
-		void findEffectParameters() {
-			log.warn("findEffectParameters: TODO");
+
+		void findSharedEffectParams(CgEffectBuilder* builder) {
+			assert (CG_NO_ERROR == cgGetError());
+			
+			for (
+				auto p = cgGetFirstLeafEffectParameter(_handle);
+				p;
+				p = cgGetNextLeafParameter(p)
+			) {
+				char* name = cgGetParameterName(p);
+				log.trace("Found a shared effect param: '{}'.", fromStringz(name));
+
+				bool usedAnywhere = false;
+				
+				foreach (domain, prog; &iterCgPrograms) {
+					if (auto p2 = cgGetNamedProgramParameter(
+						prog,
+						CG_GLOBAL,
+						name
+					)) {
+						if (!cgIsParameterUsed(p2, cast(CGhandle)prog)) {
+							log.trace(
+								"Shared param '{}' is not used in the {} domain.",
+								fromStringz(name),
+								GPUDomainName(domain)
+							);
+							continue;
+						}
+						
+						usedAnywhere = true;
+						
+						cgConnectParameter(p, p2);
+						auto err = cgGetError();
+						switch (err) {
+							case CG_PARAMETERS_DO_NOT_MATCH_ERROR: {
+								error(
+									"setUniformType: Parameters have different"
+									" or their topologies do not match"
+								);
+							} break;
+
+							case CG_NO_ERROR: {
+							} break;
+							
+							default: {
+								error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
+							}
+						}
+
+						log.trace(
+							"Connected the shared param '{}' to a {} program param.",
+							fromStringz(name),
+							GPUDomainName(domain)
+						);
+					}
+				}
+				
+				if (usedAnywhere) {
+					builder.registerFoundParam(p, true, GPUDomain.init);
+				}
+			}
 		}
 
 		
+		void findEffectParams(CgEffectBuilder* builder) {
+			foreach (domain, prog; &iterCgPrograms) {
+				for (
+					auto p = cgGetFirstLeafParameter(prog, CG_PROGRAM);
+					p;
+					p = cgGetNextLeafParameter(p)
+				) {
+					final dir = cgGetParameterDirection(p);
+					
+					if (dir != CG_IN && dir != CG_INOUT) {
+						continue;
+					}
+
+					final connected = cgGetConnectedParameter(p);
+					
+					if (connected !is null) {
+						// These are shared between programs
+						if (cgGetParameterEffect(connected) !is null) {
+							continue;
+						}
+					}
+					
+					builder.registerFoundParam(p, false, domain);
+				}
+			}
+		}
+		
+				
 		bool		_compiled = false;
 		cstring		_name;
 		CGeffect	_handle;
@@ -365,3 +463,143 @@ class CgEffect : GPUEffect {
 		CGprogram	_fragmentProgram;
 	}
 }
+
+
+struct CgEffectBuilder {
+	struct RegisteredParam {
+		string		name;
+		CGparameter	handle;
+		
+		mixin(intrusiveList("list"));
+	}
+	
+	static CgEffectBuilder opCall(StackBufferUnsafe mem) {
+		CgEffectBuilder res;
+		res.mem = mem;
+		return res;
+	}
+	
+	RegisteredParam* createParam(cstring name, CGparameter handle) {
+		final p = mem.alloc!(RegisteredParam);
+		final n = mem.allocArray!(char)(name.length);
+		n[] = name;
+		p.name = cast(string)n;
+		p.handle = handle;
+		return p;
+	}
+
+	void registerFoundParam(CGparameter param, bool share, GPUDomain domain) {
+		final variability = cgGetParameterVariability(param);
+		switch (variability) {
+			case CG_VARYING: {
+				cstring name = fromStringz(cgGetParameterName(param));
+				
+				log.trace(
+					"Varying {} input param: {}",
+					share ? "Shared" : GPUDomainName(domain),
+					name
+				);
+				
+				final reg = createParam(name, param);
+				if (varyings) {
+					varyings.list ~= reg;
+				} else {
+					varyings = reg;
+				}
+				++numVaryings;
+			} break;
+			
+			case CG_UNIFORM:
+			case CG_LITERAL: {
+				cstring name = fromStringz(cgGetParameterName(param));
+
+				log.trace(
+					"Uniform {} input param: {}",
+					share ? "Shared" : GPUDomainName(domain),
+					name
+				);
+				
+				final reg = createParam(name, param);
+				if (uniforms) {
+					uniforms.list ~= reg;
+				} else {
+					uniforms = reg;
+				}
+				++numUniforms;
+			} break;
+			
+			case CG_CONSTANT: {
+				// nothing to do
+			} break;
+			
+			case CG_MIXED: {
+				error("Got CG_MIXED variability for a leaf param o_O");
+			} break;
+			
+			default: assert (false);
+		}
+	}
+	
+	void finish(CgEffect effect) {
+		log.info(
+			"Registered a total of {} uniforms and {} varyings.",
+			numUniforms,
+			numVaryings
+		);
+		
+		int stringLenNeeded = 0;
+		foreach (ref p; uniforms.list) {
+			stringLenNeeded += p.name.length+1;
+		}
+		foreach (ref p; varyings.list) {
+			stringLenNeeded += p.name.length+1;
+		}
+		
+		char* nameData = cast(char*)osHeap.allocRaw(stringLenNeeded);
+		final char* nameDataEnd = nameData + stringLenNeeded;
+		log.trace("Allocated {} bytes for param names.", stringLenNeeded);
+		
+		cstring convertParamName(string name) {
+			int len = name.length+1;
+			cstring buf = nameData[0..len];
+			nameData += len;
+			buf[0..$-1] = cast(cstring)name;
+			buf[$-1] = '\0';
+			return buf[0..$-1];
+		}
+		
+		// TODO: find the data size and allocate proper structures in GPUEffect
+		
+		if (numUniforms > 0) {
+			final arr = &effect.uniformParams;
+			arr.resize(numUniforms);
+			
+			foreach (i, ref p; uniforms.list) {
+				arr.name[i] = convertParamName(p.name);
+				arr.param[i] = cast(UniformParam)p.handle;
+				// arr.dataSlice[i] = ... TODO
+			}
+		}
+
+		if (numVaryings > 0) {
+			final arr = &effect.varyingParams;
+			arr.resize(numVaryings);
+			
+			foreach (i, ref p; varyings.list) {
+				arr.name[i] = convertParamName(p.name);
+				arr.param[i] = cast(VaryingParam)p.handle;
+			}
+		}
+		
+		assert (nameData is nameDataEnd);
+	}
+	
+	RegisteredParam* uniforms = null;
+	RegisteredParam* varyings = null;
+	
+	int numUniforms = 0;
+	int numVaryings = 0;
+	
+	StackBufferUnsafe mem;
+}
+

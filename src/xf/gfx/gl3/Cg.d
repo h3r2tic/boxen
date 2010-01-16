@@ -37,7 +37,7 @@ class CgCompiler {
 		}
 		
 		cgGLSetDebugMode(CG_TRUE);
-		cgSetParameterSettingMode(_context, CG_DEFERRED_PARAMETER_SETTING);
+		cgSetParameterSettingMode(_context, CG_IMMEDIATE_PARAMETER_SETTING);
 		cgGLRegisterStates(_context);
 		cgGLSetManageTextureParameters(_context, CG_TRUE);
 		cgSetLockingPolicy(CG_NO_LOCKS_POLICY);

@@ -42,6 +42,9 @@ float4x4 modelToWorld;
 float4x4 worldToScreen;
 
 
+uniform ILight[] lights;
+
+
 void VertexProgram(
 	in vertInput input,
 	out float4 outPos : POSITION,
@@ -56,9 +59,7 @@ void VertexProgram(
 
 void FragmentProgram(
 	in fragInput input,
-	out float4 output,
-	
-	uniform ILight[] lights
+	out float4 output
 ) {
 	output = float4(0, 0, 0, 0);
 	for (int i = 0; i < lights.length; ++i) {

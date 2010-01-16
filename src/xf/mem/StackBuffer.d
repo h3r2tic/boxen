@@ -38,7 +38,7 @@ private {
 	// all allocated entities are gone at the end of scope, no manual disposal required
 	----
 */
-scope class StackBuffer {
+class StackBufferUnsafe {
 	this() {
 		_mainBuffer = &g_mainStackBuffer;
 		_chunkMark = _mainBuffer._topChunk;
@@ -120,6 +120,10 @@ scope class StackBuffer {
 	size_t				_chunkMark;
 	size_t				_topMark;
 }
+
+
+scope class StackBuffer : StackBufferUnsafe {
+}	
 
 
 

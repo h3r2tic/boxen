@@ -464,6 +464,7 @@ void loadCgFunctions_(void* function(char*) loadFuncFromLib) {
 	*cast(void**)&fp_cgGetMatrixSize = loadFuncFromLib("cgGetMatrixSize");;
 
 	*cast(void**)&fp_cgGetNumProgramDomains = loadFuncFromLib("cgGetNumProgramDomains");;
+	*cast(void**)&fp_cgGetProgramDomainProgram = loadFuncFromLib("cgGetProgramDomainProgram");;
 	*cast(void**)&fp_cgGetProfileDomain = loadFuncFromLib("cgGetProfileDomain");;
 	*cast(void**)&fp_cgCombinePrograms = loadFuncFromLib("cgCombinePrograms");;
 	*cast(void**)&fp_cgCombinePrograms2 = loadFuncFromLib("cgCombinePrograms2");;
@@ -1631,6 +1632,9 @@ void cgGetMatrixSize(ParameterTupleOf!(fp_cgGetMatrixSize) params__) {
 
 int cgGetNumProgramDomains(ParameterTupleOf!(fp_cgGetNumProgramDomains) params__) {
 	return checkedCall("cgGetNumProgramDomains", fp_cgGetNumProgramDomains, params__);
+}
+CGprogram cgGetProgramDomainProgram(ParameterTupleOf!(fp_cgGetProgramDomainProgram) params__) {
+	return checkedCall("cgGetProgramDomainProgram", fp_cgGetProgramDomainProgram, params__);
 }
 CGdomain cgGetProfileDomain(ParameterTupleOf!(fp_cgGetProfileDomain) params__) {
 	return checkedCall("cgGetProfileDomain", fp_cgGetProfileDomain, params__);

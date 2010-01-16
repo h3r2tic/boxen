@@ -385,6 +385,7 @@ CGbool function(CGtype type, int *nrows, int *ncols)	fp_cgGetTypeSizes;
 void function(CGtype type, int *nrows, int *ncols)	fp_cgGetMatrixSize;
 
 int function( CGprogram program )	fp_cgGetNumProgramDomains;
+CGprogram function ( CGprogram program, int index )	fp_cgGetProgramDomainProgram;
 CGdomain function( CGprofile profile )	fp_cgGetProfileDomain;
 CGprogram function( int n, CGprogram *exeList )	fp_cgCombinePrograms;
 CGprogram function( CGprogram exe1, CGprogram exe2 )	fp_cgCombinePrograms2;
