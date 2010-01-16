@@ -4,6 +4,7 @@ private {
 	import xf.Common;
 	
 	import xf.gfx.VertexArray;
+	import xf.gfx.Log : log = gfxLog, error = gfxError;
 	
 	import xf.gfx.gl3.CgEffect;
 	import xf.gfx.gl3.Cg;
@@ -30,7 +31,7 @@ class Renderer {
 	
 	
 	VertexArray createVertexArray() {
-		// TODO
+		error("TODO: createVertexArray");
 		return VertexArray.init;
 	}
 	

@@ -4,6 +4,7 @@ public {
 	import tango.stdc.string : memset, strcmp;
 	import tango.stdc.stringz : fromStringz, toStringz;
 	import tango.core.Thread : Thread;
+	import intrinsic = std.intrinsic;
 }
 
 alias char[] cstring;
