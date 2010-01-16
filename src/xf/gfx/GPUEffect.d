@@ -107,6 +107,7 @@ abstract class GPUEffect {
 	abstract void setUniformType(cstring name, cstring typeName);
 	abstract GPUEffect copy();
 	abstract void compile();
+	abstract void bind();
 	
 	
 	//size_t	numVertexBuffers;
@@ -231,8 +232,13 @@ struct GPUEffectInstance {
 		}
 		
 		*cast(T*)(
-			cast(void*)this + up.dataSlice[i].offset
+			instanceDataPtr() + up.dataSlice[i].offset
 		) = value;
+	}
+	
+	
+	void* instanceDataPtr() {
+		return cast(void*)this + GPUEffectInstance.sizeof;
 	}
 	
 	

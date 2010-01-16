@@ -12,6 +12,7 @@ import
 	xf.gfx.gl3.Cg,
 	xf.omg.core.LinearAlgebra,
 	
+	xf.gfx.api.gl3.Cg,
 	tango.io.Stdout;
 
 
@@ -27,6 +28,7 @@ void main() {
 	
 
 	CgCompiler compiler;
+	GPUEffectInstance* efInst;
 
 	use(context) in (GL gl) {
 		gl.SwapIntervalEXT(1);
@@ -64,15 +66,14 @@ void main() {
 			Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 		}
 		
-		auto efInst = effect.instantiate();
-		
+		efInst = effect.instantiate();
 		efInst.setUniform("lights[0].color", vec4.one);
 	};
 	
 
 	while (context.created) {
 		use(context) in (GL gl) {
-			draw(gl);
+			draw(gl, efInst);
 		};
 		
 		context.update().show();
@@ -81,7 +82,61 @@ void main() {
 }
 
 
-void draw(GL gl) {
+void draw(GL gl, GPUEffectInstance*[] objects ...) {
 	gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
-	// TODO
+	
+	render(objects);
+}
+
+
+void render(GPUEffectInstance*[] objects ...) {
+	if (0 == objects.length) {
+		return;
+	}
+	
+	GPUEffect effect = objects[0]._proto;
+	
+	assert ({
+		foreach (o; objects[1..$]) {
+			if (o._proto !is effect) {
+				return false;
+			}
+		}
+		return true;
+	}(), "All objects must have the same GPUEffect");
+
+	effect.bind();
+	
+	void setObjUniforms(GPUEffectInstance* obj) {
+		final up = &effect.uniformParams;
+		final numUniforms = up.length;
+		void* base = obj.instanceDataPtr();
+		
+		for (int ui = 0; ui < numUniforms; ++ui) {
+			switch (up.baseType[ui]) {
+				case ParamBaseType.Float: {
+					cgSetParameterValuefc(
+						cast(CGparameter)up.param[ui],
+						up.numFields[ui],
+						cast(float*)(base + up.dataSlice[ui].offset)
+					);
+				} break;
+
+				case ParamBaseType.Int: {
+					cgSetParameterValueic(
+						cast(CGparameter)up.param[ui],
+						up.numFields[ui],
+						cast(int*)(base + up.dataSlice[ui].offset)
+					);
+				} break;
+				
+				default: assert (false);
+			}
+		}
+	}
+	
+	foreach (obj; objects) {
+		setObjUniforms(obj);
+		// TODO: render obj
+	}
 }

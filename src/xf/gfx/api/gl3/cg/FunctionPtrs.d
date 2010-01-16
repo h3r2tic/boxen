@@ -434,6 +434,7 @@ void function(CGprofile profile)	fp_cgGLDisableProfile;
 
 CGprofile function(CGGLenum profile_type)	fp_cgGLGetLatestProfile;
 void function(CGprofile profile)	fp_cgGLSetOptimalOptions;
+char** function(CGprofile profile)	fp_cgGLGetOptimalOptions;
 
 /******************************************************************************
  *** Program Managment Functions 

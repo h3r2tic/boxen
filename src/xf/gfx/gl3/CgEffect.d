@@ -19,6 +19,14 @@ private {
 }
 
 
+private static void defaultHandleCgError() {
+	final err = cgGetError();
+	if (err != CG_NO_ERROR) {
+		error("Cg error: {}", fromStringz(cgGetErrorString(err)));
+	}
+}
+
+
 
 class CgEffect : GPUEffect {
 	this (cstring name, CGeffect handle) {
@@ -104,16 +112,7 @@ class CgEffect : GPUEffect {
 			cgGetEffectContext(_handle),
 			type
 		);
-
-		err = cgGetError();
-		switch (err) {
-			case CG_NO_ERROR: {
-			} break;
-			
-			default: {
-				error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
-			}
-		}
+		defaultHandleCgError();
 		
 		cgConnectParameter(param2, param);
 
@@ -205,6 +204,9 @@ class CgEffect : GPUEffect {
 						error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
 					}
 				}
+				
+				cgGLLoadProgram(prog);
+				defaultHandleCgError();
 			} else {
 				log.trace("Good, Cg program already compiled.");
 			}
@@ -222,15 +224,33 @@ class CgEffect : GPUEffect {
 		_compiled = true;
 	}
 	
+	
+	override void bind() {
+		defaultHandleCgError();
+		
+		cgGLEnableProfile(cgGetProgramProfile(_vertexProgram));
+		cgGLBindProgram(_vertexProgram);
+		if (_useGeometryProgram) {
+			cgGLEnableProfile(cgGetProgramProfile(_geometryProgram));
+			cgGLBindProgram(_geometryProgram);
+		}
+		cgGLEnableProfile(cgGetProgramProfile(_fragmentProgram));
+		cgGLBindProgram(_fragmentProgram);
+		
+		defaultHandleCgError();
+	}
+	
 
 //	private {
 	public {
 		CGprogram extractProgram(char* name, GPUDomain domain) {
+			final profile = getProfileForDomain(domain);
+			
 			final prog = cgCreateProgramFromEffect(
 				_handle,
-				getProfileForDomain(domain),
+				profile,
 				name,
-				null
+				cgGLGetOptimalOptions(profile)
 			);
 			
 			auto err = cgGetError();
@@ -370,7 +390,7 @@ class CgEffect : GPUEffect {
 		
 
 		void findSharedEffectParams(CgEffectBuilder* builder) {
-			assert (CG_NO_ERROR == cgGetError());
+			defaultHandleCgError();
 			
 			for (
 				auto p = cgGetFirstLeafEffectParameter(_handle);
@@ -504,6 +524,8 @@ struct CgEffectBuilder {
 		p.name = cast(string)n;
 		p.handle = handle;
 		
+		defaultHandleCgError();
+
 		final pclass = cgGetParameterClass(handle);
 		
 		// We should be operating on individual fields of arrays
@@ -626,6 +648,8 @@ struct CgEffectBuilder {
 			} break;
 		}
 		
+		defaultHandleCgError();
+
 		return p;
 	}
 
