@@ -790,21 +790,26 @@ struct CgEffectBuilder {
 		effect.varyingParamsOffset = effect.instanceDataSize;
 		effect.instanceDataSize += VaryingParamData.sizeof * numVaryings;
 		
-		{
-			// pad flags to size_t.sizeof
-			effect.instanceDataSize += size_t.sizeof - 1;
-			effect.instanceDataSize &= ~(size_t.sizeof - 1);
-			
-			effect.varyingParamsDirtyOffset = effect.instanceDataSize;
-			
+		// total size of one-bit flags held for each varying, chunked in size_t-s
+		size_t perVaryingFlagsSize = void; {
 			const flagFieldBits = size_t.sizeof * 8;
 			
 			size_t numFlagFields =
 				(numVaryings + (flagFieldBits - 1))
 				/ flagFieldBits;
 			
-			effect.instanceDataSize += numFlagFields * flagFieldBits / 8;
+			perVaryingFlagsSize = numFlagFields * flagFieldBits / 8;
 		}
+		
+		{
+			// pad flags to size_t.sizeof
+			effect.instanceDataSize += size_t.sizeof - 1;
+			effect.instanceDataSize &= ~(size_t.sizeof - 1);
+			
+			effect.varyingParamsDirtyOffset = effect.instanceDataSize;
+			effect.instanceDataSize += perVaryingFlagsSize;
+		}
+		
 		
 		log.info(
 			"Total bytes needed for effect instance: {}.",
@@ -822,4 +827,3 @@ struct CgEffectBuilder {
 	
 	StackBufferUnsafe mem;
 }
-

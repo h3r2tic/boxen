@@ -70,6 +70,28 @@ void main() {
 		
 		efInst = renderer.instantiateEffect(effect);
 		efInst.setUniform("lights[0].color", vec4.one);
+		
+		auto vb = renderer.createVertexBuffer();
+		
+		efInst.setVarying(
+			"VertexProgram.input.position",
+			vb,
+			VertexAttrib(
+				0,	// offset
+				vec3.sizeof*2,	// stride
+				VertexAttrib.Type.Vec3
+			)
+		);
+
+		efInst.setVarying(
+			"VertexProgram.input.normal",
+			vb,
+			VertexAttrib(
+				vec3.sizeof,	// offset
+				vec3.sizeof*2,	// stride
+				VertexAttrib.Type.Vec3
+			)
+		);
 	};
 	
 

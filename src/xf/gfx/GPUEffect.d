@@ -25,6 +25,8 @@ struct UniformDataSlice {
 struct VaryingParamData {
 	VertexBuffer currentBuffer;
 	VertexBuffer newBuffer;
+	VertexAttrib currentAttrib;
+	VertexAttrib newAttrib;
 }
 
 
@@ -257,7 +259,7 @@ struct GPUEffectInstance {
 	
 	
 	/// Returns true if the buffer could be acquired and was successfully set
-	bool setVarying(cstring name, VertexBuffer buf) {
+	bool setVarying(cstring name, VertexBuffer buf, VertexAttrib vattr) {
 		final i = _proto.getVaryingIndex(name);
 		final vp = &_proto.varyingParams;
 		
@@ -276,7 +278,9 @@ struct GPUEffectInstance {
 		final bool thisAlreadySet = (curFlag & thisFlag) != 0;
 		
 		// the currently set buffer is the same as what we're trying to reset it to
-		if (data.currentBuffer._resHandle is buf._resHandle) {
+		if (data.currentBuffer.GUID is buf.GUID
+			&& data.currentAttrib == vattr
+		) {
 			// some buffer has already been set for this varying before rendering
 			// thus we will have to release it and clear the flag
 			if (thisAlreadySet) {
@@ -294,7 +298,8 @@ struct GPUEffectInstance {
 			// the currently set buffer is something else than the param
 			
 			// ... but we already told the effect instance to use it
-			if (data.newBuffer._resHandle is buf._resHandle) {
+			if (data.newBuffer.GUID is buf.GUID
+				&& data.newAttrib == vattr) {
 				if (thisAlreadySet) {
 					// looks like a redudant call
 					return true;
@@ -324,6 +329,7 @@ struct GPUEffectInstance {
 					}
 					
 					data.newBuffer = buf;
+					data.newAttrib = vattr;
 					curFlag |= thisFlag;
 				} else {
 					return false;

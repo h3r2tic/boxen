@@ -1,11 +1,14 @@
 module xf.gfx.gl3.Renderer;
 
+public {
+	import xf.gfx.VertexArray;
+	import xf.gfx.VertexBuffer;
+}
+
 private {
 	import xf.Common;
 	
-	import xf.gfx.VertexArray;
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
-	
 	import xf.gfx.gl3.CgEffect;
 	import xf.gfx.gl3.Cg;
 }
@@ -33,6 +36,12 @@ class Renderer {
 	VertexArray createVertexArray() {
 		error("TODO: createVertexArray");
 		return VertexArray.init;
+	}
+	
+	
+	VertexBuffer createVertexBuffer() {
+		error("TODO: createVertexBuffer");
+		return VertexBuffer.init;
 	}
 	
 	

@@ -10,6 +10,21 @@ public {
 }
 
 
+struct VertexAttrib {
+	enum Type : ushort {
+		Float,
+		Vec2,
+		Vec3,
+		Vec4,
+		Mat4
+		// TODO: moar
+	}
+	
+	size_t	offset;
+	ushort	stride;
+	Type	type;
+}
+
 
 interface IVertexBufferMngr : IBufferMngr {
 }

@@ -5,7 +5,15 @@ typedef size_t ResourceHandle;
 
 
 template MResource() {
-	Handle	_resHandle;
+	// TODO: is it possible for a resource to have the same type and _resHandle
+	// as another resource and another _resMngr? if so, a struct containing the two
+	// and being a GUID could be useful. if not, the current form is OK
+	union {
+		Handle	_resHandle;
+		size_t	GUID;
+		
+		static assert (size_t.sizeof == Handle.sizeof);
+	}
 	void*	_resMngr;
 	
 	bool function(Handle)	_acquire;
