@@ -8,9 +8,14 @@ private {
 	import xf.Common;	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 	import xf.gfx.api.gl3.Cg;
+	import xf.gfx.VertexBuffer;
+	
 	import xf.mem.StackBuffer;
 	import xf.mem.OSHeap;
 	import xf.utils.IntrusiveList;
+	
+	// for the typeinfos of vectors and matrices
+	import xf.omg.core.LinearAlgebra;
 }
 
 
@@ -474,6 +479,15 @@ struct CgEffectBuilder {
 		string		name;
 		CGparameter	handle;
 		
+		// the D type of the Cg param
+		TypeInfo	typeInfo;
+		
+		// for vectors and matrices
+		ushort				numFields;
+		
+		ParamBaseType		baseType;
+		UniformDataSlice	dataSlice;
+		
 		mixin(intrusiveList("list"));
 	}
 	
@@ -489,6 +503,129 @@ struct CgEffectBuilder {
 		n[] = name;
 		p.name = cast(string)n;
 		p.handle = handle;
+		
+		final pclass = cgGetParameterClass(handle);
+		
+		// We should be operating on individual fields of arrays
+		// as we're using leaf params. Not to mention that param arrays
+		// are broken (or used to be around Cg 2.1).
+		assert (pclass != CG_PARAMETERCLASS_ARRAY);
+		
+		TypeInfo getScalarTypeInfo() {
+			final baseType = cgGetParameterBaseType(handle);
+			switch (baseType) {
+				case CG_FLOAT:
+					p.baseType = ParamBaseType.Float;
+					return typeid(float);
+					
+				case CG_INT:
+					p.baseType = ParamBaseType.Int;
+					return typeid(int);
+				
+				default: {
+					error(
+						"Parameters of type '{}' are not currently supported.",
+						fromStringz(cgGetTypeString(baseType))
+					);
+				} break;
+			}
+			
+			return null;	// should never get here
+		}
+		
+		switch (pclass) {
+			case CG_PARAMETERCLASS_SCALAR:{
+				p.typeInfo = getScalarTypeInfo();
+				p.numFields = 1;
+			} break;
+
+			case CG_PARAMETERCLASS_VECTOR: {
+				int numFields =
+					cgGetParameterRows(handle) * cgGetParameterColumns(handle);
+				assert (numFields >= 0 && numFields < cast(int)ushort.max);
+				p.numFields = cast(ushort)numFields;
+
+				final scalarTypeInfo = getScalarTypeInfo();
+					
+				static typeInfos = [
+					[ typeid(vec2), typeid(vec3), typeid(vec4) ],
+					[ typeid(vec2i), typeid(vec3i), typeid(vec4i) ],
+				];
+				
+				int scalarType = -1;
+				if (scalarTypeInfo is typeid(float)) {
+					scalarType = 0;
+				}
+				else if (scalarTypeInfo is typeid(int)) {
+					scalarType = 1;
+				}
+				
+				if (numFields >= 2 && numFields <= 4 && scalarType != -1) {
+					p.typeInfo = typeInfos[scalarType][numFields-2];
+				} else {
+					error(
+						"Parameters of type '{}' are not currently supported.",
+						fromStringz(cgGetTypeString(cgGetParameterType(handle)))
+					);
+				}
+			} break;
+			
+			case CG_PARAMETERCLASS_MATRIX: {
+				int numRows = cgGetParameterRows(handle);
+				int numCols = cgGetParameterColumns(handle);
+
+				final scalarTypeInfo = getScalarTypeInfo();
+
+				static typeInfos = [
+					[ typeid(mat2), typeid(mat3), typeid(mat34), typeid(mat4) ]
+				];
+				static const vec2i[] matSizes = [
+					{x:2, y:2}, {x:3, y:3}, {x:3, y:4}, {x:4, y:4}
+				];
+				
+				int scalarType = -1;
+				if (scalarTypeInfo is typeid(float)) {
+					scalarType = 0;
+				}
+				
+				int sizeIdx = -1;
+				final wantedSize = vec2i(numRows, numCols);
+				
+				foreach (i, s; matSizes) {
+					// must be equal in the number of rows due to sending
+					// the data in a column-major format to OpenGL
+					if (wantedSize.x == s.x && wantedSize.y <= s.y) {
+						sizeIdx = i;
+						break;
+					}
+				}
+				
+				if (scalarType != -1 && sizeIdx != -1) {
+					p.typeInfo	= typeInfos[scalarType][sizeIdx];
+					final ms = matSizes[sizeIdx];
+					final nf = ms.x * ms.y;
+					assert (nf >= 0 && nf < cast(int)ushort.max);
+					p.numFields	= cast(ushort)nf;
+				} else {
+					error(
+						"Parameters of type '{}' are not currently supported.",
+						fromStringz(cgGetTypeString(cgGetParameterType(handle)))
+					);
+				}
+			} break;
+
+			case CG_PARAMETERCLASS_SAMPLER: {
+				log.warn("TODO: CG_PARAMETERCLASS_SAMPLER");
+			} break;
+			
+			default: {
+				error(
+					"Parameters of class '{}' are not currently supported.",
+					fromStringz(cgGetParameterClassString(pclass))
+				);
+			} break;
+		}
+		
 		return p;
 	}
 
@@ -538,6 +675,17 @@ struct CgEffectBuilder {
 				);
 				
 				final reg = createParam(name, param);
+
+				size_t paramOffset = uniformStorageNeeded;
+				size_t paramSize = reg.typeInfo.tsize();
+				reg.dataSlice = UniformDataSlice(paramOffset, paramSize);
+				
+				uniformStorageNeeded += paramSize;
+				
+				// align to 4 bytes
+				uniformStorageNeeded += 3;
+				uniformStorageNeeded &= ~0b11;
+
 				if (uniforms) {
 					uniforms.list ~= reg;
 				} else {
@@ -560,8 +708,9 @@ struct CgEffectBuilder {
 	
 	void finish(CgEffect effect) {
 		log.info(
-			"Registered a total of {} uniforms and {} varyings.",
+			"Registered a total of {} uniforms ({} bytes) and {} varyings.",
 			numUniforms,
+			uniformStorageNeeded,
 			numVaryings
 		);
 		
@@ -585,8 +734,8 @@ struct CgEffectBuilder {
 			buf[$-1] = '\0';
 			return buf[0..$-1];
 		}
-		
-		// TODO: find the data size and allocate proper structures in GPUEffect
+
+		effect.instanceDataSize = 0;
 		
 		if (numUniforms > 0) {
 			final arr = &effect.uniformParams;
@@ -595,9 +744,12 @@ struct CgEffectBuilder {
 			foreach (i, ref p; uniforms.list) {
 				arr.name[i] = convertParamName(p.name);
 				arr.param[i] = cast(UniformParam)p.handle;
-				// arr.dataSlice[i] = ... TODO
+				arr.numFields[i] = p.numFields;
+				arr.baseType[i] = p.baseType;
+				arr.dataSlice[i] = p.dataSlice;
 			}
 		}
+		effect.instanceDataSize += uniformStorageNeeded;
 
 		if (numVaryings > 0) {
 			final arr = &effect.varyingParams;
@@ -606,6 +758,8 @@ struct CgEffectBuilder {
 			foreach (i, ref p; varyings.list) {
 				arr.name[i] = convertParamName(p.name);
 				arr.param[i] = cast(VaryingParam)p.handle;
+				arr.dataOffset[i] = effect.instanceDataSize;
+				effect.instanceDataSize += VertexBuffer.sizeof;
 			}
 		}
 		
@@ -617,6 +771,8 @@ struct CgEffectBuilder {
 	
 	int numUniforms = 0;
 	int numVaryings = 0;
+	
+	size_t uniformStorageNeeded = 0;
 	
 	StackBufferUnsafe mem;
 }
