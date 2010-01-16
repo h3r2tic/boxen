@@ -187,7 +187,7 @@ abstract class GPUEffect {
 	}
 	
 	GPUEffectInstance* instantiate() {
-		auto inst = cast(GPUEffectInstance*)instanceFreeList.alloc(totalInstanceSize);
+		auto inst = cast(GPUEffectInstance*)instanceFreeList.alloc();
 		*inst = GPUEffectInstance.init;
 		void* unifData = cast(void*)(inst+1);
 		memset(unifData, 0, instanceDataSize);
