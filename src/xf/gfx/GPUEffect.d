@@ -2,7 +2,10 @@ module xf.gfx.GPUEffect;
 
 private {
 	import xf.Common;
+
 	import xf.gfx.VertexBuffer;
+	import xf.gfx.Log : log = gfxLog, error = gfxError;
+
 	import xf.utils.MultiArray;
 	import xf.utils.FreeList;
 }
@@ -32,6 +35,7 @@ struct UniformParamGroup {
 		UniformParam		param
 		ushort				numFields
 		ParamBaseType		baseType
+		TypeInfo			typeInfo
 		UniformDataSlice	dataSlice
 	`));
 	
@@ -151,6 +155,7 @@ abstract class GPUEffect {
 		UniformParam		param
 		ushort				numFields
 		ParamBaseType		baseType
+		TypeInfo			typeInfo
 		UniformDataSlice	dataSlice
 	`));
 	
@@ -172,10 +177,10 @@ abstract class GPUEffect {
 	`));+/
 	
 	
-	UniformDataSlice getUniformDataSlice(cstring name) {
+	size_t getUniformIndex(cstring name) {
 		foreach (i, n; uniformParams.name[0..uniformParams.length]) {
 			if (n == name) {
-				return uniformParams.dataSlice[i];
+				return i;
 			}
 		}
 		
@@ -191,6 +196,7 @@ abstract class GPUEffect {
 		*inst = GPUEffectInstance.init;
 		void* unifData = cast(void*)(inst+1);
 		memset(unifData, 0, instanceDataSize);
+		inst._proto = this;
 		return inst;
 	}
 	
@@ -213,8 +219,19 @@ struct GPUEffectInstance {
 	GPUEffect	_proto;
 	
 	void setUniform(T)(cstring name, T value) {
+		final i = _proto.getUniformIndex(name);
+		final up = &_proto.uniformParams;
+		
+		if (typeid(T) !is up.typeInfo[i]) {
+			error(
+				"TypeInfo mismatch. Param type is {}, got {}.",
+				up.typeInfo[i],
+				typeid(T)
+			);
+		}
+		
 		*cast(T*)(
-			cast(void*)this + _proto.getUniformDataSlice(name).offset
+			cast(void*)this + up.dataSlice[i].offset
 		) = value;
 	}
 	

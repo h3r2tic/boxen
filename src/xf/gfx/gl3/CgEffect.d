@@ -746,6 +746,7 @@ struct CgEffectBuilder {
 				arr.param[i] = cast(UniformParam)p.handle;
 				arr.numFields[i] = p.numFields;
 				arr.baseType[i] = p.baseType;
+				arr.typeInfo[i] = p.typeInfo;
 				arr.dataSlice[i] = p.dataSlice;
 			}
 		}
