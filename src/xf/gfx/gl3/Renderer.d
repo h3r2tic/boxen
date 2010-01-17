@@ -1,9 +1,12 @@
 module xf.gfx.gl3.Renderer;
 
 public {
-	import xf.gfx.Buffer;
-	import xf.gfx.VertexArray;
-	import xf.gfx.VertexBuffer;
+	import
+		xf.gfx.Buffer,
+		xf.gfx.VertexArray,
+		xf.gfx.VertexBuffer,
+		xf.gfx.Mesh,
+		xf.gfx.gl3.Cg;
 }
 
 private {
@@ -16,6 +19,7 @@ private {
 		xf.gfx.Resource,
 		xf.gfx.Buffer,
 
+		xf.gfx.api.gl3.Cg,
 		xf.gfx.api.gl3.OpenGL,
 		xf.gfx.api.gl3.ext.ARB_map_buffer_range,
 		xf.gfx.api.gl3.ext.ARB_vertex_array_object,
@@ -249,6 +253,155 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			})
 		);
 		return *cast(VertexBuffer*)&buf;
+	}
+	
+	
+	// ---- HACK
+	
+	void render(Mesh[] objects ...) {
+		if (0 == objects.length) {
+			return;
+		}
+		
+		GPUEffect effect = objects[0].effect._proto;
+		
+		assert ({
+			foreach (o; objects[1..$]) {
+				if (o.effect._proto !is effect) {
+					return false;
+				}
+			}
+			return true;
+		}(), "All objects must have the same GPUEffect");
+
+		effect.bind();
+		
+		void setObjUniforms(GPUEffectInstance* obj) {
+			final up = &effect.uniformParams;
+			final numUniforms = up.length;
+			void* base = obj.getUniformsDataPtr();
+			
+			for (int ui = 0; ui < numUniforms; ++ui) {
+				switch (up.baseType[ui]) {
+					case ParamBaseType.Float: {
+						cgSetParameterValuefc(
+							cast(CGparameter)up.param[ui],
+							up.numFields[ui],
+							cast(float*)(base + up.dataSlice[ui].offset)
+						);
+					} break;
+
+					case ParamBaseType.Int: {
+						cgSetParameterValueic(
+							cast(CGparameter)up.param[ui],
+							up.numFields[ui],
+							cast(int*)(base + up.dataSlice[ui].offset)
+						);
+					} break;
+					
+					default: assert (false);
+				}
+			}
+		}
+		
+		void setObjVaryings(GPUEffectInstance* obj) {
+			final vp = &effect.varyingParams;
+			final numVaryings = vp.length;
+			
+			auto flags = obj.getVaryingParamDirtyFlagsPtr();
+			auto varyingData = obj.getVaryingParamDataPtr();
+			
+			alias typeof(*flags) flagFieldType;
+			const buffersPerFlag = flagFieldType.sizeof * 8;
+			
+			for (
+				int varyingBase = 0;
+				
+				varyingBase < numVaryings;
+				
+				varyingBase += buffersPerFlag,
+				++flags,
+				varyingData += buffersPerFlag
+			) {
+				if (*flags != 0) {
+					// one of the buffers in varyingBase .. varyingBase + buffersPerFlag
+					// needs to be updated
+					
+					static if (
+						ParameterTupleOf!(intrinsic.bsf)[0].sizeof
+						==
+						flagFieldType.sizeof
+					) {
+						auto flag = *flags;
+
+					updateSingle:
+						final idx = intrinsic.bsf(flag);
+						final data = varyingData + idx;
+						
+						if (data.currentBuffer.valid) {
+							data.currentBuffer.dispose();
+						}
+						
+						final buf = &data.currentBuffer;
+						final attr = &data.currentAttrib;
+
+						*buf = data.newBuffer;
+						*attr = data.newAttrib;
+						
+						GLenum glType = void;
+						switch (attr.scalarType) {
+							case attr.ScalarType.Float: {
+								glType = FLOAT;
+							} break;
+							
+							default: {
+								error("Unhandled scalar type: {}", attr.scalarType);
+							}
+						}
+						
+						final param = cast(CGparameter)
+							obj._proto.varyingParams.param[varyingBase+idx];
+
+						buf.bind();
+						cgGLEnableClientState(param);
+						cgGLSetParameterPointer(
+							param,
+							attr.numFields(),
+							glType,
+							attr.stride,
+							cast(void*)attr.offset
+						);
+						
+						defaultHandleCgError();
+						
+						// should be a SUB instruction followed by JZ
+						flag -= cast(flagFieldType)1 << idx;
+						if (flag != 0) {
+							goto updateSingle;
+						}
+						
+						// write back the flag
+						*flags = flag;
+					} else {
+						static assert (false, "TODO");
+					}
+				}
+			}
+		}
+		
+		foreach (obj; objects) {
+			auto efInst = obj.effect;
+			setObjUniforms(efInst);
+			efInst._vertexArray.bind();
+			setObjVaryings(efInst);
+			
+			gl.DrawElements(
+				TRIANGLES,
+				obj.indices.length,
+				UNSIGNED_INT,
+				obj.indices.ptr
+			);
+		}
 	}
 }
 
