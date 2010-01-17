@@ -14,6 +14,7 @@ import
 	xf.omg.core.LinearAlgebra,
 	
 	xf.gfx.api.gl3.Cg,
+	xf.gfx.misc.Primitives,
 	tango.io.Stdout;
 	
 
@@ -92,6 +93,24 @@ void main() {
 				VertexAttrib.Type.Vec3
 			)
 		);
+		
+		struct Vertex {
+			vec3	pos;
+			vec3	norm;
+		}
+		
+		Vertex[] vertices;
+		vertices.length = Cube.positions.length;
+		foreach (i, ref v; vertices) {
+			v.pos = Cube.positions[i];
+			v.pos = Cube.normals[i];
+		}
+		
+		vb.setData(
+			vertices.length * Vertex.sizeof,
+			vertices.ptr,
+			BufferUsage.StaticDraw
+		);
 	};
 	
 
@@ -109,11 +128,11 @@ void main() {
 void draw(GL gl, GPUEffectInstance*[] objects ...) {
 	gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
 	
-	render(objects);
+	render(gl, objects);
 }
 
 
-void render(GPUEffectInstance*[] objects ...) {
+void render(GL gl, GPUEffectInstance*[] objects ...) {
 	if (0 == objects.length) {
 		return;
 	}
@@ -227,6 +246,8 @@ void render(GPUEffectInstance*[] objects ...) {
 						cast(void*)attr.offset
 					);
 					
+					defaultHandleCgError();
+					
 					// should be a SUB instruction followed by JZ
 					flag -= cast(flagFieldType)1 << idx;
 					if (flag != 0) {
@@ -246,6 +267,8 @@ void render(GPUEffectInstance*[] objects ...) {
 		setObjUniforms(obj);
 		obj._vertexArray.bind();
 		setObjVaryings(obj);
-		// TODO: render obj
+		
+		// HACK
+		gl.DrawElements(TRIANGLES, 36, UNSIGNED_INT, Cube.indices.ptr);
 	}
 }
