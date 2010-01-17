@@ -8,8 +8,8 @@ private {
 	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 
-	import xf.utils.MultiArray;
-	import xf.utils.FreeList;
+	import xf.mem.MultiArray;
+	import xf.mem.FreeList;
 }
 
 

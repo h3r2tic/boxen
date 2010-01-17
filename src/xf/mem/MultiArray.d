@@ -1,4 +1,4 @@
-module xf.utils.MultiArray;
+module xf.mem.MultiArray;
 
 private {
 	import xf.Common;
