@@ -197,9 +197,35 @@ void render(GPUEffectInstance*[] objects ...) {
 						data.currentBuffer.dispose();
 					}
 					
-					data.currentBuffer = data.newBuffer;
+					final buf = &data.currentBuffer;
+					final attr = &data.currentAttrib;
+
+					*buf = data.newBuffer;
+					*attr = data.newAttrib;
 					
-					log.warn("TODO: set the parameter pointer in Cg/OpenGL");
+					GLenum glType = void;
+					switch (attr.scalarType) {
+						case attr.ScalarType.Float: {
+							glType = FLOAT;
+						} break;
+						
+						default: {
+							error("Unhandled scalar type: {}", attr.scalarType);
+						}
+					}
+					
+					final param = cast(CGparameter)
+						obj._proto.varyingParams.param[varyingBase+idx];
+
+					buf.bind();
+					cgGLEnableClientState(param);
+					cgGLSetParameterPointer(
+						param,
+						attr.numFields(),
+						glType,
+						attr.stride,
+						cast(void*)attr.offset
+					);
 					
 					// should be a SUB instruction followed by JZ
 					flag -= cast(flagFieldType)1 << idx;

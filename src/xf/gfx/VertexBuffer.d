@@ -20,9 +20,29 @@ struct VertexAttrib {
 		// TODO: moar
 	}
 	
+	enum ScalarType {
+		Float
+	}
+	
 	size_t	offset;
 	ushort	stride;
 	Type	type;
+	
+	
+	int numFields() {
+		switch (type) {
+			case Type.Float:	return 1;
+			case Type.Vec2:		return 2;
+			case Type.Vec3:		return 3;
+			case Type.Vec4:		return 4;
+			case Type.Mat4:		return 16;
+			default: assert (false);
+		}
+	}
+	
+	ScalarType scalarType() {
+		return ScalarType.Float;
+	}
 }
 
 
