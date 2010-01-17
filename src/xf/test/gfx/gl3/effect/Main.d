@@ -206,6 +206,9 @@ void render(GPUEffectInstance*[] objects ...) {
 					if (flag != 0) {
 						goto updateSingle;
 					}
+					
+					// write back the flag
+					*flags = flag;
 				} else {
 					static assert (false, "TODO");
 				}
