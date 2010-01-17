@@ -55,18 +55,20 @@ void main() {
 		
 		// ---- Some debug info printing ----
 		{
-			effect.getUniformIndex("lights[0].color");
-			try {
-				effect.getUniformIndex("lights[0].error");
-				Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
-			}
-			catch (Exception e) {
-				Stdout.formatln("Effect error reporting OK.");
-			}
-			
-			Stdout.formatln("Effect uniforms:");
-			for (int i = 0; i < effect.uniformParams.length; ++i) {
-				Stdout.formatln("\t{}", effect.uniformParams.name[i]);
+			with (*effect.uniformParams()) {
+				getUniformIndex("lights[0].color");
+				try {
+					getUniformIndex("lights[0].error");
+					Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
+				}
+				catch (Exception e) {
+					Stdout.formatln("Effect error reporting OK.");
+				}
+				
+				Stdout.formatln("Effect uniforms:");
+				for (int i = 0; i < params.length; ++i) {
+					Stdout.formatln("\t{}", params.name[i]);
+				}
 			}
 
 			Stdout.formatln("Effect varyings:");
@@ -92,7 +94,7 @@ void main() {
 			mat4.yRotation(30.0f)
 		);
 		
-		efInst.setUniform("worldToScreen",
+		effect.setUniform("worldToScreen",
 			mat4.perspective(
 				90.0f,	// fov
 				cast(float)context.width / context.height,	// aspect

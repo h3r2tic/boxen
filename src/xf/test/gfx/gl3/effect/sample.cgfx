@@ -39,7 +39,9 @@ struct fragInput {
 
 
 float4x4 modelToWorld;
-float4x4 worldToScreen;
+float4x4 worldToScreen <
+	string scope = "effect";
+>;
 
 
 uniform ILight[] lights;

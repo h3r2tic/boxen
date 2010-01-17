@@ -5,10 +5,10 @@ rendering game plan:
 	+ read .cgfx files and extract their data
 	+ allow array resizing and interface specification
 	+ give access to uniforms
-	~ give access to varyings
-		- steal VBOs from Heresy/Deadlock for now
-	per-shader uniforms
-	per-shader-group uniforms
+	+ give access to varyings
+		+ steal VBOs from Heresy/Deadlock for now
+	+ per-shader uniforms
+	? per-shader-group uniforms
 	uniform buffers
 	instancing
 	render lists
