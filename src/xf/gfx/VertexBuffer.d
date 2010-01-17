@@ -26,10 +26,6 @@ struct VertexAttrib {
 }
 
 
-interface IVertexBufferMngr : IBufferMngr {
-}
-
-
 struct VertexBuffer {
 	typedef BufferHandle Handle;
 	mixin MResource;

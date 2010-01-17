@@ -81,10 +81,17 @@ template MBuffer() {
 	size_t getApiHandle() {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
-		return (cast(IVertexBufferMngr)_resMngr).getApiHandle(_resHandle);
+		return (cast(IBufferMngr)_resMngr).getApiHandle(_resHandle);
 	}
 	
 	bool valid() {
 		return _resHandle !is Handle.init;
 	}
+}
+
+
+struct Buffer {
+	alias BufferHandle Handle;
+	mixin MResource;
+	mixin MBuffer;
 }

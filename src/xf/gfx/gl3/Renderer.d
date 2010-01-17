@@ -31,7 +31,7 @@ private {
 
 
 
-class Renderer : IBufferMngr {
+class Renderer : IBufferMngr, IVertexArrayMngr {
 	// at the front because otherwise DMD is a bitch about forward refs
 	private {
 		GL			gl;
@@ -76,11 +76,6 @@ class Renderer : IBufferMngr {
 	}
 	
 	
-	BufferImpl* _createBuffer(GLenum target) {
-		assert (false, "TODO");
-	}
-	
-
 	// implements IBufferMngr
 	void mapRange(
 		BufferHandle handle,
@@ -132,21 +127,33 @@ class Renderer : IBufferMngr {
 	}
 	
 	
+	// implements IVertexArrayMngr
+	void bind(VertexArrayHandle h) {
+		if (auto resData = _vertexArrays.find(h)) {
+			gl.BindVertexArray(resData.res.handle);
+		}
+	}
+	
+	
+	// Vertex Array ----
+	
 	private {
 		VertexArray toResourceHandle(_vertexArrays.ResourceReturn resource) {
 			VertexArray res = void;
 			res._resHandle = resource.handle;
-			res._resMngr = cast(void*)this;
-			
+
+			res._resMngr = cast(void*)cast(IVertexArrayMngr)this;
+			res._refMngr = cast(void*)this;
 			final rcnt = &resCountVertexArray;
 			res._resCountAdjust = rcnt.funcptr;
+
 			return res;
 		}
 		
 		
 		bool resCountVertexArray(VertexArrayHandle h, int cnt) {
 			if (auto resData = _vertexArrays.find(h, cnt > 0)) {
-				auto res = resData.res;
+				final res = resData.res;
 				bool goodBefore = res.refCount > 0;
 				res.refCount += cnt;
 				if (res.refCount > 0) {
@@ -160,36 +167,70 @@ class Renderer : IBufferMngr {
 		}
 	}
 
-	
+
 	VertexArray createVertexArray() {
 		return toResourceHandle(
 			_vertexArrays.alloc((VertexArrayImpl* n) {
-				gl.GenVertexArrays(1, &n.handle);
 				n.refCount = 1;
+				gl.GenVertexArrays(1, &n.handle);
 			})
 		);
 	}
 	
-	
+	// ---- VertexBuffer
+
+	private {
+		Buffer toResourceHandle(_buffers.ResourceReturn resource) {
+			Buffer res = void;
+			res._resHandle = resource.handle;
+			
+			res._resMngr = cast(void*)cast(IBufferMngr)this;
+			res._refMngr = cast(void*)this;
+			final rcnt = &resCountBuffer;
+			res._resCountAdjust = rcnt.funcptr;
+			
+			return res;
+		}
+		
+		
+		bool resCountBuffer(BufferHandle h, int cnt) {
+			if (auto resData = _buffers.find(h, cnt > 0)) {
+				final res = resData.res;
+				bool goodBefore = res.refCount > 0;
+				res.refCount += cnt;
+				if (res.refCount > 0) {
+					return true;
+				} else if (goodBefore) {
+					_buffers.free(resData);
+				}
+			}
+			
+			return false;
+		}
+	}
+
 	VertexBuffer createVertexBuffer() {
-		final buf = _createBuffer(ARRAY_BUFFER);
-		/+return VertexBuffer(
-			blah blah blah
-		);+/
-		assert (false, "TODO");
+		final buf = toResourceHandle(
+			_buffers.alloc((BufferImpl* n) {
+				n.refCount = 1;
+				gl.GenBuffers(1, &n.handle);
+				n.target = ARRAY_BUFFER;
+			})
+		);
+		return *cast(VertexBuffer*)&buf;
 	}
 }
 
 
 
 private struct BufferImpl {
-	GLenum		target;
-	GLuint		handle;
 	ptrdiff_t	refCount;
+	GLuint		handle;
+	GLenum		target;
 }
 
 
 private struct VertexArrayImpl {
-	GLuint		handle;
 	ptrdiff_t	refCount;
+	GLuint		handle;
 }

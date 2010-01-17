@@ -63,11 +63,19 @@ struct ThreadUnsafeResourcePool(T, Handle) {
 	}
 	
 	
-	ResData* find(Handle h, bool errorOnNotFound) {
+	ResData* find(Handle h, bool errorOnNotFound = true) {
 		if (0 == h.id) {
 			return null;
 		} else {
-			assert (Thread.getThis() is _initializingThread);
+			final curThread = Thread.getThis();
+			if (curThread !is _initializingThread) {
+				utilsError(
+					"ThreadUnsafeResourcePool called from a different thread"
+					" (ptr={:x}) than which it was initialized in (ptr={:x}).",
+					cast(void*)curThread,
+					cast(void*)_initializingThread
+				);
+			}
 			
 			final idx = cast(size_t)h.id-1;
 			assert (idx < _uidMap.length);

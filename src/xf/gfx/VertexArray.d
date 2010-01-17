@@ -16,11 +16,12 @@ interface IVertexArrayMngr {
 
 struct VertexArray {
 	alias VertexArrayHandle Handle;
+	alias IVertexArrayMngr Mngr;
 	mixin MResource;
 	
 	void bind() {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
-		return (cast(IVertexArrayMngr)_resMngr).bind(_resHandle);
+		return (cast(Mngr)_resMngr).bind(_resHandle);
 	}
 }
