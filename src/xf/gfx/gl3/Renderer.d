@@ -67,12 +67,18 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 	
 	
 	private void _bindBuffer(GLenum target, GLuint handle) {
-		assert (false, "TODO");
+		// TODO: laziness
+		gl.BindBuffer(target, handle);
 	}
 	
 	
 	BufferImpl* _getBuffer(BufferHandle h) {
-		assert (false, "TODO");
+		if (auto resData = _buffers.find(h)) {
+			assert (resData.res !is null);
+			return resData.res;
+		} else {
+			return null;
+		}
 	}
 	
 	
@@ -84,48 +90,73 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		BufferAccess access,
 		void delegate(void[]) dg
 	) {
-		final buf = _getBuffer(handle);		
-		_bindBuffer(buf.target, buf.handle);
-		
-		final ptr = gl.MapBufferRange(
-			buf.target,
-			offset,
-			length,
-			enumToGL(access)
-		);
-		
-		scope (exit) {
-			gl.UnmapBuffer(buf.target);
+		if (auto buf = _getBuffer(handle)) {
+			_bindBuffer(buf.target, buf.handle);
+			
+			final ptr = gl.MapBufferRange(
+				buf.target,
+				offset,
+				length,
+				enumToGL(access)
+			);
+			
+			scope (exit) {
+				gl.UnmapBuffer(buf.target);
+			}
+			
+			dg(ptr[0..length]);
 		}
-		
-		dg(ptr[0..length]);
 	}
 	
+
+	// implements IBufferMngr
+	void setData(BufferHandle handle, size_t length, void* data, BufferUsage usage) {
+		if (auto buf = _getBuffer(handle)) {
+			_bindBuffer(buf.target, buf.handle);
+			gl.BufferData(buf.target, length, data, enumToGL(usage));
+		}
+	}
 	
-	private static GLenum enumToGL(BufferAccess) {
-		assert (false, "TODO");
+
+	// implements IBufferMngr
+	void setSubData(BufferHandle handle, ptrdiff_t offset, size_t length, void* data) {
+		if (auto buf = _getBuffer(handle)) {
+			_bindBuffer(buf.target, buf.handle);
+			gl.BufferSubData(buf.target, offset, length, data);
+		}
 	}
 
 
 	// implements IBufferMngr
 	void flushMappedRange(BufferHandle handle, size_t offset, size_t length) {
-		final buf = _getBuffer(handle);
-		_bindBuffer(buf.target, buf.handle);
+		if (auto buf = _getBuffer(handle)) {
+			_bindBuffer(buf.target, buf.handle);
 
-		gl.FlushMappedBufferRange(
-			buf.target,
-			offset,
-			length
-		);
+			gl.FlushMappedBufferRange(
+				buf.target,
+				offset,
+				length
+			);
+		}
 	}
 
 
 	// implements IBufferMngr
 	size_t getApiHandle(BufferHandle handle) {
-		final buf = _getBuffer(handle);
-		return buf.handle;
+		if (auto buf = _getBuffer(handle)) {
+			return buf.handle;
+		} else {
+			return 0;
+		}
 	}
 	
+	// implements IBufferMngr
+	void bind(BufferHandle handle) {
+		if (auto buf = _getBuffer(handle)) {
+			_bindBuffer(buf.target, buf.handle);
+		}
+	}
+
 	
 	// implements IVertexArrayMngr
 	void bind(VertexArrayHandle h) {
@@ -233,4 +264,58 @@ private struct BufferImpl {
 private struct VertexArrayImpl {
 	ptrdiff_t	refCount;
 	GLuint		handle;
+}
+
+
+private GLenum enumToGL(BufferAccess bits) {
+	GLenum en = 0;
+	
+	if (bits & bits.Read) {
+		if (bits & bits.Write) {
+			en |= READ_WRITE;
+		} else {
+			en |= READ_ONLY;
+		}
+	} else {
+		if (bits & bits.Write) {
+			en |= WRITE_ONLY;
+		} else {
+			error("Invalid BufferAccess enum: {}", bits);
+		}
+	}
+	
+	if (bits & bits.InvalidateRange) {
+		en |= xf.gfx.api.gl3.GL.MAP_INVALIDATE_RANGE_BIT;
+	}
+	
+	if (bits & bits.InvalidateBuffer) {
+		en |= xf.gfx.api.gl3.GL.MAP_INVALIDATE_BUFFER_BIT;
+	}
+	
+	if (bits & bits.FlushExplicit) {
+		en |= xf.gfx.api.gl3.GL.MAP_FLUSH_EXPLICIT_BIT;
+	}
+	
+	if (bits & bits.Unsynchronized) {
+		en |= xf.gfx.api.gl3.GL.MAP_UNSYNCHRONIZED_BIT;
+	}
+	
+	return en;
+}
+
+
+private GLenum enumToGL(BufferUsage usage) {
+	static const map = [
+		STREAM_DRAW,
+		STREAM_READ,
+		STREAM_COPY,
+		STATIC_DRAW,
+		STATIC_READ,
+		STATIC_COPY,
+		DYNAMIC_DRAW,
+		DYNAMIC_READ,
+		DYNAMIC_COPY
+	];
+	
+	return map[usage];
 }

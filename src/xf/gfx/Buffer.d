@@ -9,7 +9,7 @@ typedef ResourceHandle BufferHandle;
 
 
 enum BufferAccess {
-	Read			= 0b1,
+	Read		= 0b1,
 	Write		= 0b10,
 	ReadWrite	= Read | Write,
 	
@@ -58,10 +58,48 @@ enum BufferAccess {
 }
 
 
+/**
+	Allows hinting the vertex buffer manager about the pattern in which a buffer will be used. Performance will be greatly influenced by this
+	choice, so make an *educated* guess.
+*/
+enum BufferUsage {
+	/// The data store contents will be specified once by the application, and used at most a few times as the source of a GL (drawing) command.
+	StreamDraw = 0,
+	
+	/// The data store contents will be specified once by reading data from the GL, and queried at most a few times by the application.
+	StreamRead,
+	
+	/// The data store contents will be specified once by reading data from the GL, and used at most a few times as the source of a GL (drawing) command.
+	StreamCopy,
+	
+	/// The data store contents will be specified once by the application, and used many times as the source for GL (drawing) commands.
+	StaticDraw,
+	
+	/// The data store contents will be specified once by reading data from the GL, and queried many times by the application.
+	StaticRead,
+	
+	/// The data store contents will be specified once by reading data from the GL, and used many times as the source for GL (drawing) commands.
+	StaticCopy,
+	
+	/// The data store contents will be respecified repeatedly by the application, and used many times as the source for GL (drawing) commands.
+	DynamicDraw,
+	
+	/// The data store contents will be respecified repeatedly by reading data from the GL, and queried many times by the application
+	DynamicRead,
+	
+	/// The data store contents will be respecified repeatedly by reading data from the GL, and used many times as the source for GL (drawing) commands.
+	DynamicCopy
+}
+
+
+
 interface IBufferMngr {
 	void	mapRange(BufferHandle handle, size_t offset, size_t length, BufferAccess access, void delegate(void[]) dg);
+	void	setData(BufferHandle handle, size_t length, void* data, BufferUsage usage);
+	void	setSubData(BufferHandle handle, ptrdiff_t offset, size_t length, void* data);
 	void	flushMappedRange(BufferHandle handle, size_t offset, size_t length);
 	size_t	getApiHandle(BufferHandle handle);
+	void	bind(BufferHandle handle);
 }
 
 
@@ -76,6 +114,12 @@ template MBuffer() {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IBufferMngr)_resMngr).flushMappedRange(_resHandle, offset, length);
+	}
+	
+	void bind() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IBufferMngr)_resMngr).bind(_resHandle);
 	}
 
 	size_t getApiHandle() {
