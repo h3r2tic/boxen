@@ -1,4 +1,4 @@
-module xf.utils.FreeList;
+module xf.mem.FreeList;
 
 private {
 	import xf.mem.OSHeap;
@@ -43,4 +43,24 @@ struct UntypedFreeList {
 		size_t	_itemSize = 0;
 		void*	_freeList = null;
 	}
+}
+
+
+struct FreeList(T) {
+	void initialize() {
+		_impl.itemSize = T.sizeof;
+	}
+	
+	
+	T* alloc() {
+		return cast(T*)_impl.alloc();
+	}
+	
+	
+	void free(T* ptr) {
+		return _impl.free(ptr);
+	}
+	
+	
+	UntypedFreeList	_impl;
 }

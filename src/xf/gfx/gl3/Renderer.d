@@ -8,28 +8,48 @@ public {
 
 private {
 	import xf.Common;
-	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
-	import xf.gfx.gl3.CgEffect;
-	import xf.gfx.gl3.Cg;
 	
-	import xf.gfx.api.gl3.OpenGL;
-	import xf.gfx.api.gl3.ext.ARB_map_buffer_range;
+	import
+		xf.gfx.gl3.CgEffect,
+		xf.gfx.gl3.Cg;
+	
+	import
+		xf.gfx.Resource,
+		xf.gfx.Buffer;
+
+	import
+		xf.gfx.api.gl3.OpenGL,
+		xf.gfx.api.gl3.ext.ARB_map_buffer_range,
+		xf.gfx.api.gl3.ext.ARB_vertex_array_object;
+	
+	import xf.utils.UidPool;
+	import xf.mem.FreeList;
+	import xf.mem.Array;
 }
 
-
-
-private struct BufferData {
-	GLenum	target;
-	GLuint	handle;
-	size_t	refCount;
-}
 
 
 class Renderer : IBufferMngr {
+	// at the front because otherwise DMD is a bitch about forward refs
+	private {
+		GL			gl;
+		CgCompiler	_cgCompiler;
+		
+		ResourcePool!(BufferImpl, BufferHandle)
+			_buffers;
+			
+		ResourcePool!(VertexArrayImpl, VertexArrayHandle)
+			_vertexArrays;
+	}
+
+
 	this(GL gl) {
 		_cgCompiler = new CgCompiler;
 		this.gl[] = gl;
+		
+		_buffers.initialize();
+		_vertexArrays.initialize();
 	}
 	
 	
@@ -50,12 +70,12 @@ class Renderer : IBufferMngr {
 	}
 	
 	
-	BufferData* _getBuffer(BufferHandle h) {
+	BufferImpl* _getBuffer(BufferHandle h) {
 		assert (false, "TODO");
 	}
 	
 	
-	BufferData* _createBuffer(GLenum target) {
+	BufferImpl* _createBuffer(GLenum target) {
 		assert (false, "TODO");
 	}
 	
@@ -109,11 +129,51 @@ class Renderer : IBufferMngr {
 		final buf = _getBuffer(handle);
 		return buf.handle;
 	}
+	
+	
+	private {
+		VertexArray toResourceHandle(_vertexArrays.ResourceReturn resource) {
+			VertexArray res = void;
+			res._resHandle = resource.handle;
+			res._resMngr = cast(void*)this;
+			
+			final acq = &acquireVertexArray;
+			res._acquire = acq.funcptr;
+			
+			final dsp = &disposeVertexArray;
+			res._dispose = dsp.funcptr;
+			return res;
+		}
+		
+		
+		bool acquireVertexArray(VertexArrayHandle h) {
+			if (auto res = _vertexArrays.find(h)) {
+				++res.refCount;
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
+		
+		void disposeVertexArray(VertexArrayHandle h) {
+			if (auto res = _vertexArrays.find(h)) {
+				--res.refCount;
+				if (res.refCount <= 0) {
+					error("TODO: free the resource");
+				}
+			}
+		}
+	}
 
 	
 	VertexArray createVertexArray() {
-		error("TODO: createVertexArray");
-		return VertexArray.init;
+		return toResourceHandle(
+			_vertexArrays.alloc((VertexArrayImpl* n) {
+				gl.GenVertexArrays(1, &n.handle);
+				n.refCount = 1;
+			})
+		);
 	}
 	
 	
@@ -124,9 +184,75 @@ class Renderer : IBufferMngr {
 		);+/
 		assert (false, "TODO");
 	}
+}
+
+
+
+private struct BufferImpl {
+	GLenum		target;
+	GLuint		handle;
+	ptrdiff_t	refCount;
+}
+
+
+private struct VertexArrayImpl {
+	GLuint		handle;
+	ptrdiff_t	refCount;
+}
+
+
+struct ResourcePool(T, Handle) {
+	static assert (Handle.sizeof <= size_t.sizeof);
+	
+	Array!(
+		T*,
+		ArrayExpandPolicy.FixedAmount!(1024)
+	)					_uidMap;
+	UidPool!(size_t)	_uidPool;
+	FreeList!(T)		_resources;
 	
 	
-	GL				gl;
-	CgCompiler		_cgCompiler;	
-	BufferData[]	_buffers;
+	struct ResourceReturn {
+		T*		resource;
+		Handle	handle;
+	}
+	
+	
+	// darn, i want struct ctors :F
+	void initialize() {
+		_resources.initialize();
+	}
+	
+	
+	ResourceReturn alloc(void delegate(T*) resGen) out (res) {
+		assert (res.handle != 0);
+	} body {
+		final uid = _uidPool.alloc();
+		if (uid < _uidMap.length) {
+			return ResourceReturn(
+				_uidMap.ptr[uid],
+				cast(Handle)(uid+1)
+			);
+		} else {
+			assert (uid == _uidMap.length);
+			final res = _resources.alloc();
+			resGen(res);
+			_uidMap.pushBack(res);
+			return ResourceReturn(res, cast(Handle)(uid+1));
+		}
+	}
+	
+	
+	T* find(Handle h) {
+		if (0 == h) {
+			return null;
+		} else {
+			final idx = cast(size_t)h-1;
+			if (idx < _uidMap.length) {
+				return _uidMap.ptr[idx];
+			} else {
+				return null;
+			}			
+		}
+	}
 }

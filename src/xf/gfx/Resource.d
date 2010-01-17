@@ -17,7 +17,7 @@ template MResource() {
 	void*	_resMngr;
 	
 	bool function(Handle)	_acquire;
-	bool function(Handle)	_dispose;
+	void function(Handle)	_dispose;
 	
 	// ----
 	
@@ -29,13 +29,12 @@ template MResource() {
 		return dg(_resHandle);
 	}
 
-	bool dispose() {
-		bool delegate(Handle) dg = void;
+	void dispose() {
+		void delegate(Handle) dg = void;
 		dg.ptr = _resMngr;
 		dg.funcptr = _dispose;
-		auto res = dg(_resHandle);
+		dg(_resHandle);
 		_resHandle = Handle.init;
-		return res;
 	}
 	
 	Resource* asResource() {
