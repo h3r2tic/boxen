@@ -66,9 +66,6 @@ interface IBufferMngr {
 
 
 template MBuffer() {
-	// This is important so the zeroed instances reference null buffers by default
-	static assert (0 == Handle.init);
-	
 	void mapRange(size_t offset, size_t length, BufferAccess access, void delegate(void[]) dg) {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
