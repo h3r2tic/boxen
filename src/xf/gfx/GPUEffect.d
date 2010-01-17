@@ -36,18 +36,36 @@ enum ParamBaseType : ushort {
 }
 
 
-struct UniformParamGroup {
-	// name data allocated using osHeap
-	// names null-terminated at [$]  ( thus safe with both C and D )
-	mixin(multiArray(`params`, `
+// name data allocated using osHeap
+// names null-terminated at [$]  ( thus safe with both C and D )
+const cstring uniformParamMix = `
 		cstring				name
 		UniformParam		param
 		ushort				numFields
 		ParamBaseType		baseType
 		TypeInfo			typeInfo
 		UniformDataSlice	dataSlice
-	`));
-	
+`;
+
+
+struct RawUniformParamGroup {
+	mixin(multiArray(`params`, uniformParamMix));
+
+	size_t getUniformIndex(cstring name) {
+		foreach (i, n; params.name[0..params.length]) {
+			if (n == name) {
+				return i;
+			}
+		}
+		
+		error("Uniform named '{}' doesn't exist.", name);
+		assert(false);
+	}
+}
+
+
+struct UniformParamGroup {
+	mixin(multiArray(`params`, uniformParamMix));
 	
 	void invalidate() {
 		_dirty = true;
@@ -69,6 +87,26 @@ struct UniformParamGroup {
 	private {
 		cstring	_name;
 		bool	_dirty = true;
+	}
+}
+
+
+template MUniformParamGroupInstance() {
+	void setUniform(T)(cstring name, T value) {
+		final up = getUniformParamGroup();
+		final i = up.getUniformIndex(name);
+		
+		if (typeid(T) !is up.params.typeInfo[i]) {
+			error(
+				"TypeInfo mismatch. Param type is {}, got {}.",
+				up.params.typeInfo[i],
+				typeid(T)
+			);
+		}
+		
+		*cast(T*)(
+			getUniformsDataPtr() + up.params.dataSlice[i].offset
+		) = value;
 	}
 }
 
@@ -144,7 +182,16 @@ abstract class GPUEffect {
 		static assert (1 == GPUDomain.Geometry);
 		static assert (2 == GPUDomain.Fragment);
 		static assert (2 == GPUDomain.max);
+
+		final size_t totalInstanceSize() {
+			return instanceDataSize + GPUEffectInstance.sizeof;
+		}
+
+		mixin(multiArray(`_uniformParams`, uniformParamMix));
+		mixin(multiArray(`_effectUniformParams`, uniformParamMix));
 	}
+	
+	// ----
 	
 	public void useGeometryProgram(bool b) {
 		_useGeometryProgram = b;
@@ -158,18 +205,32 @@ abstract class GPUEffect {
 		_domainProgramNames[d] = name;
 	}
 
-	// name data allocated using osHeap
-	// names null-terminated at [$]  ( thus safe with both C and D )
-	mixin(multiArray(`uniformParams`, `
-		cstring				name
-		UniformParam		param
-		ushort				numFields
-		ParamBaseType		baseType
-		TypeInfo			typeInfo
-		UniformDataSlice	dataSlice
-	`));
+	// ----
 	
+	final RawUniformParamGroup* uniformParams() {
+		return cast(RawUniformParamGroup*)&_uniformParams;
+	}
+	
+	final RawUniformParamGroup* effectUniformParams() {
+		return cast(RawUniformParamGroup*)&_effectUniformParams;
+	}
+
+	// ---- uniform param group instance
+
+	alias effectUniformParams getUniformParamGroup;
+
+	void* uniformData;
+	void* getUniformsDataPtr() {
+		return uniformData;
+	}
+	
+	mixin MUniformParamGroupInstance;
+	
+	// ----
+
 	UniformParamGroup[] uniformBuffers;
+
+	// ----
 
 	// name data allocated using osHeap
 	// names null-terminated at [$]  ( thus safe with both C and D )
@@ -178,17 +239,6 @@ abstract class GPUEffect {
 		VaryingParam	param
 	`));
 
-	
-	size_t getUniformIndex(cstring name) {
-		foreach (i, n; uniformParams.name[0..uniformParams.length]) {
-			if (n == name) {
-				return i;
-			}
-		}
-		
-		error("Uniform named '{}' doesn't exist.", name);
-		assert(false);
-	}
 	
 	size_t getVaryingIndex(cstring name) {
 		foreach (i, n; varyingParams.name[0..varyingParams.length]) {
@@ -201,9 +251,7 @@ abstract class GPUEffect {
 		assert(false);
 	}
 
-	final size_t totalInstanceSize() {
-		return instanceDataSize + GPUEffectInstance.sizeof;
-	}
+	// ----
 	
 	GPUEffectInstance* createRawInstance() {
 		auto inst = cast(GPUEffectInstance*)instanceFreeList.alloc();
@@ -220,7 +268,10 @@ abstract class GPUEffect {
 	}
 	
 	
-	UntypedFreeList instanceFreeList;
+	protected {
+		// must be initialized by the compile() function
+		UntypedFreeList instanceFreeList;
+	}
 }
 
 
@@ -237,25 +288,32 @@ abstract class GPUEffect {
  * [_proto.varyingParamsDirtyOffset]	varyings dirty flags ( size_t[] )
  */
 struct GPUEffectInstance {
+	/**
+	 * The effect from which this instance came to be
+	 */
 	GPUEffect	_proto;
+	
+	/**
+	 * A vertex array that caches all VBO bindings so they only need to
+	 * be re-bound when they are actually reset by the user.
+	 */
 	VertexArray	_vertexArray;
 	
-	void setUniform(T)(cstring name, T value) {
-		final i = _proto.getUniformIndex(name);
-		final up = &_proto.uniformParams;
-		
-		if (typeid(T) !is up.typeInfo[i]) {
-			error(
-				"TypeInfo mismatch. Param type is {}, got {}.",
-				up.typeInfo[i],
-				typeid(T)
-			);
-		}
-		
-		*cast(T*)(
-			getUniformsDataPtr() + up.dataSlice[i].offset
-		) = value;
+	
+	// for the uniform param group instance ----
+	
+	RawUniformParamGroup* getUniformParamGroup() {
+		return _proto.uniformParams();
 	}
+
+	void* getUniformsDataPtr() {
+		return cast(void*)this + GPUEffectInstance.sizeof;
+	}
+	
+	mixin MUniformParamGroupInstance;
+
+	// ----
+	
 	
 	
 	/// Returns true if the buffer could be acquired and was successfully set
@@ -343,22 +401,15 @@ struct GPUEffectInstance {
 	}
 	
 	
-	void* getUniformsDataPtr() {
-		return cast(void*)this + GPUEffectInstance.sizeof;
-	}
-	
-	
 	VaryingParamData* getVaryingParamDataPtr() {
 		return cast(VaryingParamData*)(
 			cast(void*)this + GPUEffectInstance.sizeof + _proto.varyingParamsOffset
 		);
 	}
 	
-	
 	VaryingParamData* getVaryingParamData(int i) {
 		return getVaryingParamDataPtr() + i;
 	}
-	
 	
 	size_t* getVaryingParamDirtyFlagsPtr() {
 		return cast(size_t*)(
@@ -366,6 +417,7 @@ struct GPUEffectInstance {
 		);
 	}
 	
+	// ----	
 	
 	void dispose() {
 		_proto.disposeInstance(this);

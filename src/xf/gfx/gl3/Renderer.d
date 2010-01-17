@@ -274,12 +274,9 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			return true;
 		}(), "All objects must have the same GPUEffect");
 
-		effect.bind();
-		
-		void setObjUniforms(GPUEffectInstance* obj) {
-			final up = &effect.uniformParams;
+		void setObjUniforms(void* base, RawUniformParamGroup* paramGroup) {
+			final up = &paramGroup.params;
 			final numUniforms = up.length;
-			void* base = obj.getUniformsDataPtr();
 			
 			for (int ui = 0; ui < numUniforms; ++ui) {
 				switch (up.baseType[ui]) {
@@ -389,9 +386,18 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			}
 		}
 		
+		effect.bind();
+		setObjUniforms(
+			effect.getUniformsDataPtr(),
+			effect.getUniformParamGroup()
+		);
+
 		foreach (obj; objects) {
 			auto efInst = obj.effect;
-			setObjUniforms(efInst);
+			setObjUniforms(
+				efInst.getUniformsDataPtr(),
+				efInst.getUniformParamGroup()
+			);
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
 			

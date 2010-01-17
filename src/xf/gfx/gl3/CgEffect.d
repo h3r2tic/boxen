@@ -11,7 +11,7 @@ private {
 	import xf.gfx.VertexBuffer;
 	
 	import xf.mem.StackBuffer;
-	import xf.mem.OSHeap;
+	import xf.mem.MainHeap;
 	import xf.utils.IntrusiveList;
 	
 	// for the typeinfos of vectors and matrices
@@ -697,24 +697,99 @@ struct CgEffectBuilder {
 					name
 				);
 				
+				enum Scope {
+					Object,
+					Effect
+				}
+				
+				Scope sc = Scope.Object;
+				
+				for (
+					auto ann = cgGetFirstParameterAnnotation(param);
+					ann;
+					ann = cgGetNextAnnotation(ann)
+				) {
+					final annName = fromStringz(cgGetAnnotationName(ann));
+					switch (annName) {
+						case "scope": {
+							final annType = cgGetAnnotationType(ann);
+							
+							if (annType != CG_STRING) {
+								error(
+									"Wrong type for 'scope' annotation of"
+									" parameter '{}': Got {}, expected a string.",
+									name,
+									cgGetTypeString(annType)
+								);
+							}
+							
+							final annVal =
+								fromStringz(cgGetStringAnnotationValue(ann));
+								
+							switch (annVal) {
+								case "object": {
+									sc = Scope.Object;
+								} break;
+								
+								case "effect": {
+									sc = Scope.Effect;
+								} break;
+								
+								default: {
+									error(
+										"Wrong value for 'scope' annotation of"
+										" parameter '{}': Got '{}', while the only"
+										" valid values are 'object' and 'effect'.",
+										name,
+										annVal
+									);
+								}
+							}
+						} break;
+						
+						default: {
+							error(
+								"Unrecognized annotation '{}' for parameter '{}'.",
+								annName, name
+							);
+						}
+					}
+				}
+				
 				final reg = createParam(name, param);
 
-				size_t paramOffset = uniformStorageNeeded;
-				size_t paramSize = reg.typeInfo.tsize();
-				reg.dataSlice = UniformDataSlice(paramOffset, paramSize);
-				
-				uniformStorageNeeded += paramSize;
-				
-				// align to 4 bytes
-				uniformStorageNeeded += 3;
-				uniformStorageNeeded &= ~0b11;
+				void addUniformToScope(ref UniformScope scope_) {
+					with (scope_) {
+						size_t paramOffset = uniformStorageNeeded;
+						size_t paramSize = reg.typeInfo.tsize();
+						reg.dataSlice = UniformDataSlice(paramOffset, paramSize);
+						
+						uniformStorageNeeded += paramSize;
+						
+						// align to 4 bytes
+						uniformStorageNeeded += 3;
+						uniformStorageNeeded &= ~0b11;
 
-				if (uniforms) {
-					uniforms.list ~= reg;
-				} else {
-					uniforms = reg;
+						if (uniforms) {
+							uniforms.list ~= reg;
+						} else {
+							uniforms = reg;
+						}
+						++numUniforms;
+					}
 				}
-				++numUniforms;
+
+				switch (sc) {
+					case Scope.Object: {
+						addUniformToScope(objectScope);
+					} break;
+					
+					case Scope.Effect: {
+						addUniformToScope(effectScope);
+					} break;
+					
+					default: assert (false);
+				}
 			} break;
 			
 			case CG_CONSTANT: {
@@ -730,22 +805,22 @@ struct CgEffectBuilder {
 	}
 	
 	void finish(CgEffect effect) {
-		log.info(
-			"Registered a total of {} uniforms ({} bytes) and {} varyings.",
-			numUniforms,
-			uniformStorageNeeded,
-			numVaryings
-		);
-		
 		int stringLenNeeded = 0;
-		foreach (ref p; uniforms.list) {
-			stringLenNeeded += p.name.length+1;
+		with (objectScope) {
+			if (numUniforms > 0) foreach (ref p; uniforms.list) {
+				stringLenNeeded += p.name.length+1;
+			}
+		}
+		with (effectScope) {
+			if (numUniforms > 0) foreach (ref p; uniforms.list) {
+				stringLenNeeded += p.name.length+1;
+			}
 		}
 		foreach (ref p; varyings.list) {
 			stringLenNeeded += p.name.length+1;
 		}
 		
-		char* nameData = cast(char*)osHeap.allocRaw(stringLenNeeded);
+		char* nameData = cast(char*)mainHeap.allocRaw(stringLenNeeded);
 		final char* nameDataEnd = nameData + stringLenNeeded;
 		log.trace("Allocated {} bytes for param names.", stringLenNeeded);
 		
@@ -760,11 +835,11 @@ struct CgEffectBuilder {
 
 		effect.instanceDataSize = 0;
 		
-		if (numUniforms > 0) {
-			final arr = &effect.uniformParams;
-			arr.resize(numUniforms);
+		void copyUniforms(ref UniformScope sc, RawUniformParamGroup* pg) {
+			final arr = &pg.params;
+			arr.resize(sc.numUniforms);
 			
-			foreach (i, ref p; uniforms.list) {
+			foreach (i, ref p; sc.uniforms.list) {
 				arr.name[i] = convertParamName(p.name);
 				arr.param[i] = cast(UniformParam)p.handle;
 				arr.numFields[i] = p.numFields;
@@ -773,7 +848,19 @@ struct CgEffectBuilder {
 				arr.dataSlice[i] = p.dataSlice;
 			}
 		}
-		effect.instanceDataSize += uniformStorageNeeded;
+		
+		if (objectScope.numUniforms > 0) {
+			final arr = effect.uniformParams();
+			copyUniforms(objectScope, arr);
+			effect.instanceDataSize += objectScope.uniformStorageNeeded;
+		}
+
+		if (effectScope.numUniforms > 0) {
+			final arr = effect.effectUniformParams();
+			copyUniforms(effectScope, arr);
+			effect.uniformData = mainHeap.allocRaw(effectScope.uniformStorageNeeded);
+			memset(effect.uniformData, 0, effectScope.uniformStorageNeeded);
+		}
 
 		if (numVaryings > 0) {
 			final arr = &effect.varyingParams;
@@ -817,13 +904,17 @@ struct CgEffectBuilder {
 		);
 	}
 	
-	RegisteredParam* uniforms = null;
-	RegisteredParam* varyings = null;
 	
-	int numUniforms = 0;
-	int numVaryings = 0;
+	struct UniformScope {
+		RegisteredParam*	uniforms = null;
+		int					numUniforms = 0;
+		size_t				uniformStorageNeeded = 0;
+	}
 	
-	size_t uniformStorageNeeded = 0;
+	RegisteredParam*	varyings = null;
+	int					numVaryings = 0;
 	
-	StackBufferUnsafe mem;
+	UniformScope		objectScope;
+	UniformScope		effectScope;
+	StackBufferUnsafe	mem;
 }
