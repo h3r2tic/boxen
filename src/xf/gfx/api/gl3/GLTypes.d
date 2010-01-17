@@ -183,24 +183,65 @@ void* gl_getExtensionFuncPtr(char* name, uint fnId_, GLContextData* gl) {
 }
 
 
-/+extern (C) size_t poopie(char* fname, int frameSize, size_t retVal) {
-	printf(
+extern (System) GLenum function() _glGetError;
+
+extern (C) size_t _glErrorChecker(char* fname, int frameSize, size_t retVal) {
+	/+printf(
 		"validate func call called with %s, %d and %d\n",
 		fname, frameSize, retVal
-	);
-	return retVal;
-}+/
+	);+/
+
+	if (_glGetError is null) {
+		_glGetError = cast(typeof(_glGetError))_getCoreFuncPtr("glGetError");
+		assert (_glGetError !is null);
+	}
+	
+	enum GLError {
+		NO_ERROR = 0,
+		INVALID_ENUM = 0x0500,
+		INVALID_VALUE = 0x0501,
+		INVALID_OPERATION = 0x0502,
+		STACK_OVERFLOW = 0x0503,
+		STACK_UNDERFLOW = 0x0504,
+		OUT_OF_MEMORY = 0x0505,
+		TABLE_TOO_LARGE_EXT = 0x8031,
+		TEXTURE_TOO_LARGE_EXT = 0x8065
+	}
+
+	final err = _glGetError();
+	if (err == GLError.NO_ERROR) {
+		return retVal;
+	} else {
+		void handleError(char[] str) {
+			throw new Exception(str);
+		}
+		
+		switch (err) {
+			case GLError.INVALID_ENUM:	handleError("OpenGL error: INVALID_ENUM");
+			case GLError.INVALID_VALUE:	handleError("OpenGL error: INVALID_VALUE");
+			case GLError.INVALID_OPERATION:	handleError("OpenGL error: INVALID_OPERATION");
+			case GLError.STACK_OVERFLOW:	handleError("OpenGL error: STACK_OVERFLOW");
+			case GLError.STACK_UNDERFLOW:	handleError("OpenGL error: STACK_UNDERFLOW");
+			case GLError.OUT_OF_MEMORY:	handleError("OpenGL error: OUT_OF_MEMORY");
+			case GLError.TABLE_TOO_LARGE_EXT:	handleError("OpenGL error: TABLE_TOO_LARGE_EXT");
+			case GLError.TEXTURE_TOO_LARGE_EXT:	handleError("OpenGL error: TEXTURE_TOO_LARGE_EXT");
+			default: {
+				handleError("Unknown OpenGL error");
+			}
+		}
+	}
+}
 
 void validateFuncCallProc() {
 	asm {
 		naked;
-		/+push EAX;
+		push EAX;
 		push ECX;
 		push EDX;
-		call poopie;
+		call _glErrorChecker;
 		pop EDX;
 		pop ECX;
-		pop EAX;+/
+		pop EAX;
 
 		/+cmp EAX, 123;
 		je validated;

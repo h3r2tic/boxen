@@ -110,6 +110,18 @@ template MBuffer() {
 		return (cast(IBufferMngr)_resMngr).mapRange(_resHandle, offset, length, access, dg);
 	}
 	
+	void setData(size_t length, void* data, BufferUsage usage) {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IBufferMngr)_resMngr).setData(_resHandle, length, data, usage);
+	}
+	
+	void setSubData(ptrdiff_t offset, size_t length, void* data) {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IBufferMngr)_resMngr).setSubData(_resHandle, offset, length, data);
+	}
+
 	void flushMappedRange(size_t offset, size_t length) {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);

@@ -19,13 +19,13 @@ private {
 }
 
 
-private static void defaultHandleCgError() {
+
+void defaultHandleCgError() {
 	final err = cgGetError();
 	if (err != CG_NO_ERROR) {
 		error("Cg error: {}", fromStringz(cgGetErrorString(err)));
 	}
 }
-
 
 
 class CgEffect : GPUEffect {
