@@ -7,30 +7,32 @@ private {
 
 
 struct UidPool(T) {
-	T alloc() {
-		if (recycledIds.length > 0) {
-			return recycledIds.popBack;
+	struct UID {
+		T		id;
+		size_t	reuseCnt = 0;
+	}
+	
+	
+	UID alloc() {
+		if (_recycledIds.length > 0) {
+			return _recycledIds.popBack;
 		} else {
-			return nextId++;
+			return UID(_nextId++, 0);
 		}
 	}
 	
 	
-	void free(T id) {
-		if (nextId == id + 1) {
-			--nextId;
-		} else {
-			recycledIds.pushBack(id);
-		}
+	void free(UID id) {
+		_recycledIds.pushBack(UID(id.id, id.reuseCnt+1));
 	}
 	
 	
 	private {
 		Array!(
-			T,
+			UID,
 			ArrayExpandPolicy.FixedAmount!(1024)
 
-		)	recycledIds;
-		T	nextId = 0;
+		)		_recycledIds;
+		T		_nextId = 0;
 	}
 }

@@ -7,25 +7,26 @@ public {
 }
 
 private {
-	import xf.Common;
-	import xf.gfx.Log : log = gfxLog, error = gfxError;
-	
 	import
-		xf.gfx.gl3.CgEffect,
-		xf.gfx.gl3.Cg;
-	
-	import
-		xf.gfx.Resource,
-		xf.gfx.Buffer;
+		xf.Common,
 
-	import
+		xf.gfx.gl3.CgEffect,
+		xf.gfx.gl3.Cg,
+	
+		xf.gfx.Resource,
+		xf.gfx.Buffer,
+
 		xf.gfx.api.gl3.OpenGL,
 		xf.gfx.api.gl3.ext.ARB_map_buffer_range,
-		xf.gfx.api.gl3.ext.ARB_vertex_array_object;
-	
-	import xf.utils.UidPool;
-	import xf.mem.FreeList;
-	import xf.mem.Array;
+		xf.gfx.api.gl3.ext.ARB_vertex_array_object,
+
+		xf.mem.FreeList,
+		xf.mem.Array,
+		
+		xf.utils.ResourcePool;
+
+	import
+		xf.gfx.Log : log = gfxLog, error = gfxError;
 }
 
 
@@ -36,10 +37,10 @@ class Renderer : IBufferMngr {
 		GL			gl;
 		CgCompiler	_cgCompiler;
 		
-		ResourcePool!(BufferImpl, BufferHandle)
+		ThreadUnsafeResourcePool!(BufferImpl, BufferHandle)
 			_buffers;
 			
-		ResourcePool!(VertexArrayImpl, VertexArrayHandle)
+		ThreadUnsafeResourcePool!(VertexArrayImpl, VertexArrayHandle)
 			_vertexArrays;
 	}
 
@@ -137,32 +138,25 @@ class Renderer : IBufferMngr {
 			res._resHandle = resource.handle;
 			res._resMngr = cast(void*)this;
 			
-			final acq = &acquireVertexArray;
-			res._acquire = acq.funcptr;
-			
-			final dsp = &disposeVertexArray;
-			res._dispose = dsp.funcptr;
+			final rcnt = &resCountVertexArray;
+			res._resCountAdjust = rcnt.funcptr;
 			return res;
 		}
 		
 		
-		bool acquireVertexArray(VertexArrayHandle h) {
-			if (auto res = _vertexArrays.find(h)) {
-				++res.refCount;
-				return true;
-			} else {
-				return false;
-			}
-		}
-		
-		
-		void disposeVertexArray(VertexArrayHandle h) {
-			if (auto res = _vertexArrays.find(h)) {
-				--res.refCount;
-				if (res.refCount <= 0) {
-					error("TODO: free the resource");
+		bool resCountVertexArray(VertexArrayHandle h, int cnt) {
+			if (auto resData = _vertexArrays.find(h, cnt > 0)) {
+				auto res = resData.res;
+				bool goodBefore = res.refCount > 0;
+				res.refCount += cnt;
+				if (res.refCount > 0) {
+					return true;
+				} else if (goodBefore) {
+					_vertexArrays.free(resData);
 				}
 			}
+			
+			return false;
 		}
 	}
 
@@ -198,61 +192,4 @@ private struct BufferImpl {
 private struct VertexArrayImpl {
 	GLuint		handle;
 	ptrdiff_t	refCount;
-}
-
-
-struct ResourcePool(T, Handle) {
-	static assert (Handle.sizeof <= size_t.sizeof);
-	
-	Array!(
-		T*,
-		ArrayExpandPolicy.FixedAmount!(1024)
-	)					_uidMap;
-	UidPool!(size_t)	_uidPool;
-	FreeList!(T)		_resources;
-	
-	
-	struct ResourceReturn {
-		T*		resource;
-		Handle	handle;
-	}
-	
-	
-	// darn, i want struct ctors :F
-	void initialize() {
-		_resources.initialize();
-	}
-	
-	
-	ResourceReturn alloc(void delegate(T*) resGen) out (res) {
-		assert (res.handle != 0);
-	} body {
-		final uid = _uidPool.alloc();
-		if (uid < _uidMap.length) {
-			return ResourceReturn(
-				_uidMap.ptr[uid],
-				cast(Handle)(uid+1)
-			);
-		} else {
-			assert (uid == _uidMap.length);
-			final res = _resources.alloc();
-			resGen(res);
-			_uidMap.pushBack(res);
-			return ResourceReturn(res, cast(Handle)(uid+1));
-		}
-	}
-	
-	
-	T* find(Handle h) {
-		if (0 == h) {
-			return null;
-		} else {
-			final idx = cast(size_t)h-1;
-			if (idx < _uidMap.length) {
-				return _uidMap.ptr[idx];
-			} else {
-				return null;
-			}			
-		}
-	}
 }

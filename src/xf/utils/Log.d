@@ -1,15 +1,11 @@
 module xf.utils.Log;
 
-private {
-	import xf.Common;
-}
-
 public {
 	import tango.util.log.model.ILogger : ILogger;
 }
 
 
-cstring createLoggerMixin(cstring name) {
+char[] createLoggerMixin(char[] name) {
 	return `
 		private __thread ILogger _`~name~`_inst;
 
@@ -24,4 +20,7 @@ cstring createLoggerMixin(cstring name) {
 }
 
 
-extern (C) extern ILogger _xf_createLogger(cstring name);
+extern (C) extern ILogger _xf_createLogger(char[] name);
+
+
+mixin(createLoggerMixin("utilsLog"));
