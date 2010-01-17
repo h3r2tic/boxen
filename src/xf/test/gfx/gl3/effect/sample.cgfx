@@ -16,10 +16,10 @@ struct PointLight : ILight {
 	float3 position;
 	float4 color;
 
-	float4 illuminate(float3 pos, float3 norm) {
-		float3 toLight = position - pos;
-		float4 falloff = dot(normalize(toLight), norm).xxxx;
-		return color * falloff / dot(toLight, toLight);
+	float4 illuminate(float3 point, float3 norm) {
+		float3 toLight = position - point;
+		float4 falloff = saturate(dot(normalize(toLight), norm).xxxx);
+		return color * falloff / dot(toLight, toLight).xxxx;
 	}
 };
 
@@ -51,19 +51,20 @@ void VertexProgram(
 	out fragInput output
 ) {
 	outPos = mul(modelToWorld, float4(input.position, 1.0f));
-	output.position = outPos.xyz;
 	outPos = mul(worldToScreen, outPos);
-	output.normal = mul(modelToWorld, float4(input.normal, 0.0f)).xyz;
+	
+	output.position = input.position;
+	output.normal = input.normal;
 }
 
 
 void FragmentProgram(
 	in fragInput input,
-	out float4 output
+	out float4 output : COLOR
 ) {
 	output = float4(0, 0, 0, 0);
+	float3 normal = normalize(input.normal);
 	for (int i = 0; i < lights.length; ++i) {
-		output += lights[i].illuminate(input.position, input.normal);
-		//output += zomgfuck;
+		output += lights[i].illuminate(input.position, normal);
 	}
 }

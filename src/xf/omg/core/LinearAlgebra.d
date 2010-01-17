@@ -1085,6 +1085,7 @@ struct Matrix(flt_, int rows_, int cols_) {
 		
 		
 		static if (4 == rows) {
+			// fov in degrees
 			static Matrix perspective(real fov, real aspect, real near, real far) {
 				assert (fov <>= 0 && aspect <>= 0 && near <>= 0 && far <>= 0);
 				assert (fov > 0 && fov < 180);

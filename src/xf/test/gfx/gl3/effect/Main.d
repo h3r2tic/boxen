@@ -25,8 +25,8 @@ void main() {
 		.title("Effect Test")
 		.showCursor(true)
 		.fullscreen(false)
-		.width(320)
-		.height(240)
+		.width(800)
+		.height(600)
 	.create();
 	
 
@@ -38,11 +38,17 @@ void main() {
 		
 		gl.SwapIntervalEXT(1);
 		gl.Enable(FRAMEBUFFER_SRGB_EXT);
+		gl.Enable(DEPTH_TEST);
+		
+		// Create the effect from a cgfx file
 		
 		auto effect = renderer.createEffect(
 			"sample",
 			EffectSource.filePath("sample.cgfx")
 		);
+		
+		// Specialize the shader template with 2 lights
+		// - an ambient and a point light
 
 		effect.useGeometryProgram = false;
 		effect.setArraySize("lights", 2);
@@ -50,30 +56,63 @@ void main() {
 		effect.setUniformType("lights[1]", "PointLight");
 		effect.compile();
 		
-		effect.getUniformIndex("lights[0].color");
-		try {
-			effect.getUniformIndex("lights[0].error");
-			Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
-		}
-		catch (Exception e) {
-			Stdout.formatln("Effect error reporting OK.");
-		}
-		
-		Stdout.formatln("Effect uniforms:");
-		for (int i = 0; i < effect.uniformParams.length; ++i) {
-			Stdout.formatln("\t{}", effect.uniformParams.name[i]);
-		}
+		// ---- Some debug info printing ----
+		{
+			effect.getUniformIndex("lights[0].color");
+			try {
+				effect.getUniformIndex("lights[0].error");
+				Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
+			}
+			catch (Exception e) {
+				Stdout.formatln("Effect error reporting OK.");
+			}
+			
+			Stdout.formatln("Effect uniforms:");
+			for (int i = 0; i < effect.uniformParams.length; ++i) {
+				Stdout.formatln("\t{}", effect.uniformParams.name[i]);
+			}
 
-		Stdout.formatln("Effect varyings:");
-		for (int i = 0; i < effect.varyingParams.length; ++i) {
-			Stdout.formatln("\t{}", effect.varyingParams.name[i]);
+			Stdout.formatln("Effect varyings:");
+			for (int i = 0; i < effect.varyingParams.length; ++i) {
+				Stdout.formatln("\t{}", effect.varyingParams.name[i]);
+			}
 		}
 		
+		// Instantiate the effect and initialize its uniforms
+
 		efInst = renderer.instantiateEffect(effect);
-		efInst.setUniform("lights[0].color", vec4.one);
+		
+		efInst.setUniform("lights[0].color",
+			vec4(0.0f, 0.0f, 0.01f)
+		);
+		efInst.setUniform("lights[1].color",
+			vec4(1.0f, 0.7f, 0.4f) * 2.f
+		);
+		
+		efInst.setUniform("modelToWorld",
+			mat4.translation(vec3(0, 0, -3)) *
+			mat4.xRotation(30.0f) *
+			mat4.yRotation(30.0f)
+		);
+		
+		efInst.setUniform("worldToScreen",
+			mat4.perspective(
+				90.0f,	// fov
+				cast(float)context.width / context.height,	// aspect
+				0.1f,	// near
+				100.0f	// far
+			)
+		);
+		
+		// Create a vertex buffer and bind it to the shader
 		
 		auto vb = renderer.createVertexBuffer();
 		
+		struct Vertex {
+			vec3	pos;
+			vec3	norm;
+		}
+
 		efInst.setVarying(
 			"VertexProgram.input.position",
 			vb,
@@ -94,28 +133,34 @@ void main() {
 			)
 		);
 		
-		struct Vertex {
-			vec3	pos;
-			vec3	norm;
-		}
+		// Initialize the vertex data to a cube primitive
 		
 		Vertex[] vertices;
 		vertices.length = Cube.positions.length;
+		
 		foreach (i, ref v; vertices) {
 			v.pos = Cube.positions[i];
-			v.pos = Cube.normals[i];
+			v.norm = Cube.normals[i];
 		}
 		
 		vb.setData(
-			vertices.length * Vertex.sizeof,
-			vertices.ptr,
+			cast(void[])vertices,
 			BufferUsage.StaticDraw
 		);
+		
+		delete vertices;
 	};
 	
+	
+	float lightRot = 0.0f;
 
 	while (context.created) {
 		use(context) in (GL gl) {
+			lightRot += 2.0f;
+			efInst.setUniform("lights[1].position",
+				quat.yRotation(lightRot).xform(vec3(2, 2, 0))
+			);
+
 			draw(gl, efInst);
 		};
 		
