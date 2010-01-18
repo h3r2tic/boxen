@@ -8,4 +8,5 @@ private {
 struct Mesh {
 	GPUEffectInstance*	effect;
 	uint[]				indices;
+	size_t				numInstances = 1;
 }

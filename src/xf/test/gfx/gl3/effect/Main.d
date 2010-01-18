@@ -186,6 +186,7 @@ void main() {
 		
 		mesh.indices = Cube.indices;
 		mesh.effect = efInst;
+		mesh.numInstances = 4;
 	};
 	
 	
