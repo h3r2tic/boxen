@@ -9,7 +9,7 @@ rendering game plan:
 		+ steal VBOs from Heresy/Deadlock for now
 	+ per-shader uniforms
 	? per-shader-group uniforms
-	uniform buffers
+	+ uniform buffers
 	instancing
 	render lists
 		grouping by shader group and then by shader

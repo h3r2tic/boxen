@@ -99,6 +99,7 @@ interface IBufferMngr {
 	void	setSubData(BufferHandle handle, ptrdiff_t offset, size_t length, void* data);
 	void	flushMappedRange(BufferHandle handle, size_t offset, size_t length);
 	size_t	getApiHandle(BufferHandle handle);
+	//size_t	getShaderApiHandle(BufferHandle handle);
 	void	bind(BufferHandle handle);
 }
 
@@ -109,23 +110,17 @@ template MBuffer() {
 		assert (_resMngr !is null);
 		return (cast(IBufferMngr)_resMngr).mapRange(_resHandle, offset, length, access, dg);
 	}
-	
-	void setData(size_t length, void* data, BufferUsage usage) {
+
+	void setData(void[] data) {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
-		return (cast(IBufferMngr)_resMngr).setData(_resHandle, length, data, usage);
+		return (cast(IBufferMngr)_resMngr).setSubData(_resHandle, 0, data.length, data.ptr);
 	}
 	
 	void setData(void[] data, BufferUsage usage) {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IBufferMngr)_resMngr).setData(_resHandle, data.length, data.ptr, usage);
-	}
-
-	void setSubData(ptrdiff_t offset, size_t length, void* data) {
-		assert (_resHandle !is Handle.init);
-		assert (_resMngr !is null);
-		return (cast(IBufferMngr)_resMngr).setSubData(_resHandle, offset, length, data);
 	}
 
 	void setSubData(BufferHandle handle, ptrdiff_t offset, void[] data) {
@@ -152,8 +147,18 @@ template MBuffer() {
 		return (cast(IBufferMngr)_resMngr).getApiHandle(_resHandle);
 	}
 	
+	/+size_t getShaderApiHandle() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IBufferMngr)_resMngr).getShaderApiHandle(_resHandle);
+	}+/
+
 	bool valid() {
 		return _resHandle !is Handle.init;
+	}
+
+	Buffer* asBuffer() {
+		return cast(Buffer*)this;
 	}
 }
 

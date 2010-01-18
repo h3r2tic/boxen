@@ -5,6 +5,7 @@ public {
 		xf.gfx.Buffer,
 		xf.gfx.VertexArray,
 		xf.gfx.VertexBuffer,
+		xf.gfx.UniformBuffer,
 		xf.gfx.Mesh,
 		xf.gfx.gl3.Cg;
 }
@@ -50,7 +51,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 
 
 	this(GL gl) {
-		_cgCompiler = new CgCompiler;
+		_cgCompiler = new CgCompiler(gl);
 		this.gl[] = gl;
 		
 		_buffers.initialize();
@@ -95,20 +96,40 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		void delegate(void[]) dg
 	) {
 		if (auto buf = _getBuffer(handle)) {
-			_bindBuffer(buf.target, buf.handle);
-			
-			final ptr = gl.MapBufferRange(
-				buf.target,
-				offset,
-				length,
-				enumToGL(access)
-			);
-			
-			scope (exit) {
-				gl.UnmapBuffer(buf.target);
+			/+if (UNIFORM_BUFFER == buf.target) {
+				if (offset != 0) {
+					error("Offset not supported in mapRange for uniform buffers.");
+				}
+				if (length != buf.size) {
+					error("Partial mapping not supported in mapRange for uniform buffers.");
+				}
+				
+				final ptr = cgMapBuffer(buf.cgHandle, enumToCg(access));
+				
+				defaultHandleCgError();
+
+				scope (exit) {
+					cgUnmapBuffer(buf.cgHandle);
+					defaultHandleCgError();
+				}
+				
+				dg(ptr[0..buf.size]);
+			} else +/{
+				_bindBuffer(buf.target, buf.handle);
+				
+				final ptr = gl.MapBufferRange(
+					buf.target,
+					offset,
+					length,
+					enumToGL(access)
+				);
+				
+				scope (exit) {
+					gl.UnmapBuffer(buf.target);
+				}
+				
+				dg(ptr[0..length]);
 			}
-			
-			dg(ptr[0..length]);
 		}
 	}
 	
@@ -118,6 +139,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		if (auto buf = _getBuffer(handle)) {
 			_bindBuffer(buf.target, buf.handle);
 			gl.BufferData(buf.target, length, data, enumToGL(usage));
+			buf.size = length;
 		}
 	}
 	
@@ -125,6 +147,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 	// implements IBufferMngr
 	void setSubData(BufferHandle handle, ptrdiff_t offset, size_t length, void* data) {
 		if (auto buf = _getBuffer(handle)) {
+			//cgSetBufferSubData(buf.cgHandle, offset, length, data);
 			_bindBuffer(buf.target, buf.handle);
 			gl.BufferSubData(buf.target, offset, length, data);
 		}
@@ -153,6 +176,15 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			return 0;
 		}
 	}
+	
+	/+// implements IBufferMngr
+	size_t getShaderApiHandle(BufferHandle handle) {
+		if (auto buf = _getBuffer(handle)) {
+			return cast(size_t)buf.cgHandle;
+		} else {
+			return 0;
+		}
+	}+/
 	
 	// implements IBufferMngr
 	void bind(BufferHandle handle) {
@@ -243,16 +275,62 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			return false;
 		}
 	}
+	
+	
+	VertexBuffer createVertexBuffer(BufferUsage usage, void[] data) {
+		return createVertexBuffer(usage, data.length, data.ptr);
+	}
 
-	VertexBuffer createVertexBuffer() {
-		final buf = toResourceHandle(
+	VertexBuffer createVertexBuffer(BufferUsage usage, int size, void* data) {
+		return cast(VertexBuffer)
+			createBuffer(usage, size, data, ARRAY_BUFFER);
+	}
+	
+
+	UniformBuffer createUniformBuffer(BufferUsage usage, void[] data) {
+		return createUniformBuffer(usage, data.length, data.ptr);
+	}
+
+	UniformBuffer createUniformBuffer(BufferUsage usage, int size, void* data) {
+		return cast(UniformBuffer)
+			createBuffer(usage, size, data, UNIFORM_BUFFER);
+	}
+
+
+	Buffer createBuffer(BufferUsage usage, int size, void* data, GLenum target) {
+		return toResourceHandle(
+			/+_buffers.alloc((BufferImpl* n) {
+				n.refCount = 1;
+				
+				n.cgHandle = cgGLCreateBuffer(
+					_cgCompiler.context,
+					size,
+					data,
+					enumToGL(usage)
+				);
+				
+				n.handle = cgGLGetBufferObject(n.cgHandle);
+				n.target = target;
+				n.size = size;
+			})+/
+
+
 			_buffers.alloc((BufferImpl* n) {
 				n.refCount = 1;
+				
 				gl.GenBuffers(1, &n.handle);
-				n.target = ARRAY_BUFFER;
+				gl.BindBuffer(target, n.handle);
+				gl.BufferData(
+					target,
+					size,
+					data,
+					enumToGL(usage)
+				);
+				
+				n.target = target;
+				n.size = size;
 			})
 		);
-		return *cast(VertexBuffer*)&buf;
 	}
 	
 	
@@ -416,7 +494,9 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 private struct BufferImpl {
 	ptrdiff_t	refCount;
 	GLuint		handle;
+	//CGbuffer	cgHandle;
 	GLenum		target;
+	size_t		size;
 }
 
 
@@ -430,17 +510,11 @@ private GLenum enumToGL(BufferAccess bits) {
 	GLenum en = 0;
 	
 	if (bits & bits.Read) {
-		if (bits & bits.Write) {
-			en |= READ_WRITE;
-		} else {
-			en |= READ_ONLY;
-		}
-	} else {
-		if (bits & bits.Write) {
-			en |= WRITE_ONLY;
-		} else {
-			error("Invalid BufferAccess enum: {}", bits);
-		}
+		en |= xf.gfx.api.gl3.GL.MAP_READ_BIT;
+	}
+	
+	if (bits & bits.Write) {
+		en |= xf.gfx.api.gl3.GL.MAP_WRITE_BIT;
 	}
 	
 	if (bits & bits.InvalidateRange) {
@@ -477,4 +551,25 @@ private GLenum enumToGL(BufferUsage usage) {
 	];
 	
 	return map[usage];
+}
+
+
+private CGbufferaccess enumToCg(BufferAccess bits) {
+	CGbufferaccess en;
+	
+	if (bits & bits.Read) {
+		if (bits & bits.Write) {
+			en |= CG_MAP_READ_WRITE;
+		} else {
+			en |= CG_MAP_READ;
+		}
+	} else {
+		en |= CG_MAP_WRITE;
+	}
+	
+	if (bits & (bits.InvalidateRange | bits.InvalidateBuffer)) {
+		en |= CG_MAP_WRITE_DISCARD;
+	}
+	
+	return en;
 }

@@ -7,17 +7,31 @@ public {
 private {
 	import xf.Common;	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
-	import xf.gfx.api.gl3.Cg;
-	import xf.gfx.VertexBuffer;
+
+	import
+		xf.gfx.api.gl3.Cg,
+		xf.gfx.api.gl3.OpenGL,
+		xf.gfx.api.gl3.ext.NV_parameter_buffer_object,
+		xf.gfx.api.gl3.ext.NV_transform_feedback,
+		xf.gfx.Buffer,
+		xf.gfx.VertexBuffer;
 	
-	import xf.mem.StackBuffer;
-	import xf.mem.MainHeap;
+	import
+		xf.mem.StackBuffer,
+		xf.mem.MainHeap;
+		
 	import xf.utils.IntrusiveList;
 	
 	// for the typeinfos of vectors and matrices
 	import xf.omg.core.LinearAlgebra;
 }
 
+
+
+enum {
+	// According to Cg 2.2
+	MaxUniformBuffers = 12
+}
 
 
 void defaultHandleCgError() {
@@ -29,9 +43,10 @@ void defaultHandleCgError() {
 
 
 class CgEffect : GPUEffect {
-	this (cstring name, CGeffect handle) {
+	this (cstring name, CGeffect handle, GL gl) {
 		this._name = name;
 		this._handle = handle;
+		this.gl[] = gl;
 		
 		assert (_handle !is null);
 		assert (CG_NO_ERROR == cgGetError());
@@ -162,7 +177,7 @@ class CgEffect : GPUEffect {
 			error("Error copying Cg effect '{}': unknown reason :(", _name);
 		}
 
-		final res = new CgEffect(_name, nh);
+		final res = new CgEffect(_name, nh, gl);
 		this.copyToNew(res);
 		return res;
 	}
@@ -237,6 +252,56 @@ class CgEffect : GPUEffect {
 		cgGLEnableProfile(cgGetProgramProfile(_fragmentProgram));
 		cgGLBindProgram(_fragmentProgram);
 		
+		defaultHandleCgError();
+	}
+	
+	
+	override void bindUniformBuffer(int idx, Buffer buf) {
+		defaultHandleCgError();
+		
+		/+CGbuffer cgBuf = buf.valid()
+			? cast(CGbuffer)buf.getShaderApiHandle()
+			: null;
+		
+		if (cgBuf) {
+			log.trace("Binding a non-null uniform buffer for an effect.");
+		}+/
+		
+		foreach (domain, prog; &iterCgPrograms) {
+			/+cgSetProgramBuffer(
+				prog,
+				idx,
+				cgBuf
+			);+/
+			
+			// HACK: this probably should not be done like this,
+			// but Cg 2.2 refuses to update the uniform buffer
+			// when not using Cg functions directly on it.
+			// additionally, Cg forces the creation of buffer objects
+			// through its own API, taking control of the 'target' param.
+			GLenum target = void;
+			switch (domain) {
+				case GPUDomain.Vertex: {
+					target = VERTEX_PROGRAM_PARAMETER_BUFFER_NV;
+				} break;
+
+				case GPUDomain.Geometry: {
+					target = GEOMETRY_PROGRAM_PARAMETER_BUFFER_NV;
+				} break;
+
+				case GPUDomain.Fragment: {
+					target = FRAGMENT_PROGRAM_PARAMETER_BUFFER_NV;
+				} break;
+				
+				default: assert (false);
+			}
+			gl.BindBufferBaseNV(
+				target,
+				idx,
+				buf.getApiHandle()
+			);
+		}
+
 		defaultHandleCgError();
 	}
 	
@@ -489,6 +554,7 @@ class CgEffect : GPUEffect {
 		CGprogram	_vertexProgram;
 		CGprogram	_geometryProgram;
 		CGprogram	_fragmentProgram;
+		GL			gl;
 	}
 }
 
@@ -671,7 +737,63 @@ struct CgEffectBuilder {
 			n2[scopeName.length+1..$] = name;
 			name = n2;
 		}
+		
+		int uniformBufferIdx	= -1;
+		int uniformBufferOffset	= 0;
+		int uniformGPUSize		= 0;
+		
+		if (share) {
+			int numCon = cgGetNumConnectedToParameters(param);
 
+			for (int i = 0; i < numCon; ++i) {
+				final	conPar = cgGetConnectedToParameter(param, i);
+				final	bufIdx = cgGetParameterBufferIndex(conPar);
+				int		bufOff = 0;
+				
+				if (bufIdx != -1) {
+					bufOff = cgGetParameterBufferOffset(conPar);
+					uniformGPUSize = cgGetParameterResourceSize(conPar);
+				}
+				
+				defaultHandleCgError();
+				
+				if (-1 == uniformBufferIdx) {
+					uniformBufferIdx = bufIdx;
+					uniformBufferOffset = bufOff;
+				} else if (bufIdx != -1) {
+					if (uniformBufferIdx != bufIdx) {
+						error(
+							"Shared effect parameter '{}' has multiple buffer"
+							" indices: {} and {}",
+							name,
+							uniformBufferIdx,
+							bufIdx
+						);
+					}
+
+					if (uniformBufferOffset != bufOff) {
+						error(
+							"Shared effect parameter '{}' has multiple buffer"
+							" offsets: {} and {}",
+							name,
+							uniformBufferOffset,
+							bufOff
+						);
+					}
+				}
+			}
+		} else {
+			uniformBufferIdx = cgGetParameterBufferIndex(param);
+			if (uniformBufferIdx != -1) {
+				uniformBufferOffset = cgGetParameterBufferOffset(param);
+				uniformGPUSize = cgGetParameterResourceSize(param);
+			}
+		}
+		
+		if (uniformBufferIdx != -1) {
+			assert (CG_UNIFORM == variability);
+		}
+		
 		switch (variability) {
 			case CG_VARYING: {
 				log.trace(
@@ -699,12 +821,14 @@ struct CgEffectBuilder {
 				
 				enum Scope {
 					Object,
-					Effect
+					Effect,
+					Buffer
 				}
 				
-				Scope sc = Scope.Object;
+				Scope sc = -1 == uniformBufferIdx ? Scope.Object : Scope.Buffer;
 				
-				for (
+				
+				if (sc != Scope.Buffer)	for (
 					auto ann = cgGetFirstParameterAnnotation(param);
 					ann;
 					ann = cgGetNextAnnotation(ann)
@@ -762,13 +886,28 @@ struct CgEffectBuilder {
 					with (scope_) {
 						size_t paramOffset = uniformStorageNeeded;
 						size_t paramSize = reg.typeInfo.tsize();
+						
+						if (Scope.Buffer == sc) {
+							paramOffset = uniformBufferOffset;
+							assert (paramSize <= uniformGPUSize);
+							paramSize = uniformGPUSize;
+						}
+						
 						reg.dataSlice = UniformDataSlice(paramOffset, paramSize);
 						
-						uniformStorageNeeded += paramSize;
-						
-						// align to 4 bytes
-						uniformStorageNeeded += 3;
-						uniformStorageNeeded &= ~0b11;
+						if (Scope.Buffer == sc) {
+							size_t paramEnd = paramOffset + paramSize;
+							
+							if (paramEnd > uniformStorageNeeded) {
+								uniformStorageNeeded = paramEnd;
+							}
+						} else {
+							uniformStorageNeeded += paramSize;
+							
+							// align to 4 bytes
+							uniformStorageNeeded += 3;
+							uniformStorageNeeded &= ~0b11;
+						}
 
 						if (uniforms) {
 							uniforms.list ~= reg;
@@ -788,6 +927,13 @@ struct CgEffectBuilder {
 						addUniformToScope(effectScope);
 					} break;
 					
+					case Scope.Buffer: {
+						addUniformToScope(bufferScope[uniformBufferIdx]);
+						if (uniformBufferIdx > maxUniformBufferIdx) {
+							maxUniformBufferIdx = uniformBufferIdx;
+						}
+					} break;
+					
 					default: assert (false);
 				}
 			} break;
@@ -805,6 +951,10 @@ struct CgEffectBuilder {
 	}
 	
 	void finish(CgEffect effect) {
+		int numUnifBufs = maxUniformBufferIdx+1;
+		
+		// Calculate the storage needed for uniform param names
+		
 		int stringLenNeeded = 0;
 		with (objectScope) {
 			if (numUniforms > 0) foreach (ref p; uniforms.list) {
@@ -816,9 +966,18 @@ struct CgEffectBuilder {
 				stringLenNeeded += p.name.length+1;
 			}
 		}
+		for (int i = 0; i < numUnifBufs; ++i) {
+			with (bufferScope[i]) {
+				if (numUniforms > 0) foreach (ref p; uniforms.list) {
+					stringLenNeeded += p.name.length+1;
+				}
+			}
+		}
 		foreach (ref p; varyings.list) {
 			stringLenNeeded += p.name.length+1;
 		}
+		
+		// Allocate the space for uniform param names as one chunk
 		
 		char* nameData = cast(char*)mainHeap.allocRaw(stringLenNeeded);
 		final char* nameDataEnd = nameData + stringLenNeeded;
@@ -849,11 +1008,15 @@ struct CgEffectBuilder {
 			}
 		}
 		
+		// Create object-scope param groups
+
 		if (objectScope.numUniforms > 0) {
 			final arr = effect.uniformParams();
 			copyUniforms(objectScope, arr);
 			effect.instanceDataSize += objectScope.uniformStorageNeeded;
 		}
+		
+		// Create effect-scope param groups
 
 		if (effectScope.numUniforms > 0) {
 			final arr = effect.effectUniformParams();
@@ -861,6 +1024,38 @@ struct CgEffectBuilder {
 			effect.uniformData = mainHeap.allocRaw(effectScope.uniformStorageNeeded);
 			memset(effect.uniformData, 0, effectScope.uniformStorageNeeded);
 		}
+		
+		// Create uniform buffer param groups
+		
+		if (maxUniformBufferIdx > -1) {
+			final int unifBufMemSize = UniformParamGroup.sizeof * numUnifBufs;
+			
+			effect.uniformBuffers =
+				(cast(UniformParamGroup*)mainHeap.allocRaw(
+					unifBufMemSize
+				))[0..numUnifBufs];
+				
+			memset(effect.uniformBuffers.ptr, 0, unifBufMemSize);
+			
+			log.info(
+				"Set up the effect for {} uniform buffer object{}.",
+				numUnifBufs,
+				numUnifBufs > 1 ? "s" : ""
+			);
+				
+			for (int i = 0; i < numUnifBufs; ++i) {
+				copyUniforms(
+					bufferScope[i],
+					cast(RawUniformParamGroup*)&effect.uniformBuffers[i]
+				);
+				
+				effect.uniformBuffers[i].overrideTotalSize(
+					bufferScope[i].uniformStorageNeeded
+				);
+			}
+		}
+		
+		// Create varying param groups
 
 		if (numVaryings > 0) {
 			final arr = &effect.varyingParams;
@@ -871,6 +1066,8 @@ struct CgEffectBuilder {
 				arr.param[i] = cast(VaryingParam)p.handle;
 			}
 		}
+		
+		// ----
 
 		assert (nameData is nameDataEnd);
 
@@ -916,5 +1113,11 @@ struct CgEffectBuilder {
 	
 	UniformScope		objectScope;
 	UniformScope		effectScope;
+	
+	UniformScope[MaxUniformBuffers]
+						bufferScope;
+						
+	int					maxUniformBufferIdx = -1;
+	
 	StackBufferUnsafe	mem;
 }

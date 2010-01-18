@@ -33,8 +33,8 @@ struct vertInput {
 };
 
 struct fragInput {
-	float3 position : TEXCOORD0;
-	float3 normal : TEXCOORD1;
+	float3	position : TEXCOORD0;
+	float3	normal : TEXCOORD1;
 };
 
 
@@ -42,6 +42,13 @@ float4x4 modelToWorld;
 float4x4 worldToScreen <
 	string scope = "effect";
 >;
+
+
+struct EnvData {
+	float4	ambientColor;
+	float	lightScale;
+};
+EnvData envData : BUFFER[0];
 
 
 uniform ILight[] lights;
@@ -64,9 +71,10 @@ void FragmentProgram(
 	in fragInput input,
 	out float4 output : COLOR
 ) {
-	output = float4(0, 0, 0, 0);
+	output = envData.ambientColor;
 	float3 normal = normalize(input.normal);
 	for (int i = 0; i < lights.length; ++i) {
 		output += lights[i].illuminate(input.position, normal);
 	}
+	output *= envData.lightScale;
 }
