@@ -3,8 +3,10 @@ module xf.gfx.GPUEffect;
 private {
 	import xf.Common;
 
-	import xf.gfx.VertexBuffer;
-	import xf.gfx.VertexArray;
+	import
+		xf.gfx.Buffer,
+		xf.gfx.VertexBuffer,
+		xf.gfx.VertexArray;
 	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 
@@ -48,9 +50,7 @@ const cstring uniformParamMix = `
 `;
 
 
-struct RawUniformParamGroup {
-	mixin(multiArray(`params`, uniformParamMix));
-
+template MParamGroupUtils() {
 	size_t getUniformIndex(cstring name) {
 		foreach (i, n; params.name[0..params.length]) {
 			if (n == name) {
@@ -61,6 +61,12 @@ struct RawUniformParamGroup {
 		error("Uniform named '{}' doesn't exist.", name);
 		assert(false);
 	}
+}
+
+
+struct RawUniformParamGroup {
+	mixin(multiArray(`params`, uniformParamMix));
+	mixin MParamGroupUtils;
 }
 
 
@@ -83,9 +89,19 @@ struct UniformParamGroup {
 		_name = n;
 	}
 	
+	size_t totalSize() {
+		return _totalSize;
+	}
+	
+	void overrideTotalSize(size_t s) {
+		_totalSize = s;
+	}
+
+	mixin MParamGroupUtils;
 
 	private {
 		cstring	_name;
+		size_t	_totalSize;
 		bool	_dirty = true;
 	}
 }
@@ -155,6 +171,7 @@ abstract class GPUEffect {
 	abstract GPUEffect copy();
 	abstract void compile();
 	abstract void bind();
+	abstract void bindUniformBuffer(int, Buffer);
 	
 	size_t	instanceDataSize;
 	size_t	varyingParamsOffset;

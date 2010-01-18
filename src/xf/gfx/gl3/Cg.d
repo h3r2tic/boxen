@@ -6,7 +6,11 @@ public {
 
 private {
 	import xf.Common;
-	import xf.gfx.api.gl3.Cg;
+	
+	import
+		xf.gfx.api.gl3.OpenGL,
+		xf.gfx.api.gl3.Cg;
+		
 	import xf.gfx.Log : error = gfxError;
 }
 
@@ -27,7 +31,8 @@ struct EffectSource {
 
 
 class CgCompiler {
-	this(CGcontext context = null) {
+	this(GL gl, CGcontext context = null) {
+		this.gl[] = gl;
 		initCgBinding();
 		
 		if (context is null) {
@@ -97,6 +102,8 @@ class CgCompiler {
 					null
 				);
 			} break;
+			
+			default: assert (false);
 		}
 
 		auto err = cgGetError();
@@ -118,11 +125,17 @@ class CgCompiler {
 		
 		assert (eh !is null);
 
-		return new CgEffect(name, eh);
+		return new CgEffect(name, eh, gl);
+	}
+	
+	
+	CGcontext context() {
+		return _context;
 	}
 
 
 	private {
-		CGcontext _context;
+		CGcontext	_context;
+		GL			gl;
 	}
 }

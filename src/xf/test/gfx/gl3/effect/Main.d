@@ -27,8 +27,9 @@ void main() {
 	.create();
 	
 
-	Renderer	renderer;
-	Mesh		mesh;
+	Renderer		renderer;
+	Mesh			mesh;
+	UniformBuffer	envUB;
 
 	use(context) in (GL gl) {
 		renderer = new Renderer(gl);
@@ -94,6 +95,7 @@ void main() {
 			mat4.yRotation(30.0f)
 		);
 		
+		// this one is an effect-scoped parameter. these are faster.
 		effect.setUniform("worldToScreen",
 			mat4.perspective(
 				90.0f,	// fov
@@ -103,15 +105,29 @@ void main() {
 			)
 		);
 		
-		// Create a vertex buffer and bind it to the shader
-		
-		auto vb = renderer.createVertexBuffer();
-		
 		struct Vertex {
 			vec3	pos;
 			vec3	norm;
 		}
 
+		// Initialize vertex data to a cube primitive
+		
+		Vertex[] vertices;
+		vertices.length = Cube.positions.length;
+		
+		foreach (i, ref v; vertices) {
+			v.pos = Cube.positions[i];
+			v.norm = Cube.normals[i];
+		}
+
+		// Create a vertex buffer and bind it to the shader
+
+		auto vb = renderer.createVertexBuffer(
+			BufferUsage.StaticDraw,
+			cast(void[])vertices
+		);
+		delete vertices;
+		
 		efInst.setVarying(
 			"VertexProgram.input.position",
 			vb,
@@ -132,23 +148,40 @@ void main() {
 			)
 		);
 		
-		// Initialize the vertex data to a cube primitive
+		// Create a uniform buffer for the environment and bind it to the effect
 		
-		Vertex[] vertices;
-		vertices.length = Cube.positions.length;
+		final envUBData = &effect.uniformBuffers[0];
+		final envUBSize = envUBData.totalSize;
 		
-		foreach (i, ref v; vertices) {
-			v.pos = Cube.positions[i];
-			v.norm = Cube.normals[i];
-		}
+		log.info("Environment uniform buffer size: {} bytes.", envUBSize);
 		
-		vb.setData(
-			cast(void[])vertices,
-			BufferUsage.StaticDraw
+		envUB = renderer.createUniformBuffer(
+			BufferUsage.StaticDraw,
+			envUBSize,
+			null
 		);
 		
-		delete vertices;
+		envUB.mapRange(
+			0,
+			envUBSize,
+			BufferAccess.Write | BufferAccess.InvalidateBuffer,
+			(void[] data) {
+				*cast(vec4*)(
+					data.ptr + envUBData.params.dataSlice[
+						envUBData.getUniformIndex("envData.ambientColor")
+					].offset
+				) = vec4(0.01, 0, 0, 1);
+
+				*cast(float*)(
+					data.ptr + envUBData.params.dataSlice[
+						envUBData.getUniformIndex("envData.lightScale")
+					].offset
+				) = 2.0f;
+			}
+		);
 		
+		effect.bindUniformBuffer(0, *envUB.asBuffer);
+				
 		// Finalize the mesh
 		
 		mesh.indices = Cube.indices;
