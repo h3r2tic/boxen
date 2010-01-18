@@ -479,12 +479,22 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
 			
-			gl.DrawElements(
-				TRIANGLES,
-				obj.indices.length,
-				UNSIGNED_INT,
-				obj.indices.ptr
-			);
+			if (1 == obj.numInstances) {
+				gl.DrawElements(
+					TRIANGLES,
+					obj.indices.length,
+					UNSIGNED_INT,
+					obj.indices.ptr
+				);
+			} else if (obj.numInstances > 1) {
+				gl.DrawElementsInstanced(
+					TRIANGLES,
+					obj.indices.length,
+					UNSIGNED_INT,
+					obj.indices.ptr,
+					obj.numInstances
+				);
+			}
 		}
 	}
 }

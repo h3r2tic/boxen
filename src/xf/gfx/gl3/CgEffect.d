@@ -462,6 +462,11 @@ class CgEffect : GPUEffect {
 				p = cgGetNextLeafParameter(p)
 			) {
 				char* name = cgGetParameterName(p);
+
+				if (0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))) {
+					continue;
+				}
+
 				log.trace("Found a shared effect param: '{}'.", fromStringz(name));
 
 				bool usedAnywhere = false;
@@ -526,6 +531,10 @@ class CgEffect : GPUEffect {
 					final dir = cgGetParameterDirection(p);
 					
 					if (dir != CG_IN && dir != CG_INOUT) {
+						continue;
+					}
+					
+					if (0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))) {
 						continue;
 					}
 
