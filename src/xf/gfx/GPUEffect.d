@@ -185,9 +185,14 @@ abstract class GPUEffect {
 	abstract void bind();
 	abstract void bindUniformBuffer(int, Buffer);
 	
+	size_t	uniformDataSize;
 	size_t	instanceDataSize;
 	size_t	varyingParamsOffset;
 	size_t	varyingParamsDirtyOffset;
+	
+	invariant {
+		assert (uniformDataSize <= instanceDataSize);
+	}
  	
 	protected {
 		bool _compiled = false;

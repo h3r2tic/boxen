@@ -602,6 +602,13 @@ struct CgEffectBuilder {
 	}
 	
 	
+	/* 
+	 * Model transformations are not stored in the GPUEffectInstance, because
+	 * the same object might be rendered multiple times in a frame - e.g.
+	 * with planar reflections. Furthermore, storing the transformations
+	 * in the GPUEffectInstance is a waste of space for a paramter that's
+	 * available through regular fields of renderable objects
+	 */
 	bool isObjectInstanceParam(CGparameter p) {
 		final name = cgGetParameterName(p);
 		
@@ -1072,7 +1079,8 @@ struct CgEffectBuilder {
 		if (objectScope.numUniforms > 0) {
 			final arr = effect.uniformParams();
 			copyUniforms(objectScope, arr);
-			effect.instanceDataSize += objectScope.uniformStorageNeeded;
+			effect.uniformDataSize = objectScope.uniformStorageNeeded;
+			effect.instanceDataSize += effect.uniformDataSize;
 		}
 		
 		// Create effect-scope param groups
