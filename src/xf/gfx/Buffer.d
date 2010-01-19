@@ -123,7 +123,7 @@ template MBuffer() {
 		return (cast(IBufferMngr)_resMngr).setData(_resHandle, data.length, data.ptr, usage);
 	}
 
-	void setSubData(BufferHandle handle, ptrdiff_t offset, void[] data) {
+	void setSubData(ptrdiff_t offset, void[] data) {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IBufferMngr)_resMngr).setSubData(_resHandle, offset, data.length, data.ptr);

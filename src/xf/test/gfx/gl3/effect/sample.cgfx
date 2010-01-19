@@ -59,9 +59,8 @@ void VertexProgram(
 	out float4 outPos : POSITION,
 	out fragInput output
 ) {
-	input.position.x += instance * 3;
-
 	float3 worldPos = mul(modelToWorld, float4(input.position, 1));
+	worldPos.x += instance * 3.5;
 	outPos = mul(worldToScreen, float4(worldPos, 1.0));
 	
 	output.position = worldPos;

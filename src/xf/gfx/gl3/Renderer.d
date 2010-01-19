@@ -406,8 +406,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			return true;
 		}(), "All objects must have the same GPUEffect");
 
-		void* prevUniformValues =
-			objects[0].effectInstance.getUniformsDataPtr();
+		void* prevUniformValues = null;
 
 		void setObjUniforms(
 				void* base,
@@ -427,13 +426,13 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			
 			scope (success) if (minimize) {
 				prevUniformValues =
-					objects[objIdx-1].effectInstance.getUniformsDataPtr();
+					objects[objIdx].effectInstance.getUniformsDataPtr();
 			}
 			
 			for (int ui = 0; ui < numUniforms; ++ui) {
 				final unifDS = up.dataSlice[ui];
 				
-				if (minimize) {
+				/+if (minimize) {
 					if (0 == memcmp(
 						uniformValues + unifDS.offset,
 						prevUniformValues + unifDS.offset,
@@ -441,7 +440,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 					)) {
 						continue;
 					}
-				}
+				}+/
 				
 				switch (up.baseType[ui]) {
 					case ParamBaseType.Float: {
@@ -562,14 +561,25 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		final modelToWorldIndex = instUnifParams.getUniformIndex("modelToWorld");
 		final worldToModelIndex = instUnifParams.getUniformIndex("worldToModel");
 
+		bool minimizeStateChanges = false;		// <-
+		
 		foreach (objIdx, obj; objects) {
+			if (0 == obj.numIndices) {
+				continue;
+			} else if (!minimizeStateChanges) {
+				prevUniformValues =
+					obj.effectInstance.getUniformsDataPtr();
+			}
+			
 			auto efInst = obj.effectInstance;
 			setObjUniforms(
 				efInst.getUniformsDataPtr(),
 				efInst.getUniformParamGroup(),
-				objIdx > 0,
+				minimizeStateChanges,			// <-
 				objIdx
 			);
+			
+			minimizeStateChanges = true;		// <-
 			
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
