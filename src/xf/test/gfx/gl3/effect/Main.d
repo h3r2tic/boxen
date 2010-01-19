@@ -42,6 +42,7 @@ void main() {
 		gl.SwapIntervalEXT(0);	// no vsync
 		gl.Enable(FRAMEBUFFER_SRGB_EXT);
 		gl.Enable(DEPTH_TEST);
+		gl.Enable(CULL_FACE);
 		
 		// Create the effect from a cgfx file
 		
@@ -108,6 +109,7 @@ void main() {
 
 
 
+		int objId = 0;
 		void createObject(Mesh* mesh) {
 			// Instantiate the effect and initialize its uniforms
 
@@ -117,16 +119,16 @@ void main() {
 				vec4(0.0f, 0.0f, 0.01f)
 			);
 			efInst.setUniform("lights[1].color",
-				vec4(1.0f, 0.7f, 0.4f) * 2.f
+				vec4(1.0f, 0.7f, 0.4f) * 100.f
 			);
 			
 			// this one is an effect-scoped parameter. these are faster.
 			effect.setUniform("worldToScreen",
 				mat4.perspective(
-					90.0f,	// fov
+					90.0f,		// fov
 					cast(float)context.width / context.height,	// aspect
-					0.1f,	// near
-					100.0f	// far
+					0.5f,		// near
+					10000.0f	// far
 				)
 			);
 			
@@ -204,7 +206,7 @@ void main() {
 			// Finalize the mesh
 			
 			mesh.effectInstance = efInst;
-			mesh.numInstances = 3;
+			mesh.numInstances = 31;
 		}
 		
 		const int numMeshes = 1000;
@@ -214,7 +216,7 @@ void main() {
 		
 		foreach (int i, ref mesh; meshes) {
 			createObject(&mesh);
-			mesh.modelToWorld = CoordSys(vec3fi[-3, -2, -i*3]);
+			mesh.modelToWorld = CoordSys(vec3fi[-3 * 15, -5, -i*3]);
 			renderList[i] = mesh.renderData;
 		}
 	};
@@ -250,7 +252,7 @@ void main() {
 			// update light positions
 			foreach (mesh; renderList) {
 				mesh.effectInstance.setUniform("lights[1].position",
-					quat.yRotation(lightRot).xform(vec3(2, 2, 0))
+					vec3(0, 0, -30) + quat.yRotation(lightRot).xform(vec3(20, 2, 0))
 				);
 			}
 

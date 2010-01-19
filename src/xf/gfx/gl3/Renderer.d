@@ -9,7 +9,10 @@ public {
 		xf.gfx.UniformBuffer,
 		xf.gfx.Mesh,
 		xf.gfx.gl3.Cg;
-	import xf.mem.MainHeap;
+		
+	import
+		xf.mem.MainHeap,
+		xf.mem.StackBuffer;
 }
 
 private {
@@ -403,17 +406,49 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			return true;
 		}(), "All objects must have the same GPUEffect");
 
-		void setObjUniforms(void* base, RawUniformParamGroup* paramGroup) {
+		void* prevUniformValues =
+			objects[0].effectInstance.getUniformsDataPtr();
+
+		void setObjUniforms(
+				void* base,
+				RawUniformParamGroup* paramGroup,
+				bool minimize,
+				int objIdx
+		) {
 			final up = &paramGroup.params;
 			final numUniforms = up.length;
+
+			void* uniformValues;
+			
+			if (minimize) {
+				uniformValues =
+					objects[objIdx].effectInstance.getUniformsDataPtr();
+			}
+			
+			scope (success) if (minimize) {
+				prevUniformValues =
+					objects[objIdx-1].effectInstance.getUniformsDataPtr();
+			}
 			
 			for (int ui = 0; ui < numUniforms; ++ui) {
+				final unifDS = up.dataSlice[ui];
+				
+				if (minimize) {
+					if (0 == memcmp(
+						uniformValues + unifDS.offset,
+						prevUniformValues + unifDS.offset,
+						unifDS.length
+					)) {
+						continue;
+					}
+				}
+				
 				switch (up.baseType[ui]) {
 					case ParamBaseType.Float: {
 						cgSetParameterValuefc(
 							cast(CGparameter)up.param[ui],
 							up.numFields[ui],
-							cast(float*)(base + up.dataSlice[ui].offset)
+							cast(float*)(base + unifDS.offset)
 						);
 					} break;
 
@@ -421,7 +456,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 						cgSetParameterValueic(
 							cast(CGparameter)up.param[ui],
 							up.numFields[ui],
-							cast(int*)(base + up.dataSlice[ui].offset)
+							cast(int*)(base + unifDS.offset)
 						);
 					} break;
 					
@@ -518,21 +553,24 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		effect.bind();
 		setObjUniforms(
 			effect.getUniformsDataPtr(),
-			effect.getUniformParamGroup()
+			effect.getUniformParamGroup(),
+			false,
+			0
 		);
 		
 		final instUnifParams = effect.objectInstanceUniformParams();
 		final modelToWorldIndex = instUnifParams.getUniformIndex("modelToWorld");
 		final worldToModelIndex = instUnifParams.getUniformIndex("worldToModel");
 
-		foreach (i, obj; objects) {
+		foreach (objIdx, obj; objects) {
 			auto efInst = obj.effectInstance;
-			//if (0 == i) {
-				setObjUniforms(
-					efInst.getUniformsDataPtr(),
-					efInst.getUniformParamGroup()
-				);
-			//}
+			setObjUniforms(
+				efInst.getUniformsDataPtr(),
+				efInst.getUniformParamGroup(),
+				objIdx > 0,
+				objIdx
+			);
+			
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
 			
