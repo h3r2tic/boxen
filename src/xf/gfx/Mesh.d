@@ -85,6 +85,9 @@ struct Mesh {
 	void numInstances(uword num) {
 		renderData.numInstances = num;
 	}
+	uword getNumInstances() {
+		return renderData.numInstances;
+	}
 
 
 	IndexBuffer indexBuffer(IndexBuffer buf) {
@@ -110,6 +113,10 @@ struct Mesh {
 	void numIndices(uword num) {
 		renderData.numIndices = num;
 	}
+	uword getNumIndices() {
+		return renderData.numIndices;
+	}
+	
 	
 	void indexOffset(word num) {
 		renderData.indexOffset = num;

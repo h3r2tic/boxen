@@ -13,10 +13,13 @@ rendering game plan:
 	+ instancing
 	+ mesh struct with a position and whatnot
 		+ uses GPUEffectInstance
+		
+	load up some real meshes using assimp. boxes are boring.
 
-	render lists
+	~ render lists
 		grouping by shader group and then by shader
-		minimization of state changing
+		+ minimization of state changing
+		
 	render states for rendering operations
 		z, blend, stencil
 	framebuffers
