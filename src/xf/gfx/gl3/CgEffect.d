@@ -452,6 +452,16 @@ class CgEffect : GPUEffect {
 			return 0;
 		}
 		
+		
+		// return true if processed and should be skipped from normal params
+		private bool processSpecialParam(CGparameter p) {
+			if (0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+		
 
 		void findSharedEffectParams(CgEffectBuilder* builder) {
 			defaultHandleCgError();
@@ -463,7 +473,7 @@ class CgEffect : GPUEffect {
 			) {
 				char* name = cgGetParameterName(p);
 
-				if (0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))) {
+				if (processSpecialParam(p)) {
 					continue;
 				}
 
@@ -534,7 +544,7 @@ class CgEffect : GPUEffect {
 						continue;
 					}
 					
-					if (0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))) {
+					if (processSpecialParam(p)) {
 						continue;
 					}
 
@@ -590,6 +600,29 @@ struct CgEffectBuilder {
 		res.mem = mem;
 		return res;
 	}
+	
+	
+	bool isObjectInstanceParam(CGparameter p) {
+		final name = cgGetParameterName(p);
+		
+		if (
+			0 == strcmp(name, "modelToWorld")
+		||	0 == strcmp(name, "worldToModel")
+		) {
+			final ptype = cgGetParameterType(p);
+			if (ptype != CG_FLOAT3x4 && ptype != CG_HALF3x4) {
+				error(
+					"modelToWorld and worldToModel uniforms must be float3x4"
+					" or half3x4, not '{}'", fromStringz(cgGetTypeString(ptype))
+				);
+			}
+			
+			return true;
+		}
+		
+		return false;
+	}
+	
 	
 	RegisteredParam* createParam(cstring name, CGparameter handle) {
 		final p = mem.alloc!(RegisteredParam);
@@ -687,6 +720,8 @@ struct CgEffectBuilder {
 				int sizeIdx = -1;
 				final wantedSize = vec2i(numRows, numCols);
 				
+				log.info("wanted matrix size: {}", wantedSize);
+				
 				foreach (i, s; matSizes) {
 					// must be equal in the number of rows due to sending
 					// the data in a column-major format to OpenGL
@@ -708,6 +743,8 @@ struct CgEffectBuilder {
 						fromStringz(cgGetTypeString(cgGetParameterType(handle)))
 					);
 				}
+				
+				log.info("chosen {}", p.typeInfo);
 			} break;
 
 			case CG_PARAMETERCLASS_SAMPLER: {
@@ -830,12 +867,16 @@ struct CgEffectBuilder {
 				
 				enum Scope {
 					Object,
+					ObjectInstance,
 					Effect,
 					Buffer
 				}
 				
 				Scope sc = -1 == uniformBufferIdx ? Scope.Object : Scope.Buffer;
 				
+				if (Scope.Object == sc && isObjectInstanceParam(param)) {
+					sc = Scope.ObjectInstance;
+				}
 				
 				if (sc != Scope.Buffer)	for (
 					auto ann = cgGetFirstParameterAnnotation(param);
@@ -943,6 +984,10 @@ struct CgEffectBuilder {
 						}
 					} break;
 					
+					case Scope.ObjectInstance: {
+						addUniformToScope(objectInstanceScope);
+					} break;
+					
 					default: assert (false);
 				}
 			} break;
@@ -980,6 +1025,11 @@ struct CgEffectBuilder {
 				if (numUniforms > 0) foreach (ref p; uniforms.list) {
 					stringLenNeeded += p.name.length+1;
 				}
+			}
+		}
+		with (objectInstanceScope) {
+			if (numUniforms > 0) foreach (ref p; uniforms.list) {
+				stringLenNeeded += p.name.length+1;
 			}
 		}
 		foreach (ref p; varyings.list) {
@@ -1064,6 +1114,14 @@ struct CgEffectBuilder {
 			}
 		}
 		
+		// Create object instance-scope param groups
+
+		if (objectInstanceScope.numUniforms > 0) {
+			final arr = effect.objectInstanceUniformParams();
+			copyUniforms(objectInstanceScope, arr);
+		}
+		
+
 		// Create varying param groups
 
 		if (numVaryings > 0) {
@@ -1125,6 +1183,8 @@ struct CgEffectBuilder {
 	
 	UniformScope[MaxUniformBuffers]
 						bufferScope;
+						
+	UniformScope		objectInstanceScope;
 						
 	int					maxUniformBufferIdx = -1;
 	

@@ -3918,6 +3918,7 @@ DrawRangeElements(mode, start, end, count, type, indices)
 	glxflags	client-handcode client-intercept server-handcode
 	version		1.2
 	offset		338
+	extension
 
 # OpenGL 1.2 (EXT_texture3D) commands
 
@@ -14070,6 +14071,7 @@ DrawRangeElementsEXT(mode, start, end, count, type, indices)
 	glxflags	client-handcode client-intercept server-handcode
 	version		1.1
 	alias		DrawRangeElements
+	extension
 
 ###############################################################################
 #

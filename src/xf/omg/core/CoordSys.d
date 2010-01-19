@@ -13,13 +13,21 @@ private {
 */
 struct CoordSys {
 	vec3fi	origin;
-	quat		rotation;
+	quat	rotation;
 	
 	static const CoordSys identity = { origin: vec3fi.zero, rotation: quat.identity };
+
+
+	static CoordSys opCall(vec3fi origin) {
+		CoordSys res = void;
+		res.origin = origin;
+		res.rotation = quat.identity;
+		return res;
+	}
 	
 	
 	static CoordSys opCall(vec3fi origin, quat rotation) {
-		CoordSys res;
+		CoordSys res = void;
 		res.origin = origin;
 		res.rotation = rotation;
 		return res;
@@ -27,7 +35,7 @@ struct CoordSys {
 	
 	
 	CoordSys opIn(CoordSys reference) {
-		CoordSys res;
+		CoordSys res = void;
 		res.origin = reference.origin;
 		res.origin += reference.rotation.xform(this.origin);
 		res.rotation = reference.rotation * this.rotation;
@@ -37,7 +45,7 @@ struct CoordSys {
 
 
 	CoordSys quickIn(CoordSys reference) {
-		CoordSys res;
+		CoordSys res = void;
 		res.origin = reference.origin;
 		res.origin += reference.rotation.xform(this.origin);
 		res.rotation = reference.rotation * this.rotation;
@@ -91,6 +99,12 @@ struct CoordSys {
 		return res;
 	}
 	
+	mat34 toMatrix34() {
+		mat34 res = rotation.toMatrix!(3, 4)();
+		res.setTranslation(vec3.from(this.origin));
+		return res;
+	}
+
 	char[] toString(){
 		return "{" ~ origin.toString ~ ";" ~ rotation.toString ~ "}";
 	}

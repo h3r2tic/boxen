@@ -10,6 +10,41 @@ public {
 alias char[] cstring;
 typedef char[] string;
 
+alias size_t	uword;
+alias ptrdiff_t	word;
+
+alias byte		i8;
+alias short		i16;
+alias int		i32;
+alias long		i64;
+
+static assert (
+	i8.sizeof == 1
+&&	i16.sizeof == 2
+&&	i32.sizeof == 4
+&&	i64.sizeof == 8
+);
+
+alias ubyte		u8;
+alias ushort	u16;
+alias uint		u32;
+alias ulong		u64;
+
+static assert (
+	u8.sizeof == 1
+&&	u16.sizeof == 2
+&&	u32.sizeof == 4
+&&	u64.sizeof == 8
+);
+
+alias float		f32;
+alias double	f64;
+
+static assert (
+	f32.sizeof == 4
+&&	f64.sizeof == 8
+);
+
 
 bool startsWith(cstring s, cstring prefix, cstring* rest = null) {
 	if (s.length >= prefix.length && s[0..prefix.length] == prefix) {

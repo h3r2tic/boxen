@@ -10,21 +10,18 @@ rendering game plan:
 	+ per-shader uniforms
 	? per-shader-group uniforms
 	+ uniform buffers
-	instancing
+	+ instancing
+	+ mesh struct with a position and whatnot
+		+ uses GPUEffectInstance
+
 	render lists
 		grouping by shader group and then by shader
-		minimization of state sorting
-		optimization
-		
-	mesh struct with a position and whatnot
-		uses GPUEffectInstance
-		
+		minimization of state changing
 	render states for rendering operations
 		z, blend, stencil
-		
+	framebuffers
 	queries for monitoring rendering operations
-
-	throw up a bunch of shaders and objects and play around with optimization
+	throw up a bunch of shaders and objects and play around with profiling
 
 * step 2: scene-level management
 	whip up some lights along with tracking their influences
@@ -56,7 +53,6 @@ rendering game plan:
 		exact resource management
 			annotating resource flow might help reduce the ref counting
 				albeit not strictly necessary - low frequency ops on the cpu level
-			
 	post-processing
 	HDR, tone mapping and subtle glare
 

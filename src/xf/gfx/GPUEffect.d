@@ -16,8 +16,9 @@ private {
 
 
 
-typedef void* UniformParam;
-typedef void* VaryingParam;
+typedef void*	UniformParam;
+typedef void*	VaryingParam;
+typedef word	UniformParamIndex = -1;
 
 struct UniformDataSlice {
 	size_t offset;
@@ -51,15 +52,14 @@ const cstring uniformParamMix = `
 
 
 template MParamGroupUtils() {
-	size_t getUniformIndex(cstring name) {
+	UniformParamIndex getUniformIndex(cstring name) {
 		foreach (i, n; params.name[0..params.length]) {
 			if (n == name) {
-				return i;
+				return cast(UniformParamIndex)i;
 			}
 		}
 		
-		error("Uniform named '{}' doesn't exist.", name);
-		assert(false);
+		return -1;
 	}
 }
 
@@ -108,21 +108,33 @@ struct UniformParamGroup {
 
 
 template MUniformParamGroupInstance() {
-	void setUniform(T)(cstring name, T value) {
+	bool setUniform(T)(UniformParamIndex i, T value) {
+		final up = getUniformParamGroup();
+
+		if (-1 != i) {
+			if (typeid(T) !is up.params.typeInfo[i]) {
+				error(
+					"TypeInfo mismatch. Param type is {}, got {}.",
+					up.params.typeInfo[i],
+					typeid(T)
+				);
+			}
+			
+			*cast(T*)(
+				getUniformsDataPtr() + up.params.dataSlice[i].offset
+			) = value;
+			
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+
+	bool setUniform(T)(cstring name, T value) {
 		final up = getUniformParamGroup();
 		final i = up.getUniformIndex(name);
-		
-		if (typeid(T) !is up.params.typeInfo[i]) {
-			error(
-				"TypeInfo mismatch. Param type is {}, got {}.",
-				up.params.typeInfo[i],
-				typeid(T)
-			);
-		}
-		
-		*cast(T*)(
-			getUniformsDataPtr() + up.params.dataSlice[i].offset
-		) = value;
+		return setUniform!(T)(i, value);
 	}
 }
 
@@ -206,6 +218,7 @@ abstract class GPUEffect {
 
 		mixin(multiArray(`_uniformParams`, uniformParamMix));
 		mixin(multiArray(`_effectUniformParams`, uniformParamMix));
+		mixin(multiArray(`_objectInstanceUniformParams`, uniformParamMix));
 	}
 	
 	// ----
@@ -230,6 +243,10 @@ abstract class GPUEffect {
 	
 	final RawUniformParamGroup* effectUniformParams() {
 		return cast(RawUniformParamGroup*)&_effectUniformParams;
+	}
+
+	final RawUniformParamGroup* objectInstanceUniformParams() {
+		return cast(RawUniformParamGroup*)&_objectInstanceUniformParams;
 	}
 
 	// ---- uniform param group instance

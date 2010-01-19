@@ -5,9 +5,11 @@ public {
 		xf.gfx.Buffer,
 		xf.gfx.VertexArray,
 		xf.gfx.VertexBuffer,
+		xf.gfx.IndexBuffer,
 		xf.gfx.UniformBuffer,
 		xf.gfx.Mesh,
 		xf.gfx.gl3.Cg;
+	import xf.mem.MainHeap;
 }
 
 private {
@@ -61,6 +63,42 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 	
 	GPUEffect createEffect(cstring name, EffectSource source) {
 		return _cgCompiler.createEffect(name, source);
+	}
+	
+
+	/// Allocated using mainHeap
+	Mesh[] createMeshes(int num) {
+		if (0 == num) {
+			return null;
+		}
+		
+		final renderData = cast(MeshRenderData*)mainHeap.allocRaw(
+			MeshRenderData.sizeof * num
+		);
+		
+		renderData[0..num] = MeshRenderData.init;
+		
+		final meshes = (cast(Mesh*)mainHeap.allocRaw(
+			Mesh.sizeof * num
+		))[0..num];
+		
+		meshes[] = Mesh.init;
+		foreach (i, ref m; meshes) {
+			m.renderData = renderData + i;
+		}
+		
+		return meshes;
+	}
+	
+	
+	void destroyMeshes(ref Mesh[] meshes) {
+		if (meshes is null) {
+			return;
+		}
+		
+		mainHeap.freeRaw(meshes[0].renderData);
+		mainHeap.freeRaw(meshes.ptr);
+		meshes = null;
 	}
 	
 	
@@ -287,6 +325,20 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 	}
 	
 
+	IndexBuffer createIndexBuffer(BufferUsage usage, u32[] data) {
+		return createIndexBuffer(usage, data.length * u32.sizeof, data.ptr, IndexType.U32);
+	}
+
+	IndexBuffer createIndexBuffer(BufferUsage usage, u16[] data) {
+		return createIndexBuffer(usage, data.length * u16.sizeof, data.ptr, IndexType.U16);
+	}
+
+	IndexBuffer createIndexBuffer(BufferUsage usage, int size, void* data, IndexType it) {
+		auto buf = createBuffer(usage, size, data, ELEMENT_ARRAY_BUFFER);
+		return IndexBuffer.fromBuffer(buf, it);
+	}
+
+
 	UniformBuffer createUniformBuffer(BufferUsage usage, void[] data) {
 		return createUniformBuffer(usage, data.length, data.ptr);
 	}
@@ -334,18 +386,17 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 	}
 	
 	
-	// ---- HACK
-	
-	void render(Mesh[] objects ...) {
+
+	void render(MeshRenderData*[] objects ...) {
 		if (0 == objects.length) {
 			return;
 		}
 		
-		GPUEffect effect = objects[0].effect._proto;
+		GPUEffect effect = objects[0].effect;
 		
 		assert ({
 			foreach (o; objects[1..$]) {
-				if (o.effect._proto !is effect) {
+				if (o.effect() !is effect) {
 					return false;
 				}
 			}
@@ -469,29 +520,77 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			effect.getUniformsDataPtr(),
 			effect.getUniformParamGroup()
 		);
+		
+		final instUnifParams = effect.objectInstanceUniformParams();
+		final modelToWorldIndex = instUnifParams.getUniformIndex("modelToWorld");
+		final worldToModelIndex = instUnifParams.getUniformIndex("worldToModel");
 
-		foreach (obj; objects) {
-			auto efInst = obj.effect;
-			setObjUniforms(
-				efInst.getUniformsDataPtr(),
-				efInst.getUniformParamGroup()
-			);
+		foreach (i, obj; objects) {
+			auto efInst = obj.effectInstance;
+			//if (0 == i) {
+				setObjUniforms(
+					efInst.getUniformsDataPtr(),
+					efInst.getUniformParamGroup()
+				);
+			//}
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
 			
-			if (1 == obj.numInstances) {
-				gl.DrawElements(
-					TRIANGLES,
-					obj.indices.length,
-					UNSIGNED_INT,
-					obj.indices.ptr
+			if (0 == obj.flags & obj.flags.IndexBufferBound) {
+				if (!obj.indexBuffer.valid) {
+					continue;
+				}				
+
+				obj.flags |= obj.flags.IndexBufferBound;
+				obj.indexBuffer.bind();
+			}
+			
+
+			// model <-> world matrices are special and set for every object
+
+			if (modelToWorldIndex != UniformParamIndex.init) {
+				cgSetParameterValuefc(
+					cast(CGparameter)instUnifParams.params.param[modelToWorldIndex],
+					3 * 4,
+					obj.modelToWorld.ptr
 				);
+			}
+			
+			if (worldToModelIndex != UniformParamIndex.init) {
+				cgSetParameterValuefc(
+					cast(CGparameter)instUnifParams.params.param[worldToModelIndex],
+					3 * 4,
+					obj.worldToModel.ptr
+				);
+			}
+			
+			// ----
+
+			
+			if (1 == obj.numInstances) {
+				if (obj.minIndex != 0 || obj.maxIndex != typeof(obj.maxIndex).max) {
+					gl.DrawRangeElements(
+						enumToGL(obj.topology),
+						obj.minIndex,
+						obj.maxIndex,
+						obj.numIndices,
+						enumToGL(obj.indexBuffer.indexType),
+						cast(void*)obj.indexOffset
+					);
+				} else {
+					gl.DrawElements(
+						enumToGL(obj.topology),
+						obj.numIndices,
+						enumToGL(obj.indexBuffer.indexType),
+						cast(void*)obj.indexOffset
+					);
+				}
 			} else if (obj.numInstances > 1) {
 				gl.DrawElementsInstanced(
-					TRIANGLES,
-					obj.indices.length,
-					UNSIGNED_INT,
-					obj.indices.ptr,
+					enumToGL(obj.topology),
+					obj.numIndices,
+					enumToGL(obj.indexBuffer.indexType),
+					cast(void*)obj.indexOffset,
 					obj.numInstances
 				);
 			}
@@ -561,6 +660,34 @@ private GLenum enumToGL(BufferUsage usage) {
 	];
 	
 	return map[usage];
+}
+
+
+private GLenum enumToGL(IndexType it) {
+	switch (it) {
+		case IndexType.U16: return UNSIGNED_SHORT;
+		case IndexType.U32: return UNSIGNED_INT;
+		default: assert (false);
+	}
+}
+
+
+private GLenum enumToGL(MeshTopology pt) {
+	static const map = [
+		POINTS,
+		LINE_STRIP,
+		LINE_LOOP,
+		LINES,
+		TRIANGLE_STRIP,
+		TRIANGLE_FAN,
+		TRIANGLES,
+		LINES_ADJACENCY,
+		LINE_STRIP_ADJACENCY,
+		TRIANGLES_ADJACENCY,
+		TRIANGLE_STRIP_ADJACENCY
+	];
+	
+	return map[pt];
 }
 
 
