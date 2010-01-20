@@ -1,0 +1,20 @@
+module freeimage.FreeImageLoader;
+
+private import
+	freeimage.FreeImage,
+	tango.sys.SharedLib;
+
+
+struct FreeImage {
+	static void load() {
+		version (Windows) {
+			auto library = SharedLib.load("FreeImage.dll");
+		} else {
+			static assert (false, "TODO");
+		}
+
+		void loadSymbol(void** sym, char* name) {
+			*sym = library.getSymbol(name);
+		}
+
+
