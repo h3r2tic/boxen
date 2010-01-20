@@ -24,6 +24,7 @@ private {
 	import xf.gfx.api.gl3.platform.Win32;
 	
 	import tango.stdc.stringz : fromStringz;
+	import tango.core.Thread;
 	
 	import tango.io.Stdout;
 	
@@ -593,7 +594,11 @@ class GLWindow : GLContext, Window {
 			with (pfd) {
 				nSize = pfd.sizeof;
 				nVersion = 1;
-				dwFlags = PFD_DRAW_TO_WINDOW |	PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+				dwFlags =
+					PFD_DRAW_TO_WINDOW
+				|	PFD_SUPPORT_OPENGL
+				|	PFD_DOUBLEBUFFER
+				|	PFD_SWAP_EXCHANGE;
 				iPixelType = PFD_TYPE_RGBA;
 				cColorBits = _colorBits;
 				cAlphaBits = _alphaBits;
@@ -684,6 +689,8 @@ class GLWindow : GLContext, Window {
 					formatAttribs ~= _stencilBits;
 					formatAttribs ~= WGL_DOUBLE_BUFFER_ARB;
 					formatAttribs ~= xf.gfx.api.gl3.GL.TRUE;
+					formatAttribs ~= WGL_SWAP_METHOD_ARB;
+					formatAttribs ~= WGL_SWAP_EXCHANGE_ARB;
 
 					if (_sRGB) {
 						formatAttribs ~= WGL_FRAMEBUFFER_SRGB_CAPABLE_EXT;
@@ -714,6 +721,9 @@ class GLWindow : GLContext, Window {
 		ShowWindow(_hwnd, SW_NORMAL);
 		_created = true;
 		_visible = true;
+		
+		_contextOwnerThread = Thread.getThis();
+		xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, _hrc);
 		
 		return this;
 	}
@@ -828,11 +838,9 @@ class GLWindow : GLContext, Window {
 
 
 	override void useInHandler(void delegate(GL) dg) {
-		synchronized (this) {
-			assert (isGLContextDataSet(_gl));
-			xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, _hrc);
-			dg(_gl);
-		}
+		assert (Thread.getThis is _contextOwnerThread);
+		assert (isGLContextDataSet(_gl));
+		dg(_gl);
 	}
 /+	
 	
@@ -857,11 +865,13 @@ class GLWindow : GLContext, Window {
 		
 		GL			_gl;
 		
-		static bool				classRegistered = false;
+		static bool			classRegistered = false;
 		static const char* 	className = "DogWindow";
 		
-		bool			preInitDone = false;
-		int			overridePixelFormat = 0;
+		bool	preInitDone = false;
+		int		overridePixelFormat = 0;
+		
+		Thread	_contextOwnerThread;
 	}
 	
 	static private Object win32Mutex;

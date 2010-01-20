@@ -41,7 +41,12 @@ class CgCompiler {
 			_context = context;
 		}
 		
-		cgGLSetDebugMode(CG_TRUE);
+		version (Release) {
+			cgGLSetDebugMode(CG_FALSE);
+		} else {
+			cgGLSetDebugMode(CG_TRUE);
+		}
+		
 		cgSetParameterSettingMode(_context, CG_IMMEDIATE_PARAMETER_SETTING);
 		cgGLRegisterStates(_context);
 		cgGLSetManageTextureParameters(_context, CG_TRUE);

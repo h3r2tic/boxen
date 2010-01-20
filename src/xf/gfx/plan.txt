@@ -13,8 +13,7 @@ rendering game plan:
 	+ instancing
 	+ mesh struct with a position and whatnot
 		+ uses GPUEffectInstance
-		
-	load up some real meshes using assimp. boxes are boring.
+	+ load up some real meshes using assimp. boxes are boring.
 
 	~ render lists
 		grouping by shader group and then by shader

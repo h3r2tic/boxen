@@ -1,7 +1,8 @@
 module Main;
 
+version (StackTracing) import tango.core.tools.TraceExceptions;
+
 import
-	tango.core.tools.TraceExceptions,
 	xf.Common,
 	
 	xf.gfx.api.gl3.OpenGL,
@@ -21,8 +22,192 @@ import
 	xf.omg.core.Misc,
 	tango.io.Stdout,
 	tango.time.StopWatch;
+
+	
+
+
+UniformBuffer envUB;
+
+
+void main() {
+	auto context = GLWindow();
+	context
+		.title("Effect Test")
+		.showCursor(true)
+		.fullscreen(false)
+		.width(800)
+		.height(600)
+	.create();
+	
+	Assimp.load(Assimp.LibType.Release);
+	
+
+	Renderer		renderer;
+	GPUEffect		effect;
+	
+	Mesh[]				meshes;
+	MeshRenderData*[]	renderList;
+	
+	use(context) in (GL gl) {
+		renderer = new Renderer(gl);
+		
+		bool vsync = false;
+		
+		gl.SwapIntervalEXT(vsync ? 1 : 0);
+		gl.Enable(FRAMEBUFFER_SRGB_EXT);
+		gl.Enable(DEPTH_TEST);
+		gl.Enable(CULL_FACE);
+		
+		// Create the effect from a cgfx file
+		
+		effect = renderer.createEffect(
+			"sample",
+			EffectSource.filePath("sample.cgfx")
+		);
+		
+		// Specialize the shader template with 2 lights
+		// - an ambient and a point light
+
+		effect.useGeometryProgram = false;
+		effect.setArraySize("lights", 2);
+		effect.setUniformType("lights[0]", "AmbientLight");
+		effect.setUniformType("lights[1]", "PointLight");
+		effect.compile();
+		
+		// ---- Some debug info printing ----
+		{
+			with (*effect.uniformParams()) {
+				Stdout.formatln("Effect uniforms:");
+				for (int i = 0; i < params.length; ++i) {
+					Stdout.formatln("\t{}", params.name[i]);
+				}
+			}
+
+			Stdout.formatln("Effect varyings:");
+			for (int i = 0; i < effect.varyingParams.length; ++i) {
+				Stdout.formatln("\t{}", effect.varyingParams.name[i]);
+			}
+		}
+		
+		
+		meshes ~= loadModel(
+			renderer,
+			effect,
+			`MTree/MonsterTree.3ds`,
+			CoordSys(vec3fi[1, -1, -1.5]),
+			0.01f
+		);
+		
+		meshes ~= loadModel(
+			renderer,
+			effect,
+			`cia/cia_mesh_low.obj`,
+			CoordSys(vec3fi[-1, -1, -1.5]),
+			0.01f
+		);
+		
+		meshes ~= loadModel(
+			renderer,
+			effect,
+			`Eland 90/Eland 90.obj`,
+			CoordSys(
+				vec3fi[-3.5 * 5, 0.2, -14],
+				quat.yRotation(45) * quat.xRotation(30)
+			),
+			0.04f,
+			11
+		);
+
+		if (0 == meshes.length) {
+			throw new Exception("No meshes in the scene :(");
+		} else {
+			uword numTris = 0;
+			uword numMeshes = 0;
+			
+			foreach (m; meshes) {
+				numTris += m.getNumInstances * m.getNumIndices / 3;
+				numMeshes += m.getNumInstances;
+			}
+			
+			Stdout.formatln(
+				"{} Meshes with a total of {} triangles in the scene.",
+				numMeshes,
+				numTris
+			);
+		}
+
+		foreach (ref mesh; meshes) {
+			// this one is an effect-scoped parameter. these are faster.
+			mesh.effect.setUniform("worldToScreen",
+				mat4.perspective(
+					90.0f,		// fov
+					cast(float)context.width / context.height,	// aspect
+					0.5f,		// near
+					10000.0f	// far
+				)
+			);
+		}
+		
+		foreach (ref m; meshes) {
+			renderList ~= m.renderData;
+		}
+	};
 	
 	
+	float lightRot = 0.0f;
+	float lightPulse = 0.0f;
+	
+	StopWatch timer;
+	timer.start();
+
+	while (context.created) {
+		use(context) in (GL gl) {
+			final timeDelta = timer.stop();
+			timer.start();
+			
+			lightRot += timeDelta * 90.f;
+			lightPulse += timeDelta * 25.f;
+
+			// update the shared environment params
+			{
+				final envUBData = &effect.uniformBuffers[0];
+				
+				size_t lightScaleOffset = envUBData.params.dataSlice[
+					envUBData.getUniformIndex("envData.lightScale")
+				].offset;
+				
+				float lightScale = abs(cos(deg2rad * lightPulse)) * 2.0f;
+				envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
+			}
+
+			// update light positions
+			foreach (mesh; renderList) {
+				mesh.effectInstance.setUniform("lights[1].position",
+					vec3(0, 0, -4) + quat.yRotation(lightRot).xform(vec3(5, 2, 0))
+				);
+			}
+
+			gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+			
+			foreach (i, ref m; meshes) {
+				if (m.worldMatricesDirty) {
+					auto rd = m.renderData;
+					auto cs = m.modelToWorld;
+					rd.modelToWorld = cs.toMatrix34;
+					cs.invert;
+					rd.worldToModel = cs.toMatrix34;
+				}
+			}
+			
+			renderer.render(renderList);
+		};
+		
+		context.update().show();
+		//Thread.yield();
+	}
+}
+
+
 
 Mesh[] loadModel(
 		Renderer renderer,
@@ -220,195 +405,4 @@ Mesh[] loadModel(
 	});
 	
 	return meshes;
-}
-
-
-UniformBuffer envUB;
-
-
-void main() {
-	auto context = GLWindow();
-	context
-		.title("Effect Test")
-		.showCursor(true)
-		.fullscreen(false)
-		.width(800)
-		.height(600)
-	.create();
-	
-	Assimp.load(Assimp.LibType.Release);
-	
-
-	Renderer		renderer;
-	GPUEffect		effect;
-	
-	Mesh[]				meshes;
-	MeshRenderData*[]	renderList;
-	
-	use(context) in (GL gl) {
-		renderer = new Renderer(gl);
-		
-		bool vsync = false;
-		
-		gl.SwapIntervalEXT(vsync ? 1 : 0);
-		gl.Enable(FRAMEBUFFER_SRGB_EXT);
-		gl.Enable(DEPTH_TEST);
-		gl.Enable(CULL_FACE);
-		
-		// Create the effect from a cgfx file
-		
-		effect = renderer.createEffect(
-			"sample",
-			EffectSource.filePath("sample.cgfx")
-		);
-		
-		// Specialize the shader template with 2 lights
-		// - an ambient and a point light
-
-		effect.useGeometryProgram = false;
-		effect.setArraySize("lights", 2);
-		effect.setUniformType("lights[0]", "AmbientLight");
-		effect.setUniformType("lights[1]", "PointLight");
-		effect.compile();
-		
-		// ---- Some debug info printing ----
-		{
-			with (*effect.uniformParams()) {
-				getUniformIndex("lights[0].color");
-				try {
-					getUniformIndex("lights[0].error");
-					Stdout.formatln("Effect error reporting FAIL. This was supposed to throw.");
-				}
-				catch (Exception e) {
-					Stdout.formatln("Effect error reporting OK.");
-				}
-				
-				Stdout.formatln("Effect uniforms:");
-				for (int i = 0; i < params.length; ++i) {
-					Stdout.formatln("\t{}", params.name[i]);
-				}
-			}
-
-			Stdout.formatln("Effect varyings:");
-			for (int i = 0; i < effect.varyingParams.length; ++i) {
-				Stdout.formatln("\t{}", effect.varyingParams.name[i]);
-			}
-		}
-		
-		
-		meshes ~= loadModel(
-			renderer,
-			effect,
-			`MTree/MonsterTree.3ds`,
-			CoordSys(vec3fi[1, -1, -1.5]),
-			0.01f
-		);
-		
-		meshes ~= loadModel(
-			renderer,
-			effect,
-			`cia/cia_mesh_low.obj`,
-			CoordSys(vec3fi[-1, -1, -1.5]),
-			0.01f
-		);
-		
-		meshes ~= loadModel(
-			renderer,
-			effect,
-			`Eland 90/Eland 90.obj`,
-			CoordSys(
-				vec3fi[-3.5 * 5, 0.2, -14],
-				quat.yRotation(45) * quat.xRotation(30)
-			),
-			0.04f,
-			11
-		);
-
-		if (0 == meshes.length) {
-			throw new Exception("No meshes in the scene :(");
-		} else {
-			uword numTris = 0;
-			uword numMeshes = 0;
-			
-			foreach (m; meshes) {
-				numTris += m.getNumInstances * m.getNumIndices / 3;
-				numMeshes += m.getNumInstances;
-			}
-			
-			Stdout.formatln(
-				"{} Meshes with a total of {} triangles in the scene.",
-				numMeshes,
-				numTris
-			);
-		}
-
-		foreach (ref mesh; meshes) {
-			// this one is an effect-scoped parameter. these are faster.
-			mesh.effect.setUniform("worldToScreen",
-				mat4.perspective(
-					90.0f,		// fov
-					cast(float)context.width / context.height,	// aspect
-					0.5f,		// near
-					10000.0f	// far
-				)
-			);
-		}
-		
-		foreach (ref m; meshes) {
-			renderList ~= m.renderData;
-		}
-	};
-	
-	
-	float lightRot = 0.0f;
-	float lightPulse = 0.0f;
-	
-	StopWatch timer;
-	timer.start();
-
-	while (context.created) {
-		use(context) in (GL gl) {
-			final timeDelta = timer.stop();
-			timer.start();
-			
-			lightRot += timeDelta * 90.f;
-			lightPulse += timeDelta * 25.f;
-
-			// update the shared environment params
-			{
-				final envUBData = &effect.uniformBuffers[0];
-				
-				size_t lightScaleOffset = envUBData.params.dataSlice[
-					envUBData.getUniformIndex("envData.lightScale")
-				].offset;
-				
-				float lightScale = abs(cos(deg2rad * lightPulse)) * 2.0f;
-				envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
-			}
-
-			// update light positions
-			foreach (mesh; renderList) {
-				mesh.effectInstance.setUniform("lights[1].position",
-					vec3(0, 0, -4) + quat.yRotation(lightRot).xform(vec3(5, 2, 0))
-				);
-			}
-
-			gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
-			
-			foreach (i, ref m; meshes) {
-				if (m.worldMatricesDirty) {
-					auto rd = m.renderData;
-					auto cs = m.modelToWorld;
-					rd.modelToWorld = cs.toMatrix34;
-					cs.invert;
-					rd.worldToModel = cs.toMatrix34;
-				}
-			}
-			
-			renderer.render(renderList);
-		};
-		
-		context.update().show();
-		Thread.yield();
-	}
 }
