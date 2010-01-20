@@ -444,9 +444,25 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 				
 				switch (up.baseType[ui]) {
 					case ParamBaseType.Float: {
-						cgSetParameterValuefc(
+						auto func = &cgSetParameter1fv;
+						switch (up.numFields[ui]) {
+							case 1: break;
+							case 2: {
+								func = &cgSetParameter2fv;
+							} break;
+							case 3: {
+								func = &cgSetParameter3fv;
+							} break;
+							case 4: {
+								func = &cgSetParameter4fv;
+							} break;
+							default: {
+								func = &cgSetMatrixParameterfc;
+							}
+						}
+						
+						func(
 							cast(CGparameter)up.param[ui],
-							up.numFields[ui],
 							cast(float*)(base + unifDS.offset)
 						);
 					} break;
@@ -597,17 +613,15 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			// model <-> world matrices are special and set for every object
 
 			if (modelToWorldIndex != UniformParamIndex.init) {
-				cgSetParameterValuefc(
+				cgSetMatrixParameterfc(
 					cast(CGparameter)instUnifParams.params.param[modelToWorldIndex],
-					3 * 4,
 					obj.modelToWorld.ptr
 				);
 			}
 			
 			if (worldToModelIndex != UniformParamIndex.init) {
-				cgSetParameterValuefc(
+				cgSetMatrixParameterfc(
 					cast(CGparameter)instUnifParams.params.param[worldToModelIndex],
-					3 * 4,
 					obj.worldToModel.ptr
 				);
 			}
