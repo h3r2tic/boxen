@@ -95,14 +95,20 @@ void main() {
 
 		scope imgLoader = new FreeImageLoader;
 
-		final img2 = imgLoader.load("../../../media/img/Walk_Of_Fame/Mans_Outside_2k.hdr");
+		version (Release) {
+			const cstring mediaDir = `media/`;
+		} else {
+			const cstring mediaDir = `../../../media/`;
+		}
+
+		final img2 = imgLoader.load(mediaDir~"img/Walk_Of_Fame/Mans_Outside_2k.hdr");
 		assert (img2.valid);
 		TextureRequest req;
 		req.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
 		final tex2 = renderer.createTexture(img2, req);
 		assert (tex2.valid);
 
-		final img = imgLoader.load("../../../media/img/testgrid.png");
+		final img = imgLoader.load(mediaDir~"img/testgrid.png");
 		assert (img.valid);
 		final tex = renderer.createTexture(img);
 		assert (tex.valid);
@@ -110,7 +116,7 @@ void main() {
 		meshes ~= loadModel(
 			renderer,
 			effect,
-			`../../../media/mesh/MTree/MonsterTree.3ds`,
+			mediaDir~`mesh/MTree/MonsterTree.3ds`,
 			CoordSys(vec3fi[1, -1, -1.5]),
 			tex,
 			0.01f
@@ -119,7 +125,7 @@ void main() {
 		meshes ~= loadModel(
 			renderer,
 			effect,
-			`../../../media/mesh/cia/cia_mesh_low.obj`,
+			mediaDir~`mesh/cia/cia_mesh_low.obj`,
 			CoordSys(vec3fi[-1, -1, -1.5]),
 			tex2,
 			0.01f
@@ -128,7 +134,7 @@ void main() {
 		meshes ~= loadModel(
 			renderer,
 			effect,
-			`../../../media/mesh/Eland 90/Eland 90.obj`,
+			mediaDir~`mesh/Eland 90/Eland 90.obj`,
 			CoordSys(
 				vec3fi[-3.5 * 5, 0.2, -14],
 				quat.yRotation(45) * quat.xRotation(30)
