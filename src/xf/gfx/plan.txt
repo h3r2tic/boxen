@@ -15,7 +15,9 @@ rendering game plan:
 		+ uses GPUEffectInstance
 	+ load up some real meshes using assimp. boxes are boring.
 	
-	textures
+	~ textures
+		+ FreeImage
+	
 	a few shaders for testing
 
 	~ render lists
