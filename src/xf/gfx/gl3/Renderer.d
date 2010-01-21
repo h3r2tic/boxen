@@ -437,6 +437,8 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 		
 		return toResourceHandle(
 			_textures.alloc((TextureImpl* n) {
+				log.info("Creating a texture for {}.", img);
+				
 				n.refCount = 1;
 				n.parent = null;
 				n.request = req;
@@ -482,9 +484,8 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 					);
 				}
 				
-				gl.Disable(n.target);
-				
 				gl.GenerateMipmap(n.target);
+				gl.Disable(n.target);
 			})
 		);
 	}
@@ -584,10 +585,14 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 				if (typeid(Texture) is up.typeInfo[ui]) {
 					final tex = cast(Texture*)(base + unifDS.offset);
 					if (tex.valid) {
+						// log.trace("cgGLSetTextureParameter({})", tex.getApiHandle());
+						final cgParam = cast(CGparameter)up.param[ui];
+						
 						cgGLSetTextureParameter(
-							cast(CGparameter)up.param[ui],
+							cgParam,
 							tex.getApiHandle()
 						);
+						cgGLEnableTextureParameter(cgParam);
 					}
 				} else switch (up.baseType[ui]) {
 					case ParamBaseType.Float: {
@@ -626,6 +631,28 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 				}
 			}
 		}
+		
+		void unsetObjUniforms(
+				void* base,
+				RawUniformParamGroup* paramGroup
+		) {
+			final up = &paramGroup.params;
+			final numUniforms = up.length;
+
+			for (int ui = 0; ui < numUniforms; ++ui) {
+				final unifDS = up.dataSlice[ui];
+				
+				if (typeid(Texture) is up.typeInfo[ui]) {
+					final tex = cast(Texture*)(base + unifDS.offset);
+					if (tex.valid) {
+						cgGLDisableTextureParameter(
+							cast(CGparameter)up.param[ui]
+						);
+					}
+				}
+			}
+		}
+		
 		
 		void setObjVaryings(GPUEffectInstance* obj) {
 			final vp = &effect.varyingParams;
@@ -803,6 +830,12 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 					obj.numInstances
 				);
 			}
+			
+			// prevent state leaking
+			unsetObjUniforms(
+				efInst.getUniformsDataPtr(),
+				efInst.getUniformParamGroup()
+			);
 		}
 	}
 }
