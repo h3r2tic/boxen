@@ -14,8 +14,7 @@ rendering game plan:
 	+ mesh struct with a position and whatnot
 		+ uses GPUEffectInstance
 	+ load up some real meshes using assimp. boxes are boring.
-	
-	~ textures
+	+ textures
 		+ FreeImage
 	
 	a few shaders for testing

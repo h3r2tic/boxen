@@ -95,7 +95,7 @@ void main() {
 
 		scope imgLoader = new FreeImageLoader;
 
-		version (Release) {
+		version (Demo) {
 			const cstring mediaDir = `media/`;
 		} else {
 			const cstring mediaDir = `../../../media/`;
