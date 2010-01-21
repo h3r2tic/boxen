@@ -9,7 +9,6 @@ private {
 		xf.gfx.api.gl3.ext.EXT_texture_integer,
 		xf.gfx.api.gl3.ext.NV_texture_shader,
 		xf.gfx.api.gl3.ext.NV_texture_shader3,
-		xf.gfx.api.gl3.ext.NV_float_buffer,
 		xf.gfx.api.gl3.ext.NV_depth_buffer_float,
 		xf.gfx.api.gl3.ext.ATI_texture_float;
 }
@@ -49,12 +48,6 @@ const GLenum[] glTextureInternalFormatMap = [
 	DSDT8_MAG8_INTENSITY8_NV,
 	HILO8_NV,
 	SIGNED_HILO8_NV,
-	FLOAT_R16_NV,
-	FLOAT_R32_NV,
-	FLOAT_RG16_NV,
-	FLOAT_RGBA16_NV,
-	FLOAT_RG32_NV,
-	FLOAT_RGBA32_NV,
 	RGBA_FLOAT32_ATI,
 	ALPHA_FLOAT32_ATI,
 	INTENSITY_FLOAT32_ATI,

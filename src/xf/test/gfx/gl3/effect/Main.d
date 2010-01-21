@@ -91,14 +91,22 @@ void main() {
 				Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 			}
 		}
-		
+
 
 		scope imgLoader = new FreeImageLoader;
-		final img = imgLoader.load("../../../media/img/testgrid.tga");
+
+		final img2 = imgLoader.load("../../../media/img/Walk_Of_Fame/Mans_Outside_2k.hdr");
+		assert (img2.valid);
+		TextureRequest req;
+		req.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
+		final tex2 = renderer.createTexture(img2, req);
+		assert (tex2.valid);
+
+		final img = imgLoader.load("../../../media/img/testgrid.png");
 		assert (img.valid);
 		final tex = renderer.createTexture(img);
 		assert (tex.valid);
-		
+
 		meshes ~= loadModel(
 			renderer,
 			effect,
@@ -113,7 +121,7 @@ void main() {
 			effect,
 			`../../../media/mesh/cia/cia_mesh_low.obj`,
 			CoordSys(vec3fi[-1, -1, -1.5]),
-			tex,
+			tex2,
 			0.01f
 		);
 		
@@ -178,7 +186,7 @@ void main() {
 			timer.start();
 			
 			lightRot += timeDelta * 90.f;
-			lightPulse += timeDelta * 25.f;
+			lightPulse += timeDelta * 10.f;
 
 			// update the shared environment params
 			{
@@ -188,7 +196,7 @@ void main() {
 					envUBData.getUniformIndex("envData.lightScale")
 				].offset;
 				
-				float lightScale = abs(cos(deg2rad * lightPulse)) * 30.0f;
+				float lightScale = (cos(deg2rad * lightPulse) + 1.f) * 15.0f;
 				envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
 			}
 
