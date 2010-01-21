@@ -7,8 +7,13 @@ public {
 		xf.gfx.VertexBuffer,
 		xf.gfx.IndexBuffer,
 		xf.gfx.UniformBuffer,
+		xf.gfx.Texture,
 		xf.gfx.Mesh,
 		xf.gfx.gl3.Cg;
+		
+	import
+		xf.img.Image,
+		xf.omg.core.LinearAlgebra;
 		
 	import
 		xf.mem.MainHeap,
@@ -21,6 +26,7 @@ private {
 
 		xf.gfx.gl3.CgEffect,
 		xf.gfx.gl3.Cg,
+		xf.gfx.gl3.TextureInternalFormat,
 	
 		xf.gfx.Resource,
 		xf.gfx.Buffer,
@@ -29,6 +35,8 @@ private {
 		xf.gfx.api.gl3.OpenGL,
 		xf.gfx.api.gl3.ext.ARB_map_buffer_range,
 		xf.gfx.api.gl3.ext.ARB_vertex_array_object,
+		xf.gfx.api.gl3.ext.ARB_half_float_pixel,
+		xf.gfx.api.gl3.ext.ARB_framebuffer_object,
 
 		xf.mem.FreeList,
 		xf.mem.Array,
@@ -52,6 +60,9 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 			
 		ThreadUnsafeResourcePool!(VertexArrayImpl, VertexArrayHandle)
 			_vertexArrays;
+
+		ThreadUnsafeResourcePool!(TextureImpl, TextureHandle)
+			_textures;
 	}
 
 
@@ -388,8 +399,110 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		);
 	}
 	
-	
 
+	// ---- Texture
+
+	private {
+		Texture toResourceHandle(_textures.ResourceReturn resource) {
+			Texture res = void;
+			res._resHandle = resource.handle;
+			res._resMngr = cast(void*)cast(ITextureMngr)this;
+			res._refMngr = cast(void*)this;
+			final rcnt = &resCountTexture;
+			res._resCountAdjust = rcnt.funcptr;
+			
+			return res;
+		}
+		
+		
+		bool resCountTexture(TextureHandle h, int cnt) {
+			if (auto resData = _textures.find(h, cnt > 0)) {
+				final res = resData.res;
+				bool goodBefore = res.refCount > 0;
+				res.refCount += cnt;
+				if (res.refCount > 0) {
+					return true;
+				} else if (goodBefore) {
+					_textures.free(resData);
+				}
+			}
+			
+			return false;
+		}
+	}
+	
+	Texture createTexture(Image img, TextureRequest req = TextureRequest.init) {
+		assert (img.valid);
+		
+		return toResourceHandle(
+			_textures.alloc((TextureImpl* n) {
+				n.refCount = 1;
+				n.parent = null;
+				n.request = req;
+				n.size = vec3i(img.size.x, img.size.y, 1);
+				n.target = TEXTURE_2D;
+
+				gl.GenTextures(1, &n.handle);
+				_bindTexture(n.target, n.handle);
+				
+				gl.PixelStorei(UNPACK_ALIGNMENT, 4);
+				gl.TexImage2D(
+					n.target,
+					0,
+					enumToGL(req.internalFormat),
+					img.width,
+					img.height,
+					req.border,
+					enumToGL(img.colorLayout),
+					enumToGL(img.dataType),
+					img.data.ptr
+				);
+				
+				gl.GenerateMipmap(n.target);
+			})
+		);
+	}
+	
+	
+	void _bindTexture(GLenum target, GLuint id) {
+		gl.BindTexture(target, id);
+	}
+
+
+	TextureImpl* _getTexture(TextureHandle h) {
+		if (auto resData = _textures.find(h)) {
+			assert (resData.res !is null);
+			return resData.res;
+		} else {
+			return null;
+		}
+	}
+
+
+	// implements ITextureMngr
+	vec3i getSize(TextureHandle handle) {
+		if (auto tex = _getTexture(handle)) {
+			return tex.size;
+		} else {
+			log.error("getSize called on an invalid texture handle");
+			return vec3i.zero;
+		}
+	}
+
+	// implements ITextureMngr
+	size_t getApiHandle(TextureHandle handle) {
+		if (auto tex = _getTexture(handle)) {
+			return tex.handle;
+		} else {
+			log.error("getApiHandle called on an invalid texture handle");
+			return 0;
+		}
+	}
+	
+	
+	// ----
+	
+	
 	void render(MeshRenderData*[] objects ...) {
 		if (0 == objects.length) {
 			return;
@@ -677,6 +790,27 @@ private struct VertexArrayImpl {
 }
 
 
+private struct TextureImpl {
+	ptrdiff_t		refCount;
+	GLuint			handle;
+	GLenum			target;
+	vec3i			size;
+	TextureRequest	request;
+	TextureImpl*	parent;		// for cube map faces
+	
+	TextureImpl acquireCubeMapFace(CubeMapFace face) {
+		if (TEXTURE_CUBE_MAP == target) {
+			assert (false, "TODO");
+			//return TextureImpl.init;
+		} else {
+			error("acquireCubeMapFace called on a texture that's not a cube map");
+			assert (false);
+		}
+	}
+}
+
+
+
 private GLenum enumToGL(BufferAccess bits) {
 	GLenum en = 0;
 	
@@ -771,4 +905,34 @@ private CGbufferaccess enumToCg(BufferAccess bits) {
 	}
 	
 	return en;
+}
+
+
+private GLenum enumToGL(Image.ColorLayout e) {
+	switch (e) {
+		case e.R: return RED;
+		case e.RG: return RG;
+		case e.RGB: return RGB;
+		case e.RGBA: return RGBA;
+		default: assert (false);
+	}
+}
+
+
+private GLenum enumToGL(Image.DataType e) {
+	switch (e) {
+		case e.U8: return UNSIGNED_BYTE;
+		case e.I8: return BYTE;
+		case e.U16: return UNSIGNED_SHORT;
+		case e.I16: return SHORT;
+		case e.F16: return HALF_FLOAT_ARB;
+		case e.F32: return FLOAT;
+		case e.F64: return DOUBLE;
+		default: assert (false);
+	}
+}
+
+
+private GLenum enumToGL(TextureInternalFormat e) {
+	return glTextureInternalFormatMap[e];
 }
