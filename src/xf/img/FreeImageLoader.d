@@ -29,149 +29,212 @@ private {
 
 
 class FreeImageLoader : Loader {
-	override Image load(cstring filename, ImageRequest* req = null) {
+	override Image load(cstring path, ImageRequest* req = null) {
 		Image result;
 		
-		/+// TODO: generalize this
-		ilEnable(IL_ORIGIN_SET);
-		ilOriginFunc(IL_ORIGIN_LOWER_LEFT);
-		
-		Image result = new Image;
-		
-		ILuint ilId;
-		{
-			void[] rawData = loadDataFromFile(filename);
-			if (rawData is null) {
-				// TODO: log
-				return null;
+		loadDataFromFile(path,
+		(u8[] imgData) {
+			auto dib = loadFIBITMAP(imgData, path);
+			if (dib is null) {
+				error("FreeImage returned a null bitmap");
 			}
 			
-			ilGenImages(1, &ilId);
-			ilBindImage(ilId);
-			ilLoadL(IL_TYPE_UNKNOWN, &rawData[0], rawData.length);
-			delete rawData;
-		}
-		
-		result.dataFormat = DataFormat.Byte;
-		
-		uint w			= ilGetInteger(IL_IMAGE_WIDTH);
-		uint h			= ilGetInteger(IL_IMAGE_HEIGHT);
-		uint channels	= 0;
-		uint bytesPerChannel = 1;
-
-		switch (ilGetInteger(IL_IMAGE_FORMAT)) {
-			case IL_BGRA:
-			case IL_RGBA:
-				channels = 4;
-				break;
+			if (FreeImage_GetPalette(dib)) {
+				bool transparent = FreeImage_GetTransparencyCount(dib) > 0;
+				FIBITMAP* dib2;
 				
-			case IL_BGR:
-			case IL_RGB:
-				channels = 3;
-				break;
+				if (transparent) {
+					dib2 = FreeImage_ConvertTo32Bits(dib);
+					if (dib2 is null) {
+						error("FreeImage_ConvertTo32Bits failed");
+					}
+				} else {
+					dib2 = FreeImage_ConvertTo24Bits(dib);
+					if (dib2 is null) {
+						error("FreeImage_ConvertTo24Bits failed");
+					}
+				}
 				
-			case IL_LUMINANCE:
-				channels = 1;
-				break;
-		}
-		
-		switch (ilGetInteger(IL_IMAGE_TYPE)) {
-			case IL_UNSIGNED_BYTE:
-				break;
-				
-			case IL_UNSIGNED_SHORT:
-				bytesPerChannel = 2;
-				result.dataFormat = DataFormat.Short;
-				break;
-		}
-		
-		if (req !is null) {
-			auto ilImgType = IL_UNSIGNED_BYTE;
+				FreeImage_Unload(dib);
+				dib = dib2;
+			}
 			
-			switch (req.dataFormat) {
-				case DataFormat.Byte:
-				case DataFormat.SignedByte:
-					bytesPerChannel = 1;
-					break;
+			bool flipRB = false;
+			
+			final itype = FreeImage_GetImageType(dib);
+			switch (itype) {
+				case FIT_BITMAP: {
+					result.dataType = Image.DataType.U8;
 
-				case DataFormat.Short:
-					bytesPerChannel = 2;
-					ilImgType = IL_UNSIGNED_SHORT;
-					break;
+					word bits = FreeImage_GetBPP(dib);
+					switch (bits) {
+						case 1:
+						case 4: {
+							final dib2 = FreeImage_ConvertToGreyscale(dib);
+							if (dib2 is null) {
+								error("FreeImage_ConvertTo8Bits failed");
+							}
+							FreeImage_Unload(dib);
+							dib = dib2;
+							bits = 8;
+						}	// fall through
+						
+						case 8: {
+							result.colorLayout = Image.ColorLayout.R;
+						} break;
+
+						case 16: {
+							final dib2 = FreeImage_ConvertTo24Bits(dib);
+							if (dib2 is null) {
+								error("FreeImage_ConvertTo24Bits failed");
+							}
+							FreeImage_Unload(dib);
+							dib = dib2;
+						}	// fall through
+
+						case 24: {
+							result.colorLayout = Image.ColorLayout.RGB;
+							flipRB = true;
+						} break;
+
+						case 32: {
+							result.colorLayout = Image.ColorLayout.RGBA;
+							flipRB = true;
+						} break;
+						
+						default: {
+							error(
+								"FreeImage_GetBPP returned {}. We don't like that",
+								bits
+							);
+						} break;
+					}
 					
-				case DataFormat.Float:
-					assert (false, "TODO: DataFormat.Float");
-			}
-			
-			result.dataFormat = req.dataFormat;
-			
-			switch (req.imageFormat) {
-				case ImageFormat.RGBA:
-					channels = 4;
-					break;
-				case ImageFormat.RGB:
-					channels = 3;
-					break;
-				case ImageFormat.Grayscale:
-					channels = 1;
-					break;
-			}
-			
-			if (4 == channels) {
-				ilConvertImage(IL_RGBA, ilImgType);				
-			} else if (1 == channels) {
-				ilConvertImage(IL_LUMINANCE, ilImgType);
-			} else {
-				ilConvertImage(IL_RGB, ilImgType);
-			}
-		}
-		
-		switch (channels) {
-			case 4:
-				result.imageFormat = ImageFormat.RGBA;
-				break;
-			case 3:
-				result.imageFormat = ImageFormat.RGB;
-				break;
-			case 1:
-				result.imageFormat = ImageFormat.Grayscale;
-				break;
-			default:
-				throw new Exception(Format("Unsupported image channel count: {}", channels));
-		}
+					result.colorSpace = Image.ColorSpace.sRGB;
+				} break;
+				
+				// TODO: are the other formats BGR[A] as well or plain RGB[A]?
+				// TODO: are 16 bit uint and int types usually sRGB or linear?
+				
+				case FIT_UINT16: {
+					result.colorLayout = Image.ColorLayout.R;
+					result.dataType = Image.DataType.U16;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
 
-		ImagePlane imgPlane = new ImagePlane;
+				case FIT_INT16: {
+					result.colorLayout = Image.ColorLayout.R;
+					result.dataType = Image.DataType.I16;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
 
-		{
-			ubyte[] tmp = (cast(ubyte*)ilGetData())[0 .. w * h * channels * bytesPerChannel];
-			imgPlane.data.alloc(tmp.length);
-			imgPlane.data[] = tmp[];
-		}
-		ilDeleteImages(1, &ilId);
+				case FIT_RGB16: {
+					result.colorLayout = Image.ColorLayout.RGB;
+					result.dataType = Image.DataType.U16;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
 
-		
-		imgPlane.opaque	= true;
-		imgPlane.source	= filename;
-		imgPlane.width		= w;
-		imgPlane.height		= h;
-		imgPlane.depth		= 1;
-		
-		// check if the image is opaque
-		if (4 == channels) {
-			assert (imgPlane.data.length);
-			assert (1 == bytesPerChannel, "TODO: opaque check for 16 bit-per-channel images");
-			
-			foreach (uint i, ubyte a; cast(ubyte[])imgPlane.data) {
-				if (i & 3 != 3) continue;		// only check alpha
-				if (a != 255) {
-					imgPlane.opaque = false;
-					break;
+				case FIT_RGBA16: {
+					result.colorLayout = Image.ColorLayout.RGBA;
+					result.dataType = Image.DataType.U16;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
+
+				case FIT_FLOAT: {
+					result.colorLayout = Image.ColorLayout.R;
+					result.dataType = Image.DataType.F32;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
+
+				case FIT_DOUBLE: {
+					result.colorLayout = Image.ColorLayout.R;
+					result.dataType = Image.DataType.F64;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
+
+				case FIT_RGBF: {
+					result.colorLayout = Image.ColorLayout.RGB;
+					result.dataType = Image.DataType.F32;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
+				
+				case FIT_RGBAF: {
+					result.colorLayout = Image.ColorLayout.RGBA;
+					result.dataType = Image.DataType.F32;
+					result.colorSpace = Image.ColorSpace.Linear;
+				} break;
+
+				default: {
+					error("FreeImage reports an unsupported image type: {}", itype);
 				}
 			}
-		}
+			
+			result.width = FreeImage_GetWidth(dib);
+			result.height = FreeImage_GetHeight(dib);
+			result.scanLineBytes = FreeImage_GetPitch(dib);
+			result._disposalFunc = &this.disposeImage;
+			
+			word totalSize = result.height * result.scanLineBytes;
+			
+			result.data =
+				(cast(u8*)mainHeap.allocRaw(totalSize))[0..totalSize];
+				
+			if (flipRB) {
+				assert (Image.DataType.U8 == result.dataType);
+				
+				switch (result.colorLayout) {
+					case Image.ColorLayout.RGB: {
+						u8* d = result.data.ptr;
+						u8* s = FreeImage_GetBits(dib);
+
+						for (int y = 0; y < result.height; ++y) {
+							u8* dend = result.data.ptr + result.scanLineBytes;
+							
+							for (; d != dend; d += 3, s += 3) {
+								d[0] = s[2];
+								d[1] = s[1];
+								d[2] = s[1];
+							}
+							
+							d = cast(u8*)((cast(uword)d + 3) & ~cast(uword)3);
+							s = cast(u8*)((cast(uword)s + 3) & ~cast(uword)3);
+						}
+					} break;
+
+
+					case Image.ColorLayout.RGBA: {
+						u8* d = result.data.ptr;
+						u8* dend = result.data.ptr + totalSize;
+						u8* s = FreeImage_GetBits(dib);
+						
+						for (; d != dend; d += 4, s += 4) {
+							d[0] = s[2];
+							d[1] = s[1];
+							d[2] = s[1];
+							d[3] = s[3];
+						}
+					} break;
+					
+					default: assert (false);
+				}
+			} else {
+				result.data[] = FreeImage_GetBits(dib)[0..totalSize];
+			}
+
+			scope (exit) {
+				FreeImage_Unload(dib);
+			}
+		});
 		
-		result.planes ~= imgPlane;+/
 		return result;
+	}
+	
+	
+	void disposeImage(Image* img) {
+		if (img.data.ptr) {
+			mainHeap.freeRaw(img.data.ptr);
+			img.data = null;
+		}
 	}
 
 
@@ -191,6 +254,41 @@ class FreeImageLoader : Loader {
 	protected {
 		VfsFolder vfs;
 		
+		
+		FIBITMAP* loadFIBITMAP(u8[] data, cstring fileName) {
+			FREE_IMAGE_FORMAT fif = FIF_UNKNOWN;
+
+			final mem = FreeImage_OpenMemory(data.ptr, data.length);
+
+			// check the file signature and deduce its format
+			// (the second argument is currently not used by FreeImage)
+			fif = FreeImage_GetFileTypeFromMemory(mem);
+
+			if (FIF_UNKNOWN == fif && fileName !is null) {
+				log.warn(
+					"Could not recognize image type from its header"
+					" for file '{}'.", fileName
+				);
+				
+				char[128] buf = void;
+
+				// no signature ?
+				// try to guess the file format from the file extension
+				fif = FreeImage_GetFIFFromFilename(
+					toStringz(fileName, buf[])
+				);
+			}
+
+			// check that the plugin has reading capabilities ...
+			if ((fif != FIF_UNKNOWN) && FreeImage_FIFSupportsReading(fif)) {
+				FIBITMAP *dib = FreeImage_LoadFromMemory(fif, mem);
+				return dib;
+			}
+
+			log.error("Could not recognize image type for file '{}'.", fileName);
+			return null;
+		}
+				
 
 		bool loadDataFromStream(
 			InputStream src,

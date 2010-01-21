@@ -3,6 +3,8 @@ module xf.test.Common;
 private {
 	import tango.time.StopWatch;
 	import tango.core.Thread;
+	
+	static import xf.utils.impl.Log;
 }
 
 public {

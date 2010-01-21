@@ -52,7 +52,7 @@ void main() {
 	printf("FreeImage version: %s\n", FreeImage_GetVersion());
 	puts(FreeImage_GetCopyrightMessage());
 
-	final fname = "Lena.jpg";
+	final fname = "../../media/img/Lena.jpg";
 	scope fileData = new MappedFile(fname, File.ReadShared);
 	scope (exit) fileData.close();
 
