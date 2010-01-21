@@ -44,6 +44,10 @@ template MResource() {
 	Resource* asResource() {
 		return cast(Resource*)this;
 	}
+
+	bool valid() {
+		return _resHandle !is Handle.init;
+	}
 }
 
 

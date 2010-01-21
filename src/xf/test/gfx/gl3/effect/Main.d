@@ -16,6 +16,9 @@ import
 	assimp.loader,
 	assimp.scene,
 	assimp.mesh,
+
+	xf.img.Image,
+	xf.img.FreeImageLoader,
 	
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
@@ -89,31 +92,40 @@ void main() {
 			}
 		}
 		
+
+		scope imgLoader = new FreeImageLoader;
+		final img = imgLoader.load("../../../media/img/testgrid.tga");
+		assert (img.valid);
+		final tex = renderer.createTexture(img);
+		assert (tex.valid);
 		
 		meshes ~= loadModel(
 			renderer,
 			effect,
-			`MTree/MonsterTree.3ds`,
+			`../../../media/mesh/MTree/MonsterTree.3ds`,
 			CoordSys(vec3fi[1, -1, -1.5]),
+			tex,
 			0.01f
 		);
 		
 		meshes ~= loadModel(
 			renderer,
 			effect,
-			`cia/cia_mesh_low.obj`,
+			`../../../media/mesh/cia/cia_mesh_low.obj`,
 			CoordSys(vec3fi[-1, -1, -1.5]),
+			tex,
 			0.01f
 		);
 		
 		meshes ~= loadModel(
 			renderer,
 			effect,
-			`Eland 90/Eland 90.obj`,
+			`../../../media/mesh/Eland 90/Eland 90.obj`,
 			CoordSys(
 				vec3fi[-3.5 * 5, 0.2, -14],
 				quat.yRotation(45) * quat.xRotation(30)
 			),
+			tex,
 			0.04f,
 			11
 		);
@@ -176,7 +188,7 @@ void main() {
 					envUBData.getUniformIndex("envData.lightScale")
 				].offset;
 				
-				float lightScale = abs(cos(deg2rad * lightPulse)) * 2.0f;
+				float lightScale = abs(cos(deg2rad * lightPulse)) * 30.0f;
 				envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
 			}
 
@@ -214,6 +226,7 @@ Mesh[] loadModel(
 		GPUEffect effect,
 		cstring path,
 		CoordSys modelCoordSys,
+		Texture defaultTex,
 		float scale = 1.0f,
 		int numInstances = 1
 ) {
@@ -227,7 +240,7 @@ Mesh[] loadModel(
 	);
 	
 	final err = aiGetErrorString();
-	if (err) {
+	if (scene is null) {
 		Stdout.formatln("assImp error: {}", fromStringz(err));
 	}
 	
@@ -262,6 +275,7 @@ Mesh[] loadModel(
 	struct Vertex {
 		vec3 pos;
 		vec3 norm;
+		vec2 tc;
 	}
 
 	iterAssetMeshes((int meshIdx, aiMesh* assetMesh) {
@@ -281,6 +295,14 @@ Mesh[] loadModel(
 				v.norm = vec3.from(norm);
 			} else {
 				v.norm = vec3.unitY;
+			}
+			
+			const int ch = 0;
+			
+			if (assetMesh.mTextureCoords[ch]) {
+				v.tc = vec2.from(assetMesh.mTextureCoords[ch][i]);
+			} else {
+				v.tc = vec2.zero;
 			}
 		}
 
@@ -305,14 +327,18 @@ Mesh[] loadModel(
 				vec4(1.0f, 0.7f, 0.4f) * 10.f
 			);
 			
+			efInst.setUniform("FragmentProgram.diffuseTex",
+				defaultTex
+			);
+
 			// Create a vertex buffer and bind it to the shader
 
 			efInst.setVarying(
 				"VertexProgram.input.position",
 				vb,
 				VertexAttrib(
-					0,	// offset
-					vec3.sizeof*2,	// stride
+					Vertex.init.pos.offsetof,
+					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
 				)
 			);
@@ -321,19 +347,27 @@ Mesh[] loadModel(
 				"VertexProgram.input.normal",
 				vb,
 				VertexAttrib(
-					vec3.sizeof,	// offset
-					vec3.sizeof*2,	// stride
+					Vertex.init.norm.offsetof,
+					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
 				)
 			);
-			
+						
+			efInst.setVarying(
+				"VertexProgram.input.texCoord",
+				vb,
+				VertexAttrib(
+					Vertex.init.tc.offsetof,
+					Vertex.sizeof,
+					VertexAttrib.Type.Vec2
+				)
+			);
+
 			// Create a uniform buffer for the environment and bind it to the effect
 			
 			if (!envUB.valid) {
 				final envUBData = &effect.uniformBuffers[0];
 				final envUBSize = envUBData.totalSize;
-				
-				log.info("Environment uniform buffer size: {} bytes.", envUBSize);
 				
 				envUB = renderer.createUniformBuffer(
 					BufferUsage.StaticDraw,

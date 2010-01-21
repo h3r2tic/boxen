@@ -153,10 +153,6 @@ template MBuffer() {
 		return (cast(IBufferMngr)_resMngr).getShaderApiHandle(_resHandle);
 	}+/
 
-	bool valid() {
-		return _resHandle !is Handle.init;
-	}
-
 	Buffer* asBuffer() {
 		return cast(Buffer*)this;
 	}

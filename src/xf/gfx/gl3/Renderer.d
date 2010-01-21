@@ -49,7 +49,7 @@ private {
 
 
 
-class Renderer : IBufferMngr, IVertexArrayMngr {
+class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 	// at the front because otherwise DMD is a bitch about forward refs
 	private {
 		GL			gl;
@@ -72,6 +72,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 		
 		_buffers.initialize();
 		_vertexArrays.initialize();
+		_textures.initialize();
 	}
 	
 	
@@ -458,6 +459,31 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 					img.data.ptr
 				);
 				
+				gl.TexParameteri(n.target, TEXTURE_MIN_FILTER, enumToGL(req.minFilter));
+				gl.TexParameteri(n.target, TEXTURE_MAG_FILTER, enumToGL(req.magFilter));
+
+				if (TextureWrap.NoWrap != req.wrapS) {
+					gl.TexParameteri(n.target, TEXTURE_WRAP_S, enumToGL(req.wrapS));
+				}
+				
+				if (TextureWrap.NoWrap != req.wrapT) {
+					gl.TexParameteri(n.target, TEXTURE_WRAP_T, enumToGL(req.wrapT));
+				}
+				
+				if (TextureWrap.NoWrap != req.wrapR) {
+					gl.TexParameteri(n.target, TEXTURE_WRAP_R, enumToGL(req.wrapR));
+				}
+				
+				if (req.border != 0) {
+					gl.TexParameterfv(
+						n.target,
+						TEXTURE_BORDER_COLOR,
+						req.borderColor.ptr
+					);
+				}
+				
+				gl.Disable(n.target);
+				
 				gl.GenerateMipmap(n.target);
 			})
 		);
@@ -555,7 +581,15 @@ class Renderer : IBufferMngr, IVertexArrayMngr {
 					}
 				}+/
 				
-				switch (up.baseType[ui]) {
+				if (typeid(Texture) is up.typeInfo[ui]) {
+					final tex = cast(Texture*)(base + unifDS.offset);
+					if (tex.valid) {
+						cgGLSetTextureParameter(
+							cast(CGparameter)up.param[ui],
+							tex.getApiHandle()
+						);
+					}
+				} else switch (up.baseType[ui]) {
 					case ParamBaseType.Float: {
 						auto func = &cgSetParameter1fv;
 						switch (up.numFields[ui]) {
@@ -935,4 +969,40 @@ private GLenum enumToGL(Image.DataType e) {
 
 private GLenum enumToGL(TextureInternalFormat e) {
 	return glTextureInternalFormatMap[e];
+}
+
+
+private GLenum enumToGL(TextureMinFilter e) {
+	const GLenum[] map = [
+		LINEAR,
+		NEAREST,
+		NEAREST_MIPMAP_NEAREST,
+		NEAREST_MIPMAP_LINEAR,
+		LINEAR_MIPMAP_NEAREST,
+		LINEAR_MIPMAP_LINEAR
+	];
+
+	return map[e];
+}
+
+
+private GLenum enumToGL(TextureMagFilter e) {
+	const GLenum[] map = [
+		LINEAR,
+		NEAREST
+	];
+
+	return map[e];
+}
+
+
+private GLenum enumToGL(TextureWrap e) {
+	const GLenum[] map = [
+		0,
+		CLAMP,
+		CLAMP_TO_EDGE,
+		CLAMP_TO_BORDER
+	];
+
+	return map[e];
 }
