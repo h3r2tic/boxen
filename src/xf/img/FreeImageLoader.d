@@ -38,6 +38,10 @@ class FreeImageLoader : Loader {
 			if (dib is null) {
 				error("FreeImage returned a null bitmap");
 			}
+
+			scope (exit) {
+				FreeImage_Unload(dib);
+			}
 			
 			if (FreeImage_GetPalette(dib)) {
 				bool transparent = FreeImage_GetTransparencyCount(dib) > 0;
@@ -188,12 +192,18 @@ class FreeImageLoader : Loader {
 						u8* s = FreeImage_GetBits(dib);
 
 						for (int y = 0; y < result.height; ++y) {
-							u8* dend = result.data.ptr + result.scanLineBytes;
+							u8* dend = d + result.scanLineBytes;
+							
+							assert (
+								dend
+								is
+								result.data.ptr + result.scanLineBytes * (y+1)
+							);
 							
 							for (; d != dend; d += 3, s += 3) {
 								d[0] = s[2];
 								d[1] = s[1];
-								d[2] = s[1];
+								d[2] = s[0];
 							}
 							
 							d = cast(u8*)((cast(uword)d + 3) & ~cast(uword)3);
@@ -210,7 +220,7 @@ class FreeImageLoader : Loader {
 						for (; d != dend; d += 4, s += 4) {
 							d[0] = s[2];
 							d[1] = s[1];
-							d[2] = s[1];
+							d[2] = s[0];
 							d[3] = s[3];
 						}
 					} break;
@@ -220,10 +230,8 @@ class FreeImageLoader : Loader {
 			} else {
 				result.data[] = FreeImage_GetBits(dib)[0..totalSize];
 			}
-
-			scope (exit) {
-				FreeImage_Unload(dib);
-			}
+			
+			log.info("Loaded {} from {}", result, path);
 		});
 		
 		return result;

@@ -14,7 +14,8 @@ private {
 		xf.gfx.api.gl3.ext.NV_parameter_buffer_object,
 		xf.gfx.api.gl3.ext.NV_transform_feedback,
 		xf.gfx.Buffer,
-		xf.gfx.VertexBuffer;
+		xf.gfx.VertexBuffer,
+		xf.gfx.Texture;
 	
 	import
 		xf.mem.StackBuffer,
@@ -755,7 +756,8 @@ struct CgEffectBuilder {
 			} break;
 
 			case CG_PARAMETERCLASS_SAMPLER: {
-				log.warn("TODO: CG_PARAMETERCLASS_SAMPLER");
+				p.typeInfo = typeid(Texture);
+				p.numFields = 1;
 			} break;
 			
 			default: {
