@@ -6,4 +6,5 @@ private {
 
 
 
-alias xf.mem.OSHeap.osHeap mainHeap;
+alias xf.mem.OSHeap.osHeap		mainHeap;
+alias xf.mem.OSHeap.threadHeap	mainThreadHeap;
