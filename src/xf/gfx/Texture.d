@@ -57,15 +57,15 @@ enum CubeMapFace {
 
 
 struct TextureRequest {
-	TextureType			type			= TextureType.Texture2D;
-	InternalFormat		internalFormat	= InternalFormat.SRGB8_ALPHA8;
-	TextureMinFilter	minFilter		= TextureMinFilter.LinearMipmapLinear;
-	TextureMagFilter	magFilter		= TextureMagFilter.Linear;
-	TextureWrap			wrapS			= TextureWrap.NoWrap;
-	TextureWrap			wrapT			= TextureWrap.NoWrap;
-	TextureWrap			wrapR			= TextureWrap.NoWrap;
-	int					border			= 0;
-	vec4				borderColor		= {r: 0, g: 0, b: 0, a: 1};
+	TextureType				type			= TextureType.Texture2D;
+	TextureInternalFormat	internalFormat	= TextureInternalFormat.SRGB8_ALPHA8;
+	TextureMinFilter		minFilter		= TextureMinFilter.LinearMipmapLinear;
+	TextureMagFilter		magFilter		= TextureMagFilter.Linear;
+	TextureWrap				wrapS			= TextureWrap.NoWrap;
+	TextureWrap				wrapT			= TextureWrap.NoWrap;
+	TextureWrap				wrapR			= TextureWrap.NoWrap;
+	int						border			= 0;
+	vec4					borderColor		= {r: 0, g: 0, b: 0, a: 1};
 }
 
 

@@ -3,7 +3,8 @@ module xf.gfx.TextureInternalFormat;
 
 
 // Formats not native on G80 or GT200 are not listed
-enum InternalFormat {
+// MUST be in sync with xf.gfx.gl3.TextureInternalFormat
+enum TextureInternalFormat {
 	ALPHA8,
 	ALPHA16,
 	DEPTH_COMPONENT16,
