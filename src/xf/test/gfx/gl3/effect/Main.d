@@ -4,12 +4,8 @@ version (StackTracing) import tango.core.tools.TraceExceptions;
 
 import
 	xf.Common,
-	
-	xf.gfx.api.gl3.OpenGL,
-	xf.gfx.api.gl3.ext.WGL_EXT_swap_control,
-	xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
-	xf.gfx.api.gl3.backend.Native,
-	xf.gfx.gl3.Renderer,
+	xf.utils.GfxApp,
+	xf.utils.SimpleCamera,
 	
 	assimp.api,
 	assimp.postprocess,
@@ -28,208 +24,199 @@ import
 
 	
 
-
 UniformBuffer envUB;
 
 
 void main() {
-	auto context = GLWindow();
-	context
-		.title("Effect Test")
-		.showCursor(true)
-		.fullscreen(false)
-		.width(800)
-		.height(600)
-	.create();
-	
-	Assimp.load(Assimp.LibType.Release);
-	
+	(new TestApp).run;
+}
 
-	Renderer		renderer;
-	GPUEffect		effect;
-	
+
+class TestApp : GfxApp {
+	GPUEffect			effect;
 	Mesh[]				meshes;
 	MeshRenderData*[]	renderList;
-	
-	use(context) in (GL gl) {
-		renderer = new Renderer(gl);
-		
-		bool vsync = false;
-		
-		gl.SwapIntervalEXT(vsync ? 1 : 0);
-		gl.Enable(FRAMEBUFFER_SRGB_EXT);
-		gl.Enable(DEPTH_TEST);
-		gl.Enable(CULL_FACE);
-		
-		// Create the effect from a cgfx file
-		
-		effect = renderer.createEffect(
-			"sample",
-			EffectSource.filePath("sample.cgfx")
-		);
-		
-		// Specialize the shader template with 2 lights
-		// - an ambient and a point light
+	float				lightRot = 0.0f;
+	float				lightPulse = 0.0f;
+	StopWatch			timer;
+	SimpleCamera		camera;
 
-		effect.useGeometryProgram = false;
-		effect.setArraySize("lights", 2);
-		effect.setUniformType("lights[0]", "AmbientLight");
-		effect.setUniformType("lights[1]", "PointLight");
-		effect.compile();
+	this() {
+		this.windowTitle = "Effect test";
+		Assimp.load(Assimp.LibType.Release);
+	}
+	
+	override void initialize() {
+		camera = new SimpleCamera(vec3.zero, 0.0f, 0.0f, inputHub.mainChannel);
+		window.interceptCursor = true;
+		window.showCursor = false;
 		
-		// ---- Some debug info printing ----
-		{
-			with (*effect.uniformParams()) {
-				Stdout.formatln("Effect uniforms:");
-				for (int i = 0; i < params.length; ++i) {
-					Stdout.formatln("\t{}", params.name[i]);
+		use (window) in (GL gl) {
+			gl.Enable(DEPTH_TEST);
+			gl.Enable(CULL_FACE);
+
+			// Create the effect from a cgfx file
+			
+			effect = renderer.createEffect(
+				"sample",
+				EffectSource.filePath("sample.cgfx")
+			);
+			
+			// Specialize the shader template with 2 lights
+			// - an ambient and a point light
+
+			effect.useGeometryProgram = false;
+			effect.setArraySize("lights", 2);
+			effect.setUniformType("lights[0]", "AmbientLight");
+			effect.setUniformType("lights[1]", "PointLight");
+			effect.compile();
+			
+			// ---- Some debug info printing ----
+			{
+				with (*effect.uniformParams()) {
+					Stdout.formatln("Effect uniforms:");
+					for (int i = 0; i < params.length; ++i) {
+						Stdout.formatln("\t{}", params.name[i]);
+					}
+				}
+
+				Stdout.formatln("Effect varyings:");
+				for (int i = 0; i < effect.varyingParams.length; ++i) {
+					Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 				}
 			}
 
-			Stdout.formatln("Effect varyings:");
-			for (int i = 0; i < effect.varyingParams.length; ++i) {
-				Stdout.formatln("\t{}", effect.varyingParams.name[i]);
+
+			scope imgLoader = new FreeImageLoader;
+
+			version (Demo) {
+				const cstring mediaDir = `media/`;
+			} else {
+				const cstring mediaDir = `../../../media/`;
 			}
-		}
 
+			final img2 = imgLoader.load(mediaDir~"img/Walk_Of_Fame/Mans_Outside_2k.hdr");
+			assert (img2.valid);
+			TextureRequest req;
+			req.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
+			final tex2 = renderer.createTexture(img2, req);
+			assert (tex2.valid);
 
-		scope imgLoader = new FreeImageLoader;
+			final img = imgLoader.load(mediaDir~"img/testgrid.png");
+			assert (img.valid);
+			final tex = renderer.createTexture(img);
+			assert (tex.valid);
 
-		version (Demo) {
-			const cstring mediaDir = `media/`;
-		} else {
-			const cstring mediaDir = `../../../media/`;
-		}
-
-		final img2 = imgLoader.load(mediaDir~"img/Walk_Of_Fame/Mans_Outside_2k.hdr");
-		assert (img2.valid);
-		TextureRequest req;
-		req.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
-		final tex2 = renderer.createTexture(img2, req);
-		assert (tex2.valid);
-
-		final img = imgLoader.load(mediaDir~"img/testgrid.png");
-		assert (img.valid);
-		final tex = renderer.createTexture(img);
-		assert (tex.valid);
-
-		meshes ~= loadModel(
-			renderer,
-			effect,
-			mediaDir~`mesh/MTree/MonsterTree.3ds`,
-			CoordSys(vec3fi[1, -1, -1.5]),
-			tex,
-			0.01f
-		);
-		
-		meshes ~= loadModel(
-			renderer,
-			effect,
-			mediaDir~`mesh/cia/cia_mesh_low.obj`,
-			CoordSys(vec3fi[-1, -1, -1.5]),
-			tex2,
-			0.01f
-		);
-		
-		meshes ~= loadModel(
-			renderer,
-			effect,
-			mediaDir~`mesh/Eland 90/Eland 90.obj`,
-			CoordSys(
-				vec3fi[-3.5 * 5, 0.2, -14],
-				quat.yRotation(45) * quat.xRotation(30)
-			),
-			tex,
-			0.04f,
-			11
-		);
-
-		if (0 == meshes.length) {
-			throw new Exception("No meshes in the scene :(");
-		} else {
-			uword numTris = 0;
-			uword numMeshes = 0;
-			
-			foreach (m; meshes) {
-				numTris += m.getNumInstances * m.getNumIndices / 3;
-				numMeshes += m.getNumInstances;
-			}
-			
-			Stdout.formatln(
-				"{} Meshes with a total of {} triangles in the scene.",
-				numMeshes,
-				numTris
+			meshes ~= loadModel(
+				renderer,
+				effect,
+				mediaDir~`mesh/MTree/MonsterTree.3ds`,
+				CoordSys(vec3fi[1, -1, -1.5]),
+				tex,
+				0.01f
 			);
-		}
-
-		foreach (ref mesh; meshes) {
-			// this one is an effect-scoped parameter. these are faster.
-			mesh.effect.setUniform("worldToScreen",
-				mat4.perspective(
-					90.0f,		// fov
-					cast(float)context.width / context.height,	// aspect
-					0.5f,		// near
-					10000.0f	// far
-				)
-			);
-		}
-		
-		foreach (ref m; meshes) {
-			renderList ~= m.renderData;
-		}
-	};
-	
-	
-	float lightRot = 0.0f;
-	float lightPulse = 0.0f;
-	
-	StopWatch timer;
-	timer.start();
-
-	while (context.created) {
-		use(context) in (GL gl) {
-			final timeDelta = timer.stop();
-			timer.start();
 			
-			lightRot += timeDelta * 90.f;
-			lightPulse += timeDelta * 10.f;
+			meshes ~= loadModel(
+				renderer,
+				effect,
+				mediaDir~`mesh/cia/cia_mesh_low.obj`,
+				CoordSys(vec3fi[-1, -1, -1.5]),
+				tex2,
+				0.01f
+			);
+			
+			meshes ~= loadModel(
+				renderer,
+				effect,
+				mediaDir~`mesh/Eland 90/Eland 90.obj`,
+				CoordSys(
+					vec3fi[-3.5 * 5, 0.2, -8],
+					quat.yRotation(45) * quat.xRotation(30)
+				),
+				tex,
+				0.04f,
+				11
+			);
 
-			// update the shared environment params
-			{
-				final envUBData = &effect.uniformBuffers[0];
+			if (0 == meshes.length) {
+				throw new Exception("No meshes in the scene :(");
+			} else {
+				uword numTris = 0;
+				uword numMeshes = 0;
 				
-				size_t lightScaleOffset = envUBData.params.dataSlice[
-					envUBData.getUniformIndex("envData.lightScale")
-				].offset;
+				foreach (m; meshes) {
+					numTris += m.getNumInstances * m.getNumIndices / 3;
+					numMeshes += m.getNumInstances;
+				}
 				
-				float lightScale = (cos(deg2rad * lightPulse) + 1.f) * 15.0f;
-				envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
-			}
-
-			// update light positions
-			foreach (mesh; renderList) {
-				mesh.effectInstance.setUniform("lights[1].position",
-					vec3(0, 0, -4) + quat.yRotation(lightRot).xform(vec3(5, 2, 0))
+				Stdout.formatln(
+					"{} Meshes with a total of {} triangles in the scene.",
+					numMeshes,
+					numTris
 				);
 			}
 
-			gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+			effect.setUniform("viewToClip",
+				mat4.perspective(
+					90.0f,		// fov
+					cast(float)window.width / window.height,	// aspect
+					0.1f,		// near
+					100.0f		// far
+				)
+			);
 			
-			foreach (i, ref m; meshes) {
-				if (m.worldMatricesDirty) {
-					auto rd = m.renderData;
-					auto cs = m.modelToWorld;
-					rd.modelToWorld = cs.toMatrix34;
-					cs.invert;
-					rd.worldToModel = cs.toMatrix34;
-				}
+			foreach (ref m; meshes) {
+				renderList ~= m.renderData;
 			}
 			
-			renderer.render(renderList);
+			timer.start();
 		};
+	}
+	
+	
+	void render(GL gl) {
+		final timeDelta = timer.stop();
+		timer.start();
+
+		effect.setUniform("worldToView",
+			camera.getMatrix
+		);
 		
-		context.update().show();
-		//Thread.yield();
+		lightRot += timeDelta * 90.f;
+		lightPulse += timeDelta * 10.f;
+
+		// update the shared environment params
+		{
+			final envUBData = &effect.uniformBuffers[0];
+			
+			size_t lightScaleOffset = envUBData.params.dataSlice[
+				envUBData.getUniformIndex("envData.lightScale")
+			].offset;
+			
+			float lightScale = (cos(deg2rad * lightPulse) + 1.f) * 15.0f;
+			envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
+		}
+
+		// update light positions
+		foreach (mesh; renderList) {
+			mesh.effectInstance.setUniform("lights[1].position",
+				vec3(0, 0, -4) + quat.yRotation(lightRot).xform(vec3(5, 2, 0))
+			);
+		}
+
+		gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+		
+		foreach (i, ref m; meshes) {
+			if (m.worldMatricesDirty) {
+				auto rd = m.renderData;
+				auto cs = m.modelToWorld;
+				rd.modelToWorld = cs.toMatrix34;
+				cs.invert;
+				rd.worldToModel = cs.toMatrix34;
+			}
+		}
+		
+		renderer.render(renderList);
 	}
 }
 

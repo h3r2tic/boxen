@@ -16,8 +16,15 @@ rendering game plan:
 	+ load up some real meshes using assimp. boxes are boring.
 	+ textures
 		+ FreeImage
-	
+	+ debug FPS-style camera
+
 	a few shaders for testing
+		diffuse
+		phong-blinn
+		strauss
+		simple toon
+		fresnel
+		diffuse, specular, normal mapping
 
 	~ render lists
 		grouping by shader group and then by shader

@@ -18,8 +18,8 @@ private {
 	import xf.core.InputHub;
 	import xf.core.JobHub;
 	
+	import xf.utils.Profiler;	
 	import xf.utils.HardwareTimer;
-	import xf.utils.Profiler : profile;
 }
 
 
