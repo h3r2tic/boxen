@@ -179,6 +179,7 @@ class FreeImageLoader : Loader {
 			result._disposalFunc = &this.disposeImage;
 			
 			word totalSize = result.height * result.scanLineBytes;
+			log.trace("Total size for image: {} bytes.", totalSize);
 			
 			result.data =
 				(cast(u8*)mainHeap.allocRaw(totalSize))[0..totalSize];
@@ -192,6 +193,7 @@ class FreeImageLoader : Loader {
 						u8* s = FreeImage_GetBits(dib);
 
 						for (int y = 0; y < result.height; ++y) {
+							assert (s is FreeImage_GetScanLine(dib, y));
 							u8* dend = d + result.scanLineBytes;
 							
 							assert (
@@ -200,7 +202,8 @@ class FreeImageLoader : Loader {
 								result.data.ptr + result.scanLineBytes * (y+1)
 							);
 							
-							for (; d != dend; d += 3, s += 3) {
+							assert (dend <= result.data.ptr + totalSize);
+							for (; d+2 < dend; d += 3, s += 3) {
 								d[0] = s[2];
 								d[1] = s[1];
 								d[2] = s[0];

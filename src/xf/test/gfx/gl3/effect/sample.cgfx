@@ -30,13 +30,17 @@ struct PointLight : ILight {
 struct vertInput {
 	float3 position : POSITION;
 	float3 normal : TEXCOORD0;
-	float2 texCoord : TEXCOORD1;
+	float3 tangent : TEXCOORD1;
+	float3 bitangent : TEXCOORD2;
+	float2 texCoord : TEXCOORD3;
 };
 
 struct fragInput {
-	float3	position : TEXCOORD0;
-	float3	normal : TEXCOORD1;
-	float2	texCoord : TEXCOORD2;
+	float3 position : TEXCOORD0;
+	float3 normal : TEXCOORD1;
+	float3 tangent : TEXCOORD2;
+	float3 bitangent : TEXCOORD3;
+	float2 texCoord : TEXCOORD4;
 };
 
 
@@ -70,6 +74,8 @@ void VertexProgram(
 	
 	output.position = worldPos;
 	output.normal = input.normal;
+	output.tangent = input.tangent;
+	output.bitangent = input.bitangent;
 	output.texCoord = input.texCoord;
 }
 
