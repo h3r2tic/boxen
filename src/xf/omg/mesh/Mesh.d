@@ -1,7 +1,7 @@
 module xf.omg.mesh.Mesh;
 
 private {
-	import xf.omg.mesh.Logging;
+	import xf.omg.mesh.Log;
 	import xf.utils.Meta : createFructIterator;
 	import xf.utils.Memory;
 	import tango.stdc.stdlib : alloca;

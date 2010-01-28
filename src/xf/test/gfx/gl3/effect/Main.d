@@ -14,6 +14,9 @@ import
 	assimp.mesh,
 	assimp.types,
 	assimp.material,
+	assimp.math,
+	
+	xf.loader.scene.hsf.Hsf,
 
 	xf.img.Image,
 	xf.img.FreeImageLoader,
@@ -30,7 +33,9 @@ UniformBuffer envUB;
 
 
 void main() {
-	(new TestApp).run;
+	final ldr = new HsfLoader;
+	ldr.load(`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`);
+	//(new TestApp).run;
 }
 
 
@@ -56,6 +61,7 @@ class TestApp : GfxApp {
 		use (window) in (GL gl) {
 			gl.Enable(DEPTH_TEST);
 			gl.Enable(CULL_FACE);
+			gl.ClearColor(0.1f, 0.1f, 0.1f, 0.0f);
 
 			// Create the effect from a cgfx file
 			
@@ -69,7 +75,7 @@ class TestApp : GfxApp {
 
 			effect.useGeometryProgram = false;
 			effect.setArraySize("lights", 3);
-			effect.setUniformType("lights[0]", "AmbientLight");
+			effect.setUniformType("lights[0]", "PointLight");
 			effect.setUniformType("lights[1]", "PointLight");
 			effect.setUniformType("lights[2]", "PointLight");
 			effect.compile();
@@ -105,15 +111,24 @@ class TestApp : GfxApp {
 			final tex2 = renderer.createTexture(img2, req);
 			assert (tex2.valid);+/
 
-			final defaultDiffuse = renderer.createTexture(
+			final testgrid = renderer.createTexture(
 				imgLoader.load(mediaDir~"img/testgrid.png")
 			);
-			assert (defaultDiffuse.valid);
+			assert (testgrid.valid);
+
+			final whiteTexture = renderer.createTexture(
+				imgLoader.load(mediaDir~"img/white.bmp")
+			);
+			assert (whiteTexture.valid);
 			
 			
 			auto tm = TextureMatcher(
 				(cstring matName) {
-					return defaultDiffuse;
+					switch (matName) {
+						case "diffuse": return whiteTexture;
+						case "specular": return whiteTexture;
+						default: return testgrid;
+					}					
 				},
 				(cstring path) {
 					if (Path.exists(path)) {
@@ -134,7 +149,7 @@ class TestApp : GfxApp {
 				renderer,
 				effect,
 				mediaDir~`mesh/MTree/MonsterTree.3ds`,
-				CoordSys(vec3fi[1, -1, -1.5]),
+				CoordSys(vec3fi[1.5, -1, -1.5]),
 				tm,
 				0.01f
 			);
@@ -143,23 +158,19 @@ class TestApp : GfxApp {
 				renderer,
 				effect,
 				mediaDir~`mesh/cia2/cia.obj`,
-				CoordSys(vec3fi[-1, -1, -1.5]),
+				CoordSys(vec3fi[0, -1, -0.5]),
 				tm,
 				0.01f
 			);
 			
-			meshes ~= loadModel(
+			/+meshes ~= loadModel(
 				renderer,
 				effect,
-				mediaDir~`mesh/Eland 90/Eland 90.obj`,
-				CoordSys(
-					vec3fi[-3.5 * 5, 0.2, -8],
-					quat.yRotation(45) * quat.xRotation(30)
-				),
+				mediaDir~`mesh/cia2/cia2.obj`,
+				CoordSys(vec3fi[-2, -1, -1.5]),
 				tm,
-				0.04f,
-				11
-			);
+				0.01f
+			);+/
 
 			if (0 == meshes.length) {
 				throw new Exception("No meshes in the scene :(");
@@ -181,7 +192,7 @@ class TestApp : GfxApp {
 
 			effect.setUniform("viewToClip",
 				mat4.perspective(
-					90.0f,		// fov
+					65.0f,		// fov
 					cast(float)window.width / window.height,	// aspect
 					0.1f,		// near
 					100.0f		// far
@@ -212,12 +223,23 @@ class TestApp : GfxApp {
 		{
 			final envUBData = &effect.uniformBuffers[0];
 			
-			size_t lightScaleOffset = envUBData.params.dataSlice[
+			/+size_t lightScaleOffset = envUBData.params.dataSlice[
 				envUBData.getUniformIndex("envData.lightScale")
-			].offset;
+			].offset;+/
+
+			final eyePosSlice = envUBData.params.dataSlice[
+				envUBData.getUniformIndex("envData.eyePos")
+			];
 			
-			float lightScale = (cos(deg2rad * lightPulse) + 1.f) * 15.0f;
-			envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);
+			
+			/+float lightScale = (cos(deg2rad * lightPulse) + 1.f) * 15.0f;
+			envUB.setSubData(lightScaleOffset, cast(void[])(&lightScale)[0..1]);+/
+			
+			
+			if (eyePosSlice.length > 0) {
+				vec3 eyePos = camera.position;
+				envUB.setSubData(eyePosSlice.offset, cast(void[])(&eyePos)[0..1]);
+			}
 		}
 
 		// update light positions
@@ -259,7 +281,7 @@ struct TextureMatcher {
 		alias Texture delegate(cstring, cstring, cstring) MatchFN;
 		
 		Texture tryDirect(cstring path, cstring name, cstring pathName) {
-			Stdout.formatln("tryDirect: '{}'", pathName);
+			//Stdout.formatln("tryDirect: '{}'", pathName);
 			return loadTexture(pathName);
 		}
 
@@ -268,7 +290,7 @@ struct TextureMatcher {
 			foreach (ch; Path.children(path)) {
 				if (Unicode.toLower(ch.name) == nameLC) {
 					cstring fullPath = Path.join(ch.path, ch.name);
-					Stdout.formatln("tryCInsensitive: '{}'", fullPath);
+					//Stdout.formatln("tryCInsensitive: '{}'", fullPath);
 					final tex = loadTexture(fullPath);
 					if (tex.valid) {
 						return tex;
@@ -286,8 +308,8 @@ struct TextureMatcher {
 			
 			foreach (ch; Path.children(path)) {
 				final p = Path.parse(Unicode.toLower(ch.name));
-				int score = 0;
 				if (p.ext == wanted.ext) {
+					int score = 0;
 					int maxL = min(p.name.length, wanted.name.length);
 					for (int i = 0; i < maxL; ++i) {
 						if (p.name[i] == wanted.name[i]) {
@@ -327,6 +349,7 @@ struct TextureMatcher {
 		
 		bool tryMethod(MatchFN loadTex) {
 			if (result.valid) return true;
+			Stdout.formatln("tryMethod({})", name);
 			
 			bool tryPath(cstring path) {
 				if (result.valid) return true;
@@ -358,6 +381,14 @@ struct TextureMatcher {
 		tryMethod(&tryDirect)
 		|| tryMethod(&tryCInsensitive)
 		|| tryMethod(&tryFuzzy);
+		
+		if (!result.valid && Path.parse(name).isAbsolute) {
+			name = Path.parse(name).file;
+
+			tryMethod(&tryDirect)
+			|| tryMethod(&tryCInsensitive)
+			|| tryMethod(&tryFuzzy);
+		}
 
 		return result;
 	}
@@ -378,7 +409,8 @@ Mesh[] loadModel(
 		(AI_PROCESS_PRESET_TARGET_REALTIME_QUALITY |
 		aiPostProcessSteps.PreTransformVertices |
 		aiPostProcessSteps.OptimizeMeshes |
-		aiPostProcessSteps.OptimizeGraph)
+		aiPostProcessSteps.OptimizeGraph /+|
+		aiPostProcessSteps.FixInfacingNormals+/)
 		& ~aiPostProcessSteps.SplitLargeMeshes
 	);
 	
@@ -501,7 +533,10 @@ Mesh[] loadModel(
 			final efInst = renderer.instantiateEffect(effect);
 			
 			efInst.setUniform("lights[0].color",
-				vec4(0.0f, 0.0f, 0.01f)
+				vec4(0.1f, 0.3f, 1.0f) * 1.0f
+			);
+			efInst.setUniform("lights[0].position",
+				vec3(-3, 2, -5)
 			);
 			efInst.setUniform("lights[1].color",
 				vec4(1.0f, 0.1f, 0.02f) * 2.f
@@ -510,41 +545,105 @@ Mesh[] loadModel(
 				vec4(1.0f, 1.0f, 1.0f) * 1.f
 			);
 			efInst.setUniform("lights[2].position",
-				vec3(0, 2, 2)
+				vec3(0, 2, 1)
 			);
 			
 			
 			Texture diffuseTex = Texture.init;
+			Texture specularTex = Texture.init;
 			
+			vec4 diffuseTint = vec4.one;
+			vec4 specularTint = vec4.one;
+			
+			float smoothness = 0.1f;
 			if (scene.mMaterials) {
+				final material = scene.mMaterials[assetMesh.mMaterialIndex];
 				aiString path;
 				
 				if (aiReturn.SUCCESS == aiGetMaterialString(
-					scene.mMaterials[assetMesh.mMaterialIndex],
+					material,
 					AI_MATKEY_TEXTURE,
 					aiTextureType.DIFFUSE,
 					0,
 					&path
 				)) {
-					Stdout.formatln("Material texture: {}", path.data[0..path.length]);
-
 					diffuseTex = texMatcher.findTextureForMaterial(
 						"diffuse",
 						path.data[0..path.length],
 						modelFolder
 					);
 				}
-			}
-			
-			if (!diffuseTex.valid) {
-				Stdout.formatln("Diffuse texture not found. Using default.");
-				diffuseTex = texMatcher.defaultTex("diffuse");
-			} else {
-				Stdout.formatln("Valid diffuse texture found.");
+
+				if (aiReturn.SUCCESS == aiGetMaterialString(
+					material,
+					AI_MATKEY_TEXTURE,
+					aiTextureType.SPECULAR,
+					0,
+					&path
+				)) {
+					Stdout.formatln("***specular == {}", path.data[0..path.length]);
+					
+					specularTex = texMatcher.findTextureForMaterial(
+						"specular",
+						path.data[0..path.length],
+						modelFolder
+					);
+				}
+
+				if (aiReturn.SUCCESS == aiGetMaterialFloat(
+					material,
+					AI_MATKEY_SHININESS,
+					0,
+					0,
+					&smoothness,
+					null
+				)) {
+					smoothness /= 90.f;
+					if (smoothness > 0.99f) {
+						smoothness = 0.99f;
+					}
+					//Stdout.formatln("Yay, got smoothness == {}", smoothness);
+				}
+
+				aiGetMaterialColor(
+					material,
+					AI_MATKEY_COLOR_DIFFUSE,
+					0,
+					0,
+					cast(aiColor4D*)&diffuseTint
+				);
+				diffuseTint = sRGB_to_RGB(diffuseTint);
+				
+
+				/+aiGetMaterialColor(
+					material,
+					AI_MATKEY_COLOR_SPECULAR,
+					0,
+					0,
+					cast(aiColor4D*)&specularTint
+				);
+				specularTint = sRGB_to_RGB(specularTint);+/
 			}
 
+			efInst.setUniform("FragmentProgram.smoothness", smoothness);
+			efInst.setUniform("FragmentProgram.diffuseTint", diffuseTint);
+			efInst.setUniform("FragmentProgram.specularTint", specularTint);
+			
+
+			if (!diffuseTex.valid) {
+				diffuseTex = texMatcher.defaultTex("diffuse");
+			}
+
+			if (!specularTex.valid) {
+				specularTex = texMatcher.defaultTex("specular");
+			}
+			
 			efInst.setUniform("FragmentProgram.diffuseTex",
 				diffuseTex
+			);
+
+			efInst.setUniform("FragmentProgram.specularTex",
+				specularTex
 			);
 
 			// Create a vertex buffer and bind it to the shader
@@ -622,13 +721,13 @@ Mesh[] loadModel(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.ambientColor")
 							].offset
-						) = vec4(0.001, 0.001, 0.001, 1);
+						) = vec4.zero;//vec4(0.001, 0.001, 0.001, 1);
 
-						/+*cast(float*)(
+						*cast(float*)(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.lightScale")
 							].offset
-						) = 2.0f;+/
+						) = 20.0f;
 					}
 				);
 
@@ -675,4 +774,36 @@ Mesh[] loadModel(
 	});
 	
 	return meshes;
+}
+
+
+vec4 RGB_to_sRGB(vec4 rgb) {
+	double tos(double l) {
+		if (l < 0) {
+			return 0;
+		}
+		
+		if (l < 0.0031308f) {
+			return l * 12.92f;
+		} else {
+			const float a = 0.055f;
+			return (1 + a) * pow(l, 1.f / 2.4f) - a;
+		}
+	}
+	
+	return vec4[tos(rgb.r), tos(rgb.g), tos(rgb.b), rgb.a];
+}
+
+
+vec4 sRGB_to_RGB(vec4 srgb) {
+	double froms(double nl) {
+		if (nl < 0.0031308 * 12.92) {
+			return nl / 12.92;
+		} else {
+			const double a = 0.055;
+			return pow((nl + a) / (1 + a), 2.4);
+		}
+	}
+	
+	return vec4[froms(srgb.r), froms(srgb.g), froms(srgb.b), srgb.a];
 }

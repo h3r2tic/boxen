@@ -12,7 +12,8 @@ module xf.omg.geom.OCTree;
 private {
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.geom.AABB;
-	import xf.utils.Memory;
+	import xf.mem.MainHeap;
+	static import xf.utils.Memory;
 	
 	import tango.io.Stdout;
 }
@@ -35,7 +36,7 @@ template OCTree(Data) {
 		
 		
 		void add(ref Data d) {
-			data_.append(d, &numData);
+			xf.utils.Memory.append(data_, d, &numData);
 		}
 		
 		
@@ -94,7 +95,7 @@ template OCTree(Data) {
 		this(AABB box) {
 			this.box = box;
 			Leaf[] tmp;
-			tmp.alloc(1);
+			xf.utils.Memory.alloc(tmp, 1);
 			root.setLeaf(&tmp[0]);
 		}
 		
@@ -208,7 +209,7 @@ template OCTree(Data) {
 		
 		Node* alloc8Nodes() {
 			size_t siz = Node.sizeof * 8 + 2;
-			void* ptr = cMalloc(siz);
+			void* ptr = mainHeap.allocRaw(siz);
 			if (cast(size_t)ptr & 1) ptr = cast(void*)(cast(size_t)ptr + 1);
 			auto res = cast(Node*)ptr;
 			foreach (ref n; res[0..8]) {
@@ -220,7 +221,7 @@ template OCTree(Data) {
 		
 		Leaf* allocLeaf() {
 			size_t siz = Leaf.sizeof + 2;
-			void* ptr = cMalloc(siz);
+			void* ptr = mainHeap.allocRaw(siz);
 			if (cast(size_t)ptr & 1) ptr = cast(void*)(cast(size_t)ptr + 1);
 			auto res = cast(Leaf*)ptr;
 			*res = Leaf.init;
@@ -312,7 +313,7 @@ template OCTree(Data) {
 				
 				//Stdout.formatln(`Freeing the leaf`);
 				leaf.free();
-				cFree(leaf);
+				mainHeap.freeRaw(leaf);
 			} else {
 				//Stdout.formatln(`Adding data to the leaf`);
 				leaf.add(data);

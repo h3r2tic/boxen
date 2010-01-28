@@ -488,7 +488,11 @@ class CgEffect : GPUEffect {
 						CG_GLOBAL,
 						name
 					)) {
-						if (!cgIsParameterUsed(p2, cast(CGhandle)prog)) {
+						final bufIdx = cgGetParameterBufferIndex(p2);
+
+						if (-1 == bufIdx &&
+							!cgIsParameterUsed(p2, cast(CGhandle)prog)
+						) {
 							log.trace(
 								"Shared param '{}' is not used in the {} domain.",
 								fromStringz(name),

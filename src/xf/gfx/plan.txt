@@ -20,9 +20,8 @@ rendering game plan:
 
 	a few shaders for testing
 		diffuse
-		phong-blinn
-		strauss
-		simple toon
+		+ phong-blinn
+		+ strauss
 		fresnel
 		diffuse, specular, normal mapping
 

@@ -1,13 +1,24 @@
 interface ILight {
-	float4 illuminate(float3 pos, float3 norm);
+	void sample(
+		float3 point,
+		float3 normal,
+		out float3 toLight,
+		out float4 illuminance
+	);
 };
 
 
 struct AmbientLight : ILight {
 	float4 color;
 
-	float4 illuminate(float3 pos, float3 norm) {
-		return color;
+	void sample(
+		float3 point,
+		float3 normal,
+		out float3 toLight,
+		out float4 illuminance
+	) {
+		toLight = normal;
+		illuminance = color;
 	}
 };
 
@@ -16,10 +27,17 @@ struct PointLight : ILight {
 	float3 position;
 	float4 color;
 
-	float4 illuminate(float3 point, float3 norm) {
-		float3 toLight = position - point;
-		float4 falloff = saturate(dot(normalize(toLight), norm).xxxx);
-		return color * falloff / dot(toLight, toLight).xxxx;
+	void sample(
+		float3 point,
+		float3 normal,
+		out float3 toLight,
+		out float4 illuminance
+	) {
+		toLight = position - point;
+		float distAtten = 1.0f / dot(toLight, toLight).x;
+		toLight = normalize(toLight);
+		float4 falloff = saturate(dot(toLight, normal).xxxx);
+		illuminance = color * falloff * distAtten;
 	}
 };
 
@@ -55,12 +73,16 @@ float4x4 viewToClip <
 
 struct EnvData {
 	float4	ambientColor;
+	float3	eyePos;
 	float	lightScale;
 };
 EnvData envData : BUFFER[0];
 
+#include "strauss.cg"
+#include "phong.cg"
 
 uniform ILight[] lights;
+
 
 void VertexProgram(
 	in vertInput input,
@@ -83,14 +105,51 @@ void VertexProgram(
 void FragmentProgram(
 	in fragInput input,
 	uniform sampler2D diffuseTex,
+	uniform sampler2D specularTex,
+	uniform float smoothness,
+	uniform float4 diffuseTint,
+	uniform float4 specularTint,
 	out float4 output : COLOR
 ) {
-	output = envData.ambientColor;
+	const float metalness = 0.9f;
+
+	float4 diffuseSum = envData.ambientColor;
+	float4 specularSum = float4(0, 0, 0, 0);
+	
 	float3 normal = normalize(input.normal);
 	for (int i = 0; i < lights.length; ++i) {
-		output += lights[i].illuminate(input.position, normal);
+		float3 toLight;
+		float4 illum, diffuse, specular;
+		
+		lights[i].sample(input.position, normal, toLight, illum);
+		StraussBRDF(
+			illum,
+			normal,
+			input.position,
+			toLight,
+			smoothness,
+			metalness,
+			diffuse,
+			specular
+		);
+		
+		/*PhongBRDF(
+			illum,
+			normal,
+			input.position,
+			toLight,
+			smoothness * 90.0f,
+			diffuse,
+			specular
+		);*/
+		
+		diffuseSum += diffuse;
+		specularSum += specular;
 	}
-	output *= envData.lightScale;
 	
-	output *= /*float4(1,1,1,1) + */tex2D(diffuseTex, input.texCoord);
+	output =
+		tex2D(diffuseTex, input.texCoord) * diffuseSum * diffuseTint
+	+	tex2D(specularTex, input.texCoord) * specularSum * specularTint;
+	
+	output *= envData.lightScale;
 }

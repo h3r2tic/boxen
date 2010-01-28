@@ -3,7 +3,7 @@ module xf.omg.mesh.TangentSpaceCalc;
 private {
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.mesh.Mesh : OmgMesh = Mesh, vertexI, faceI, Face, HEdge;
-	import xf.omg.mesh.Logging;
+	import xf.omg.mesh.Log;
 	import xf.omg.geom.AABB;
 	import xf.omg.geom.OCTree;
 }
@@ -82,7 +82,7 @@ void computeMeshTangents(TCType)(
 		vhash.addData(VHashData(p, vec2.from(texCoords[i]), normals[i], i));
 	}
 
-	meshLog.msg("Computing adjacency ...");
+	meshLog.trace("Computing adjacency ...");
 	omgMesh.computeAdjacency((vertexI idx, void delegate(vertexI) adjIter) {
 		if (adjOpt.calculate) {
 			auto v0 = positions[idx];
@@ -102,7 +102,7 @@ void computeMeshTangents(TCType)(
 			}
 		}
 	});
-	meshLog.msg("Done.");
+	meshLog.trace("Done.");
 	
 	bool addTangents(vec3 e0, vec3 e1, vec2 te0, vec2 te1, ref vec3 tangent, ref vec3 bitangent) {
 		float cp = te0.x * te1.y - te0.y * te1.x;

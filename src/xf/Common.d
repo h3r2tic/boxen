@@ -1,7 +1,7 @@
 module xf.Common;
 
 public {
-	import tango.stdc.string : memset, strcmp, memcpy, memcmp;
+	import tango.stdc.string : memset, strcmp, memcpy, memcmp, memmove;
 	import tango.stdc.stringz : fromStringz, toStringz;
 	import tango.core.Thread : Thread;
 	import intrinsic = std.intrinsic;
