@@ -5,7 +5,8 @@ private {
 	
 	import
 		xf.loader.scene.model.all,
-		xf.loader.scene.hsf.Log;
+		xf.loader.scene.hsf.Log,
+		xf.loader.scene.process.FlattenMesh;
 		
 	import
 		xf.utils.LexerBase;
@@ -39,6 +40,8 @@ class HsfLoader {
 		
 		hsfLog.trace("HSF file parsed successfully.");
 		
+		flattenMeshArrays(meshes);
+		
 		foreach (ref mesh; meshes) {
 			computeExtraMeshData(mesh);
 		}
@@ -47,18 +50,19 @@ class HsfLoader {
 	void computeExtraMeshData(ref Mesh mesh) {
 		if (
 			mesh._normals.length > mesh._tangents.length
-		&&	mesh._texCoords.length > 0
-		&&	mesh._texCoords[0].length > 0
+		&&	mesh.numTexCoordSets > 0
+		&&	mesh.texCoords(0).coords.length > 0
 		) {
 			mesh.allocTangents(mesh._normals.length);
 			mesh.allocBitangents(mesh._normals.length);
 			
 			hsfLog.trace("Calculating tangents and bitangents.");
+			
 			computeMeshTangents ( 
 				mesh._indices,
 				mesh._positions,
 				mesh._normals,
-				mesh._texCoords[0],
+				mesh._texCoords[0].coords,
 				mesh._tangents,
 				mesh._bitangents
 			);
@@ -68,6 +72,10 @@ class HsfLoader {
 	
 	float	scale = 1.f;
 	Scene	scene;
+
+	Mesh[]	meshes;
+	Node[]	nodes;
+
 	
 protected:
 
@@ -154,12 +162,16 @@ protected:
 					if (!lexer.consumeInt(&nodeId)) {
 						lexer.error("The 'node' property must be an integer.");
 					}
+					
+					mesh.node = this.nodes[nodeId];
 				} break;
 
 				case "indices": {
 					if (!lexer.consumeInt(&numIndices)) {
 						lexer.error("The 'indices' property must be an integer array.");
 					}
+					
+					mesh.allocIndices(numIndices);
 					
 					for (int i = 0; i < numIndices; ++i) {
 						lexer.skipWhite;
@@ -169,7 +181,7 @@ protected:
 							lexer.error("Syntax error in the indices array.");
 						}
 						
-						// TODO: add the index somewhere
+						mesh.indices[i] = idx;
 					}
 				} break;
 
@@ -197,6 +209,8 @@ protected:
 					}
 					
 					lexer.skipWhite;
+					
+					mesh.allocPositions(numPositions);
 
 					for (int i = 0; i < numPositions; ++i) {
 						vec3 pos;
@@ -204,7 +218,7 @@ protected:
 							lexer.error("Syntax error in the position array.");
 						}
 						
-						// TODO: add the position somewhere
+						mesh.positions[i] = pos;
 					}
 				} break;
 
@@ -216,6 +230,9 @@ protected:
 					}
 					
 					lexer.skipWhite;
+					
+					mesh.allocNormals(numNormals);
+					assert (numNormals == numIndices);
 
 					for (int i = 0; i < numNormals; ++i) {
 						vec3 norm;
@@ -223,7 +240,12 @@ protected:
 							lexer.error("Syntax error in the normals array.");
 						}
 						
-						// TODO: add the normal somewhere
+						if (norm.ok && norm.isUnit) {
+							mesh.normals[i] = norm;
+						} else {
+							// has to be something... :S
+							mesh.normals[i] = vec3.unitY;
+						}
 					}
 				} break;
 
@@ -232,10 +254,10 @@ protected:
 						lexer.error("The 'maps' property must be a struct array.");
 					}
 					
+					mesh.allocTexCoordSets(numMaps);
+					
 					for (int i = 0; i < numMaps; ++i) {
-						parseMeshMapCoords(lexer);
-						
-						// TODO: add the coords somewhere
+						parseMeshMapCoords(lexer, mesh.texCoords(i));
 					}
 				} break;
 				
@@ -255,7 +277,7 @@ protected:
 	}
 
 
-	void parseMeshMapCoords(LexerBase* lexer) {
+	void parseMeshMapCoords(LexerBase* lexer, Mesh.TexCoordSet* coordSet) {
 		lexer.skipWhite();
 		if (lexer.peek() != '{') {
 			lexer.error("Expected a mesh coords body. Got '{}'.", lexer.peek(0, 20));
@@ -280,12 +302,16 @@ protected:
 					if (!lexer.consumeInt(&channelId)) {
 						lexer.error("The 'channel' property must be an integer.");
 					}
+					
+					coordSet.channel = channelId;
 				} break;
 
 				case "indices": {
 					if (!lexer.consumeInt(&numIndices)) {
 						lexer.error("The 'indices' property must be an integer array.");
 					}
+					
+					coordSet.allocIndices(numIndices);
 					
 					for (int i = 0; i < numIndices; ++i) {
 						lexer.skipWhite;
@@ -295,7 +321,7 @@ protected:
 							lexer.error("Syntax error in the indices array.");
 						}
 						
-						// TODO: add the index somewhere
+						coordSet.indices[i] = idx;
 					}
 				} break;
 
@@ -305,14 +331,15 @@ protected:
 					}
 					
 					lexer.skipWhite;
+					
+					coordSet.allocCoords(numCoords);
 
 					for (int i = 0; i < numCoords; ++i) {
-						vec2 uv;
-						if (!lexer.readHexData(cast(u32[])(&uv)[0..1])) {
+						vec3 uvw;
+						if (!lexer.readHexData(cast(u32[])(&uvw)[0..1])) {
 							lexer.error("Syntax error in the coords array.");
 						}
-						
-						// TODO: add the coord somewhere
+						coordSet.coords[i] = uvw;
 					}
 				} break;
 				
@@ -365,7 +392,6 @@ protected:
 		int		parent = -1;
 		vec3	translation = vec3.zero;
 		vec4	rotation = vec4.unitZ;
-		vec3	scale = vec3.one;
 		
 		while (lexer.peek() != '}' && !lexer.eof) {
 			cstring ident;
@@ -403,12 +429,6 @@ protected:
 					}
 				} break;
 
-				case "scale": {
-					if (!lexer.readHexData(cast(u32[])(&scale)[0..1])) {
-						lexer.error("The 'scale' property must be a hex vec3.");
-					}
-				} break;
-				
 				default: {
 					lexer.error("Unsupported node property: '{}'", ident);
 				} break;
@@ -422,23 +442,23 @@ protected:
 				vec3 axis = vec3.from(rotation);
 				axis.normalize();
 				cs = CoordSys(
-					vec3fi.from(translation * scale),
-					quat.axisRotation(axis, -rotation.a)
+					vec3fi.from(translation/+ * scale+/),
+					quat.axisRotation(axis, rotation.a)
 				);
 			} else {
 				cs = CoordSys(
-					vec3fi.from(translation * scale),
+					vec3fi.from(translation/+ * scale+/),
 					quat.identity
 				);
 			}
 		}
 		
-		node.setTransform(cs);
-
 		if (parent != -1) {
 			assert (parent < nodeIdx);
 			node.parent = nodes[parent];
 		}
+
+		node.setTransform(cs, node.parentCS);
 		
 		if (lexer.eof) {
 			lexer.error("End of file while parsing a node body.");
@@ -446,10 +466,6 @@ protected:
 		
 		lexer.consume();		// eat the '}'
 	}
-	
-	
-	Mesh[]	meshes;
-	Node[]	nodes;
 
 
 	/+Node loadNodeTree(Array hme) {

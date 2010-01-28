@@ -26,6 +26,358 @@ import
 	xf.omg.core.Misc,
 	tango.io.Stdout,
 	tango.time.StopWatch;
+	
+import xf.loader.scene.model.all
+	: LoaderNode = Node, LoaderMesh = Mesh, LoaderScene = Scene;
+
+
+Mesh[] loadHsfModel(
+		Renderer renderer,
+		GPUEffect effect,
+		cstring path,
+		CoordSys modelCoordSys,
+		TextureMatcher texMatcher,
+		float scale = 1.0f,
+		int numInstances = 1
+) {
+	path = Path.normalize(path);
+	
+	scope loader = new HsfLoader;
+	loader.load(path);
+	
+	final scene = loader.scene;
+	assert (scene !is null);
+	assert (loader.meshes.length > 0);
+	
+	cstring modelFolder = Path.parse(path).path;
+	
+	assert (1 == scene.nodes.length);
+	final root = scene.nodes[0];
+
+	void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
+		foreach (i, ref m; loader.meshes) {
+			dg(i, m);
+		}
+	}
+	
+	int numMeshes = 0;
+	iterAssetMeshes((int, ref LoaderMesh) {
+		++numMeshes;
+	});
+	
+	Mesh[] meshes = renderer.createMeshes(numMeshes);
+
+	struct Vertex {
+		vec3 pos;
+		vec3 norm;
+		vec3 tangent;
+		vec3 bitangent;
+		vec2 tc;
+	}
+
+	iterAssetMeshes((int meshIdx, ref LoaderMesh assetMesh) {
+		assert (assetMesh.positions !is null);
+		assert (assetMesh.normals !is null);
+		
+		// Initialize vertex data
+		
+		Vertex[] vertices;
+		vertices.length = assetMesh.positions.length;
+
+		final node = assetMesh.node;
+		auto cs = node.localCS;
+		
+		foreach (i, ref v; vertices) {
+			v.pos	= assetMesh.positions[i];
+			v.pos	= cs.rotation.xform(v.pos);
+			v.pos	+= vec3.from(cs.origin);
+			v.pos	*= scale;
+			assert (v.pos.ok);
+			
+			v.norm	= assetMesh.normals[i];
+			v.norm	= cs.rotation.xform(v.norm);
+			
+			/+if (assetMesh.mTangents) {
+				final tangent = assetMesh.mTangents[i];
+				if (tangent.x <>= 0 && tangent.y <>= 0 && tangent.z <>= 0) {
+					v.tangent = vec3.from(tangent);
+				} else {
+					v.tangent = vec3.unitX;
+				}
+			} else {+/
+				v.tangent = vec3.unitX;
+			//}
+
+			/+if (assetMesh.mBitangents) {
+				final bitangent = assetMesh.mBitangents[i];
+				if (bitangent.x <>= 0 && bitangent.y <>= 0 && bitangent.z <>= 0) {
+					v.bitangent = vec3.from(bitangent);
+				} else {
+					v.bitangent = vec3.unitZ;
+				}
+			} else {+/
+				v.bitangent = vec3.unitZ;
+			//}
+
+			const int ch = 0;
+			
+			/+if (assetMesh.numTexCoordSets > ch) {
+				v.tc = vec2.from(assetMesh.texCoords(ch).coords[i]);
+			} else {+/
+				v.tc = vec2.zero;
+			//}
+		}
+
+		auto vb = renderer.createVertexBuffer(
+			BufferUsage.StaticDraw,
+			cast(void[])vertices
+		);
+		delete vertices;
+
+
+		int objId = 0;
+		void createObject(Mesh* mesh) {
+			// Instantiate the effect and initialize its uniforms
+
+			final efInst = renderer.instantiateEffect(effect);
+			
+			efInst.setUniform("lights[0].color",
+				vec4(0.1f, 0.3f, 1.0f) * 1.0f
+			);
+			efInst.setUniform("lights[0].position",
+				vec3(-3, 2, -5)
+			);
+			efInst.setUniform("lights[1].color",
+				vec4(1.0f, 0.1f, 0.02f) * 2.f
+			);
+			efInst.setUniform("lights[2].color",
+				vec4(1.0f, 1.0f, 1.0f) * 1.f
+			);
+			efInst.setUniform("lights[2].position",
+				vec3(0, 2, 1)
+			);
+			
+			
+			Texture diffuseTex = Texture.init;
+			Texture specularTex = Texture.init;
+			
+			vec4 diffuseTint = vec4.one;
+			vec4 specularTint = vec4.one;
+			
+			float smoothness = 0.1f;
+			/+if (scene.mMaterials) {
+				final material = scene.mMaterials[assetMesh.mMaterialIndex];
+				aiString path;
+				
+				if (aiReturn.SUCCESS == aiGetMaterialString(
+					material,
+					AI_MATKEY_TEXTURE,
+					aiTextureType.DIFFUSE,
+					0,
+					&path
+				)) {
+					diffuseTex = texMatcher.findTextureForMaterial(
+						"diffuse",
+						path.data[0..path.length],
+						modelFolder
+					);
+				}
+
+				if (aiReturn.SUCCESS == aiGetMaterialString(
+					material,
+					AI_MATKEY_TEXTURE,
+					aiTextureType.SPECULAR,
+					0,
+					&path
+				)) {
+					Stdout.formatln("***specular == {}", path.data[0..path.length]);
+					
+					specularTex = texMatcher.findTextureForMaterial(
+						"specular",
+						path.data[0..path.length],
+						modelFolder
+					);
+				}
+
+				if (aiReturn.SUCCESS == aiGetMaterialFloat(
+					material,
+					AI_MATKEY_SHININESS,
+					0,
+					0,
+					&smoothness,
+					null
+				)) {
+					smoothness /= 90.f;
+					if (smoothness > 0.99f) {
+						smoothness = 0.99f;
+					}
+					//Stdout.formatln("Yay, got smoothness == {}", smoothness);
+				}
+
+				aiGetMaterialColor(
+					material,
+					AI_MATKEY_COLOR_DIFFUSE,
+					0,
+					0,
+					cast(aiColor4D*)&diffuseTint
+				);
+				diffuseTint = sRGB_to_RGB(diffuseTint);
+				
+
+				/+aiGetMaterialColor(
+					material,
+					AI_MATKEY_COLOR_SPECULAR,
+					0,
+					0,
+					cast(aiColor4D*)&specularTint
+				);
+				specularTint = sRGB_to_RGB(specularTint);+/
+			}+/
+
+			efInst.setUniform("FragmentProgram.smoothness", smoothness);
+			efInst.setUniform("FragmentProgram.diffuseTint", diffuseTint);
+			efInst.setUniform("FragmentProgram.specularTint", specularTint);
+			
+
+			if (!diffuseTex.valid) {
+				diffuseTex = texMatcher.defaultTex("diffuse");
+			}
+
+			if (!specularTex.valid) {
+				specularTex = texMatcher.defaultTex("specular");
+			}
+			
+			efInst.setUniform("FragmentProgram.diffuseTex",
+				diffuseTex
+			);
+
+			efInst.setUniform("FragmentProgram.specularTex",
+				specularTex
+			);
+
+			// Create a vertex buffer and bind it to the shader
+
+			efInst.setVarying(
+				"VertexProgram.input.position",
+				vb,
+				VertexAttrib(
+					Vertex.init.pos.offsetof,
+					Vertex.sizeof,
+					VertexAttrib.Type.Vec3
+				)
+			);
+
+			efInst.setVarying(
+				"VertexProgram.input.normal",
+				vb,
+				VertexAttrib(
+					Vertex.init.norm.offsetof,
+					Vertex.sizeof,
+					VertexAttrib.Type.Vec3
+				)
+			);
+						
+			efInst.setVarying(
+				"VertexProgram.input.tangent",
+				vb,
+				VertexAttrib(
+					Vertex.init.tangent.offsetof,
+					Vertex.sizeof,
+					VertexAttrib.Type.Vec3
+				)
+			);
+
+			efInst.setVarying(
+				"VertexProgram.input.bitangent",
+				vb,
+				VertexAttrib(
+					Vertex.init.bitangent.offsetof,
+					Vertex.sizeof,
+					VertexAttrib.Type.Vec3
+				)
+			);
+
+			efInst.setVarying(
+				"VertexProgram.input.texCoord",
+				vb,
+				VertexAttrib(
+					Vertex.init.tc.offsetof,
+					Vertex.sizeof,
+					VertexAttrib.Type.Vec2
+				)
+			);
+
+			// Create a uniform buffer for the environment and bind it to the effect
+			
+			if (!envUB.valid) {
+				final envUBData = &effect.uniformBuffers[0];
+				final envUBSize = envUBData.totalSize;
+				
+				envUB = renderer.createUniformBuffer(
+					BufferUsage.StaticDraw,
+					envUBSize,
+					null
+				);
+				
+				// Initialize the uniform buffer
+				
+				envUB.mapRange(
+					0,
+					envUBSize,
+					BufferAccess.Write | BufferAccess.InvalidateBuffer,
+					(void[] data) {
+						*cast(vec4*)(
+							data.ptr + envUBData.params.dataSlice[
+								envUBData.getUniformIndex("envData.ambientColor")
+							].offset
+						) = vec4.zero;//vec4(0.001, 0.001, 0.001, 1);
+
+						*cast(float*)(
+							data.ptr + envUBData.params.dataSlice[
+								envUBData.getUniformIndex("envData.lightScale")
+							].offset
+						) = 20.0f;
+					}
+				);
+
+				effect.bindUniformBuffer(0, *envUB.asBuffer);
+			}
+			
+			// Create and set the index buffer
+
+			mesh.numIndices = assetMesh.indices.length;
+			// assert (indices.length > 0 && indices.length % 3 == 0);
+			
+			uword minIdx = uword.max;
+			uword maxIdx = uword.min;
+			
+			foreach (i; assetMesh.indices) {
+				if (i < minIdx) minIdx = i;
+				if (i > maxIdx) maxIdx = i;
+			}
+
+			mesh.minIndex = minIdx;
+			mesh.maxIndex = maxIdx;
+			
+			(mesh.indexBuffer = renderer.createIndexBuffer(
+				BufferUsage.StaticDraw,
+				assetMesh.indices
+			)).dispose();
+			
+			// Finalize the mesh
+			
+			mesh.effectInstance = efInst;
+			mesh.numInstances = numInstances;
+		}
+		
+		auto mesh = &meshes[meshIdx];
+		createObject(mesh);
+		mesh.modelToWorld = modelCoordSys;
+	});
+	
+	scene.dispose();	
+	return meshes;
+}
 
 	
 
@@ -33,10 +385,7 @@ UniformBuffer envUB;
 
 
 void main() {
-	final ldr = new HsfLoader;
-	ldr.load(`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`);
-	ldr.scene.dispose();
-	//(new TestApp).run;
+	(new TestApp).run;
 }
 
 
@@ -144,9 +493,20 @@ class TestApp : GfxApp {
 					if (dg("tex")) return;
 					if (dg(".")) return;
 				}
-			);		
+			);
 
-			meshes ~= loadModel(
+			meshes ~= loadHsfModel(
+				renderer,
+				effect,
+				`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`,
+				CoordSys(vec3fi[0, -1, -0.5]),
+				tm,
+				0.01f
+			);
+			
+			
+
+			/+meshes ~= loadModel(
 				renderer,
 				effect,
 				mediaDir~`mesh/MTree/MonsterTree.3ds`,
@@ -162,7 +522,7 @@ class TestApp : GfxApp {
 				CoordSys(vec3fi[0, -1, -0.5]),
 				tm,
 				0.01f
-			);
+			);+/
 			
 			/+meshes ~= loadModel(
 				renderer,

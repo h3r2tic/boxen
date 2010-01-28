@@ -236,10 +236,10 @@ class Mesh {
 				hedgeI fvhi = v2hi[h.vi];
 				nvhi[hi] = nvhi[fvhi];
 				nvhi[fvhi] = hi;
-				meshLog.trace("another hedge using vertex {} : {}", h.vi, hi);
+				//meshLog.trace("another hedge using vertex {} : {}", h.vi, hi);
 			} else {
 				v2hi[h.vi] = hi;
-				meshLog.trace("first hedge using vertex {} : {}", h.vi, hi);
+				//meshLog.trace("first hedge using vertex {} : {}", h.vi, hi);
 			}
 		}
 		
@@ -279,18 +279,18 @@ class Mesh {
 			});
 
 			iterCircular(hi, nvhiIter, (hedgeI i) {
-				meshLog.trace("done[{}] = true", i);
+				//meshLog.trace("done[{}] = true", i);
 				done[i] = true;
 			});
 			
-			meshLog.trace("HEdges starting at vertex {}: {}", hedge(hi).vi, {
+			/+meshLog.trace("HEdges starting at vertex {}: {}", hedge(hi).vi, {
 				char[] res;
 				iterCircular(hi, nvhiIter, (hedgeI i) {
 					done[i] = true;
 					res ~= Format(" {}", i);
 				});
 				return res;
-			}());
+			}());+/
 		}
 	}
 	
@@ -337,7 +337,7 @@ class Mesh {
 								//done[hi2] = true;
 								
 								// adjacency!
-								meshLog.trace("HEdge({}) is adjacent to HEdge({})", *h1, *h2);
+								//meshLog.trace("HEdge({}) is adjacent to HEdge({})", *h1, *h2);
 								mergeCircular(hi1, hi2,
 									(hedgeI i) {
 										return hedgeIdx(hedge(i).nextEdgeHEdge(this));

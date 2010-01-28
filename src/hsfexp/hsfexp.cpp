@@ -83,9 +83,10 @@ TCHAR*
 HSFExp::texture(UVVert& uv)
 {
     static TCHAR buf[50];
-    sprintf(buf, _T("%8.8x%8.8x"),
+    sprintf(buf, _T("%8.8x%8.8x%8.8x"),
 		floatRepr(uv.x),
-		floatRepr(uv.y)
+		floatRepr(uv.y),
+		floatRepr(uv.z)
 	);
     return buf;
 }
@@ -125,24 +126,44 @@ HSFExp::axisPoint(Point3& p, float angle)
 		floatRepr(p.x),
 		floatRepr(p.z),
 		floatRepr(-p.y),
-		floatRepr(angle)
+		floatRepr(-angle)
 	);
     return buf;
 }
 
 // Get the tranform matrix that take a point from its local coordinate
 // system to its parent's coordinate system
-static Matrix3
-GetLocalTM(INode* node, TimeValue t)
+Matrix3 HSFExp::GetLocalTM(INode* node)
 {
     Matrix3 tm;
-    tm = node->GetObjTMAfterWSM(t);
+    tm = node->GetObjTMAfterWSM(mStart);
     if (!node->GetParentNode()->IsRootNode()) {
-        Matrix3 ip = Inverse(node->GetParentNode()->GetObjTMAfterWSM(t));
+        Matrix3 ip = node->GetParentNode()->GetObjTMAfterWSM(mStart);
+		ip = Inverse(calcNoScaleMatrix(ip));
         tm = tm * ip;
     }
     return tm;
 }
+
+Matrix3 HSFExp::calcNoScaleMatrix(Matrix3 world) {
+	Matrix3 res(1);	 // identity
+
+    AffineParts parts;
+    decomp_affine(world, &parts);
+
+	res.SetRotate(parts.q);
+	res *= TransMatrix(parts.t);
+
+	return res;
+}
+
+
+Matrix3 HSFExp::calcRescaleMatrix(Matrix3 world) {
+	Matrix3 noscale = calcNoScaleMatrix(world);
+	noscale.Invert();
+	return world * noscale;
+}
+
 
 class HSFClassDesc:public ClassDesc {
 public:
@@ -214,7 +235,7 @@ HSFExp::OutputNodeTransform(INode* node, int level)
     if (node->IsRootNode())
         return;
 
-    Matrix3 tm = GetLocalTM(node, mStart);
+    Matrix3 tm = GetLocalTM(node);
     int i, j;
     Point3 p;
 
@@ -257,14 +278,14 @@ HSFExp::OutputNodeTransform(INode* node, int level)
             Indent(level);
             fprintf(mStream, _T("rotation %s\n"), axisPoint(axis, ang));
         }
-        ScaleValue sv(parts.k, parts.u);
+        /*ScaleValue sv(parts.k, parts.u);
         s = sv.s;
         if (parts.f < 0.0f)
             s = - s;
         if (s.x != 1.0f || s.y != 1.0f || s.z != 1.0f) {
             Indent(level);
             fprintf(mStream, _T("scale %s\n"), scalePoint(s));
-        }
+        }*/
     }
 }
 

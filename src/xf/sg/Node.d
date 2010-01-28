@@ -261,7 +261,7 @@ class SgNode {
 	
 	
 	// this one is quite confusing. it's a coordsys which is an offset from the global reference frame. The 'local' part doesn't mean that the
-	// transformation is local. It means a transformation from the world to the local scope.
+	// transformation is local. It means a transformation from the local to the world scope.
 	CoordSys localCS() {
 		return worldOffset;
 	}
