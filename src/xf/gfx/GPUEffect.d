@@ -134,7 +134,13 @@ template MUniformParamGroupInstance() {
 	bool setUniform(T)(cstring name, T value) {
 		final up = getUniformParamGroup();
 		final i = up.getUniformIndex(name);
-		return setUniform!(T)(i, value);
+		if (!setUniform!(T)(i, value)) {
+			// TODO: say where :S
+			log.error("No uniform named '{}'.", name);
+			return false;
+		} else {
+			return true;
+		}
 	}
 }
 

@@ -131,17 +131,17 @@ const int		minStaticMemory = 2 * 1024 * 1024;
 const size_t	maxAllocSize = minStaticMemory - g_subAllocator.maxChunkOverhead;
 
 private {
-	_StackBufferInternalAllocator										g_subAllocator;
+	_StackBufferInternalAllocator							g_subAllocator;
 	static ChunkCache!(maxAllocSize, g_subAllocator)		g_chunkCache;
-	static Object																g_mutex;
+	static Object											g_mutex;
 }
 
 
 private struct MainStackBuffer {
-	const int						maxChunks = 128;	
+	const int				maxChunks = 128;	
 	Chunk*[maxChunks]		_chunks;
-	size_t							_topChunk = size_t.max;
-	size_t							_chunkTop;
+	size_t					_topChunk = size_t.max;
+	size_t					_chunkTop;
 	
 	static this() {
 		g_mutex = new Object;

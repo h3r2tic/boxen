@@ -51,8 +51,8 @@ abstract class GfxApp {
 			.title(`xf game utils sample`)
 			.showCursor(true)
 			.fullscreen(false)
-			.width(800)
-			.height(600)
+			.width(1040)
+			.height(650)	// 1.6 aspect ratio
 		.create();
 		
 		use (window) in (GL gl) {
