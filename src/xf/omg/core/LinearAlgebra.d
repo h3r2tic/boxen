@@ -1367,6 +1367,7 @@ struct Quaternion(flt_) {
 		if (0 == angle) {
 			return Quaternion.identity;
 		}
+		assert (axis.ok);
 		assert (axis.isUnit);
 		assert (angle <>= 0);
 		flt sinA	= scalar!(flt)(sin(angle * 0.5 ));

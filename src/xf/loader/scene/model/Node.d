@@ -2,7 +2,6 @@ module xf.loader.scene.model.Node;
 
 private {
 	import xf.loader.scene.model.WorldEntity;
-	import xf.loader.scene.model.Mesh;
 	import xf.loader.scene.model.Light;
 	import xf.loader.scene.model.Camera;
 	import xf.loader.scene.model.Animation;
@@ -49,5 +48,4 @@ class Node : WorldEntity {
 		
 		return worker(this);
 	}
-	
 }

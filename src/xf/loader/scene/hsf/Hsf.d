@@ -37,22 +37,14 @@ class HsfLoader {
 			parseAndLoad(buf);
 		}
 		
-		foreach (node; scene.nodes) {
-			computeExtraMeshData(node);
-		}
-	}
-	
-	void computeExtraMeshData(Node node) {
-		foreach (n; &node.filterChildren!(Node)) {
-			computeExtraMeshData( n);
-		}
+		hsfLog.trace("HSF file parsed successfully.");
 		
-		foreach (m; &node.filterChildren!(Mesh)) {
-			computeExtraMeshData(m);
+		foreach (ref mesh; meshes) {
+			computeExtraMeshData(mesh);
 		}
 	}
 	
-	void computeExtraMeshData(Mesh mesh) {
+	void computeExtraMeshData(ref Mesh mesh) {
 		if (
 			mesh._normals.length > mesh._tangents.length
 		&&	mesh._texCoords.length > 0
@@ -108,18 +100,25 @@ protected:
 				} break;
 			}
 		}
+		
+		this.scene = new Scene;
+		foreach (n; this.nodes) {
+			if (n.parent is null) {
+				scene.nodes ~= n;
+			}
+		}
 	}
 	
 
 	void parseMeshes(LexerBase* lexer) {
-		hsfLog.trace("parseMeshes()");
-		
 		lexer.skipWhite();
 
 		int numMeshes;
 		if (!lexer.consumeInt(&numMeshes)) {
 			lexer.error("Expected mesh count.");
 		}
+		
+		xf.utils.Memory.alloc(meshes, numMeshes);
 		
 		for (int i = 0; i < numMeshes; ++i) {
 			parseMesh(lexer, i);
@@ -128,14 +127,14 @@ protected:
 
 	
 	void parseMesh(LexerBase* lexer, int meshIdx) {
-		hsfLog.trace("parseMesh({})", meshIdx);
-
 		lexer.skipWhite();
 		if (lexer.peek() != '{') {
 			lexer.error("Expected a mesh body. Got '{}'.", lexer.peek(0, 20));
 		}
 		lexer.consume();
 		lexer.skipWhite();
+		
+		final mesh = &meshes[meshIdx];
 		
 		int		numPositions = 0;
 		int		numIndices = 0;
@@ -257,8 +256,6 @@ protected:
 
 
 	void parseMeshMapCoords(LexerBase* lexer) {
-		hsfLog.trace("parseMeshMapCoords()");
-
 		lexer.skipWhite();
 		if (lexer.peek() != '{') {
 			lexer.error("Expected a mesh coords body. Got '{}'.", lexer.peek(0, 20));
@@ -336,14 +333,17 @@ protected:
 
 
 	void parseNodes(LexerBase* lexer) {
-		hsfLog.trace("parseNodes()");
-		
 		lexer.skipWhite();
 
 		int numNodes;
 		if (!lexer.consumeInt(&numNodes)) {
 			lexer.error("Expected node count.");
 		}
+		
+		nodes = new Node[numNodes];
+		foreach (ref n; nodes) {
+			n = new Node;
+		}		
 		
 		for (int i = 0; i < numNodes; ++i) {
 			parseNode(lexer, i);
@@ -352,7 +352,6 @@ protected:
 	
 	
 	void parseNode(LexerBase* lexer, int nodeIdx) {
-		hsfLog.trace("parseNode({})", nodeIdx);
 		lexer.skipWhite();
 		if (lexer.peek() != '{') {
 			lexer.error("Expected a node body. Got '{}'.", lexer.peek(0, 20));
@@ -360,10 +359,12 @@ protected:
 		lexer.consume();
 		lexer.skipWhite();
 		
+		final node = nodes[nodeIdx];
+		
 		cstring nodeName = null;
 		int		parent = -1;
 		vec3	translation = vec3.zero;
-		vec4	rotation = vec4.zero;
+		vec4	rotation = vec4.unitZ;
 		vec3	scale = vec3.one;
 		
 		while (lexer.peek() != '}' && !lexer.eof) {
@@ -415,6 +416,29 @@ protected:
 
 			lexer.skipWhite();
 		}
+
+		CoordSys cs = void; {
+			if (abs(rotation.a) > 0.0001f) {
+				vec3 axis = vec3.from(rotation);
+				axis.normalize();
+				cs = CoordSys(
+					vec3fi.from(translation * scale),
+					quat.axisRotation(axis, -rotation.a)
+				);
+			} else {
+				cs = CoordSys(
+					vec3fi.from(translation * scale),
+					quat.identity
+				);
+			}
+		}
+		
+		node.setTransform(cs);
+
+		if (parent != -1) {
+			assert (parent < nodeIdx);
+			node.parent = nodes[parent];
+		}
 		
 		if (lexer.eof) {
 			lexer.error("End of file while parsing a node body.");
@@ -422,6 +446,10 @@ protected:
 		
 		lexer.consume();		// eat the '}'
 	}
+	
+	
+	Mesh[]	meshes;
+	Node[]	nodes;
 
 
 	/+Node loadNodeTree(Array hme) {

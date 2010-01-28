@@ -13,6 +13,12 @@ private {
 class Scene {
 	Node[]		nodes;
 	Material[]	materials;
+	
+	void dispose() {
+		foreach (ref n; nodes) {
+			n.destroy();
+		}
+	}
 }
 
 
