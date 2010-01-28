@@ -64,11 +64,33 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
     int numverts = mesh.getNumVerts();
     int numtverts = mesh.getNumTVerts();
     int numfaces = mesh.getNumFaces();
-	const int vx1 = 0, vx2 = 1, vx3 = 2;
+	int vx1 = 0, vx2 = 1, vx3 = 2;
     
     if (numfaces == 0 || numverts == 0) {
         return;
     }
+
+	Matrix3 worldMat = node->GetObjTMAfterWSM(mStart);
+	Matrix3 rescaleMat = calcRescaleMatrix(worldMat);
+	Point3 scale; {
+        AffineParts parts;
+        decomp_affine(worldMat, &parts);
+		ScaleValue sv(parts.k, parts.u);
+        scale = sv.s;
+		if (parts.f < 0.0f) {
+            scale = -scale;
+		}
+	}
+
+	bool reverseWinding = false;
+	if (scale.x < 0) reverseWinding = !reverseWinding;
+	if (scale.y < 0) reverseWinding = !reverseWinding;
+	if (scale.z < 0) reverseWinding = !reverseWinding;
+
+	if (reverseWinding) {
+		vx1 = 2;
+		vx3 = 0;
+	}
 
     mesh.buildRenderNormals();
 
@@ -110,6 +132,7 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
 
     for (int i = 0; i < numverts; i++) {
 		Point3 p = mesh.verts[i];
+		p = VectorTransform(rescaleMat, p);
         fprintf(mStream, _T("%s"), point(p));
     }
 	newln();
@@ -121,7 +144,17 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
     for (int index = 0; index < numfaces; ++index) {
         int smGroup = mesh.faces[index].getSmGroup();
 
-        for (int i = 0; i < 3; i++) {
+		int from = 0;
+		int to = 3;
+		int inc = 1;
+
+		if (reverseWinding) {
+			from = 2;
+			to = -1;
+			inc = -1;
+		}
+
+        for (int i = from; i != to; i += inc) {
 			Point3 n;
 			int norCnt;
 
@@ -138,6 +171,10 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
                 }
 			} else {
                 n = mesh.getFaceNormal(index);
+			}
+
+			if (reverseWinding) {
+				n = -n;
 			}
 
 			fprintf(mStream, _T("%s"), normPoint(n));

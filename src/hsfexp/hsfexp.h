@@ -117,6 +117,9 @@ private:
 	void newln();
 	void semicolon();
     //BOOL IsBBoxTrigger(INode* node);
+	Matrix3 GetLocalTM(INode* node);
+	Matrix3 calcNoScaleMatrix(Matrix3 world);
+	Matrix3 calcRescaleMatrix(Matrix3 world);
     void OutputNodeTransform(INode* node, int level);
 /*    void OutputMultiMtl(Mtl* mtl, int level);
     void OutputNoTexture(int level);

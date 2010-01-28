@@ -7,12 +7,14 @@ private {
 	import xf.omg.rt.Common : Ray, Hit;
 	import xf.omg.geom.Triangle : intersectTriangle;
 	import xf.utils.Memory;
+	import xf.loader.scene.model.Node;
 }
 
 
 
 struct Mesh {
-	Material	material;		
+	Material	material;
+	Node		node;
 	
 	// vertex indices and params
 	uint[]		indices() {
@@ -33,11 +35,11 @@ struct Mesh {
 		return _bitangents;
 	}
 	
-	vec3[]	texCoords(int i) {
-		return _texCoords[i];
+	TexCoordSet* texCoords(int i) {
+		return &_texCoords[i];
 	}
 	
-	int numTexCoords() {
+	int numTexCoordSets() {
 		return _texCoords.length;
 	}
 	
@@ -67,9 +69,8 @@ struct Mesh {
 		_bitangents.alloc(n);
 	}
 	
-	void allocTexCoords(int i, int n) {
-		if (_texCoords.length <= i) _texCoords.alloc(i+1);
-		_texCoords[i].alloc(n);
+	void allocTexCoordSets(int n) {
+		_texCoords.alloc(n);
 	}
 	
 	void allocColors(int n) {
@@ -101,13 +102,13 @@ struct Mesh {
 	}
 	
 	
-	void freeMeshData() {
+	void dispose() {
 		_indices.free();
 		_positions.free();
 		_normals.free();
 		_tangents.free();
 		_bitangents.free();
-		foreach (ref vec3[] tc; _texCoords) tc.free();
+		foreach (ref tc; _texCoords) tc.dispose();
 		_texCoords.free();
 		_colors.free();
 	}
@@ -122,7 +123,43 @@ struct Mesh {
 		vec3[]		_tangents;
 		vec3[]		_bitangents;
 		
-		vec3[][]	_texCoords;
+		struct TexCoordSet {
+			private {
+				uint[]	_indices;
+				vec3[]	_coords;
+			}
+			
+			public {
+				int	channel;
+			}
+
+			uint[] indices() {
+				return _indices;
+			}
+			
+			vec3[] coords() {
+				return _coords;
+			}
+
+			void allocIndices(int n) {
+				_indices.alloc(n);
+			}
+			
+			void allocCoords(int n) {
+				_coords.alloc(n);
+			}
+			
+			void dispose() {
+				_indices.free();
+				_coords.free();
+			}
+			
+			void disposeIndices() {
+				_indices.free();
+			}
+		}
+		
+		TexCoordSet[]	_texCoords;
 		
 		vec4[]		_colors;
 	}

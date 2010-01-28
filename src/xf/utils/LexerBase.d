@@ -4,6 +4,7 @@ private {
 	import xf.Common;
 	import xf.utils.RollingBuffer;
 	import xf.utils.Error;
+	import xf.utils.Log;
 	import tango.io.model.IConduit;
 	import Int = tango.text.convert.Integer;
 	import Float = tango.text.convert.Float;
@@ -295,30 +296,19 @@ struct LexerBase {
 		}
 		consume(8);
 		
-		for (int i = 0; i < 8; i += 2) {
-			char h = hex[i+1];
-			if (h >= '0' && h <= '9') {
-				val += h - '0';
-			} else if (h >= 'a' && h <= 'f') {
-				val += h - 'a';
-			} else if (h >= 'A' && h <= 'F') {
-				val += h - 'A';
-			} else {
-				utilsError("Invalid hex char found: '{}'", h);
-			}				
-			val <<= 8;
+		for (int i = 0; i < 8; ++i) {
+			val <<= 4;
 
-			h = hex[i];
+			char h = hex[i];
 			if (h >= '0' && h <= '9') {
 				val += h - '0';
 			} else if (h >= 'a' && h <= 'f') {
-				val += h - 'a';
+				val += h - 'a' + 10;
 			} else if (h >= 'A' && h <= 'F') {
-				val += h - 'A';
+				val += h - 'A' + 10;
 			} else {
 				utilsError("Invalid hex char found: '{}'", h);
 			}				
-			val <<= 8;
 		}
 		
 		*val_ = val;

@@ -6,6 +6,7 @@ private {
 	import xf.loader.scene.model.Camera;
 	import xf.loader.scene.model.Animation;
 	import xf.omg.core.CoordSys : CoordSys;
+	import xf.omg.core.LinearAlgebra : vec3;
 }
 
 
@@ -24,7 +25,6 @@ class Node : WorldEntity {
 	}
 
 	Animation	animation;	
-	
 
 	int iterWorldEntityTree(int delegate(ref WorldEntity, ref CoordSys) dg) {
 		int worker(Node node) {
