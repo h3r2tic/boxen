@@ -35,6 +35,7 @@ UniformBuffer envUB;
 void main() {
 	final ldr = new HsfLoader;
 	ldr.load(`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`);
+	ldr.scene.dispose();
 	//(new TestApp).run;
 }
 

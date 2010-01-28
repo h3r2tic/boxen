@@ -15,13 +15,13 @@ private template MParentChildManagement() {
 	
 	
 	private {
-		Node[]			_children;
-		Node				_parent;
+		Node[]	_children;
+		Node	_parent;
 	}
 
 
 
-	private const static bool doRefCounting = is(typeof(typeof(this).addRef)) && is(typeof(typeof(this).unref));
+	private const static bool doRefCounting = true;//is(typeof(typeof(this).addRef)) && is(typeof(typeof(this).unref));
 
 	void parent(Node n) {
 		if (_parent !is n) {
@@ -214,11 +214,12 @@ class SgNode {
 	/**
 		Called just before destroying the node
 	*/
-	NodeCallback!()						destroyCallback;
+	NodeCallback!()				destroyCallback;
 	
 	
 	
 	void onParentSet() {
+		localCSDirty = true;
 		recalculateLocalCS();
 	}
 	
@@ -231,8 +232,10 @@ class SgNode {
 	
 	
 	void recalculateLocalCS() {
+		if (!localCSDirty) return;
 		if (parent) parent.recalculateLocalCS();
 		auto newCS = _parentOffset in parentCS;
+		localCSDirty = false;
 		setTransform(newCS.origin, newCS.rotation, worldCS);
 	}
 	
@@ -280,6 +283,8 @@ class SgNode {
 		Translate the node in its local coordsys
 	*/
 	void translate(vec3fi vec) {
+		localCSDirty = false;
+
 		vec3fi worldVec = vec in localCS;
 		worldOffset.origin += worldVec;
 		_parentOffset.origin += _parentOffset.rotation.xform(vec);
@@ -306,6 +311,8 @@ class SgNode {
 		Rotate the node in its local coordsys
 	*/
 	void rotate(quat rot) {
+		localCSDirty = false;
+
 		_parentOffset.rotation = _parentOffset.rotation * rot;
 		worldOffset.rotation = worldOffset.rotation * rot;
 
@@ -327,6 +334,8 @@ class SgNode {
 		Using this function is faster than performing a translation followed by a rotation
 	*/
 	void transform(vec3fi vec, quat rot, CoordSys cs) {
+		localCSDirty = false;
+
 		// our offset from 'cs'
 		CoordSys relativeCS = cs.worldToLocal(localCS);
 		
@@ -371,6 +380,8 @@ class SgNode {
 		cs = a coordinate system in which the pos and rot are given
 	*/
 	void setTransform(vec3fi pos, quat rot, CoordSys cs) {
+		localCSDirty = false;
+
 		CoordSys newCS = CoordSys(pos, rot) in cs;
 		
 		vec3fi worldMove = newCS.origin - localCS.origin;
@@ -487,7 +498,7 @@ class SgNode {
 		this.parent = null;		// this has to be done after children, they might still need the parent.
 	}
 	
-
+	
 	this() {
 	}
 	
@@ -517,7 +528,8 @@ class SgNode {
 	protected {
 		CoordSys	_parentOffset	= CoordSys.identity;
 		CoordSys	worldOffset	= CoordSys.identity;
-		bool			destroyed = false;
 		int			numRefs = 0;
+		bool		destroyed = false;
+		bool		localCSDirty = false;
 	}
 }

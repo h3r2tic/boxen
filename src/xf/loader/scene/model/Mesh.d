@@ -11,37 +11,37 @@ private {
 
 
 
-class Mesh : WorldEntity {
-	Material		material;		
+struct Mesh {
+	Material	material;		
 	
 	// vertex indices and params
-	final uint[]		indices() {
+	uint[]		indices() {
 		return _indices;
 	}
 	
-	final vec3[]		positions() {
+	vec3[]		positions() {
 		return _positions;
 	}
 	
-	final vec3[]		normals() {
+	vec3[]		normals() {
 		return _normals;
 	}
-	final vec3[]		tangents() {
+	vec3[]		tangents() {
 		return _tangents;
 	}
-	final vec3[]		bitangents() {
+	vec3[]		bitangents() {
 		return _bitangents;
 	}
 	
-	final vec3[]	texCoords(int i) {
+	vec3[]	texCoords(int i) {
 		return _texCoords[i];
 	}
 	
-	final int numTexCoords() {
+	int numTexCoords() {
 		return _texCoords.length;
 	}
 	
-	final vec4[]		colors() {
+	vec4[]		colors() {
 		return _colors;
 	}
 	
@@ -77,7 +77,7 @@ class Mesh : WorldEntity {
 	}
 	
 
-	override bool intersect(Ray r, Hit* hit) {
+	bool intersect(Ray r, Hit* hit) {
 		float dist = float.max;
 		if (hit !is null) {
 			dist = hit.distance;
@@ -101,7 +101,7 @@ class Mesh : WorldEntity {
 	}
 	
 	
-	private void freeMeshData() {
+	void freeMeshData() {
 		_indices.free();
 		_positions.free();
 		_normals.free();
@@ -113,18 +113,6 @@ class Mesh : WorldEntity {
 	}
 	
 	
-	// from the SgNode
-	override void destroy(SgNodeDestroyOverride o = SgNodeDestroyOverride.SRSLY) {
-		freeMeshData();
-		super.destroy(o);
-	}
-	
-	
-	~this() {
-		freeMeshData();
-	}
-	
-
 	public {
 		uint[]		_indices;
 		
