@@ -206,7 +206,7 @@ char* HSFExp::escapeName(char* name) {
 	size_t reqLen = 1 + (name ? strlen(name) : 0);
 
 	if (name) for (char* c = name; *c; ++c) {
-		if ('\'' == *c) {
+		if ('\'' == *c || '\\' == *c) {
 			++reqLen;
 		}
 	}
@@ -215,7 +215,7 @@ char* HSFExp::escapeName(char* name) {
 	char* dst = res;
 
 	if (name) for (char* src = name; *src; ++src) {
-		if ('\'' == *src) {
+		if ('\'' == *src || '\\' == *src) {
 			*dst++ = '\\';
 		}
 		*dst++ = *src;
@@ -1659,39 +1659,44 @@ HSFExp::DoExport(const TCHAR *filename, ExpInterface *ei, Interface *i, BOOL sup
 {
     mIp = i;
     mStart = mIp->GetAnimRange().Start();
-    
-    if (suppressPrompts)
+
+    /*if (suppressPrompts)
         initializeDefaults();
     else if (!DialogBoxParam(hInstance, MAKEINTRESOURCE(IDD_VRBLEXP), 
                         GetActiveWindow(), VrblExportDlgProc,
                         (LPARAM) this))
-        return IMPEXP_CANCEL;
+        return IMPEXP_CANCEL;*/
    
-        if (this->GetFlipBook()) {
+        //if (this->GetFlipBook()) {
             int sampleRate;
             int end;
             int lastFrame;
             int numFrames;
 
-            if (this->GetFlipbookSample())
+            /*if (this->GetFlipbookSample())
                 sampleRate = GetTicksPerFrame();
             else
-                sampleRate = TIME_TICKSPERSEC / this->GetFlipbookSampleRate();
+                sampleRate = TIME_TICKSPERSEC / this->GetFlipbookSampleRate();*/
 
             mStart      = i->GetAnimRange().Start();
-            lastFrame   = end = i->GetAnimRange().End();
+            /*lastFrame   = end = i->GetAnimRange().End();
             numFrames   = (end - mStart) / sampleRate + 1;
 
             if (((end - mStart) % sampleRate) != 0) {
                 end += sampleRate;
                 numFrames++;
-            }
+            }*/
 
 			CStr wName(filename);
 			int extLoc = wName.last('.');
 			if (extLoc != -1)
 				wName.remove(extLoc);
 			wName.Append(".hsf");
+
+			{
+				CStr dummy;
+				SplitPathFile(wName, &mExportDir, &dummy);
+			}
 
 			// ----------------------------------------------------------------
 
@@ -1715,8 +1720,10 @@ HSFExp::DoExport(const TCHAR *filename, ExpInterface *ei, Interface *i, BOOL sup
 			mNumMaterials = 0;
 			findSceneNodes(i->GetRootNode(), NULL);
 			fprintf(mStream, _T("# Heretical Scene Format 1.0\n"));
-			exportSceneNodes(0 /*level*/);
-			exportMeshes(0 /*level*/);
+			exportSceneNodes(0);
+			findMeshesAndMaterials();
+			exportMaterials(0);
+			exportMeshes(0);
 
 			// ----------------------------------------------------------------
 
@@ -1730,13 +1737,13 @@ HSFExp::DoExport(const TCHAR *filename, ExpInterface *ei, Interface *i, BOOL sup
                 if (!val) return val;
             }*/
             return TRUE;
-        }
+        //}
 
 		/*VRML2Export vrml2;
         int val = vrml2.DoExport(filename, i, this);
         return val;*/
 
-    return 1;  
+    //return 1;  
 }
 
 BOOL HSFExp::SupportsOptions(int ext, DWORD options) {

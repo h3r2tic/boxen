@@ -4,10 +4,9 @@
 static TriObject* GetTriObjectFromNode(TimeValue time, INode *node, int &deleteIt);
 
 
-void HSFExp::exportMeshes(int level) {
-	// Count the meshes
 
-	int numMeshes = 0;
+void HSFExp::findMeshesAndMaterials() {
+	mNumTriMeshes = 0;
 	for (int i = 0; i < mSceneNodes.size(); ++i) {
 		SceneNode sceneNode = mSceneNodes[i];
 		INode* node = sceneNode.node;
@@ -24,18 +23,21 @@ void HSFExp::exportMeshes(int level) {
 			int numfaces = mesh.getNumFaces();
 		    
 			if (numfaces > 0 && numverts > 0) {
-				++numMeshes;
+				++mNumTriMeshes;
+
+				findMaterial(node);
 			}
 
 			if (deleteIt) obj->DeleteMe();
 		}
 	}
+}
 
-
+void HSFExp::exportMeshes(int level) {
 	// Export the meshes
 
     Indent(level);
-    fprintf(mStream, _T("meshes %d\n"), numMeshes);
+    fprintf(mStream, _T("meshes %d\n"), mNumTriMeshes);
 
 	for (int i = 0; i < mSceneNodes.size(); ++i) {
 		SceneNode sceneNode = mSceneNodes[i];
@@ -48,7 +50,14 @@ void HSFExp::exportMeshes(int level) {
 		int deleteIt;
 		TriObject *triObject = GetTriObjectFromNode(mStart, node, deleteIt);
 		if (triObject) {
+			Indent(level++);
+			fprintf(mStream, _T("{\n"));
+
 			exportMesh(node, triObject, level);
+
+			Indent(--level);
+			fprintf(mStream, _T("}\n"));
+
 			if (deleteIt) triObject->DeleteMe();
 		}
 	}
@@ -95,9 +104,6 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
     mesh.buildRenderNormals();
 
     Mtl *mtl = node->GetMtl();
-
-    Indent(level++);
-    fprintf(mStream, _T("{\n"));
 
 	int nodeId = getNodeId(node);
 	if (nodeId != -1) {
@@ -236,9 +242,6 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
 		}
 	}
 	fprintf(mStream, _T("\n"));
-
-    Indent(--level);
-    fprintf(mStream, _T("}\n"));
 }
 
 

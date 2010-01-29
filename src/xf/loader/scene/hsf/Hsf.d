@@ -73,8 +73,9 @@ class HsfLoader {
 	float	scale = 1.f;
 	Scene	scene;
 
-	Mesh[]	meshes;
-	Node[]	nodes;
+	Mesh[]		meshes;
+	Node[]		nodes;
+	Material[]	materials;
 
 	
 protected:
@@ -103,6 +104,10 @@ protected:
 					parseNodes(&lexer);
 				} break;
 				
+				case "materials": {
+					parseMaterials(&lexer);
+				} break;
+
 				default: {
 					lexer.error("Unrecognized block in HSF file: '{}'", ident);
 				} break;
@@ -270,7 +275,7 @@ protected:
 		}
 		
 		if (lexer.eof) {
-			lexer.error("End of file while parsing a node body.");
+			lexer.error("End of file while parsing a mesh body.");
 		}
 		
 		lexer.consume();		// eat the '}'
@@ -462,6 +467,310 @@ protected:
 		
 		if (lexer.eof) {
 			lexer.error("End of file while parsing a node body.");
+		}
+		
+		lexer.consume();		// eat the '}'
+	}
+
+
+
+
+
+
+
+	int _lastParsedMat;
+
+	void parseMaterials(LexerBase* lexer) {
+		lexer.skipWhite();
+
+		int numMaterials;
+		if (!lexer.consumeInt(&numMaterials)) {
+			lexer.error("Expected mesh count.");
+		}
+		
+		xf.utils.Memory.alloc(materials, numMaterials);
+		
+		int matIdx = 0;
+		_lastParsedMat = -1;
+		for (int i = 0; i < numMaterials; ++i) {
+			parseMaterial(lexer, matIdx);
+		}
+	}
+
+	
+	int parseMaterial(LexerBase* lexer, ref int matIdx) {
+		lexer.skipWhite();
+		{
+			char ch = lexer.peek();
+			if (ch < '0' || ch > '9') {
+				if (lexer.peek(0, 4) == "null") {
+					lexer.consume(4);
+					return -1;
+				} else {
+					lexer.error("Expected a material body. Got '{}'.", lexer.peek(0, 20));
+				}
+			} else {
+				int hsfMatId;
+				if (!lexer.consumeInt(&hsfMatId)) {
+					lexer.error("The material id must be an integer.");
+				}
+
+				if (hsfMatId <= _lastParsedMat) {
+					return hsfMatId;		// already loaded
+				} else {
+					if (hsfMatId != matIdx) {
+						hsfError(
+							"Material ID counting mismatch. Hsf file: {}"
+							", loader calculated: {}", hsfMatId, matIdx
+						);
+					}
+					_lastParsedMat = matIdx;
+				}
+			}
+		}
+		
+		lexer.skipWhite();
+		
+		if (lexer.peek() != '{') {
+			lexer.error("Expected a material body. Got '{}'.", lexer.peek(0, 20));
+		}
+		
+		lexer.consume();
+		lexer.skipWhite();
+		
+		final material = &materials[matIdx];
+		final resultMatIdx = matIdx;
+		++matIdx;
+		
+		cstring matType;
+		cstring matName;
+		cstring shaderType;
+		
+		bool allowSubMats = false;
+		
+		while (lexer.peek() != '}' && !lexer.eof) {
+			cstring ident;
+			if (!lexer.consumeIdent(&ident)) {
+				lexer.error("Expected an identifier.");
+			}
+			
+			lexer.skipWhite();
+
+			switch (ident) {
+				case "name": {
+					if (!lexer.consumeString((char c) {
+						// TODO: mem
+						matName ~= c;
+					})) {
+						lexer.error("The 'name' property must be a string.");
+					}
+				} break;
+
+				case "type": {
+					if (!lexer.consumeString((char c) {
+						// TODO: mem
+						matType ~= c;
+					})) {
+						lexer.error("The 'type' property must be a string.");
+					}
+					
+					switch (matType) {
+						case "standard": {
+							allowSubMats = false;
+						} break;
+
+						case "multi": {
+							allowSubMats = true;
+						} break;
+						
+						default: {
+							lexer.error("Unsupported material type: '{}'", matType);
+						}
+					}
+				} break;
+				
+				case "sub": {
+					if (!allowSubMats) {
+						lexer.error("The '{}' material type doesn't allow sub-materials", matType);
+					}
+					
+					lexer.skipWhite();
+					int numSubMats;
+					if (!lexer.consumeInt(&numSubMats)) {
+						lexer.error("Expected the sub-material count.");
+					}
+					
+					for (int sub = 0; sub < numSubMats; ++sub) {
+						int subId = parseMaterial(lexer, matIdx);
+					}
+				} break;
+				
+				case "map": {
+					lexer.skipWhite();
+					parseMaterialMap(lexer);
+				} break;
+
+				// usual props
+
+				case "shader": {
+					if (!lexer.consumeString((char c) {
+						// TODO: mem
+						shaderType ~= c;
+					})) {
+						lexer.error("The 'shader' property must be a string.");
+					}
+				} break;
+				
+				case "diffuseTint": {
+					vec3 rgb;
+					if (!lexer.consumeFloatArray((&rgb.r)[0..3])) {
+						lexer.error("The 'diffuseTint' property must be a vec3.");
+					}
+					
+					// TODO: put it somewhere
+				} break;
+				
+				case "specularTint": {
+					vec3 rgb;
+					if (!lexer.consumeFloatArray((&rgb.r)[0..3])) {
+						lexer.error("The 'specularTint' property must be a vec3.");
+					}
+					
+					// TODO: put it somewhere
+				} break;
+				
+				case "shininess": {
+					float val;
+					if (!lexer.consumeFloat(&val)) {
+						lexer.error("The 'shininess' property must be a float.");
+					}
+					
+					// TODO: put it somewhere
+				} break;
+
+				case "shininessStrength": {
+					float val;
+					if (!lexer.consumeFloat(&val)) {
+						lexer.error("The 'shininessStrength' property must be a float.");
+					}
+					
+					// TODO: put it somewhere
+				} break;
+
+				case "ior": {
+					float val;
+					if (!lexer.consumeFloat(&val)) {
+						lexer.error("The 'ior' property must be a float.");
+					}
+					
+					// TODO: put it somewhere
+				} break;
+
+				case "opacity": {
+					float val;
+					if (!lexer.consumeFloat(&val)) {
+						lexer.error("The 'opacity' property must be a float.");
+					}
+					
+					// TODO: put it somewhere
+				} break;
+
+				// ----
+
+				default: {
+					lexer.error("Unsupported material property: '{}'", ident);
+				} break;
+			}
+
+			lexer.skipWhite();
+		}
+		
+		if (lexer.eof) {
+			lexer.error("End of file while parsing a material body.");
+		}
+		
+		lexer.consume();		// eat the '}'
+		return resultMatIdx;
+	}
+
+
+	void parseMaterialMap(LexerBase* lexer) {
+		int mapId;
+		if (!lexer.consumeInt(&mapId)) {
+			lexer.error("Expected a material map ID");
+		}
+		
+		lexer.skipWhite();
+		if (lexer.peek() != '{') {
+			lexer.error("Expected a material map doby. Got '{}'.", lexer.peek(0, 20));
+		}
+		lexer.consume();
+		lexer.skipWhite();
+		
+		cstring mapName;
+		cstring mapType;
+		cstring mapFile;
+		vec2 uvTile = vec2.one;
+		vec2 uvOffset = vec2.zero;
+		
+		while (lexer.peek() != '}' && !lexer.eof) {
+			cstring ident;
+			if (!lexer.consumeIdent(&ident)) {
+				lexer.error("Expected an identifier.");
+			}
+			
+			lexer.skipWhite();
+
+			switch (ident) {
+				case "name": {
+					if (!lexer.consumeString((char c) {
+						// TODO: mem
+						mapName ~= c;
+					})) {
+						lexer.error("The 'name' property must be a string.");
+					}
+				} break;
+
+				case "type": {
+					if (!lexer.consumeString((char c) {
+						// TODO: mem
+						mapType ~= c;
+					})) {
+						lexer.error("The 'type' property must be a string.");
+					}
+				} break;
+				
+				case "file": {
+					if (!lexer.consumeString((char c) {
+						// TODO: mem
+						mapFile ~= c;
+					})) {
+						lexer.error("The 'file' property must be a string.");
+					}
+				} break;
+
+				case "uvTile": {
+					if (!lexer.consumeFloatArray((&uvTile.x)[0..2])) {
+						lexer.error("The 'uvTile' property must be a vec2.");
+					}
+				} break;
+				
+				case "uvOffset": {
+					if (!lexer.consumeFloatArray((&uvOffset.x)[0..2])) {
+						lexer.error("The 'uvOffset' property must be a vec2.");
+					}
+				} break;
+
+				default: {
+					lexer.error("Unsupported material map property: '{}'", ident);
+				} break;
+			}
+
+			lexer.skipWhite();
+		}
+		
+		if (lexer.eof) {
+			lexer.error("End of file while parsing a material map body.");
 		}
 		
 		lexer.consume();		// eat the '}'
