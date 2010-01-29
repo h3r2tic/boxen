@@ -6,7 +6,6 @@
 void HSFExp::findSceneNodes(INode* node, INode* parent) {
 	if (!node) return;
 
-
 	if (!node->IsHidden()) {
 		Object* obj = node->EvalWorldState(mStart).obj;
 		if (obj && obj->CanConvertToType(triObjectClassID)) {
@@ -38,13 +37,20 @@ int HSFExp::getNodeId(INode* node) {
 void HSFExp::exportSceneNodes(int level) {
 	Indent(level);
     fprintf(mStream, _T("nodes %d\n"), mSceneNodes.size());
+	fflush(mStream);
 
 	for (int i = 0; i < mSceneNodes.size(); ++i) {
 		SceneNode sceneNode = mSceneNodes[i];
 		INode* node = sceneNode.node;
 		INode* parent = sceneNode.parent;
 
+		Indent(level++);
+		fprintf(mStream, _T("{\n"));
+
 		exportSceneNode(node, parent, level);
+
+		Indent(--level);
+		fprintf(mStream, _T("}\n"));
 	}
 
 	fprintf(mStream, _T("\n"));
@@ -52,9 +58,6 @@ void HSFExp::exportSceneNodes(int level) {
 
 
 void HSFExp::exportSceneNode(INode* node, INode* parent, int level) {
-    Indent(level++);
-    fprintf(mStream, _T("{\n"));
-
 	int parentId = getNodeId(parent);
 	if (parentId != -1) {
 		Indent(level);
@@ -67,7 +70,4 @@ void HSFExp::exportSceneNode(INode* node, INode* parent, int level) {
 	delete[] name;
 
 	OutputNodeTransform(node, level);
-
-    Indent(--level);
-    fprintf(mStream, _T("}\n"));
 }

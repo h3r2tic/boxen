@@ -23,6 +23,7 @@
 #include "interpik.h"
 
 #include <vector>
+#include <map>
 
 extern ClassDesc* GetHSFExpDesc();
 extern TCHAR *GetString(int id);
@@ -106,6 +107,18 @@ private:
 	void findSceneNodes(INode* node, INode* parent);
 	void exportSceneNodes(int level);
 	void exportSceneNode(INode* node, INode* parent, int level);
+
+	void findMeshesAndMaterials();
+	void findMaterial(Mtl* m);
+	void findMaterial(INode* node);
+
+	int  getMaterialId(Mtl* m);
+	int  mLastExporterdMaterial;
+
+	void exportMaterials(int level);
+	void exportMaterial(Mtl* mat, int level);
+	void exportMaterialMap(Mtl* mat, unsigned tmapId, int level);
+
 	void exportMeshes(int level);
 	void exportMesh(INode* node, TriObject* mesh, int level);
 	int  getNodeId(INode* node);
@@ -145,12 +158,15 @@ private:
                      BOOL lastChild);
 	void GenerateUniqueNodeNames(INode* node);*/
 
-    FILE*      mStream;     // The file mStream to write
-    BOOL       mIndent;     // Should we indent?
-//    BOOL       mHadAnim;    // File has animation data
-    TimeValue  mStart;      // First frame of the animation
+    FILE*		mStream;     // The file mStream to write
+    BOOL		mIndent;     // Should we indent?
+//    BOOL		mHadAnim;    // File has animation data
+    TimeValue	mStart;      // First frame of the animation
+	CStr		mExportDir;
 
 	std::vector<SceneNode>	mSceneNodes;
+	std::map<Mtl*, int>		mMtlToId;
+	std::vector<Mtl*>		mMaterials;
 
 	int		mNumTriMeshes;
 	int		mNumMaterials;

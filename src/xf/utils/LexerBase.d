@@ -271,6 +271,16 @@ struct LexerBase {
 		return true;
 	}
 	
+
+	bool consumeFloatArray(float[] val) {
+		foreach (ref f; val) {
+			skipWhite();
+			if (eof) return false;
+			if (!consumeFloat(&f)) return false;
+		}
+		return true;
+	}
+
 	
 	bool consumeIdent(cstring* val) {
 		int end = 0;
