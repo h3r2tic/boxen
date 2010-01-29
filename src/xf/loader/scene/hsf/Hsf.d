@@ -6,7 +6,8 @@ private {
 	import
 		xf.loader.scene.model.all,
 		xf.loader.scene.hsf.Log,
-		xf.loader.scene.process.FlattenMesh;
+		xf.loader.scene.process.FlattenMesh,
+		xf.loader.scene.process.FlattenMeshSubMats;
 		
 	import
 		xf.utils.LexerBase;
@@ -40,6 +41,10 @@ class HsfLoader {
 		
 		hsfLog.trace("HSF file parsed successfully.");
 		
+		flattenMeshSubMats(meshes, (Mesh[] newMeshes) {
+			xf.utils.Memory.realloc(meshes, newMeshes.length);
+			meshes[] = newMeshes;
+		});
 		flattenMeshArrays(meshes);
 		
 		foreach (ref mesh; meshes) {
@@ -148,6 +153,7 @@ protected:
 		lexer.skipWhite();
 		
 		final mesh = &meshes[meshIdx];
+		mesh.normalsIndexed = false;
 		
 		int		numPositions = 0;
 		int		numIndices = 0;
@@ -169,6 +175,16 @@ protected:
 					}
 					
 					mesh.node = this.nodes[nodeId];
+				} break;
+
+				case "material": {
+					int materialId;
+					
+					if (!lexer.consumeInt(&materialId)) {
+						lexer.error("The 'material' property must be an integer.");
+					}
+					
+					mesh.material = &this.materials[materialId];
 				} break;
 
 				case "indices": {
@@ -196,6 +212,9 @@ protected:
 						lexer.error("The 'faceSubMats' property must be an integer array.");
 					}
 					
+					assert (numFaces_ * 3 == numIndices);
+					mesh.allocFaceSubMatIds(numFaces_);
+					
 					for (int i = 0; i < numFaces_; ++i) {
 						lexer.skipWhite;
 						
@@ -204,7 +223,7 @@ protected:
 							lexer.error("Syntax error in the submaterial index array.");
 						}
 						
-						// TODO: add the index somewhere
+						mesh.faceSubMatIds[i] = matIdx;
 					}
 				} break;
 
@@ -564,6 +583,12 @@ protected:
 					})) {
 						lexer.error("The 'name' property must be a string.");
 					}
+
+					// TODO: mem
+					cstring foo;
+					xf.utils.Memory.alloc(foo, matName.length);
+					foo[] = matName;
+					material.name = foo;
 				} break;
 
 				case "type": {
@@ -600,14 +625,30 @@ protected:
 						lexer.error("Expected the sub-material count.");
 					}
 					
+					// TODO: mem
+					xf.utils.Memory.alloc(material.subMaterials, numSubMats);
+					
 					for (int sub = 0; sub < numSubMats; ++sub) {
 						int subId = parseMaterial(lexer, matIdx);
+						if (subId != -1) {
+							material.subMaterials[sub] = &this.materials[subId];
+						}
 					}
 				} break;
 				
-				case "map": {
+				case "maps": {
 					lexer.skipWhite();
-					parseMaterialMap(lexer);
+					int numMaps;
+					if (!lexer.consumeInt(&numMaps)) {
+						lexer.error("Expected the map count.");
+					}
+
+					// TODO: mem
+					xf.utils.Memory.alloc(material.maps, numMaps);
+					
+					for (int i = 0; i < numMaps; ++i) {
+						parseMaterialMap(lexer, &material.maps[i]);
+					}
 				} break;
 
 				// usual props
@@ -619,6 +660,12 @@ protected:
 					})) {
 						lexer.error("The 'shader' property must be a string.");
 					}
+					
+					// TODO: mem
+					cstring foo;
+					xf.utils.Memory.alloc(foo, shaderType.length);
+					foo[] = shaderType;
+					material.reflectanceModel = foo;
 				} break;
 				
 				case "diffuseTint": {
@@ -627,7 +674,7 @@ protected:
 						lexer.error("The 'diffuseTint' property must be a vec3.");
 					}
 					
-					// TODO: put it somewhere
+					material.diffuseTint = vec4(rgb.r, rgb.g, rgb.b, 1);
 				} break;
 				
 				case "specularTint": {
@@ -636,7 +683,7 @@ protected:
 						lexer.error("The 'specularTint' property must be a vec3.");
 					}
 					
-					// TODO: put it somewhere
+					material.specularTint = vec4(rgb.r, rgb.g, rgb.b, 1);
 				} break;
 				
 				case "shininess": {
@@ -645,7 +692,7 @@ protected:
 						lexer.error("The 'shininess' property must be a float.");
 					}
 					
-					// TODO: put it somewhere
+					material.shininess = val;
 				} break;
 
 				case "shininessStrength": {
@@ -654,7 +701,7 @@ protected:
 						lexer.error("The 'shininessStrength' property must be a float.");
 					}
 					
-					// TODO: put it somewhere
+					material.shininessStrength = val;
 				} break;
 
 				case "ior": {
@@ -663,7 +710,7 @@ protected:
 						lexer.error("The 'ior' property must be a float.");
 					}
 					
-					// TODO: put it somewhere
+					material.ior = val;
 				} break;
 
 				case "opacity": {
@@ -672,7 +719,7 @@ protected:
 						lexer.error("The 'opacity' property must be a float.");
 					}
 					
-					// TODO: put it somewhere
+					material.opacity = val;
 				} break;
 
 				// ----
@@ -694,24 +741,28 @@ protected:
 	}
 
 
-	void parseMaterialMap(LexerBase* lexer) {
-		int mapId;
-		if (!lexer.consumeInt(&mapId)) {
-			lexer.error("Expected a material map ID");
-		}
-		
+	void parseMaterialMap(LexerBase* lexer, Map* map) {
 		lexer.skipWhite();
-		if (lexer.peek() != '{') {
-			lexer.error("Expected a material map doby. Got '{}'.", lexer.peek(0, 20));
+		if ('{' != lexer.peek()) {
+			if (lexer.peek(0, 4) == "null") {
+				lexer.consume(4);
+				return;
+			} else {
+				lexer.error("Expected a map body. Got '{}'.", lexer.peek(0, 20));
+			}
+		} else {
+			map.enabled = true;
 		}
+
 		lexer.consume();
 		lexer.skipWhite();
 		
 		cstring mapName;
 		cstring mapType;
 		cstring mapFile;
-		vec2 uvTile = vec2.one;
-		vec2 uvOffset = vec2.zero;
+		
+		// TODO
+		map.amount = 1.0f;
 		
 		while (lexer.peek() != '}' && !lexer.eof) {
 			cstring ident;
@@ -747,16 +798,22 @@ protected:
 					})) {
 						lexer.error("The 'file' property must be a string.");
 					}
+
+					// TODO: mem
+					cstring foo;
+					xf.utils.Memory.alloc(foo, mapFile.length);
+					foo[] = mapFile;
+					map.bitmapPath = foo;
 				} break;
 
 				case "uvTile": {
-					if (!lexer.consumeFloatArray((&uvTile.x)[0..2])) {
+					if (!lexer.consumeFloatArray((&map.uvTile.x)[0..2])) {
 						lexer.error("The 'uvTile' property must be a vec2.");
 					}
 				} break;
 				
 				case "uvOffset": {
-					if (!lexer.consumeFloatArray((&uvOffset.x)[0..2])) {
+					if (!lexer.consumeFloatArray((&map.uvOffset.x)[0..2])) {
 						lexer.error("The 'uvOffset' property must be a vec2.");
 					}
 				} break;
@@ -777,368 +834,7 @@ protected:
 	}
 
 
-	/+Node loadNodeTree(Array hme) {
-		Node n = loadNode(hme);
-		
-		for (int i = 0; i < hme.count(`node`); ++i) {
-			auto ch = loadNodeTree(hme.child(`node`, i));
-			auto cs = ch.localCS;
-			n.attachChild(ch);
-			ch.setTransform(cs, n.localCS);
-		}
-		
-		return n;
-	}
-	
-	
-	// BUG: colors can't have alpha channels with the way Hme currently works.
-	void loadNodeMesh(Mesh mesh, Array hme, vec3 meshScale) {
-		with (hme) {
-			vec3[] vertices;
-			scope (exit) vertices.free();
-
-			with (child(`verts`, 0, 1)) {
-				int numVerts = count();
-				hsfLog.trace("    {} vertices", numVerts);
-				
-				vertices.alloc(numVerts);
-				vec3_(vertices);
-				
-				foreach (inout v; vertices) {
-					v *= scale;
-					v.x *= meshScale.x;
-					v.y *= meshScale.y;
-					v.z *= meshScale.z;
-				}
-			}
-			
-			
-			vec3i[]	faces;
-			scope (exit) faces.free();
-			
-			vec3[]	normals;
-			scope (exit) normals.free();
-			
-
-			with (child(`faces`, 0, 1)) {
-				int numFaces = count();
-				hsfLog.trace("    {} faces", numFaces);
-	
-				faces.alloc(numFaces);
-				vec3i_(faces);
-			}
-
-			with (child(`faceVertexNormals`)) {
-				normals.alloc(faces.length * 3);
-				vec3_(normals);
-			}
-
-			
-			uint[] indices = (cast(uint*)faces.ptr)[0 .. faces.length * 3];
-			foreach (i; indices) assert (i < vertices.length);
-
-			
-			uint[]	normalIndices;
-			scope (exit) normalIndices.free();
-			
-			{
-				scope	normalHash = new HashMap!(QuantizedNormal, uint, Container.hash, Container.reap, Container.Chunk);
-				uint		numNormals = 0;
-				
-				normalIndices.alloc(indices.length);
-				
-				vec3[]	quantizedNormals;
-				quantizedNormals.alloc(indices.length);
-				
-				foreach (int ni, vec3 n; normals) {
-					QuantizedNormal qn = QuantizedNormal(n);
-					uint* fnd = qn in normalHash;
-					
-					if (fnd !is null) {
-						normalIndices[ni] = *fnd;
-					} else {
-						normalIndices[ni] = numNormals;
-						normalHash[qn] = numNormals;
-						quantizedNormals[numNormals] = n;
-						++numNormals;
-					}
-				}
-				
-				quantizedNormals.realloc(numNormals);
-				
-				
-				float maxError = 0f;
-				foreach (i, ni; normalIndices) {
-					float error = (normals[i] - quantizedNormals[ni]).length;
-					if (error > maxError) maxError = error;
-				}
-				
-				normals.free();
-				normals = quantizedNormals;
-			}
-			
-			
-			assert (normalIndices.length == indices.length);
-			
-			
-			int numMaps = int_(`maps`);
-			hsfLog.trace("    {} maps", numMaps);
-			
-			
-			vec3[][]	texCoords;
-			uint[][]		texCoordIndices;
-			texCoords.alloc(numMaps);
-			texCoordIndices.alloc(numMaps);
-
-			scope (exit) {
-				foreach (ref tci; texCoordIndices) {
-					tci.free();
-				}
-				texCoordIndices.free();
-
-				foreach (ref tc; texCoords) {
-					tc.free();
-				}
-				texCoords.free();
-			}
-			
-			
-			uint numNonEmptyMaps = 0;
-			
-			for (int mapId = 0; mapId < numMaps; ++mapId)  {
-				if (hasChild(`map`, mapId)) with (child(`map`, mapId)) {
-					++numNonEmptyMaps;
-					
-					hsfLog.trace("    {} map", mapId);
-					with (child(`verts`, 0, 1)) {
-						int numVerts = count();
-						hsfLog.trace("      {} vertices", numVerts);
-
-						texCoords[mapId].alloc(numVerts);
-						vec3_(texCoords[mapId]);
-					}
-					
-					
-					with (child(`faces`, 0, 1)) {
-						int numFaces = count();
-						hsfLog.trace("      {} faces", numFaces);
-
-						assert (numFaces == faces.length);
-						
-						texCoordIndices[mapId].alloc(numFaces * 3);
-						vec3i_((cast(vec3i*)texCoordIndices[mapId].ptr)[0 .. numFaces]);
-					}
-				} else {
-					hsfLog.trace("    map {} is empty", mapId);
-					assert (texCoords[mapId] is null);		// sanity check. we will use this property later
-				}
-			}
-
-			
-			// now fix indices
-			
-			uint[][]	propertyIndices;
-			
-			propertyIndices.alloc(2 + numNonEmptyMaps);
-			scope (exit) propertyIndices.free();
-			
-			propertyIndices[0] = indices;
-			propertyIndices[1] = normalIndices;
-			
-			// find non-empty index lists and put them to the propertyIndex array
-			{
-				uint dst = 0;
-				for (int mapId = 0; mapId < numMaps; ++mapId)  {
-					if (texCoords[mapId] !is null) {
-						propertyIndices[2+dst] = texCoordIndices[mapId];
-						++dst;
-					}
-				}
-				assert (dst == numNonEmptyMaps);
-			}
-			
-			mesh.allocIndices(indices.length);
-			uint[] finalIndices = mesh.indices();
-
-			remapIndices(propertyIndices, finalIndices);
-			uint maxIndex = 0; {
-				foreach (i; finalIndices) if (i > maxIndex) maxIndex = i;
-			}
-			
-			hsfLog.trace("    {} unique vertices", maxIndex+1);
-
-			mesh.allocPositions(maxIndex+1);
-			vec3[] positions = mesh.positions();
-			
-			mesh.allocNormals(maxIndex+1);
-			vec3[] vnormals = mesh.normals();
-
-			if (texCoords.length > 0 && texCoords[0] !is null) {
-				mesh.allocColors(maxIndex+1);
-				vec4[] colors = mesh.colors();
-
-				foreach (src, dst; finalIndices) {
-					vec3 v = texCoords[0][texCoordIndices[0][src]];
-					colors[dst] = vec4(v.r, v.g, v.b, 1);
-				}
-			}
-			
-			foreach (src, dst; finalIndices) {
-				vec3 v = vertices[indices[src]];
-				positions[dst] = v;
-
-				vec3 n = normals[normalIndices[src]];
-				vnormals[dst] = n;
-			}
-
-			if (texCoords.length > 1) {
-				foreach (ti, t; texCoords[1..$]) {
-					if (t !is null) {
-						mesh.allocTexCoords(ti, maxIndex+1);
-						vec3[] coords = mesh.texCoords(ti);
-						foreach (src, dst; finalIndices) {
-							vec3 v = t[texCoordIndices[ti+1][src]];
-							coords[dst] = v;
-						}
-					}
-				}
-			}
-		}
-	}
-	
-	
-	void remapIndices(uint[][] propertyIndices, uint[] finalIndices)
-	in {
-		assert (finalIndices.length > 0);
-		
-		foreach (pi; propertyIndices) {
-			assert (pi.length == finalIndices.length);
-		}
-	}
-	out {
-		// to be written
-	}
-	body {
-		if (1 == propertyIndices.length) {
-			finalIndices[] = propertyIndices[0][];
-			return;
-		}
-		
-		uint[] buffer;
-		buffer.alloc(finalIndices.length);
-		buffer[] = propertyIndices[0][];
-		
-		foreach (uint[] prop; propertyIndices[1..$]) {
-			remapIndicesWorker(buffer, prop, finalIndices);
-			
-			if (prop is propertyIndices[$-1]) break;
-			buffer[] = finalIndices[];
-		}
-		
-		buffer.free();
-	}
-	
-	
-	void remapIndicesWorker(uint[] srcA, uint[] srcB, uint[] dst)
-	in {
-		assert (srcA.length == srcB.length);
-		assert (srcB.length == dst.length);
-		assert (srcA !is srcB && srcA !is dst && srcB !is dst);
-	}
-	body {
-		struct IndexUnion {
-			uint a, b;
-			
-			hash_t toHash() {
-				return (a << 16) + (a & 0xffff0000) + b;
-			}
-		}
-		
-		
-		scope newIndices = new HashMap!(IndexUnion, uint, Container.hash, Container.reap, Container.Chunk);
-		uint newI = 0;
-		
-		for (uint i = 0; i < srcA.length; ++i) {
-			auto iu = IndexUnion(srcA[i], srcB[i]);
-			uint* indexP = iu in newIndices;
-			
-			if (indexP is null) {
-				newIndices[iu] = newI;
-				dst[i] = newI;
-				++newI;
-			} else {
-				dst[i] = *indexP;
-			}
-		}
-	}
-	
-	
-	CoordSys loadCoordSys(Array hme) {
-		vec4 v = hme.vec4_(`rot`);
-		quat q = quat(v.x, -v.z, v.y, v.w);
-		vec3 axis;
-		real angle;
-
-		q.getAxisAngle(axis, angle);
-		
-		axis.normalize();
-		
-		return CoordSys(vec3fi.from(hme.vec3_(`pos`) * scale), quat.axisRotation(vec3(axis.x, axis.z, -axis.y), -angle));
-	}
-	
-	
-	Node loadNode(Array hme) {
-		Node node = new Node;
-
-		node.name = hme.string_(`name`);
-		node.type = hme.string_(`type`);
-
-		hsfLog.trace("    node {} ({})", node.name, node.type);
-
-		vec3 meshScale = vec3(1, 1, 1);
-		CoordSys meshCS = CoordSys.identity;
-		
-		if (hme.hasChild(`transform`)) with (hme.child(`transform`)) {
-			node.setTransform(loadCoordSys(hme.child(`transform`)));
-			meshScale = vec3_(`scl`);
-			/+rgNode.position			= vec3fi.init.convert(vec3_(`pos`));		// BUG: precission loss	// .init is used to sidestep a bug in dmd.172
-			rgNode.rotation.xyzw	= vec4_(`rot`);
-			rgNode.scale				= vec3_(`scl`);+/
-		}
-
-		
-		Mesh firstMesh;
-		
-		if (hme.hasChild(`mesh`)) {
-			Mesh mesh = new Mesh;
-			loadNodeMesh(mesh, hme.child(`mesh`), meshScale);
-			
-			//node.meshes ~= mesh;
-			node.attachChild(mesh);
-			if (firstMesh is null) {
-				firstMesh = mesh;
-			}
-
-			cstring materialName = "undefined";
-			
-			if (hme.hasField(`material`)) materialName = hme.string_(`material`);
-			hsfLog.trace("    material {}", materialName);
-		
-			if (materialName != "undefined" && materialName in materials) {
-				mesh.material = materials[materialName];
-			}
-		}
-
-		node.animation = loadAnimation(hme, firstMesh);
-		
-		int childCount = hme.int_(`children`);
-		hsfLog.trace("    {} children", childCount);
-		
-		return node;
-	}
-	
-	
-	Animation loadAnimation(Array hme, Mesh mesh) {
+	/+Animation loadAnimation(Array hme, Mesh mesh) {
 		if (hme.hasChild(`physique`)) {
 			assert (hme.hasChild(`mesh`));	// physique needs the original indices to vertex positions.
 			

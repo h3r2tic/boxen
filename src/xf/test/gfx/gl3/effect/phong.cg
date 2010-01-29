@@ -1,0 +1,36 @@
+void PhongBlinnBRDF(
+	float4 lightIntensity,
+	float3 normal,
+	float3 point,
+	float3 toLight,
+	float exponent,
+	out float4 diffuse,
+	out float4 specular
+) {
+	float3 n = normal;
+	float3 l = toLight;
+	float3 v = normalize(envData.eyePos - point);
+	float3 h = normalize(l + v);
+	
+	diffuse = lightIntensity * saturate(dot(n, l).xxxx);
+	specular = lightIntensity * pow(saturate(dot(n, h).xxxx), exponent);
+}
+
+
+void PhongBRDF(
+	float4 lightIntensity,
+	float3 normal,
+	float3 point,
+	float3 toLight,
+	float exponent,
+	out float4 diffuse,
+	out float4 specular
+) {
+	float3 n = normal;
+	float3 l = toLight;
+	float3 v = normalize(envData.eyePos - point);
+	float3 h = -reflect(l, n);
+	
+	diffuse = lightIntensity * saturate(dot(n, l).xxxx);
+	specular = lightIntensity * pow(saturate(dot(n, h).xxxx), exponent);
+}

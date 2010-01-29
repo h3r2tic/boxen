@@ -97,35 +97,35 @@ Mesh[] loadHsfModel(
 			v.norm	= assetMesh.normals[i];
 			v.norm	= cs.rotation.xform(v.norm);
 			
-			/+if (assetMesh.mTangents) {
-				final tangent = assetMesh.mTangents[i];
+			if (assetMesh.tangents.length) {
+				final tangent = assetMesh.tangents[i];
 				if (tangent.x <>= 0 && tangent.y <>= 0 && tangent.z <>= 0) {
 					v.tangent = vec3.from(tangent);
 				} else {
 					v.tangent = vec3.unitX;
 				}
-			} else {+/
+			} else {
 				v.tangent = vec3.unitX;
-			//}
+			}
 
-			/+if (assetMesh.mBitangents) {
-				final bitangent = assetMesh.mBitangents[i];
+			if (assetMesh.bitangents.length) {
+				final bitangent = assetMesh.bitangents[i];
 				if (bitangent.x <>= 0 && bitangent.y <>= 0 && bitangent.z <>= 0) {
 					v.bitangent = vec3.from(bitangent);
 				} else {
 					v.bitangent = vec3.unitZ;
 				}
-			} else {+/
+			} else {
 				v.bitangent = vec3.unitZ;
-			//}
+			}
 
 			const int ch = 0;
 			
-			/+if (assetMesh.numTexCoordSets > ch) {
+			if (assetMesh.numTexCoordSets > ch) {
 				v.tc = vec2.from(assetMesh.texCoords(ch).coords[i]);
-			} else {+/
+			} else {
 				v.tc = vec2.zero;
-			//}
+			}
 		}
 
 		auto vb = renderer.createVertexBuffer(
@@ -160,79 +160,48 @@ Mesh[] loadHsfModel(
 			
 			Texture diffuseTex = Texture.init;
 			Texture specularTex = Texture.init;
+
+			vec2 diffuseTexTile = vec2.one;
+			vec2 specularTexTile = vec2.one;
 			
 			vec4 diffuseTint = vec4.one;
 			vec4 specularTint = vec4.one;
 			
 			float smoothness = 0.1f;
-			/+if (scene.mMaterials) {
-				final material = scene.mMaterials[assetMesh.mMaterialIndex];
-				aiString path;
+			if (auto material = assetMesh.material) {
+				cstring path;
 				
-				if (aiReturn.SUCCESS == aiGetMaterialString(
-					material,
-					AI_MATKEY_TEXTURE,
-					aiTextureType.DIFFUSE,
-					0,
-					&path
-				)) {
+				enum {
+					DiffuseIdx = 1,
+					SpecularIdx = 2
+				}
+				
+				if (auto map = material.getMap(DiffuseIdx)) {
 					diffuseTex = texMatcher.findTextureForMaterial(
 						"diffuse",
-						path.data[0..path.length],
+						map.bitmapPath,
 						modelFolder
 					);
+					diffuseTexTile = map.uvTile;
 				}
 
-				if (aiReturn.SUCCESS == aiGetMaterialString(
-					material,
-					AI_MATKEY_TEXTURE,
-					aiTextureType.SPECULAR,
-					0,
-					&path
-				)) {
-					Stdout.formatln("***specular == {}", path.data[0..path.length]);
-					
+				if (auto map = material.getMap(SpecularIdx)) {
 					specularTex = texMatcher.findTextureForMaterial(
 						"specular",
-						path.data[0..path.length],
+						map.bitmapPath,
 						modelFolder
 					);
+					specularTexTile = map.uvTile;
 				}
-
-				if (aiReturn.SUCCESS == aiGetMaterialFloat(
-					material,
-					AI_MATKEY_SHININESS,
-					0,
-					0,
-					&smoothness,
-					null
-				)) {
-					smoothness /= 90.f;
-					if (smoothness > 0.99f) {
-						smoothness = 0.99f;
-					}
-					//Stdout.formatln("Yay, got smoothness == {}", smoothness);
-				}
-
-				aiGetMaterialColor(
-					material,
-					AI_MATKEY_COLOR_DIFFUSE,
-					0,
-					0,
-					cast(aiColor4D*)&diffuseTint
-				);
-				diffuseTint = sRGB_to_RGB(diffuseTint);
 				
+				smoothness = material.shininess;
+				if (smoothness > 0.99f) {
+					smoothness = 0.99f;
+				}
 
-				/+aiGetMaterialColor(
-					material,
-					AI_MATKEY_COLOR_SPECULAR,
-					0,
-					0,
-					cast(aiColor4D*)&specularTint
-				);
-				specularTint = sRGB_to_RGB(specularTint);+/
-			}+/
+				diffuseTint = sRGB_to_RGB(material.diffuseTint);
+				specularTint = sRGB_to_RGB(material.specularTint);
+			}
 
 			efInst.setUniform("FragmentProgram.smoothness", smoothness);
 			efInst.setUniform("FragmentProgram.diffuseTint", diffuseTint);
@@ -250,9 +219,15 @@ Mesh[] loadHsfModel(
 			efInst.setUniform("FragmentProgram.diffuseTex",
 				diffuseTex
 			);
+			efInst.setUniform("FragmentProgram.diffuseTexTile",
+				diffuseTexTile
+			);
 
 			efInst.setUniform("FragmentProgram.specularTex",
 				specularTex
+			);
+			efInst.setUniform("FragmentProgram.specularTexTile",
+				specularTexTile
 			);
 
 			// Create a vertex buffer and bind it to the shader
@@ -336,7 +311,7 @@ Mesh[] loadHsfModel(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.lightScale")
 							].offset
-						) = 20.0f;
+						) = 100.0f;
 					}
 				);
 

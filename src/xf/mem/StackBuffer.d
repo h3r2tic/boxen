@@ -99,18 +99,20 @@ class StackBufferUnsafe {
 	}
 	
 	
-	T[] allocArray(T)(size_t len) {
-		auto res = allocArrayNoInit!(T)(len);
-		foreach (ref r; res) {
-			r = T.init;
+	T[] allocArray(T)(size_t len, bool throwExc = true) {
+		auto res = allocArrayNoInit!(T)(len, throwExc);
+		if (res) {
+			foreach (ref r; res) {
+				r = T.init;
+			}
 		}
 		return res;
 	}
 	
 
-	T[] allocArrayNoInit(T)(size_t len) {
+	T[] allocArrayNoInit(T)(size_t len, bool throwExc = true) {
 		size_t size = len * T.sizeof;
-		return cast(T[])_mainBuffer.alloc(size);
+		return cast(T[])_mainBuffer.alloc(size, throwExc);
 	}
 
 	
@@ -179,9 +181,13 @@ private struct MainStackBuffer {
 	}
 	
 	
-	void[] alloc(size_t bytes) {
+	void[] alloc(size_t bytes, bool throwExc = true) {
 		if (bytes > maxAllocSize) {
-			throw new Exception("My spoon is too big!");
+			if (throwExc) {
+				throw new Exception("My spoon is too big!");
+			} else {
+				return null;
+			}
 		}
 		
 		Chunk* chunk = void;

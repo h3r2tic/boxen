@@ -111,6 +111,13 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
 		fprintf(mStream, _T("node %d\n"), nodeId);
 	}
 
+	if (mtl) {
+		int matId = getMaterialId(mtl);
+		assert (matId != -1);
+		Indent(level);
+		fprintf(mStream, _T("material %d\n"), matId);
+	}
+
     // Output indices
     Indent(level);
     fprintf(mStream, _T("indices %d"), numfaces*3);

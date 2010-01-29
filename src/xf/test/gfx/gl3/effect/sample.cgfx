@@ -105,7 +105,9 @@ void VertexProgram(
 void FragmentProgram(
 	in fragInput input,
 	uniform sampler2D diffuseTex,
+	uniform float2 diffuseTexTile,
 	uniform sampler2D specularTex,
+	uniform float2 specularTexTile,
 	uniform float smoothness,
 	uniform float4 diffuseTint,
 	uniform float4 specularTint,
@@ -148,8 +150,8 @@ void FragmentProgram(
 	}
 	
 	output =
-		tex2D(diffuseTex, input.texCoord) * diffuseSum * diffuseTint
-	+	tex2D(specularTex, input.texCoord) * specularSum * specularTint;
+		tex2D(diffuseTex, input.texCoord * diffuseTexTile) * diffuseSum * diffuseTint
+	+	tex2D(specularTex, input.texCoord * specularTexTile) * specularSum * specularTint;
 	
 	output *= envData.lightScale;
 }

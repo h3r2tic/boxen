@@ -1,14 +1,14 @@
 module xf.loader.scene.model.Entity;
 
 
+
 interface Entity {
 	char[]	name();
-	void		name(char[]);
+	void	name(char[]);
 	
 	char[]	type();
-	void		type(char[]);
+	void	type(char[]);
 }
-
 
 
 template MEntity() {
@@ -16,7 +16,7 @@ template MEntity() {
 		return _name;
 	}
 	
-	void		name(char[] s) {
+	void	name(char[] s) {
 		_name = s;
 	}
 	
@@ -24,7 +24,7 @@ template MEntity() {
 		return _type;
 	}
 	
-	void		type(char[] s) {
+	void	type(char[] s) {
 		_type = s;
 	}
 

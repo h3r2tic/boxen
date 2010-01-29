@@ -13,12 +13,21 @@ private {
 
 
 struct Mesh {
-	Material	material;
+	Material*	material;
 	Node		node;
+	
+	// whether normals are per-index or indexed like other props
+	// TODO: this probably needs something of a rewrite :P
+	bool		normalsIndexed = true;
+	
 	
 	// vertex indices and params
 	uint[]		indices() {
 		return _indices;
+	}
+	
+	uint[]		faceSubMatIds() {
+		return _faceSubMatIds;
 	}
 	
 	vec3[]		positions() {
@@ -51,6 +60,14 @@ struct Mesh {
 
 	void allocIndices(int n) {
 		_indices.alloc(n);
+	}
+	
+	void allocFaceSubMatIds(int n) {
+		_faceSubMatIds.alloc(n);
+	}
+
+	void disposeFaceSubMatIds() {
+		_faceSubMatIds.free();
 	}
 	
 	void allocPositions(int n) {
@@ -104,6 +121,7 @@ struct Mesh {
 	
 	void dispose() {
 		_indices.free();
+		_faceSubMatIds.free();
 		_positions.free();
 		_normals.free();
 		_tangents.free();
@@ -116,6 +134,7 @@ struct Mesh {
 	
 	public {
 		uint[]		_indices;
+		uint[]		_faceSubMatIds;
 		
 		vec3[]		_positions;
 		
@@ -161,6 +180,6 @@ struct Mesh {
 		
 		TexCoordSet[]	_texCoords;
 		
-		vec4[]		_colors;
+		vec4[]			_colors;
 	}
 }

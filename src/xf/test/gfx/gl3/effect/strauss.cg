@@ -1,0 +1,83 @@
+float Strauss_fresnel(float x) {
+	const float Kf = 1.12f;
+	float numer = 1.0f / ((x - Kf) * (x - Kf))  -  1.0f / (Kf * Kf);
+	float denom = 1.0f / ((1.0f - Kf) * (1.0f - Kf)) - 1.0f / (Kf * Kf);
+	return numer / denom;
+}
+
+float Strauss_shadow(float x) {
+	const float Ks = 1.01f;
+	float numer = 1.0f / ((1.0f - Ks) * (1.0f - Ks))  -  1.0f / ((x - Ks) * (x - Ks));
+	float denom = 1.0f / ((1.0f - Ks) * (1.0f - Ks))  -  1.0f / (Ks * Ks);
+	return numer / denom;
+}
+
+void StraussBRDF(
+	float4 lightIntensity,
+	float3 normal,
+	float3 point,
+	float3 toLight,
+	float smoothness,
+	float metalness,
+	out float4 diffuse,
+	out float4 specular
+) {
+	float3 n = normal;
+	float3 l = toLight;
+	float3 v = normalize(envData.eyePos - point);
+	float3 h = reflect(l, n);
+	
+	const float fSmoothness = smoothness;//0.8f;
+	const float fMetalness = metalness;//0.9f;
+	const float fTransparency = 0.0f;
+	const float3 cDiffuse = lightIntensity.xyz;
+	
+	float NdotL   = dot( n, l ).x;
+	float NdotV   = dot( n, v ).x;
+	float HdotV   = dot( h, v ).x;
+	float fNdotL  = Strauss_fresnel( NdotL );
+	float s_cubed = fSmoothness * fSmoothness * fSmoothness;
+
+	// Evaluate the diffuse term
+	float d  = ( 1.0f - fMetalness * fSmoothness );
+	float Rd = ( 1.0f - s_cubed ) * ( 1.0f - fTransparency );
+	float3 diffuse_ = NdotL * d * Rd;// * cDiffuse;
+
+	// Compute the inputs into the specular term
+	float r = ( 1.0f - fTransparency ) - Rd;
+
+	float j = fNdotL * Strauss_shadow( NdotL ) * Strauss_shadow( NdotV );
+
+	// 'k' is used to provide small off-specular
+	// peak for very rough surfaces. Can be changed
+	// to suit desired results...
+	const float k = 0.1f;
+	float reflect = min( 1.0f, r + j * ( r + k ) );
+
+	float3 C1 = float3( 1.0f, 1.0f, 1.0f );
+	//float3 Cs = C1 + fMetalness * (1.0f - fNdotL) * (cDiffuse - C1);
+	
+	float3 Css = C1 - fMetalness * (1.0f - fNdotL) * C1;
+	float3 Csd = fMetalness * (1.0f - fNdotL);// * cDiffuse;
+
+	// Evaluate the specular term
+	float3 specular_s = Css * reflect;
+	float3 specular_d = Csd * reflect;
+	
+	float3 specMult = pow( -HdotV, 3.0f / (1.0f - fSmoothness) );
+	
+	specular_s *= specMult;
+	specular_d *= specMult;
+	
+	specular_s = max(float3(0, 0, 0), specular_s);
+	specular_d = max(float3(0, 0, 0), specular_d);
+	diffuse_ = max(float3(0, 0, 0), diffuse_);
+
+	// Composite the final result, ensuring
+	// the values are >= 0.0f yields better results. Some
+	// combinations of inputs generate negative values which
+	// looks wrong when rendered...
+	diffuse  = float4(cDiffuse * max(float3(0, 0, 0), (diffuse_ + specular_d)), 1.0f);
+	specular = float4(cDiffuse * specular_s, 1.0f);
+}
+
