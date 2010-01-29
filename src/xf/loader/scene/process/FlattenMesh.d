@@ -97,6 +97,7 @@ private void flattenSingleMesh(ref Mesh mesh) {
 	Mesh mesh2;
 	mesh2.material = mesh.material;
 	mesh2.node = mesh.node;
+	mesh2.normalsIndexed = true;
 
 	mesh2.allocIndices(mesh.indices.length);
 	uint[] finalIndices = mesh2.indices();

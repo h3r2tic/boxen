@@ -186,6 +186,10 @@ void HSFExp::exportMaterial(Mtl* mat, int level) {
 			//two, utile, vtile);
 
 			int numSubMaps = mat->NumSubTexmaps();
+
+			Indent(level);
+	        fprintf(mStream, _T("maps %d\n"), numSubMaps);
+
 			for (int i = 0; i < numSubMaps; ++i) {
 				exportMaterialMap(mat, i, level);
 			}
@@ -204,10 +208,14 @@ void HSFExp::exportMaterialMap(Mtl* mat, unsigned tmapId, int level) {
 	assert (mat);
 
 	Texmap* tmap = mat->GetSubTexmap(tmapId);
-	if (!tmap) return;
+	if (!tmap) {
+		Indent(level);
+		fprintf(mStream, _T("null\n"));
+		return;
+	}
 
 	Indent(level++);
-	fprintf(mStream, _T("map %d {\n"), tmapId);
+	fprintf(mStream, _T("{\n"));
 
 	Class_ID clsId = tmap->ClassID();
 
