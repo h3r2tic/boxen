@@ -225,12 +225,39 @@ void HSFExp::exportMaterialMap(Mtl* mat, unsigned tmapId, int level) {
 	fflush(mStream);
 	delete[] mapName;
 
+	CStr texDir = mExportName + _T("-tex");
+	TSTR newFilePath = mExportDir + _T("\\") + texDir + _T("\\");
+	TSTR hsfFilePath = texDir + _T("/");
+
+	IPathConfigMgr::GetPathConfigMgr()
+		->CreateDirectoryHierarchy(mExportDir + _T("\\") + texDir);
+
 	if (Class_ID(BMTEX_CLASS_ID, 0) == clsId) {
 		Indent(level);
 		fprintf(mStream, _T("type 'bitmap'\n"));
 
 		BitmapTex *bmt = (BitmapTex*)tmap;
-		char* fname = escapeName(bmt->GetMapName());
+
+		TSTR oldFilePath = bmt->GetMapName();
+
+		TSTR escapedFilePath;
+		escapedFilePath.append(oldFilePath);
+
+		{
+			char* fname = escapedFilePath;
+			for (char* ch = fname; ch && *ch; ++ch) {
+				if ('\\' == *ch || '/' == *ch || ':' == *ch) {
+					*ch = '-';
+				}
+			}
+		}
+
+		newFilePath += escapedFilePath;
+		hsfFilePath += escapedFilePath;
+
+		CopyFile(oldFilePath, newFilePath, FALSE);
+
+		char* fname = escapeName(hsfFilePath);
 		Indent(level);
 		fprintf(mStream, _T("file '%s'\n"), fname);
 		delete[] fname;
@@ -257,22 +284,16 @@ void HSFExp::exportMaterialMap(Mtl* mat, unsigned tmapId, int level) {
 		assert (bm);
 		tmap->RenderBitmap(mStart, bm, 1.0f, TRUE);
 
-		IPathConfigMgr::GetPathConfigMgr()
-			->CreateDirectoryHierarchy(mExportDir + "\\tex");
+		newFilePath += tmap->GetName() + _T(".png");
+		hsfFilePath += tmap->GetName() + _T(".png");
 
-		TSTR maxPath = mExportDir + "\\tex\\";
-		TSTR hsfPath = "tex/";
-
-		maxPath += tmap->GetName() + ".png";
-		hsfPath += tmap->GetName() + ".png";
-
-		bi.SetPath(MaxSDK::Util::Path(maxPath));
+		bi.SetPath(MaxSDK::Util::Path(newFilePath));
 
 		bm->OpenOutput(&bi);
 		bm->Write(&bi);
 		bm->Close(&bi);
 
-		char* fname = escapeName(hsfPath);
+		char* fname = escapeName(hsfFilePath);
 		Indent(level);
 		fprintf(mStream, _T("file '%s'\n"), fname);
 		delete[] fname;

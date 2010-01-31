@@ -1687,15 +1687,19 @@ HSFExp::DoExport(const TCHAR *filename, ExpInterface *ei, Interface *i, BOOL sup
                 numFrames++;
             }*/
 
-			CStr wName(filename);
-			int extLoc = wName.last('.');
-			if (extLoc != -1)
-				wName.remove(extLoc);
-			wName.Append(".hsf");
+			CStr wName(filename); {
+				int extLoc = wName.last('.');
+				if (extLoc != -1)
+					wName.remove(extLoc);
+				wName.Append(".hsf");
+			}
 
 			{
-				CStr dummy;
-				SplitPathFile(wName, &mExportDir, &dummy);
+				SplitPathFile(wName, &mExportDir, &mExportName);
+
+				int extLoc = mExportName.last('.');
+				if (extLoc != -1)
+					mExportName.remove(extLoc);
 			}
 
 			// ----------------------------------------------------------------
