@@ -52,11 +52,13 @@ private void flattenSingleMesh(ref Mesh mesh) {
 		normalIndices.alloc(mesh.indices.length);
 		quantizedNormals.alloc(mesh.indices.length);
 		
+		float hashCreaseAngleCos = cos(1.0f * deg2rad);
+		
 		foreach (int ni, vec3 n; mesh.normals) {
 			QuantizedNormal qn = QuantizedNormal(n);
 			uint* fnd = qn in normalHash;
 			
-			if (fnd !is null) {
+			if (fnd !is null && dot(mesh.normals[*fnd], n) >= hashCreaseAngleCos) {
 				normalIndices[ni] = *fnd;
 			} else {
 				normalIndices[ni] = numNormals;

@@ -311,7 +311,7 @@ Mesh[] loadHsfModel(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.lightScale")
 							].offset
-						) = 100.0f;
+						) = 50.0f;
 					}
 				);
 
@@ -479,35 +479,47 @@ class TestApp : GfxApp {
 				0.01f
 			);
 			
-			
 
-			/+meshes ~= loadModel(
+			meshes ~= loadHsfModel(
 				renderer,
 				effect,
-				mediaDir~`mesh/MTree/MonsterTree.3ds`,
-				CoordSys(vec3fi[1.5, -1, -1.5]),
+				`C:\Users\h3r3tic\Documents\3dsMax\export\masha.hsf`,
+				CoordSys(vec3fi[1.5, -1, -0.5]),
 				tm,
 				0.01f
 			);
 			
+			
+			meshes ~= loadHsfModel(
+				renderer,
+				effect,
+				`C:\Users\h3r3tic\Documents\3dsMax\export\tank.hsf`,
+				CoordSys(vec3fi[1.5, 0, -2.5]),
+				tm,
+				0.01f
+			);
+
+
+			meshes ~= loadHsfModel(
+				renderer,
+				effect,
+				`C:\Users\h3r3tic\Documents\3dsMax\export\soldier.hsf`,
+				CoordSys(vec3fi[-1.5, -1, -0.5]),
+				tm,
+				0.5f
+			);
+
+
 			meshes ~= loadModel(
 				renderer,
 				effect,
-				mediaDir~`mesh/cia2/cia.obj`,
-				CoordSys(vec3fi[0, -1, -0.5]),
+				mediaDir~`mesh/MTree/MonsterTree.3ds`,
+				CoordSys(vec3fi[-1.5, -1, -2.5]),
 				tm,
 				0.01f
-			);+/
+			);
 			
-			/+meshes ~= loadModel(
-				renderer,
-				effect,
-				mediaDir~`mesh/cia2/cia2.obj`,
-				CoordSys(vec3fi[-2, -1, -1.5]),
-				tm,
-				0.01f
-			);+/
-
+			
 			if (0 == meshes.length) {
 				throw new Exception("No meshes in the scene :(");
 			} else {
@@ -888,6 +900,9 @@ Mesh[] loadModel(
 			Texture diffuseTex = Texture.init;
 			Texture specularTex = Texture.init;
 			
+			vec2 diffuseTexTile = vec2.one;
+			vec2 specularTexTile = vec2.one;
+
 			vec4 diffuseTint = vec4.one;
 			vec4 specularTint = vec4.one;
 			
@@ -977,9 +992,15 @@ Mesh[] loadModel(
 			efInst.setUniform("FragmentProgram.diffuseTex",
 				diffuseTex
 			);
+			efInst.setUniform("FragmentProgram.diffuseTexTile",
+				diffuseTexTile
+			);
 
 			efInst.setUniform("FragmentProgram.specularTex",
 				specularTex
+			);
+			efInst.setUniform("FragmentProgram.specularTexTile",
+				specularTexTile
 			);
 
 			// Create a vertex buffer and bind it to the shader
@@ -1063,7 +1084,7 @@ Mesh[] loadModel(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.lightScale")
 							].offset
-						) = 20.0f;
+						) = 50.0f;
 					}
 				);
 

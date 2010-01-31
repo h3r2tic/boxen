@@ -102,6 +102,7 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
 	}
 
     mesh.buildRenderNormals();
+	//mesh.checkNormals(TRUE);
 
     Mtl *mtl = node->GetMtl();
 
@@ -169,20 +170,29 @@ void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
 
         for (int i = from; i != to; i += inc) {
 			Point3 n;
+			bool gotNorm = false;
 			int norCnt;
 
             int cv = mesh.faces[index].v[i];
             RVertex * rv = mesh.getRVertPtr(cv);
             if (rv->rFlags & SPECIFIED_NORMAL) {
                 n = rv->rn.getNormal();
+				gotNorm = true;
             }
             else if ((norCnt = (int)(rv->rFlags & NORCT_MASK)) != 0 && smGroup) {
-                if (norCnt == 1)
+				if (norCnt == 1) {
                     n = rv->rn.getNormal();
-                else for (int j = 0; j < norCnt; j++) {
-                    n = rv->ern[j].getNormal();
+					gotNorm = true;
+				} else for (int j = 0; j < norCnt; j++) {
+					if (rv->ern[j].getSmGroup() & smGroup) {
+						n = rv->ern[j].getNormal();
+						gotNorm = true;
+						break;
+					}
                 }
-			} else {
+			}
+			
+			if (!gotNorm) {
                 n = mesh.getFaceNormal(index);
 			}
 

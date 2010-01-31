@@ -113,7 +113,7 @@ void FragmentProgram(
 	uniform float4 specularTint,
 	out float4 output : COLOR
 ) {
-	const float metalness = 0.9f;
+	const float metalness = 0.7f;
 
 	float4 diffuseSum = envData.ambientColor;
 	float4 specularSum = float4(0, 0, 0, 0);

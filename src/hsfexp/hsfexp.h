@@ -163,6 +163,7 @@ private:
 //    BOOL		mHadAnim;    // File has animation data
     TimeValue	mStart;      // First frame of the animation
 	CStr		mExportDir;
+	CStr		mExportName; // 'meh/foo.hsf' -> 'foo'
 
 	std::vector<SceneNode>	mSceneNodes;
 	std::map<Mtl*, int>		mMtlToId;
