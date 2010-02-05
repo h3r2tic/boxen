@@ -11,6 +11,13 @@ private {
 }
 
 
+
+interface IMeshMngr {
+	Mesh[] createMeshes(int num);
+	void destroyMeshes(ref Mesh[] meshes);
+}
+
+
 enum MeshTopology : u8 {
 	Points,
 	LineStrip,

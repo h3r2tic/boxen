@@ -1,6 +1,7 @@
 module xf.gfx.IndexBuffer;
 
 private {
+	import xf.Common;
 	import xf.gfx.Resource;
 	import xf.gfx.Buffer;
 }
@@ -10,10 +11,19 @@ public {
 }
 
 
+
 enum IndexType {
 	U16,
 	U32
 }
+
+
+interface IIndexBufferMngr : IBufferMngr {
+	IndexBuffer createIndexBuffer(BufferUsage usage, u32[] data);
+	IndexBuffer createIndexBuffer(BufferUsage usage, u16[] data);
+	IndexBuffer createIndexBuffer(BufferUsage usage, int size, void* data, IndexType it);
+}
+
 
 struct IndexBuffer {
 	typedef BufferHandle Handle;

@@ -10,6 +10,13 @@ public {
 }
 
 
+
+interface IUniformBufferMngr : IBufferMngr {
+	UniformBuffer createUniformBuffer(BufferUsage usage, void[] data);
+	UniformBuffer createUniformBuffer(BufferUsage usage, int size, void* data);
+}
+
+
 struct UniformBuffer {
 	typedef BufferHandle Handle;
 	mixin MResource;
