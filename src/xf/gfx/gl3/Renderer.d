@@ -9,6 +9,7 @@ public {
 		xf.gfx.UniformBuffer,
 		xf.gfx.Texture,
 		xf.gfx.Mesh,
+		xf.gfx.IRenderer,
 		xf.gfx.gl3.Cg;
 		
 	import
@@ -49,7 +50,7 @@ private {
 
 
 
-class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
+class Renderer : IRenderer {
 	// at the front because otherwise DMD is a bitch about forward refs
 	private {
 		GL			gl;
@@ -81,6 +82,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 	}
 	
 
+	// implements IMeshMngr
 	/// Allocated using mainHeap
 	Mesh[] createMeshes(int num) {
 		if (0 == num) {
@@ -106,6 +108,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 	}
 	
 	
+	// implements IMeshMngr
 	void destroyMeshes(ref Mesh[] meshes) {
 		if (meshes is null) {
 			return;
@@ -117,6 +120,7 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 	}
 	
 	
+	// implements IEffectMngr
 	GPUEffectInstance* instantiateEffect(GPUEffect effect) {
 		final inst = effect.createRawInstance();
 		inst._vertexArray = createVertexArray();
@@ -330,34 +334,41 @@ class Renderer : IBufferMngr, IVertexArrayMngr, ITextureMngr {
 	}
 	
 	
+	// Implements IVertexBufferMngr
 	VertexBuffer createVertexBuffer(BufferUsage usage, void[] data) {
 		return createVertexBuffer(usage, data.length, data.ptr);
 	}
 
+	// Implements IVertexBufferMngr
 	VertexBuffer createVertexBuffer(BufferUsage usage, int size, void* data) {
 		return cast(VertexBuffer)
 			createBuffer(usage, size, data, ARRAY_BUFFER);
 	}
 	
 
+	// Implements IIndexBufferMngr
 	IndexBuffer createIndexBuffer(BufferUsage usage, u32[] data) {
 		return createIndexBuffer(usage, data.length * u32.sizeof, data.ptr, IndexType.U32);
 	}
 
+	// Implements IIndexBufferMngr
 	IndexBuffer createIndexBuffer(BufferUsage usage, u16[] data) {
 		return createIndexBuffer(usage, data.length * u16.sizeof, data.ptr, IndexType.U16);
 	}
 
+	// Implements IIndexBufferMngr
 	IndexBuffer createIndexBuffer(BufferUsage usage, int size, void* data, IndexType it) {
 		auto buf = createBuffer(usage, size, data, ELEMENT_ARRAY_BUFFER);
 		return IndexBuffer.fromBuffer(buf, it);
 	}
 
 
+	// implements IUniformBufferMngr
 	UniformBuffer createUniformBuffer(BufferUsage usage, void[] data) {
 		return createUniformBuffer(usage, data.length, data.ptr);
 	}
 
+	// implements IUniformBufferMngr
 	UniformBuffer createUniformBuffer(BufferUsage usage, int size, void* data) {
 		return cast(UniformBuffer)
 			createBuffer(usage, size, data, UNIFORM_BUFFER);

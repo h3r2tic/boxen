@@ -39,6 +39,12 @@ enum ParamBaseType : ushort {
 }
 
 
+interface IEffectMngr {
+	GPUEffectInstance* instantiateEffect(GPUEffect effect);
+}
+
+
+
 // name data allocated using osHeap
 // names null-terminated at [$]  ( thus safe with both C and D )
 const cstring uniformParamMix = `

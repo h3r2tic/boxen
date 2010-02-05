@@ -10,6 +10,12 @@ public {
 }
 
 
+interface IVertexBufferMngr : IBufferMngr {
+	VertexBuffer createVertexBuffer(BufferUsage usage, void[] data);
+	VertexBuffer createVertexBuffer(BufferUsage usage, int size, void* data);
+}
+
+
 struct VertexAttrib {
 	enum Type : ushort {
 		Float,
