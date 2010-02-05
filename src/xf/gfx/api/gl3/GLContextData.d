@@ -3,7 +3,7 @@ module xf.gfx.api.gl3.GLContextData;
 private {
 	import xf.gfx.api.gl3.Common;
 	import xf.gfx.api.gl3.ExtensionGenConsts;
-	import xf.mem.OSHeap;
+	import xf.mem.MainHeap;
 }
 
 
@@ -16,7 +16,7 @@ struct GLContextData {
 			sizeReq += e * (void*).sizeof;
 		}
 		
-		void* raw = osHeap.allocRaw(sizeReq);
+		void* raw = mainHeap.allocRaw(sizeReq);
 		(cast(ubyte*)raw)[0..sizeReq] = 0;
 		
 		void* rawEnd = raw + sizeReq;

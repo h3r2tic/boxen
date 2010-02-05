@@ -1,0 +1,43 @@
+void AshikhminShirleyBRDF(
+	float4 lightIntensity,
+	float3 n,
+	float3 point,
+	float3 l,
+	float fSmoothness,
+	float fMetalness,
+	float fresnelR0,
+	out float4 diffuse,
+	out float4 specular
+) {
+	float3 v = normalize( envData.eyePos - point );
+	float3 h = normalize( l + v );
+ 
+	// Generate any useful aliases
+	float VdotN = saturate(dot( v, n ).x);
+	float LdotN = saturate(dot( l, n ).x);
+	float HdotN = saturate(dot( h, n ).x);
+	float HdotL = saturate(dot( h, l ).x);
+ 
+	float specExp = 3.0f / (1.0f - fSmoothness);	// from the Strauss model
+ 
+	// Compute the diffuse term
+	float Pd = 28.0f / 23.0f;
+	Pd *= (1.0f - pow(1.0f - (LdotN / 2.0f), 5.0f));
+	Pd *= (1.0f - pow(1.0f - (VdotN / 2.0f), 5.0f));
+ 
+	float Ps_num = specExp + 1;
+	Ps_num *= pow(HdotN, specExp);
+ 
+	float Ps_den = 8.0f * HdotL;
+	Ps_den *= max( LdotN, VdotN );
+	Ps_den += 0.001f;		// to avoid div by zero
+ 
+	float Ps = Ps_num / Ps_den;
+	Ps *= ( fresnelR0 + (1.0f - fresnelR0) * pow( 1.0f - HdotL, 5.0f ) ).x;
+	
+	Pd *= LdotN;
+	Ps *= LdotN;
+	
+	diffuse = lightIntensity * Pd;
+	specular = lightIntensity * Ps;
+}

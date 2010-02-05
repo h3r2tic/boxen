@@ -13,7 +13,7 @@ void PhongBlinnBRDF(
 	float3 h = normalize(l + v);
 	
 	diffuse = lightIntensity * saturate(dot(n, l).xxxx);
-	specular = lightIntensity * pow(saturate(dot(n, h).xxxx), exponent);
+	specular = lightIntensity * pow(saturate(dot(n, h).x), exponent);
 }
 
 

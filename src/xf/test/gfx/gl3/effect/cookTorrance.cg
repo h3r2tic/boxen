@@ -1,0 +1,69 @@
+void CookTorranceBRDF(
+	float4 lightIntensity,
+	float3 normal,
+	float3 point,
+	float3 light,
+	float fSmoothness,
+	float fMetalness,
+	float fresnelR0,
+	out float4 diffuse,
+	out float4 specular
+) {
+	float3 viewer = normalize(envData.eyePos - point);
+	float roughness_value = 1.0f - fSmoothness;
+
+	// Compute any aliases and intermediary values
+	// -------------------------------------------
+	float3 half_vector = normalize( light + viewer );
+	float NdotL		= dot( normal, light );
+	float NdotH		= dot( normal, half_vector );
+	float NdotHpos  = max(0.f, NdotH);
+	float NdotV		= dot( normal, viewer );
+	float VdotH		= dot( viewer, half_vector );
+	float r_sq		 = roughness_value * roughness_value;
+ 
+ 
+	// Evaluate the geometric term
+	// --------------------------------
+	float geo_numerator = 2.0f * NdotH;
+ 
+	float geo_b = (geo_numerator * NdotV ) / VdotH;
+	float geo_c = (geo_numerator * NdotL ) / VdotH;
+	float geo   = saturate((min(geo_b, geo_c)));
+ 
+ 
+	// Now evaluate the roughness term
+	// -------------------------------
+	float roughness;
+	//if( ROUGHNESS_BECKMANN == roughness_mode )
+	{
+		float roughness_a = 1.0f / ( 4.0f * r_sq * pow( NdotHpos, 4 ) );
+		float roughness_b = NdotHpos * NdotHpos - 1.0f;
+		float roughness_c = r_sq * NdotHpos * NdotHpos;
+ 
+		roughness = roughness_a * exp( roughness_b / roughness_c );
+	}
+	/*//if( ROUGHNESS_GAUSSIAN == roughness_mode )
+	{
+		// This variable could be exposed as a variable
+		// for the application to control:
+		float c = 1.0f;
+		float alpha = acos( dot( normal, half_vector ) );
+		roughness = c * exp( -( alpha / r_sq ) );
+	}*/
+ 
+ 
+	// Next evaluate the Fresnel value
+	// -------------------------------
+	float fresnel = pow(1.0f - VdotH, 5.0f);
+	fresnel *= ( 1.0f - fresnelR0 );
+	fresnel += fresnelR0;
+ 
+ 	// Put all the terms together to compute
+	// the specular term in the equation
+	// -------------------------------------
+	float Rs = ( fresnel * geo * roughness ) / NdotV;
+	
+	specular = lightIntensity * max(0.0f, Rs);
+	diffuse = lightIntensity * max(0.0f, NdotL);
+}
