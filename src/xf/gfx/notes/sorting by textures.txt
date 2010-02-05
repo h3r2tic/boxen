@@ -1,0 +1,8 @@
+How do we sort effect instances by textures?
+
+Grouping by shader is trivial, but then objects should also be sorted by textures. Yann L allowed materials to define the keys upon which objects would be sorted, but then, Yann's system had purely CPU-based materials.
+
+Introduce the concept of a material? Material shaders are what Frosbite use, but these materials are not exactly { shader, shader params }. Except material shaders, there must be surface shaders that define the mesh - whether it's just a static trimesh, a smoothed Catmull-Clark surface or a skinned mesh. Surface and material shaders combine into GPU shaders that are then used as keys for sorting objects.
+* Long story short, can't sort by materials alone.
+
+Why defining sorting keys might be important on a per-material basis? Some parameters are strictly confined to materials, not objects - e.g. Cook-Torrance NdotL and HdotL lookup textures. Sorting by these is a waste of processing power. Does it make sense to prioritize the other textures that are per-object, not per-material? Hard to tell, but let's for now assume it doesn't. In this case, we already have everything to define the sorting keys, since we've introduced material and object scope through Cg semantics. What's left is efficiently extracting them and building the sorting keys. This should also be more effective than sorting by material params, as it means sorting by _used_ parameters of all shaders that constitute the final GPU programs.

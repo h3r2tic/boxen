@@ -31,6 +31,16 @@ import xf.loader.scene.model.all
 	: LoaderNode = Node, LoaderMesh = Mesh, LoaderScene = Scene;
 
 
+float computeFresnelR0(float objectIoR, float volumeIoR = 1.0002926) {
+	float c = objectIoR / volumeIoR;
+	float R0 = (1 - c) / (1 + c);
+	R0 *= R0;
+	R0 *= 0.5f;
+	float foo = (c * (1 + c) - c*c) / (c * (1 - c) + c*c);
+	R0 *= (1 + foo * foo);
+	return R0;
+}
+
 Mesh[] loadHsfModel(
 		Renderer renderer,
 		GPUEffect effect,
@@ -168,8 +178,12 @@ Mesh[] loadHsfModel(
 			vec4 specularTint = vec4.one;
 			
 			float smoothness = 0.1f;
+			float ior = 1.5f;
+			
 			if (auto material = assetMesh.material) {
 				cstring path;
+				
+				ior = material.ior;
 				
 				enum {
 					DiffuseIdx = 1,
@@ -228,6 +242,10 @@ Mesh[] loadHsfModel(
 			);
 			efInst.setUniform("FragmentProgram.specularTexTile",
 				specularTexTile
+			);
+			
+			efInst.setUniform("FragmentProgram.fresnelR0",
+				computeFresnelR0(ior)
 			);
 
 			// Create a vertex buffer and bind it to the shader
@@ -907,6 +925,8 @@ Mesh[] loadModel(
 			vec4 specularTint = vec4.one;
 			
 			float smoothness = 0.1f;
+			float ior = 1.5f;
+			
 			if (scene.mMaterials) {
 				final material = scene.mMaterials[assetMesh.mMaterialIndex];
 				aiString path;
@@ -1002,6 +1022,11 @@ Mesh[] loadModel(
 			efInst.setUniform("FragmentProgram.specularTexTile",
 				specularTexTile
 			);
+			
+			efInst.setUniform("FragmentProgram.fresnelR0",
+				computeFresnelR0(ior)
+			);
+
 
 			// Create a vertex buffer and bind it to the shader
 

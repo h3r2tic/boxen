@@ -53,6 +53,9 @@ abstract class GfxApp {
 			.fullscreen(false)
 			.width(1040)
 			.height(650)	// 1.6 aspect ratio
+			/+.fullscreen(true)
+			.width(1680)
+			.height(1050)+/
 		.create();
 		
 		use (window) in (GL gl) {

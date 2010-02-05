@@ -7,8 +7,9 @@ float Strauss_fresnel(float x) {
 
 float Strauss_shadow(float x) {
 	const float Ks = 1.01f;
-	float numer = 1.0f / ((1.0f - Ks) * (1.0f - Ks))  -  1.0f / ((x - Ks) * (x - Ks));
-	float denom = 1.0f / ((1.0f - Ks) * (1.0f - Ks))  -  1.0f / (Ks * Ks);
+	float oneMinKs2 = (1.0f - Ks) * (1.0f - Ks);
+	float numer = 1.0f / (oneMinKs2) - 1.0f / ((x - Ks) * (x - Ks));
+	float denom = 1.0f / oneMinKs2 - 1.0f / (Ks * Ks);
 	return numer / denom;
 }
 
@@ -17,67 +18,66 @@ void StraussBRDF(
 	float3 normal,
 	float3 point,
 	float3 toLight,
-	float smoothness,
-	float metalness,
+	float fSmoothness,
+	float fMetalness,
 	out float4 diffuse,
 	out float4 specular
 ) {
 	float3 n = normal;
 	float3 l = toLight;
 	float3 v = normalize(envData.eyePos - point);
-	float3 h = reflect(l, n);
+	// float3 h = reflect(l, n);	// original
+	float3 h = normalize(l + v);	// modified
 	
-	const float fSmoothness = smoothness;//0.8f;
-	const float fMetalness = metalness;//0.9f;
 	const float fTransparency = 0.0f;
-	const float3 cDiffuse = lightIntensity.xyz;
 	
-	float NdotL   = dot( n, l ).x;
-	float NdotV   = dot( n, v ).x;
-	float HdotV   = dot( h, v ).x;
-	float fNdotL  = Strauss_fresnel( NdotL );
+	float NdotL   = saturate(dot( n, l ).x);
+	float NdotV   = saturate(dot( n, v ).x);
+	// float specBase   = dot( h, v ).x;	// original
+	float specBase   = dot( h, n ).x;	// modified
+	
+	float NdotLangleTimes2ByPi = acos(NdotL) * 2.0f / 3.14159265;
+	float NdotVangleTimes2ByPi = acos(NdotV) * 2.0f / 3.14159265;
+	
+	float fNdotL  = Strauss_fresnel( NdotLangleTimes2ByPi );
 	float s_cubed = fSmoothness * fSmoothness * fSmoothness;
 
 	// Evaluate the diffuse term
 	float d  = ( 1.0f - fMetalness * fSmoothness );
 	float Rd = ( 1.0f - s_cubed ) * ( 1.0f - fTransparency );
-	float3 diffuse_ = NdotL * d * Rd;// * cDiffuse;
+	float diffuse_ = NdotL * d * Rd;
 
 	// Compute the inputs into the specular term
 	float r = ( 1.0f - fTransparency ) - Rd;
 
-	float j = fNdotL * Strauss_shadow( NdotL ) * Strauss_shadow( NdotV );
+	float j = fNdotL * Strauss_shadow( NdotLangleTimes2ByPi ) * Strauss_shadow( NdotVangleTimes2ByPi );
 
 	// 'k' is used to provide small off-specular
 	// peak for very rough surfaces. Can be changed
 	// to suit desired results...
 	const float k = 0.1f;
-	float reflect = min( 1.0f, r + j * ( r + k ) );
+	float reflect = min(1.0f, r + j * ( r + k ));
 
-	float3 C1 = float3( 1.0f, 1.0f, 1.0f );
-	//float3 Cs = C1 + fMetalness * (1.0f - fNdotL) * (cDiffuse - C1);
-	
-	float3 Css = C1 - fMetalness * (1.0f - fNdotL) * C1;
-	float3 Csd = fMetalness * (1.0f - fNdotL);// * cDiffuse;
+	float Css = 1.0f - fMetalness * (1.0f - fNdotL);
+	float Csd = fMetalness * (1.0f - fNdotL);
 
 	// Evaluate the specular term
-	float3 specular_s = Css * reflect;
-	float3 specular_d = Csd * reflect;
+	float specular_s = Css * reflect;
+	float specular_d = Csd * reflect;
 	
-	float3 specMult = pow( -HdotV, 3.0f / (1.0f - fSmoothness) );
+	float specMult = pow( saturate(specBase), 3.0f / (1.0f - fSmoothness) );
 	
 	specular_s *= specMult;
 	specular_d *= specMult;
 	
-	specular_s = max(float3(0, 0, 0), specular_s);
-	specular_d = max(float3(0, 0, 0), specular_d);
+	specular_s = max(0.0f, specular_s);
+	specular_d = max(0.0f, specular_d);
 	diffuse_ = max(float3(0, 0, 0), diffuse_);
 
 	// Composite the final result, ensuring
 	// the values are >= 0.0f yields better results. Some
 	// combinations of inputs generate negative values which
 	// looks wrong when rendered...
-	diffuse  = float4(cDiffuse * max(float3(0, 0, 0), (diffuse_ + specular_d)), 1.0f);
-	specular = float4(cDiffuse * specular_s, 1.0f);
+	diffuse  = lightIntensity * max(0.0f, (diffuse_ + specular_d));
+	specular = lightIntensity * specular_s;
 }
-

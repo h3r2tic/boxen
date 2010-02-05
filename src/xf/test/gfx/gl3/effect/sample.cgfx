@@ -36,8 +36,7 @@ struct PointLight : ILight {
 		toLight = position - point;
 		float distAtten = 1.0f / dot(toLight, toLight).x;
 		toLight = normalize(toLight);
-		float4 falloff = saturate(dot(toLight, normal).xxxx);
-		illuminance = color * falloff * distAtten;
+		illuminance = color * distAtten;
 	}
 };
 
@@ -80,6 +79,9 @@ EnvData envData : BUFFER[0];
 
 #include "strauss.cg"
 #include "phong.cg"
+#include "fresnel.cg"
+#include "cookTorrance.cg"
+#include "ashikhminShirley.cg"
 
 uniform ILight[] lights;
 
@@ -111,9 +113,10 @@ void FragmentProgram(
 	uniform float smoothness,
 	uniform float4 diffuseTint,
 	uniform float4 specularTint,
+	uniform float fresnelR0,
 	out float4 output : COLOR
 ) {
-	const float metalness = 0.7f;
+	const float metalness = 0.5f;
 
 	float4 diffuseSum = envData.ambientColor;
 	float4 specularSum = float4(0, 0, 0, 0);
@@ -122,8 +125,36 @@ void FragmentProgram(
 	for (int i = 0; i < lights.length; ++i) {
 		float3 toLight;
 		float4 illum, diffuse, specular;
-		
 		lights[i].sample(input.position, normal, toLight, illum);
+		
+		
+		AshikhminShirleyBRDF(
+			illum,
+			normal,
+			input.position,
+			toLight,
+			smoothness,
+			metalness,
+			fresnelR0,
+			diffuse,
+			specular
+		);
+		
+		
+		/*CookTorranceBRDF(
+			illum,
+			normal,
+			input.position,
+			toLight,
+			smoothness,
+			metalness,
+			fresnelR0,
+			diffuse,
+			specular
+		);*/
+		
+		/*
+
 		StraussBRDF(
 			illum,
 			normal,
@@ -133,25 +164,40 @@ void FragmentProgram(
 			metalness,
 			diffuse,
 			specular
-		);
+		);*/
 		
-		/*PhongBRDF(
+		/*PhongBlinnBRDF(
 			illum,
 			normal,
 			input.position,
 			toLight,
-			smoothness * 90.0f,
+			3.0f / (1.0f - smoothness),
 			diffuse,
 			specular
 		);*/
 		
+		// HACK: specular and diffuse tints should be used instead
+		specular *= smoothness;
+		diffuse *= 1.0f - smoothness;
+
 		diffuseSum += diffuse;
 		specularSum += specular;
 	}
 	
-	output =
-		tex2D(diffuseTex, input.texCoord * diffuseTexTile) * diffuseSum * diffuseTint
-	+	tex2D(specularTex, input.texCoord * specularTexTile) * specularSum * specularTint;
+	float4 albedo = tex2D(diffuseTex, input.texCoord * diffuseTexTile) * diffuseTint;
+	float4 specMask = tex2D(specularTex, input.texCoord * specularTexTile) * specularTint;
 	
+	output =
+		albedo * diffuseSum
+	+	specMask * specularSum;
 	output *= envData.lightScale;
+	
+	const float4 envColor = float4(0.1, 0.1, 0.1, 0.1);
+	
+	output += fresnel(
+		normalize(envData.eyePos - input.position),
+		normal,
+		fresnelR0
+	) * envColor * specMask;
+	//output = (diffuseSum + specularSum) * envData.lightScale * 0.2f;
 }

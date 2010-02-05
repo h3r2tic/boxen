@@ -17,13 +17,16 @@ rendering game plan:
 	+ textures
 		+ FreeImage
 	+ debug FPS-style camera
+	+ custom scene format, exporter for 3ds max, importer
 
-	a few shaders for testing
-		diffuse
+	+ a few shaders for testing
+		+ phong
 		+ phong-blinn
 		+ strauss
-		fresnel
-		diffuse, specular, normal mapping
+		+ fresnel
+		+ cook-torrance
+		+ ashikhmin-shirley
+		+ diffuse and specular mapping
 
 	~ render lists
 		grouping by shader group and then by shader
