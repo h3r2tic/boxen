@@ -613,6 +613,9 @@ struct CgEffectBuilder {
 	 * with planar reflections. Furthermore, storing the transformations
 	 * in the GPUEffectInstance is a waste of space for a paramter that's
 	 * available through regular fields of renderable objects
+	 * 
+	 * Please refer to the documentation for GPUEffect's
+	 * objectInstanceUniformParams for more information.
 	 */
 	bool isObjectInstanceParam(CGparameter p) {
 		final name = cgGetParameterName(p);

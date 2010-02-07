@@ -18,6 +18,10 @@ import
 	tango.io.Stdout,
 	tango.time.StopWatch;
 	
+import Float = tango.text.convert.Float;
+import Path = tango.io.Path;
+import tango.stdc.stdlib : exit;
+	
 import xf.loader.scene.model.all
 	: LoaderNode = Node, LoaderMesh = Mesh, LoaderScene = Scene;
 
@@ -26,8 +30,8 @@ import xf.loader.scene.model.all
 UniformBuffer envUB;
 
 
-void main() {
-	(new TestApp).run;
+void main(cstring[] args) {
+	(new TestApp(args)).run;
 }
 
 
@@ -39,9 +43,30 @@ class TestApp : GfxApp {
 	float				lightPulse = 0.0f;
 	StopWatch			timer;
 	SimpleCamera		camera;
+	
+	float				_sceneScale = 1.0f;
+	cstring				_sceneToLoad;
+	
 
-	this() {
-		this.windowTitle = "Effect test";
+	this(cstring[] args) {
+		version (Demo) {
+			if (args.length < 2) {
+				Stdout.formatln(
+					"Usage: {0} [sceneFile] {[scaleFactor]}\n"
+					"\n"
+					"Example: {0} foo.hsf 0.1",
+					args[0]
+				);
+				exit(1);
+			} else {
+				if (args.length >= 3) {
+					_sceneScale = Float.parse(args[2]);
+				}
+				
+				_sceneToLoad = Path.normalize(args[1]);
+			}
+		}
+		this.windowTitle = "Dumb model viewer";
 	}
 	
 	override void initialize() {
@@ -61,8 +86,7 @@ class TestApp : GfxApp {
 				EffectSource.filePath("sample.cgfx")
 			);
 			
-			// Specialize the shader template with 2 lights
-			// - an ambient and a point light
+			// Specialize the shader template
 
 			effect.useGeometryProgram = false;
 			effect.setArraySize("lights", 3);
@@ -74,13 +98,13 @@ class TestApp : GfxApp {
 			// ---- Some debug info printing ----
 			{
 				with (*effect.uniformParams()) {
-					Stdout.formatln("Effect uniforms:");
+					Stdout.formatln("Object uniforms:");
 					for (int i = 0; i < params.length; ++i) {
 						Stdout.formatln("\t{}", params.name[i]);
 					}
 				}
 
-				Stdout.formatln("Effect varyings:");
+				Stdout.formatln("Object varyings:");
 				for (int i = 0; i < effect.varyingParams.length; ++i) {
 					Stdout.formatln("\t{}", effect.varyingParams.name[i]);
 				}
@@ -113,6 +137,9 @@ class TestApp : GfxApp {
 			assert (whiteTexture.valid);
 			
 			
+			// HACK: this needs to be done somewhere in a texture manager
+			Texture[cstring] loadedTextures;			
+			
 			auto tm = TextureMatcher(
 				(cstring matName) {
 					switch (matName) {
@@ -122,10 +149,16 @@ class TestApp : GfxApp {
 					}					
 				},
 				(cstring path) {
+					if (auto meh = path in loadedTextures) {
+						return *meh;
+					}
+					
 					if (Path.exists(path)) {
 						final img = imgLoader.load(path);
 						if (img.valid) {
-							return renderer.createTexture(img);
+							auto meh = renderer.createTexture(img);
+							loadedTextures[path.dup] = meh;
+							return meh;
 						}
 					}
 					return Texture.init;
@@ -135,60 +168,72 @@ class TestApp : GfxApp {
 					if (dg(".")) return;
 				}
 			);
-
-			meshes ~= loadHsfModel(
-				renderer,
-				effect,
-				`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`,
-				envUB,
-				CoordSys(vec3fi[0, -1, -0.5]),
-				tm,
-				0.01f
-			);
 			
+			version (Demo) {
+				meshes ~= loadHsfModel(
+					renderer,
+					effect,
+					_sceneToLoad,
+					envUB,
+					CoordSys.identity,
+					tm,
+					_sceneScale
+				);
+			} else {
+				meshes ~= loadHsfModel(
+					renderer,
+					effect,
+					`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`,
+					envUB,
+					CoordSys(vec3fi[0, -1, -0.5]),
+					tm,
+					0.01f
+				);
+				
 
-			meshes ~= loadHsfModel(
-				renderer,
-				effect,
-				`C:\Users\h3r3tic\Documents\3dsMax\export\masha.hsf`,
-				envUB,
-				CoordSys(vec3fi[1.5, -1, -0.5]),
-				tm,
-				0.01f
-			);
-			
-			
-			meshes ~= loadHsfModel(
-				renderer,
-				effect,
-				`C:\Users\h3r3tic\Documents\3dsMax\export\tank.hsf`,
-				envUB,
-				CoordSys(vec3fi[1.5, 0, -2.5]),
-				tm,
-				0.01f
-			);
+				meshes ~= loadHsfModel(
+					renderer,
+					effect,
+					`C:\Users\h3r3tic\Documents\3dsMax\export\masha.hsf`,
+					envUB,
+					CoordSys(vec3fi[1.5, -1, -0.5]),
+					tm,
+					0.01f
+				);
+				
+				
+				meshes ~= loadHsfModel(
+					renderer,
+					effect,
+					`C:\Users\h3r3tic\Documents\3dsMax\export\tank.hsf`,
+					envUB,
+					CoordSys(vec3fi[1.5, 0, -2.5]),
+					tm,
+					0.01f
+				);
 
 
-			meshes ~= loadHsfModel(
-				renderer,
-				effect,
-				`C:\Users\h3r3tic\Documents\3dsMax\export\soldier.hsf`,
-				envUB,
-				CoordSys(vec3fi[-1.5, -1, -0.5]),
-				tm,
-				0.5f
-			);
+				meshes ~= loadHsfModel(
+					renderer,
+					effect,
+					`C:\Users\h3r3tic\Documents\3dsMax\export\soldier.hsf`,
+					envUB,
+					CoordSys(vec3fi[-1.5, -1, -0.5]),
+					tm,
+					0.5f
+				);
 
 
-			meshes ~= loadModel(
-				renderer,
-				effect,
-				mediaDir~`mesh/MTree/MonsterTree.3ds`,
-				envUB,
-				CoordSys(vec3fi[-1.5, -1, -2.5]),
-				tm,
-				0.01f
-			);
+				meshes ~= loadModel(
+					renderer,
+					effect,
+					mediaDir~`mesh/MTree/MonsterTree.3ds`,
+					envUB,
+					CoordSys(vec3fi[-1.5, -1, -2.5]),
+					tm,
+					0.01f
+				);
+			}
 			
 			
 			if (0 == meshes.length) {

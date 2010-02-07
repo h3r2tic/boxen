@@ -28,8 +28,11 @@ void AshikhminShirleyBRDF(
 	float Ps_num = specExp + 1;
 	Ps_num *= pow(HdotN, specExp);
  
-	float Ps_den = 8.0f * HdotL;
-	Ps_den *= max( LdotN, VdotN );
+	float Ps_den = 8.0f;// * HdotL;
+	const float k1n = LdotN;
+	const float k2n = VdotN;
+	// Ps_den *= max( k1n, k2n );	// regular A&S
+	Ps_den *= k1n + k2n - k1n*k2n;	// modified per Michael's d-BRDF paper
 	Ps_den += 0.001f;		// to avoid div by zero
  
 	float Ps = Ps_num / Ps_den;

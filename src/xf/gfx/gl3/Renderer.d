@@ -444,7 +444,7 @@ class Renderer : IRenderer {
 	}
 	
 	Texture createTexture(Image img, TextureRequest req = TextureRequest.init) {
-		assert (img.valid);
+		assert (img.valid, "Invalid image passed to Renderer.createTexture()");
 		
 		return toResourceHandle(
 			_textures.alloc((TextureImpl* n) {
@@ -795,7 +795,7 @@ class Renderer : IRenderer {
 			}
 			
 
-			// model <-> world matrices are special and set for every object
+			// model <-> world matrices are special and always set for every object
 
 			if (modelToWorldIndex != UniformParamIndex.init) {
 				cgSetMatrixParameterfc(

@@ -29,7 +29,10 @@ rendering game plan:
 		+ diffuse and specular mapping
 
 	~ render lists
-		grouping by shader group and then by shader
+		grouping
+			shader group
+			shader
+			textures
 		+ minimization of state changing
 		
 	render states for rendering operations

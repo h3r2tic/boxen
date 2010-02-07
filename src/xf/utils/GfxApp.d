@@ -48,7 +48,7 @@ abstract class GfxApp {
 
 		window = GLWindow();
 		window
-			.title(`xf game utils sample`)
+			.title(windowTitle)
 			.showCursor(true)
 			.fullscreen(false)
 			.width(1040)
