@@ -178,6 +178,9 @@ struct TextureMatcher {
 
 
 
+// FIXME: the model/asset loading functions will need to be refactored
+
+
 Mesh[] loadHsfModel(
 		IRenderer renderer,
 		GPUEffect effect,
@@ -472,7 +475,7 @@ Mesh[] loadHsfModel(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.lightScale")
 							].offset
-						) = 50.0f;
+						) = 20.0f;
 					}
 				);
 
@@ -870,7 +873,7 @@ Mesh[] loadModel(
 							data.ptr + envUBData.params.dataSlice[
 								envUBData.getUniformIndex("envData.lightScale")
 							].offset
-						) = 50.0f;
+						) = 20.0f;
 					}
 				);
 

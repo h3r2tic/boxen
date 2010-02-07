@@ -23,8 +23,8 @@ template _convertRGB(fromCS, toCS) {
 		static assert (fromCS.yB == toCS.yB);
 		
 		to.r = toCS.Gamma.fromLinear(fromCS.Gamma.toLinear(from.r));
-		to.g = toCS.Gamma.fromLinear(fromCS.Gamma.toLinear(from.r));
-		to.b = toCS.Gamma.fromLinear(fromCS.Gamma.toLinear(from.r));
+		to.g = toCS.Gamma.fromLinear(fromCS.Gamma.toLinear(from.g));
+		to.b = toCS.Gamma.fromLinear(fromCS.Gamma.toLinear(from.b));
 	}
 
 	void convert(vec4 from, vec4* to) {

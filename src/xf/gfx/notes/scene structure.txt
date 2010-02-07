@@ -1,0 +1,27 @@
+The scene from the renderer's point of view should not even know anything about spatial relationships. What it needs to know is how the objects are grouped by shader and possibly other sorting keys.
+
+
+Object arrangement:
+-------------------
+
+Partitioned by GPUShader into multiple arrays. The arrays sorted internally by textures. Could later be made sparse/chunked for cheap insertion of new items at the cost of slower traversal.
+
+Objects discernable by 2 integral indices: list idx, list position.
+
+
+Cull graph relation:
+--------------------
+
+Nodes contain renderable indices. Notified of index changes by the renderable list manager.
+
+
+Render time:
+------------
+
+Alloc as many render lists as there are bins for GPUShaders.
+
+Traverse scene graph, add visible nodes into render lists.
+
+For each render list, sort the added indices -> implies sorting by textures and whatever else the indexed renderables are sorted by.
+
+Render each list.

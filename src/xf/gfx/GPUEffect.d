@@ -262,6 +262,16 @@ abstract class GPUEffect {
 		return cast(RawUniformParamGroup*)&_effectUniformParams;
 	}
 
+	/**
+	 * TODO: Needs a better name.
+	 * These are special per object-instance uniform params automatically set
+	 * by the renderer, e.g. model<->world transformation matrices.
+	 * 
+	 * Note that there's a distinction between objects and object instances:
+	 * objects might be rendered multiple times in a single frame, e.g. when
+	 * using planar reflections. As such, it doesn't make sense to keep these
+	 * parameters in the regular uniform group.
+	 */
 	final RawUniformParamGroup* objectInstanceUniformParams() {
 		return cast(RawUniformParamGroup*)&_objectInstanceUniformParams;
 	}

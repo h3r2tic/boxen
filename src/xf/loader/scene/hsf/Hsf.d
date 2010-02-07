@@ -609,7 +609,7 @@ protected:
 						} break;
 						
 						default: {
-							lexer.error("Unsupported material type: '{}'", matType);
+							hsfLog.warn("Unsupported material type: '{}'", matType);
 						}
 					}
 				} break;
