@@ -38,7 +38,6 @@ void main(cstring[] args) {
 class TestApp : GfxApp {
 	Effect				effect;
 	Mesh[]				meshes;
-	MeshRenderData*[]	renderList;
 	float				lightRot = 0.0f;
 	float				lightPulse = 0.0f;
 	StopWatch			timer;
@@ -243,8 +242,8 @@ class TestApp : GfxApp {
 				uword numMeshes = 0;
 				
 				foreach (m; meshes) {
-					numTris += m.getNumInstances * m.getNumIndices / 3;
-					numMeshes += m.getNumInstances;
+					numTris += /+m.numInstances * +/m.numIndices / 3;
+					numMeshes += /+m.numInstances+/1;
 				}
 				
 				Stdout.formatln(
@@ -263,10 +262,6 @@ class TestApp : GfxApp {
 				)
 			);
 			
-			foreach (ref m; meshes) {
-				renderList ~= m.renderData;
-			}
-			
 			timer.start();
 		};
 	}
@@ -275,6 +270,10 @@ class TestApp : GfxApp {
 	void render(GL gl) {
 		final timeDelta = timer.stop();
 		timer.start();
+
+		final renderList = renderer.createRenderList();
+		assert (renderList !is null);
+		scope (success) renderer.disposeRenderList(renderList);
 
 		effect.setUniform("worldToView",
 			camera.getMatrix
@@ -307,7 +306,7 @@ class TestApp : GfxApp {
 		}
 
 		// update light positions
-		foreach (mesh; renderList) {
+		foreach (mesh; meshes) {
 			mesh.effectInstance.setUniform("lights[1].position",
 				vec3(0, 0, -4) + quat.yRotation(lightRot).xform(vec3(5, 2, 0))
 			);
@@ -316,13 +315,8 @@ class TestApp : GfxApp {
 		gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
 		
 		foreach (i, ref m; meshes) {
-			if (m.worldMatricesDirty) {
-				auto rd = m.renderData;
-				auto cs = m.modelToWorld;
-				rd.modelToWorld = cs.toMatrix34;
-				cs.invert;
-				rd.worldToModel = cs.toMatrix34;
-			}
+			final bin = renderList.getBin(m.effectInstance.getEffect);
+			m.toRenderableData(bin.add(m.effectInstance));
 		}
 		
 		renderer.render(renderList);
