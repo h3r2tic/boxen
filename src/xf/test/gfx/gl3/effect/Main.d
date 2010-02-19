@@ -179,6 +179,17 @@ class TestApp : GfxApp {
 					_sceneScale
 				);
 			} else {
+				/+meshes ~= loadHsfModel(
+					renderer,
+					effect,
+					`C:\Users\h3r3tic\Documents\3dsMax\export\dozer.hsf`,
+					envUB,
+					CoordSys(vec3fi[0, -1, -0.5]),
+					tm,
+					0.02f
+				);+/
+
+
 				meshes ~= loadHsfModel(
 					renderer,
 					effect,
@@ -264,6 +275,8 @@ class TestApp : GfxApp {
 			
 			timer.start();
 		};
+		
+		renderer.minimizeStateChanges();
 	}
 	
 	
@@ -319,6 +332,9 @@ class TestApp : GfxApp {
 			m.toRenderableData(bin.add(m.effectInstance));
 		}
 		
+		renderList.sort();
+		renderer._numTextureChanges = 0;
 		renderer.render(renderList);
+		//Stdout.formatln("Tex changes: {}", renderer._numTextureChanges);
 	}
 }

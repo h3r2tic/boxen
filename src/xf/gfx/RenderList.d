@@ -7,10 +7,13 @@ private {
 		xf.omg.core.CoordSys;
 	import
 		xf.mem.Array,
-		xf.mem.MultiArray;
+		xf.mem.MultiArray,
+		xf.mem.StackBuffer,
+		xf.utils.LocalArray;
 	import
 		xf.gfx.Effect,
 		xf.gfx.IndexBuffer;
+	static import tango.core.Array;
 }
 
 
@@ -49,6 +52,42 @@ struct RenderBin {
 		mat34			modelToWorld
 		mat34			worldToModel
 	`));
+	
+	
+	void sort() {
+		if (0 == objects.length) {
+			return;
+		}
+		
+		scope stackBuffer = new StackBuffer();
+		auto perm = LocalArray!(u32)(objects.length, stackBuffer);
+		scope (success) perm.dispose();
+		foreach (i, ref x; perm.data) {
+			x = i;
+		}
+		
+		tango.core.Array.sort(perm.data, (u32 a, u32 b) {
+			final v1 = objects.eiRenderOrdinal[a];
+			final v2 = objects.eiRenderOrdinal[b];
+			return v2 > v1;
+		});
+		
+		//log.trace("ord: {}", objects.eiRenderOrdinal[0..objects.length]);
+		//log.trace("perm: {}", perm.data);
+		
+		auto rd2 = LocalArray!(RenderableData)(objects.length, stackBuffer);
+		scope (success) rd2.dispose();
+		
+		auto o2 = LocalArray!(u32)(objects.length, stackBuffer);
+		scope (success) o2.dispose();
+
+		foreach (i, x; perm.data) {
+			rd2.data[i] = objects.renderable[x];
+			o2.data[i] = objects.eiRenderOrdinal[x];
+		}
+		objects.renderable[0..objects.length] = rd2.data[0..objects.length];
+		objects.eiRenderOrdinal[0..objects.length] = o2.data[0..objects.length];
+	}
 	
 	void computeMatrices() {
 		uword end = objects.length;
@@ -103,6 +142,12 @@ struct RenderList {
 	void clear() {
 		foreach (ref b; bins) {
 			b.clear();
+		}
+	}
+	
+	void sort() {
+		foreach (ref b; bins) {
+			b.sort();
 		}
 	}
 }

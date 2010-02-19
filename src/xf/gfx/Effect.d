@@ -7,12 +7,15 @@ private {
 		xf.gfx.Buffer,
 		xf.gfx.VertexBuffer,
 		xf.gfx.VertexArray,
-		xf.gfx.Resource;
+		xf.gfx.Resource,
+		xf.gfx.Texture;
 	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 
-	import xf.mem.MultiArray;
-	import xf.mem.FreeList;
+	import
+		xf.mem.MainHeap,
+		xf.mem.MultiArray,
+		xf.mem.FreeList;
 }
 
 
@@ -45,12 +48,12 @@ enum ParamBaseType : ushort {
 // name data allocated using osHeap
 // names null-terminated at [$]  ( thus safe with both C and D )
 const cstring uniformParamMix = `
-		cstring				name
-		UniformParam		param
-		ushort				numFields
-		ParamBaseType		baseType
-		TypeInfo			typeInfo
-		UniformDataSlice	dataSlice
+	cstring				name
+	UniformParam		param
+	ushort				numFields
+	ParamBaseType		baseType
+	TypeInfo			typeInfo
+	UniformDataSlice	dataSlice
 `;
 
 
@@ -200,6 +203,10 @@ abstract class Effect {
 	size_t	varyingParamsDirtyOffset;
 	u32		renderOrdinal;
 	
+	// Each sorting key is a uword. Offsets are from efInst.getUniformsDataPtr.
+	// Allocated via mainHeap; TODO: free it somewhere
+	ptrdiff_t[]	instanceSortingKeyOffsets;
+	
 	invariant {
 		assert (uniformDataSize <= instanceDataSize);
 	}
@@ -210,6 +217,37 @@ abstract class Effect {
 			ef._useGeometryProgram = _useGeometryProgram;
 			ef._domainProgramNames[] = _domainProgramNames;
 			// TODO: any more?
+		}
+		
+		
+		void findInstanceSortingKeys() {
+			final unif = &_uniformParams;
+			final len = unif.length;
+			
+			uword numKeys = 0;			
+			for (uword i = 0; i < len; ++i) {
+				if (unif.typeInfo[i] is typeid(Texture)) {
+					++numKeys;
+				}
+			}
+			
+			instanceSortingKeyOffsets = (cast(ptrdiff_t*)
+				mainHeap.allocRaw(ptrdiff_t.sizeof * numKeys))[0..numKeys];
+
+			uword keyI = 0;
+			for (uword i = 0; i < len; ++i) {
+				if (unif.typeInfo[i] is typeid(Texture)) {
+					instanceSortingKeyOffsets[keyI] =
+						unif.dataSlice[i].offset +
+						Texture.init._resHandle.offsetof +
+						ResourceHandle.init.id.offsetof;
+						
+					++keyI;
+				}
+			}
+			assert (numKeys == keyI);
+			
+			log.info("Effect has {} sorting keys.", numKeys);
 		}
 		
 

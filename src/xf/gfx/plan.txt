@@ -28,11 +28,11 @@ rendering game plan:
 		+ ashikhmin-shirley
 		+ diffuse and specular mapping
 
-	~ render lists
-		grouping
-			shader group
-			shader
-			textures
+	+ render lists
+		+ grouping
+			? shader group
+			+ shader
+			+ textures
 		+ minimization of state changing
 		
 	render states for rendering operations

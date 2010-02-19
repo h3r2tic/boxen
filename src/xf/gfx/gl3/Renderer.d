@@ -20,6 +20,9 @@ public {
 	import
 		xf.mem.MainHeap,
 		xf.mem.StackBuffer;
+		
+	import xf.utils.LocalArray;
+	static import tango.core.Array;
 }
 
 private {
@@ -52,6 +55,8 @@ private {
 
 
 class Renderer : IRenderer {
+	size_t _numTextureChanges = 0;
+	
 	// at the front because otherwise DMD is a bitch about forward refs
 	private {
 		GL			gl;
@@ -708,6 +713,13 @@ class Renderer : IRenderer {
 	// ----
 	
 	
+	void minimizeStateChanges() {
+		foreach (ref e; _effects) {
+			e.sortInstances();
+		}
+	}
+	
+	
 	void render(RenderList* renderList) {
 		renderList.computeMatrices();
 		foreach (eidx, ref renderBin; renderList.bins) {
@@ -774,10 +786,17 @@ class Renderer : IRenderer {
 						// log.trace("cgGLSetTextureParameter({})", tex.getApiHandle());
 						final cgParam = cast(CGparameter)up.param[ui];
 						
-						cgGLSetTextureParameter(
-							cgParam,
-							tex.getApiHandle()
-						);
+						final prev = cgGLGetTextureParameter(cgParam);
+						final cur = tex.getApiHandle();
+						
+						if (cur != prev) {
+							cgGLSetTextureParameter(
+								cgParam,
+								cur
+							);
+							++_numTextureChanges;
+						}
+						
 						cgGLEnableTextureParameter(cgParam);
 					}
 				} else switch (up.baseType[ui]) {
@@ -1077,6 +1096,7 @@ private struct EffectData {
 	static assert (is(Effect == class));	// if fails, make 'effect' a pointer
 	Effect						effect;
 	Array!(EffectInstanceImpl*)	instances;
+	Array!(EffectInstanceImpl*)	tmp;
 	bool						instancesSorted = false;
 	
 	
@@ -1086,11 +1106,91 @@ private struct EffectData {
 		instances.pushBack(inst);
 	}
 	
-	void sortInstances() {
-		if (!instancesSorted) {
-			instancesSorted = true;
-			assert (false);		// TODO
+	u32 countSortingKeyChanges(EffectInstanceImpl*[] instances) {
+		final keyOffsets = effect.instanceSortingKeyOffsets;
+		if (0 == keyOffsets.length) {
+			return 0;
 		}
+
+		scope stackBuffer = new StackBuffer();
+		auto vals = LocalArray!(size_t)(keyOffsets.length, stackBuffer);
+		scope (success) vals.dispose();
+		vals.data[] = 0;
+		
+		u32 num = 0;
+		
+		foreach (inst; instances) {
+			void* ld = inst.getUniformsDataPtr();
+			foreach (oi, o; keyOffsets) {
+				final v = *cast(size_t*)(ld+o);
+				if (v != vals.data[oi]) {
+					++num;
+					vals.data[oi] = v;
+				}
+			}
+		}
+		
+		return num;
+	}
+	
+	void sortInstances() {
+		final keyOffsets = effect.instanceSortingKeyOffsets;
+		if (0 == keyOffsets.length) {
+			return;
+		}
+		
+		final beforeSorting = countSortingKeyChanges(instances.ptr[0..instances.length]);
+		log.trace("State changes before sorting: {}", beforeSorting);
+		
+		scope (success) instancesSorted = true;
+		scope stackBuffer = new StackBuffer();
+		auto perm = LocalArray!(u32)(instances.length, stackBuffer);
+		scope (success) perm.dispose();
+		foreach (i, ref x; perm.data) {
+			x = i;
+		}
+		
+		tango.core.Array.sort(perm.data, (u32 a, u32 b) {
+			void* ld1 = instances.ptr[a].getUniformsDataPtr();
+			void* ld2 = instances.ptr[b].getUniformsDataPtr();
+			foreach (o; keyOffsets) {
+				final v1 = *cast(size_t*)(ld1+o);
+				final v2 = *cast(size_t*)(ld2+o);
+				if (v1 > v2) {
+					return true;
+				} else if (v1 < v2) {
+					return false;
+				}
+			}
+			return false;
+		});
+		
+		log.trace("sortInstances.perm: {}", perm.data);
+		
+		tmp.resize(instances.length);
+		
+		foreach (i, x; perm.data) {
+			tmp.ptr[i] = instances.ptr[x];
+		}
+
+		final afterSorting = countSortingKeyChanges(tmp.ptr[0..tmp.length]);
+		log.trace("State changes after sorting: {}", afterSorting);
+
+		if (afterSorting < beforeSorting) {
+			foreach (i, x; perm.data) {
+				instances.ptr[x].renderOrdinal = i;
+			}
+		
+			final t = instances;
+			instances = tmp;
+			tmp = t;
+			
+			log.trace("Applied the new instance order.");
+		} else {
+			log.trace("Kept the old instance order.");
+		}
+
+		//assert (false);
 	}
 }
 

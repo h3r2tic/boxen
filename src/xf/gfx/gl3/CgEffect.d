@@ -235,6 +235,7 @@ class CgEffect : Effect {
 		findEffectParams(&builder);
 		
 		builder.finish(this);
+		findInstanceSortingKeys();
 		
 		_compiled = true;
 	}
