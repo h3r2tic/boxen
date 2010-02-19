@@ -9,7 +9,7 @@ private {
 		xf.gfx.UniformBuffer,
 		xf.gfx.Texture,
 		xf.gfx.Mesh,
-		xf.gfx.GPUEffect;
+		xf.gfx.Effect;
 }
 
 

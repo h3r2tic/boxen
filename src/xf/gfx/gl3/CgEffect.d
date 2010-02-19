@@ -1,7 +1,7 @@
 module xf.gfx.gl3.CgEffect;
 
 public {
-	import xf.gfx.GPUEffect;
+	import xf.gfx.Effect;
 }
 
 private {
@@ -43,7 +43,7 @@ void defaultHandleCgError() {
 }
 
 
-class CgEffect : GPUEffect {
+class CgEffect : Effect {
 	this (cstring name, CGeffect handle, GL gl) {
 		this._name = name;
 		this._handle = handle;
@@ -235,7 +235,6 @@ class CgEffect : GPUEffect {
 		findEffectParams(&builder);
 		
 		builder.finish(this);
-		this.instanceFreeList.itemSize = this.totalInstanceSize();
 		
 		_compiled = true;
 	}
@@ -608,13 +607,13 @@ struct CgEffectBuilder {
 	
 	
 	/* 
-	 * Model transformations are not stored in the GPUEffectInstance, because
+	 * Model transformations are not stored in the EffectInstance, because
 	 * the same object might be rendered multiple times in a frame - e.g.
 	 * with planar reflections. Furthermore, storing the transformations
-	 * in the GPUEffectInstance is a waste of space for a paramter that's
+	 * in the EffectInstance is a waste of space for a paramter that's
 	 * available through regular fields of renderable objects
 	 * 
-	 * Please refer to the documentation for GPUEffect's
+	 * Please refer to the documentation for Effect's
 	 * objectInstanceUniformParams for more information.
 	 */
 	bool isObjectInstanceParam(CGparameter p) {

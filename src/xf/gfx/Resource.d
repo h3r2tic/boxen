@@ -13,7 +13,7 @@ template MResource() {
 	
 	Handle			_resHandle;
 	void*			_resMngr;
-	void*			_refMngr;	
+	void*			_refMngr;
 	ResCountFunc	_resCountAdjust;
 
 	// TODO: is it possible for a resource to have the same type and _resHandle

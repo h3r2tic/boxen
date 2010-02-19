@@ -6,7 +6,7 @@ private {
 	import tango.text.Util;
 	import tango.stdc.stringz;
 	import tango.sys.SharedLib;
-	import tango.util.PathUtil;
+	import Path = tango.io.Path;
 	
 	import tango.io.Stdout;
 
@@ -120,7 +120,7 @@ void findAndLoadLibs() {
 						}
 
 						foreach (name; namesList) {
-							if (tango.util.PathUtil.patternMatch(filePath.file, name)) {
+							if (Path.patternMatch(filePath.file, name)) {
 								if (loadLibFunc(FilePath().join(path, filePath.file))) {
 									loadFunc();
 									return;

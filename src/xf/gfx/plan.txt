@@ -12,7 +12,7 @@ rendering game plan:
 	+ uniform buffers
 	+ instancing
 	+ mesh struct with a position and whatnot
-		+ uses GPUEffectInstance
+		+ uses EffectInstance
 	+ load up some real meshes using assimp. boxes are boring.
 	+ textures
 		+ FreeImage
@@ -43,9 +43,6 @@ rendering game plan:
 
 * step 2: scene-level management
 	whip up some lights along with tracking their influences
-	lay foundations for lazy updating of shadow maps
-	shadow map prioritization
-	shadow map budget
 	hierarchical culling structure for the scene
 		could be a loose octree or an abt
 	terrain

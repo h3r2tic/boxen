@@ -64,6 +64,9 @@ class Renderer : IRenderer {
 
 		ThreadUnsafeResourcePool!(TextureImpl, TextureHandle)
 			_textures;
+
+		ThreadUnsafeResourcePool!(EffectInstanceProxy, EffectInstanceHandle)
+			_effectInstances;
 	}
 
 
@@ -74,10 +77,11 @@ class Renderer : IRenderer {
 		_buffers.initialize();
 		_vertexArrays.initialize();
 		_textures.initialize();
+		_effectInstances.initialize();
 	}
 	
 	
-	GPUEffect createEffect(cstring name, EffectSource source) {
+	Effect createEffect(cstring name, EffectSource source) {
 		return _cgCompiler.createEffect(name, source);
 	}
 	
@@ -118,14 +122,125 @@ class Renderer : IRenderer {
 		mainHeap.freeRaw(meshes.ptr);
 		meshes = null;
 	}
+
+
+	// Vertex Array ----
 	
 	
-	// implements IEffectMngr
-	GPUEffectInstance* instantiateEffect(GPUEffect effect) {
-		final inst = effect.createRawInstance();
+	// TODO: memory pooling
+	EffectInstanceImpl* allocateEffectInstance(Effect effect) {
+		final inst = cast(EffectInstanceImpl*)
+			mainHeap.allocRaw(effect.totalInstanceSize);
+		*inst = EffectInstanceImpl.init;
+		memset(inst+1, 0, effect.instanceDataSize);
 		inst._vertexArray = createVertexArray();
+		inst._proto = effect;
 		return inst;
 	}
+	
+	
+
+	EffectInstance toResourceHandle(_effectInstances.ResourceReturn resource) {
+		EffectInstance res = void;
+		res._resHandle = resource.handle;
+
+		res._resMngr = cast(void*)cast(IEffectMngr)this;
+		res._refMngr = cast(void*)this;
+		final rcnt = &resCountEffectInstance;
+		res._resCountAdjust = rcnt.funcptr;
+
+		return res;
+	}
+
+	bool resCountEffectInstance(EffectInstanceHandle h, int cnt) {
+		if (auto resData = _effectInstances.find(h, cnt > 0)) {
+			final res = resData.res;
+			bool goodBefore = res.refCount > 0;
+			res.refCount += cnt;
+			if (res.refCount > 0) {
+				return true;
+			} else if (goodBefore) {
+				// TODO: free the other shit
+				_effectInstances.free(resData);
+			}
+		}
+		
+		return false;
+	}
+
+	// implements IEffectMngr
+	EffectInstance instantiateEffect(Effect effect) {
+		return toResourceHandle(
+			_effectInstances.alloc((EffectInstanceProxy* n) {
+				n.impl = allocateEffectInstance(effect);
+				n.refCount = 1;
+			})
+		);
+	}
+
+
+	// implements IEffectMngr
+	Effect getEffect(EffectInstanceHandle h) {
+		if (auto resData = _effectInstances.find(h)) {
+			assert (resData.res !is null);
+			final res = resData.res.impl;
+			assert (res !is null);
+			return res._proto;
+		} else {
+			return null;
+		}
+	}
+
+	// implements IEffectMngr
+	bool setVarying(EffectInstanceHandle h, cstring name, VertexBuffer buf, VertexAttrib vattr) {
+		if (auto resData = _effectInstances.find(h)) {
+			assert (resData.res !is null);
+			final res = resData.res.impl;
+			assert (res !is null);
+			return res.setVarying(name, buf, vattr);
+		} else {
+			return false;
+		}
+	}
+
+	// implements IEffectMngr
+	void* getUniformsDataPtr(EffectInstanceHandle h) {
+		if (auto resData = _effectInstances.find(h)) {
+			assert (resData.res !is null);
+			final res = resData.res.impl;
+			assert (res !is null);
+			return res.getUniformsDataPtr;
+		} else {
+			return null;
+		}
+	}
+
+	// implements IEffectMngr
+	VaryingParamData* getVaryingParamDataPtr(EffectInstanceHandle h) {
+		if (auto resData = _effectInstances.find(h)) {
+			assert (resData.res !is null);
+			final res = resData.res.impl;
+			assert (res !is null);
+			return res.getVaryingParamDataPtr;
+		} else {
+			return null;
+		}
+	}
+
+	// implements IEffectMngr
+	size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle h) {
+		if (auto resData = _effectInstances.find(h)) {
+			assert (resData.res !is null);
+			final res = resData.res.impl;
+			assert (res !is null);
+			return res.getVaryingParamDirtyFlagsPtr;
+		} else {
+			return null;
+		}
+	}
+	
+	
+	// ----
 	
 	
 	private void _bindBuffer(GLenum target, GLuint handle) {
@@ -546,7 +661,7 @@ class Renderer : IRenderer {
 			return;
 		}
 		
-		GPUEffect effect = objects[0].effect;
+		Effect effect = objects[0].effect;
 		
 		assert ({
 			foreach (o; objects[1..$]) {
@@ -555,7 +670,7 @@ class Renderer : IRenderer {
 				}
 			}
 			return true;
-		}(), "All objects must have the same GPUEffect");
+		}(), "All objects must have the same Effect");
 
 		void* prevUniformValues = null;
 
@@ -665,7 +780,7 @@ class Renderer : IRenderer {
 		}
 		
 		
-		void setObjVaryings(GPUEffectInstance* obj) {
+		void setObjVaryings(EffectInstanceImpl* obj) {
 			final vp = &effect.varyingParams;
 			final numVaryings = vp.length;
 			
@@ -674,6 +789,8 @@ class Renderer : IRenderer {
 			
 			alias typeof(*flags) flagFieldType;
 			const buffersPerFlag = flagFieldType.sizeof * 8;
+			
+			final varyingParams = obj._proto.varyingParams.param;
 			
 			for (
 				int varyingBase = 0;
@@ -720,8 +837,8 @@ class Renderer : IRenderer {
 							}
 						}
 						
-						final param = cast(CGparameter)
-							obj._proto.varyingParams.param[varyingBase+idx];
+						final param
+							= cast(CGparameter)varyingParams[varyingBase+idx];
 
 						buf.bind();
 						cgGLEnableClientState(param);
@@ -749,7 +866,7 @@ class Renderer : IRenderer {
 				}
 			}
 		}
-		
+			
 		effect.bind();
 		setObjUniforms(
 			effect.getUniformsDataPtr(),
@@ -772,81 +889,84 @@ class Renderer : IRenderer {
 					obj.effectInstance.getUniformsDataPtr();
 			}
 			
-			auto efInst = obj.effectInstance;
-			setObjUniforms(
-				efInst.getUniformsDataPtr(),
-				efInst.getUniformParamGroup(),
-				minimizeStateChanges,			// <-
-				objIdx
-			);
-			
-			minimizeStateChanges = true;		// <-
-			
-			efInst._vertexArray.bind();
-			setObjVaryings(efInst);
-			
-			if (0 == obj.flags & obj.flags.IndexBufferBound) {
-				if (!obj.indexBuffer.valid) {
-					continue;
-				}				
+			if (auto resData = _effectInstances.find(obj.effectInstance._resHandle)) {
+				final efInst = resData.res.impl;
 
-				obj.flags |= obj.flags.IndexBufferBound;
-				obj.indexBuffer.bind();
-			}
-			
-
-			// model <-> world matrices are special and always set for every object
-
-			if (modelToWorldIndex != UniformParamIndex.init) {
-				cgSetMatrixParameterfc(
-					cast(CGparameter)instUnifParams.params.param[modelToWorldIndex],
-					obj.modelToWorld.ptr
+				setObjUniforms(
+					efInst.getUniformsDataPtr(),
+					efInst.getUniformParamGroup(),
+					minimizeStateChanges,			// <-
+					objIdx
 				);
-			}
-			
-			if (worldToModelIndex != UniformParamIndex.init) {
-				cgSetMatrixParameterfc(
-					cast(CGparameter)instUnifParams.params.param[worldToModelIndex],
-					obj.worldToModel.ptr
-				);
-			}
-			
-			// ----
+				
+				minimizeStateChanges = true;		// <-
+				
+				efInst._vertexArray.bind();
+				setObjVaryings(efInst);
+				
+				if (0 == obj.flags & obj.flags.IndexBufferBound) {
+					if (!obj.indexBuffer.valid) {
+						continue;
+					}				
 
-			
-			if (1 == obj.numInstances) {
-				if (obj.minIndex != 0 || obj.maxIndex != typeof(obj.maxIndex).max) {
-					gl.DrawRangeElements(
-						enumToGL(obj.topology),
-						obj.minIndex,
-						obj.maxIndex,
-						obj.numIndices,
-						enumToGL(obj.indexBuffer.indexType),
-						cast(void*)obj.indexOffset
-					);
-				} else {
-					gl.DrawElements(
-						enumToGL(obj.topology),
-						obj.numIndices,
-						enumToGL(obj.indexBuffer.indexType),
-						cast(void*)obj.indexOffset
+					obj.flags |= obj.flags.IndexBufferBound;
+					obj.indexBuffer.bind();
+				}
+				
+
+				// model <-> world matrices are special and always set for every object
+
+				if (modelToWorldIndex != UniformParamIndex.init) {
+					cgSetMatrixParameterfc(
+						cast(CGparameter)instUnifParams.params.param[modelToWorldIndex],
+						obj.modelToWorld.ptr
 					);
 				}
-			} else if (obj.numInstances > 1) {
-				gl.DrawElementsInstanced(
-					enumToGL(obj.topology),
-					obj.numIndices,
-					enumToGL(obj.indexBuffer.indexType),
-					cast(void*)obj.indexOffset,
-					obj.numInstances
+				
+				if (worldToModelIndex != UniformParamIndex.init) {
+					cgSetMatrixParameterfc(
+						cast(CGparameter)instUnifParams.params.param[worldToModelIndex],
+						obj.worldToModel.ptr
+					);
+				}
+				
+				// ----
+
+				
+				if (1 == obj.numInstances) {
+					if (obj.minIndex != 0 || obj.maxIndex != typeof(obj.maxIndex).max) {
+						gl.DrawRangeElements(
+							enumToGL(obj.topology),
+							obj.minIndex,
+							obj.maxIndex,
+							obj.numIndices,
+							enumToGL(obj.indexBuffer.indexType),
+							cast(void*)obj.indexOffset
+						);
+					} else {
+						gl.DrawElements(
+							enumToGL(obj.topology),
+							obj.numIndices,
+							enumToGL(obj.indexBuffer.indexType),
+							cast(void*)obj.indexOffset
+						);
+					}
+				} else if (obj.numInstances > 1) {
+					gl.DrawElementsInstanced(
+						enumToGL(obj.topology),
+						obj.numIndices,
+						enumToGL(obj.indexBuffer.indexType),
+						cast(void*)obj.indexOffset,
+						obj.numInstances
+					);
+				}
+				
+				// prevent state leaking
+				unsetObjUniforms(
+					efInst.getUniformsDataPtr(),
+					efInst.getUniformParamGroup()
 				);
 			}
-			
-			// prevent state leaking
-			unsetObjUniforms(
-				efInst.getUniformsDataPtr(),
-				efInst.getUniformParamGroup()
-			);
 		}
 	}
 }
@@ -885,6 +1005,13 @@ private struct TextureImpl {
 			assert (false);
 		}
 	}
+}
+
+
+private struct EffectInstanceProxy {
+	ptrdiff_t			refCount;
+	EffectInstanceImpl*	impl;
+	u32					renderOrdinal;
 }
 
 
