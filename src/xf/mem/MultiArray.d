@@ -98,8 +98,13 @@ pragma(ctfe) cstring multiArray(cstring name, int _growBy, cstring def) {
 		}
 		res ~= `
 		void resize(size_t newLen) {
-			_capacity = _length = newLen;
-			_allocCapacity();
+			_length = newLen;
+			if (newLen > 0) {
+				if (newLen > _capacity) {
+					_capacity = newLen;
+				}
+				_allocCapacity();
+			}
 		}
 		
 		size_t growBy(size_t num) {

@@ -198,14 +198,13 @@ abstract class Effect {
 	size_t	instanceDataSize;
 	size_t	varyingParamsOffset;
 	size_t	varyingParamsDirtyOffset;
+	u32		renderOrdinal;
 	
 	invariant {
 		assert (uniformDataSize <= instanceDataSize);
 	}
  	
 	protected {
-		bool _compiled = false;
-
 		void copyToNew(Effect ef) {
 			assert (!_compiled);
 			ef._useGeometryProgram = _useGeometryProgram;
@@ -214,7 +213,6 @@ abstract class Effect {
 		}
 		
 
-		bool _useGeometryProgram = true;
 		char*[GPUDomain.max+1] _domainProgramNames = [
 			"VertexProgram".ptr,
 			"GeometryProgram".ptr,
@@ -308,6 +306,16 @@ abstract class Effect {
 		error("Varying named '{}' doesn't exist.", name);
 		assert(false);
 	}
+	
+	public {
+		// reserved for use in a Renderer
+		u32	_idxInRenderer;
+	}
+	
+	protected {
+		bool _compiled = false;
+		bool _useGeometryProgram = true;
+	}
 }
 
 
@@ -347,6 +355,8 @@ struct EffectInstanceImpl {
 	}
 	
 	mixin MUniformParamGroupInstance;
+
+	u32 renderOrdinal;
 
 	// ----
 	
@@ -465,6 +475,7 @@ interface IEffectMngr {
 	void* getUniformsDataPtr(EffectInstanceHandle);
 	VaryingParamData* getVaryingParamDataPtr(EffectInstanceHandle);
 	size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle);
+	u32 renderOrdinal(EffectInstanceHandle);
 }
 
 
@@ -512,5 +523,11 @@ struct EffectInstance {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IEffectMngr)_resMngr).getVaryingParamDirtyFlagsPtr(_resHandle);
+	}
+	
+	u32 renderOrdinal() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).renderOrdinal(_resHandle);
 	}
 }

@@ -29,7 +29,9 @@ interface ArrayAllocator {
 
 
 		void _reallocate() {
+			assert (_capacity != 0);
 			_ptr = cast(T*)xf.mem.MainHeap.mainHeap.reallocRaw(_ptr, _capacity * T.sizeof);
+			assert (_ptr !is null);
 		}
 		
 		void _dispose() {
@@ -74,8 +76,23 @@ struct Array(
 	
 	
 	void resize(size_t num) {
-		reserve(num);
+		if (num > 0) {
+			reserve(num);
+			if (num > _length) {
+				initElements(_length, num);
+			}
+		}
+		
 		_length = num;
+		
+		if (num > 0) {
+			assert (_ptr !is null);
+		}
+	}
+	
+	
+	private void initElements(size_t start, size_t end) {
+		_ptr[start..end] = T.init;
 	}
 	
 	
@@ -84,14 +101,15 @@ struct Array(
 	}
 	
 	
-	void opIndexAssign(T x, int i) {
+	void opIndexAssign(T x, size_t i) {
 		assert (i < _length);
 		_ptr[i] = x;
 	}
 	
 
-	T* opIndex(int i) {
+	T* opIndex(size_t i) {
 		assert (i < _length);
+		assert (_ptr !is null);
 		return _ptr + i;
 	}
 

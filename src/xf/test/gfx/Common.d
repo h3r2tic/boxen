@@ -506,12 +506,12 @@ Mesh[] loadHsfModel(
 			// Finalize the mesh
 			
 			mesh.effectInstance = efInst;
-			mesh.numInstances = numInstances;
+			//mesh.numInstances = numInstances;
 		}
 		
 		auto mesh = &meshes[meshIdx];
 		createObject(mesh);
-		mesh.modelToWorld = modelCoordSys;
+		mesh.coordSys = modelCoordSys;
 	});
 	
 	scene.dispose();	
@@ -911,12 +911,12 @@ Mesh[] loadModel(
 			// Finalize the mesh
 			
 			mesh.effectInstance = efInst;
-			mesh.numInstances = numInstances;
+			//mesh.numInstances = numInstances;
 		}
 		
 		auto mesh = &meshes[meshIdx];
 		createObject(mesh);
-		mesh.modelToWorld = modelCoordSys;
+		mesh.coordSys = modelCoordSys;
 	});
 	
 	return meshes;

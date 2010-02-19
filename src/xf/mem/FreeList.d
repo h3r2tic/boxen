@@ -5,6 +5,8 @@ private {
 }
 
 
+// NOTE: the returned objects are to be assumed junk and need to be initialized
+
 // TODO: more allocation strategies could be useful
 struct UntypedFreeList {
 	void* alloc() {
@@ -17,6 +19,11 @@ struct UntypedFreeList {
 		} else {
 			return osHeap.allocRaw(_itemSize);
 		}
+	}
+	
+	
+	bool isEmpty() {
+		return _freeList is null;
 	}
 	
 	
@@ -50,6 +57,11 @@ struct FreeList(T) {
 	void initialize() {
 		_impl.itemSize = T.sizeof;
 	}
+
+
+	bool isEmpty() {
+		return _impl.isEmpty();
+	}
 	
 	
 	T* alloc() {
@@ -59,6 +71,32 @@ struct FreeList(T) {
 	
 	void free(T* ptr) {
 		return _impl.free(ptr);
+	}
+	
+	
+	UntypedFreeList	_impl;
+}
+
+
+struct NondestructiveFreeList(T) {
+	void initialize() {
+		_impl.itemSize = (void*).sizeof + T.sizeof;
+	}
+
+
+	bool isEmpty() {
+		return _impl.isEmpty();
+	}
+	
+	
+	T* alloc() {
+		return cast(T*)(_impl.alloc() + (void*).sizeof);
+	}
+	
+	
+	void free(T* ptr) {
+		assert (ptr !is null);
+		return _impl.free(cast(void*)ptr - (void*).sizeof);
 	}
 	
 	
