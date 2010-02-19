@@ -36,7 +36,7 @@ void main(cstring[] args) {
 
 
 class TestApp : GfxApp {
-	GPUEffect			effect;
+	Effect				effect;
 	Mesh[]				meshes;
 	MeshRenderData*[]	renderList;
 	float				lightRot = 0.0f;
@@ -138,7 +138,7 @@ class TestApp : GfxApp {
 			
 			
 			// HACK: this needs to be done somewhere in a texture manager
-			Texture[cstring] loadedTextures;			
+			Texture[cstring] loadedTextures;
 			
 			auto tm = TextureMatcher(
 				(cstring matName) {

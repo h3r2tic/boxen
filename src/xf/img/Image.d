@@ -87,7 +87,7 @@ struct Image {
 	
 	cstring toString() {
 		return Format(
-			"Image {}x{} {}x{} ({})",
+			"Image {}x{} {} {} ({})",
 			width,
 			height,
 			enumToString(colorLayout),

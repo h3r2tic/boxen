@@ -1,4 +1,4 @@
-module xf.gfx.GPUEffect;
+module xf.gfx.Effect;
 
 private {
 	import xf.Common;
@@ -6,7 +6,8 @@ private {
 	import
 		xf.gfx.Buffer,
 		xf.gfx.VertexBuffer,
-		xf.gfx.VertexArray;
+		xf.gfx.VertexArray,
+		xf.gfx.Resource;
 	
 	import xf.gfx.Log : log = gfxLog, error = gfxError;
 
@@ -38,10 +39,6 @@ enum ParamBaseType : ushort {
 	Int
 }
 
-
-interface IEffectMngr {
-	GPUEffectInstance* instantiateEffect(GPUEffect effect);
-}
 
 
 
@@ -189,10 +186,10 @@ cstring GPUDomainName(GPUDomain d) {
  * VaO binding. This should in theory make the rendering faster.
  */
 
-abstract class GPUEffect {
+abstract class Effect {
 	abstract void setArraySize(cstring name, size_t size);
 	abstract void setUniformType(cstring name, cstring typeName);
-	abstract GPUEffect copy();
+	abstract Effect copy();
 	abstract void compile();
 	abstract void bind();
 	abstract void bindUniformBuffer(int, Buffer);
@@ -209,7 +206,7 @@ abstract class GPUEffect {
 	protected {
 		bool _compiled = false;
 
-		void copyToNew(GPUEffect ef) {
+		void copyToNew(Effect ef) {
 			assert (!_compiled);
 			ef._useGeometryProgram = _useGeometryProgram;
 			ef._domainProgramNames[] = _domainProgramNames;
@@ -229,13 +226,13 @@ abstract class GPUEffect {
 		static assert (2 == GPUDomain.Fragment);
 		static assert (2 == GPUDomain.max);
 
-		final size_t totalInstanceSize() {
-			return instanceDataSize + GPUEffectInstance.sizeof;
-		}
-
 		mixin(multiArray(`_uniformParams`, uniformParamMix));
 		mixin(multiArray(`_effectUniformParams`, uniformParamMix));
 		mixin(multiArray(`_objectInstanceUniformParams`, uniformParamMix));
+	}
+
+	final size_t totalInstanceSize() {
+		return instanceDataSize + EffectInstanceImpl.sizeof;
 	}
 	
 	// ----
@@ -311,48 +308,26 @@ abstract class GPUEffect {
 		error("Varying named '{}' doesn't exist.", name);
 		assert(false);
 	}
-
-	// ----
-	
-	GPUEffectInstance* createRawInstance() {
-		auto inst = cast(GPUEffectInstance*)instanceFreeList.alloc();
-		*inst = GPUEffectInstance.init;
-		void* unifData = cast(void*)(inst+1);
-		memset(unifData, 0, instanceDataSize);
-		inst._proto = this;
-		return inst;
-	}
-	
-	
-	void disposeInstance(GPUEffectInstance* inst) {
-		instanceFreeList.free(inst);
-	}
-	
-	
-	protected {
-		// must be initialized by the compile() function
-		UntypedFreeList instanceFreeList;
-	}
 }
 
 
 /* 
- * Allocated in bulks by the GPUEffect. The total allocated size for one
- * instance is GPUEffectInstance.sizeof + instanceDataSize, thus the uniform
+ * Allocated in bulks by the Effect. The total allocated size for one
+ * instance is EffectInstanceImpl.sizeof + instanceDataSize, thus the uniform
  * data is right after the this pointer of the struct
  * 
  * Layout:
- * [0]									GPUEffectInstance struct
- * [GPUEffectInstance.sizeof]			uniforms ( raw data )
+ * [0]									EffectInstanceImpl struct
+ * [EffectInstanceImpl.sizeof]				uniforms ( raw data )
  * [_proto.varyingParamsOffset]			varyings ( VaryingParamData[] )
  *										pad to size_t.sizeof
  * [_proto.varyingParamsDirtyOffset]	varyings dirty flags ( size_t[] )
  */
-struct GPUEffectInstance {
+struct EffectInstanceImpl {
 	/**
 	 * The effect from which this instance came to be
 	 */
-	GPUEffect	_proto;
+	Effect	_proto;
 	
 	/**
 	 * A vertex array that caches all VBO bindings so they only need to
@@ -368,7 +343,7 @@ struct GPUEffectInstance {
 	}
 
 	void* getUniformsDataPtr() {
-		return cast(void*)this + GPUEffectInstance.sizeof;
+		return cast(void*)this + EffectInstanceImpl.sizeof;
 	}
 	
 	mixin MUniformParamGroupInstance;
@@ -464,7 +439,7 @@ struct GPUEffectInstance {
 	
 	VaryingParamData* getVaryingParamDataPtr() {
 		return cast(VaryingParamData*)(
-			cast(void*)this + GPUEffectInstance.sizeof + _proto.varyingParamsOffset
+			cast(void*)this + EffectInstanceImpl.sizeof + _proto.varyingParamsOffset
 		);
 	}
 	
@@ -474,13 +449,68 @@ struct GPUEffectInstance {
 	
 	size_t* getVaryingParamDirtyFlagsPtr() {
 		return cast(size_t*)(
-			cast(void*)this + GPUEffectInstance.sizeof + _proto.varyingParamsDirtyOffset
+			cast(void*)this + EffectInstanceImpl.sizeof + _proto.varyingParamsDirtyOffset
 		);
 	}
+}
+
+
+
+typedef ResourceHandle EffectInstanceHandle;
+
+interface IEffectMngr {
+	EffectInstance instantiateEffect(Effect effect);
+	Effect getEffect(EffectInstanceHandle);
+	bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);
+	void* getUniformsDataPtr(EffectInstanceHandle);
+	VaryingParamData* getVaryingParamDataPtr(EffectInstanceHandle);
+	size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle);
+}
+
+
+struct EffectInstance {
+	alias EffectInstanceHandle Handle;
+	mixin MResource;
+
+	// for the uniform param group instance ----
 	
-	// ----	
+	RawUniformParamGroup* getUniformParamGroup() {
+		return getEffect().uniformParams();
+	}
+
+	void* getUniformsDataPtr() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).getUniformsDataPtr(_resHandle);
+	}
 	
-	void dispose() {
-		_proto.disposeInstance(this);
+	mixin MUniformParamGroupInstance;
+
+	// ----
+	
+	Effect getEffect() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).getEffect(_resHandle);
+	}
+	
+	bool setVarying(cstring name, VertexBuffer buf, VertexAttrib vattr) {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).setVarying(_resHandle, name, buf, vattr);
+	}
+
+	// ----
+
+	VaryingParamData* getVaryingParamDataPtr() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).getVaryingParamDataPtr(_resHandle);
+	}
+	
+	size_t* getVaryingParamDirtyFlagsPtr() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).getVaryingParamDirtyFlagsPtr(_resHandle);
 	}
 }

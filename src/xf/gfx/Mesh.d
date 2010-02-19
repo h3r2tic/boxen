@@ -6,7 +6,7 @@ private {
 		xf.omg.core.LinearAlgebra,
 		xf.omg.core.CoordSys;
 	import
-		xf.gfx.GPUEffect,
+		xf.gfx.Effect,
 		xf.gfx.IndexBuffer;
 }
 
@@ -37,11 +37,11 @@ private struct MeshRenderData {
 	mat34	modelToWorld = mat34.identity;
 	mat34	worldToModel = mat34.identity;
 
-	GPUEffectInstance*	effectInstance;
-	IndexBuffer			indexBuffer;
+	EffectInstance	effectInstance;
+	IndexBuffer		indexBuffer;
 
-	GPUEffect effect() {
-		return effectInstance._proto;
+	Effect effect() {
+		return effectInstance.getEffect;
 	}
 	
 	uword	numInstances = 1;
@@ -75,17 +75,23 @@ struct Mesh {
 	}
 	
 	
-	GPUEffectInstance*	effectInstance() {
+	EffectInstance effectInstance() {
 		return renderData.effectInstance;
 	}
 	
-	void effectInstance(GPUEffectInstance* inst) {
-		renderData.effectInstance = inst;
+	void effectInstance(EffectInstance inst) {
+		if (renderData.effectInstance.valid) {
+			renderData.effectInstance.dispose();
+			renderData.effectInstance = EffectInstance.init;
+		}
+		if (inst.valid && inst.acquire) {
+			renderData.effectInstance = inst;
+		}
 	}
 	
 	
-	GPUEffect effect() {
-		return effectInstance._proto;
+	Effect effect() {
+		return effectInstance.getEffect;
 	}
 
 

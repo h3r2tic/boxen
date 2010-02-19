@@ -8,7 +8,7 @@ private {
 		xf.gfx.VertexBuffer,
 		xf.gfx.UniformBuffer,
 		xf.gfx.Mesh,
-		xf.gfx.GPUEffect,
+		xf.gfx.Effect,
 		xf.gfx.IRenderer;
 	
 	import
@@ -183,7 +183,7 @@ struct TextureMatcher {
 
 Mesh[] loadHsfModel(
 		IRenderer renderer,
-		GPUEffect effect,
+		Effect effect,
 		cstring path,
 		ref UniformBuffer envUB,
 		CoordSys modelCoordSys,
@@ -521,7 +521,7 @@ Mesh[] loadHsfModel(
 
 Mesh[] loadModel(
 		IRenderer renderer,
-		GPUEffect effect,
+		Effect effect,
 		cstring path,
 		ref UniformBuffer envUB,
 		CoordSys modelCoordSys,
