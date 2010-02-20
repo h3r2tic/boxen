@@ -1,7 +1,10 @@
 module xf.gfx.IRenderer;
 
-private {
+public {
 	import
+		xf.Common,
+		
+		xf.gfx.Window,
 		xf.gfx.Buffer,
 		xf.gfx.VertexArray,
 		xf.gfx.VertexBuffer,
@@ -9,7 +12,14 @@ private {
 		xf.gfx.UniformBuffer,
 		xf.gfx.Texture,
 		xf.gfx.Mesh,
-		xf.gfx.Effect;
+		xf.gfx.Effect,
+		xf.gfx.Framebuffer,
+		xf.gfx.RenderList;
+}
+
+
+struct RendererStats {
+	uword	numTextureChanges;
 }
 
 
@@ -22,5 +32,20 @@ interface IRenderer :
 	IUniformBufferMngr,
 	ITextureMngr,
 	IMeshMngr,
-	IEffectMngr
-{}
+	IEffectMngr,
+	IFramebufferMngr
+{
+	Window	window();
+	void	window(Window);
+	void	initialize();
+	void	swapBuffers();
+	void	minimizeStateChanges();
+	
+	void	render(RenderList*);
+	
+	RenderList*	createRenderList();
+	void		disposeRenderList(RenderList*);
+	
+	void			resetStats();
+	RendererStats	getStats();
+}

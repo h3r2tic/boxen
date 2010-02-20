@@ -506,7 +506,24 @@ struct EffectInstanceImpl {
 
 typedef ResourceHandle EffectInstanceHandle;
 
+
+struct EffectSource {
+	enum Type {
+		FilePath
+	}
+	
+	static EffectSource filePath(cstring path) {
+		return EffectSource(path, toStringz(path), Type.FilePath);
+	}
+	
+	cstring _path;
+	char*	_pathStringz;
+	Type	_type;
+}
+
+
 interface IEffectMngr {
+	Effect createEffect(cstring name, EffectSource source);
 	EffectInstance instantiateEffect(Effect effect);
 	Effect getEffect(EffectInstanceHandle);
 	bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);

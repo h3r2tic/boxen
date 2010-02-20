@@ -2,16 +2,17 @@ module xf.gfx.api.gl3.GLContext;
 
 public {
 	import xf.gfx.api.gl3.Common;
+	import xf.gfx.Window;
 	import xf.utils.Use;
 }
 
 
 
-abstract class GLContext {
+abstract class GLContext : Window {
 	abstract GLContext	create();
 	abstract GLContext	destroy();
 	abstract GLContext	show();
-	abstract void				useInHandler(void delegate(GL) dg);
+	abstract void		useInHandler(void delegate(GL) dg);
 
 
 	GLContext width(uint w) {

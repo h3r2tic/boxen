@@ -18,7 +18,6 @@ rendering game plan:
 		+ FreeImage
 	+ debug FPS-style camera
 	+ custom scene format, exporter for 3ds max, importer
-
 	+ a few shaders for testing
 		+ phong
 		+ phong-blinn
@@ -27,7 +26,6 @@ rendering game plan:
 		+ cook-torrance
 		+ ashikhmin-shirley
 		+ diffuse and specular mapping
-
 	+ render lists
 		+ grouping
 			? shader group
@@ -38,6 +36,7 @@ rendering game plan:
 	render states for rendering operations
 		z, blend, stencil
 	framebuffers
+	
 	queries for monitoring rendering operations
 	throw up a bunch of shaders and objects and play around with profiling
 
