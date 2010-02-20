@@ -32,10 +32,9 @@ rendering game plan:
 			+ shader
 			+ textures
 		+ minimization of state changing
-		
-	render states for rendering operations
-		z, blend, stencil
-	framebuffers
+	+ render states for rendering operations
+		~ z, blend, stencil
+	+ framebuffers
 	
 	queries for monitoring rendering operations
 	throw up a bunch of shaders and objects and play around with profiling

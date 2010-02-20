@@ -20,6 +20,7 @@ private {
 		xf.gfx.Mesh,
 		xf.gfx.IRenderer,
 		xf.gfx.RenderList,
+		xf.gfx.RenderState,
 		xf.gfx.gl3.Cg,
 
 		xf.gfx.api.gl3.backend.Native,
@@ -78,6 +79,7 @@ class Renderer : IRenderer {
 			_framebuffers;
 			
 		Framebuffer				_currentFramebuffer;
+		Framebuffer				_mainFramebuffer;
 		GLuint[][RenderBuffer]	_unusedRenderBuffers;
 
 		// GCd for now
@@ -86,6 +88,9 @@ class Renderer : IRenderer {
 
 		ThreadUnsafeResourcePool!(EffectInstanceProxy, EffectInstanceHandle)
 			_effectInstances;
+			
+		RenderState
+			_nextState;
 	}
 
 
@@ -116,23 +121,75 @@ class Renderer : IRenderer {
 			this.gl[] = gl;
 
 			gl.Enable(FRAMEBUFFER_SRGB_EXT);
-
-			gl.Enable(DEPTH_TEST);
-			gl.Enable(CULL_FACE);
-			gl.ClearColor(0.1f, 0.1f, 0.1f, 0.0f);
 		};
-			
+
+
 		_buffers.initialize();
 		_vertexArrays.initialize();
 		_textures.initialize();
 		_effectInstances.initialize();
 		_renderLists.initialize();
+		_framebuffers.initialize();
+
+
+		_currentFramebuffer = _mainFramebuffer = toResourceHandle(
+			_framebuffers.alloc((FramebufferImpl* n) {
+				*n = FramebufferImpl(0);
+				//n.cfg.size = cfg.size;
+				n.isMainFB = true;
+				n.cfg.color[0].present = true;
+				n.cfg.depth.present = true;
+			})
+		);
+		
+		// one extra ref for _currentFramebuffer
+		_currentFramebuffer.acquire();
 	}
 	
 	
 	// implements IRenderer
 	void swapBuffers() {
 		_window.show();
+	}
+	
+	
+	// implements IRenderer
+	void clearBuffers() {
+		bindCurrentFramebuffer();
+		final resData = _framebuffers.find(_currentFramebuffer._resHandle);
+		assert (resData !is null);
+		final fb = resData.res;
+		assert (fb !is null);
+		
+		// TODO: optimize me
+		
+		if (fb.cfg.depth.present && fb.settings.clearDepthEnabled) {
+			gl.ClearDepth(fb.settings.clearDepthValue);
+			gl.Clear(DEPTH_BUFFER_BIT);
+		}
+		
+		foreach (i, ref a; fb.cfg.color) {
+			if (fb.isMainFB) {
+				if (0 == i) {
+					assert (a.present);
+				} else {
+					assert (!a.present);
+				}
+			}
+			
+			if (a.present && fb.settings.clearColorEnabled[i]) {
+				if (fb.isMainFB) {
+					gl.DrawBuffer(BACK);
+				} else {
+					gl.DrawBuffer(fb.attachments.color[i].glAttachment);
+				}
+				
+				gl.ClearColor(fb.settings.clearColorValue[i].tuple);
+				gl.Clear(COLOR_BUFFER_BIT);
+			}
+		}
+
+		setupDrawReadBuffers(fb);
 	}
 	
 	
@@ -143,6 +200,11 @@ class Renderer : IRenderer {
 	
 	RendererStats getStats() {
 		return _stats;
+	}
+	
+	
+	RenderState* state() {
+		return &_nextState;
 	}
 
 	
@@ -820,6 +882,18 @@ class Renderer : IRenderer {
 		}
 	}
 	
+	
+	FramebufferSettings* getFramebufferSettings(FramebufferHandle h) {
+		if (auto resData = _framebuffers.find(h)) {
+			final res = resData.res;
+			assert (res !is null);
+			return &res.settings;
+		} else {
+			return null;
+		}
+	}
+	
+	
 	void framebuffer(Framebuffer fb) {
 		if (fb.valid() && fb.acquire()) {
 			final resData = _framebuffers.find(fb._resHandle);
@@ -837,6 +911,11 @@ class Renderer : IRenderer {
 	
 	Framebuffer framebuffer() {
 		return _currentFramebuffer;
+	}
+	
+	
+	Framebuffer mainFramebuffer() {
+		return _mainFramebuffer;
 	}
 	
 	
@@ -863,10 +942,10 @@ class Renderer : IRenderer {
 				assert (res !is null);
 				gl.BindFramebuffer(FRAMEBUFFER, res.handle);
 			} else {
-				gl.BindFramebuffer(FRAMEBUFFER, 0);
+				error("The main framebuffer has been erroneously disposed.");
 			}
 		} else {
-			gl.BindFramebuffer(FRAMEBUFFER, 0);
+			error("The current framebuffer is invalid.");
 		}
 	}
 	
@@ -942,32 +1021,45 @@ class Renderer : IRenderer {
 			}
 		}
 		
-		GLenum[(*fbo).cfg.color.length] drawBuffers;
-		uword numDrawBuffers = 0;
-
 		adaptAttachment(fbo.attachments.depth, fbo.cfg.depth, cfg.depth);
 		foreach (i, ref a; fbo.cfg.color) {
 			adaptAttachment(fbo.attachments.color[i], a, cfg.color[i]);
-			if (a.present) {
-				drawBuffers[numDrawBuffers++]
-					= fbo.attachments.color[i].glAttachment;
-			}
 		}
-		
-		if (numDrawBuffers > 0) {
-			if (numDrawBuffers > 1) {
-				gl.DrawBuffers(numDrawBuffers, drawBuffers.ptr);
-				gl.ReadBuffer(drawBuffers[0]);
-			} else {
-				gl.DrawBuffer(drawBuffers[0]);
-				gl.ReadBuffer(drawBuffers[0]);
-			}
-		} else {
-			gl.DrawBuffer(NONE);
-			gl.ReadBuffer(NONE);
-		}
+
+		setupDrawReadBuffers(fbo);
 		
 		validateFBO(fbo);
+	}
+	
+	
+	private void setupDrawReadBuffers(FramebufferImpl* fbo) {
+		if (fbo.isMainFB) {
+			gl.DrawBuffer(BACK);
+			gl.ReadBuffer(BACK);
+		} else {
+			GLenum[(*fbo).cfg.color.length] drawBuffers;
+			uword numDrawBuffers = 0;
+
+			foreach (i, ref a; fbo.cfg.color) {
+				if (a.present) {
+					drawBuffers[numDrawBuffers++]
+						= fbo.attachments.color[i].glAttachment;
+				}
+			}
+			
+			if (numDrawBuffers > 0) {
+				if (numDrawBuffers > 1) {
+					gl.DrawBuffers(numDrawBuffers, drawBuffers.ptr);
+					gl.ReadBuffer(drawBuffers[0]);
+				} else {
+					gl.DrawBuffer(drawBuffers[0]);
+					gl.ReadBuffer(drawBuffers[0]);
+				}
+			} else {
+				gl.DrawBuffer(NONE);
+				gl.ReadBuffer(NONE);
+			}
+		}
 	}
 
 
@@ -1035,8 +1127,7 @@ class Renderer : IRenderer {
 	void render(RenderList* renderList) {
 		renderList.computeMatrices();
 		bindCurrentFramebuffer();
-
-		gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+		setupRenderStates(_nextState);
 
 		foreach (eidx, ref renderBin; renderList.bins) {
 			if (eidx >= _effects.length) {
@@ -1049,6 +1140,28 @@ class Renderer : IRenderer {
 			}
 			
 			render(_effects[eidx].effect, &renderBin.objects);
+		}
+	}
+	
+	
+	void setupRenderStates(RenderState s) {
+		if (s.depth.enabled) {
+			gl.Enable(DEPTH_TEST);
+			gl.DepthMask(s.depth.writeMask);
+		} else {
+			gl.Disable(DEPTH_TEST);
+		}
+		
+		if (s.blend.enabled) {
+			gl.Enable(BLEND);
+		} else {
+			gl.Disable(BLEND);
+		}
+		
+		if (s.cullFace.enabled) {
+			gl.Enable(CULL_FACE);
+		} else {
+			gl.Disable(CULL_FACE);
 		}
 	}
 	
@@ -1422,6 +1535,7 @@ private struct FramebufferImpl {
 	ptrdiff_t			refCount;
 	GLuint				handle;
 	FramebufferConfig	cfg;
+	FramebufferSettings	settings;
 	Attachments			attachments;
 	bool				isMainFB;
 

@@ -29,6 +29,9 @@ enum FramebufferLocation {
 
 
 struct FramebufferConfig {
+	const int numColorAttachments = 16;
+	
+	
 	struct Attachment {
 		enum Type {
 			Texture,
@@ -55,10 +58,23 @@ struct FramebufferConfig {
 		}
 	}
 	
-	FramebufferLocation	location;
-	Attachment[16]		color;
+	Attachment[numColorAttachments]
+						color;
 	Attachment			depth;
+
+	FramebufferLocation	location;
 	vec2i				size;
+}
+
+
+struct FramebufferSettings {
+	bool[FramebufferConfig.numColorAttachments]
+						clearColorEnabled = true;
+	vec4[FramebufferConfig.numColorAttachments]
+						clearColorValue = vec4.zero;
+						
+	bool				clearDepthEnabled = true;
+	float				clearDepthValue = 1.0f;
 }
 
 
@@ -77,13 +93,21 @@ struct Framebuffer {
 		assert (_resMngr !is null);
 		return (cast(IFramebufferMngr)_resMngr).getFramebufferConfig(_resHandle);
 	}
+	
+	FramebufferSettings* settings() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IFramebufferMngr)_resMngr).getFramebufferSettings(_resHandle);
+	}
 }
 
 
 interface IFramebufferMngr {
-	Framebuffer				createFramebuffer(FramebufferConfig cfg);
+	Framebuffer				createFramebuffer(FramebufferConfig);
 	vec2i					getFramebufferSize(FramebufferHandle);
 	FramebufferConfig		getFramebufferConfig(FramebufferHandle);
+	FramebufferSettings*	getFramebufferSettings(FramebufferHandle);
 	void					framebuffer(Framebuffer);
 	Framebuffer				framebuffer();
+	Framebuffer				mainFramebuffer();
 }

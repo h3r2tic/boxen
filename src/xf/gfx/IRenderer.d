@@ -14,7 +14,8 @@ public {
 		xf.gfx.Mesh,
 		xf.gfx.Effect,
 		xf.gfx.Framebuffer,
-		xf.gfx.RenderList;
+		xf.gfx.RenderList,
+		xf.gfx.RenderState;
 }
 
 
@@ -38,6 +39,7 @@ interface IRenderer :
 	Window	window();
 	void	window(Window);
 	void	initialize();
+	void	clearBuffers();
 	void	swapBuffers();
 	void	minimizeStateChanges();
 	
@@ -48,4 +50,6 @@ interface IRenderer :
 	
 	void			resetStats();
 	RendererStats	getStats();
+	
+	RenderState*	state();
 }

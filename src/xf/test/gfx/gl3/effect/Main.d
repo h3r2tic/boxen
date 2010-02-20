@@ -331,8 +331,6 @@ class TestApp : GfxApp {
 			);
 		}
 
-		//gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
-		
 		foreach (i, ref m; meshes) {
 			final bin = renderList.getBin(m.effectInstance.getEffect);
 			m.toRenderableData(bin.add(m.effectInstance));
@@ -340,6 +338,8 @@ class TestApp : GfxApp {
 		
 		renderList.sort();
 		renderer.resetStats();
+		renderer.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
+		renderer.clearBuffers();
 		renderer.render(renderList);
 		//Stdout.formatln("Tex changes: {}", renderer.getStats.numTextureChanges);
 	}

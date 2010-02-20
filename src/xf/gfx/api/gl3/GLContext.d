@@ -110,8 +110,7 @@ abstract class GLContext : Window {
 		uint		_alphaBits		= 0;
 		uint		_stencilBits	= 0;
 		bool		_sRGB			= true;
-		
-		bool		_created = false;
+		bool		_created		= false;
 
 		void delegate(uint width, uint height)	_reshapeCallback;
 	}
