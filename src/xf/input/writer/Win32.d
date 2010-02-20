@@ -53,7 +53,7 @@ private KeyboardInput.Modifiers getModifiers() {
 
 
 
-bool translateKey(ushort wparam, uint lparam, bool keyDown, out KeySym sym) {
+bool translateKey(uint wparam, uint lparam, bool keyDown, out KeySym sym) {
 	if (keyDown && lparam & (1 << 30)) {		// repeated key
 		return false;
 	}
@@ -143,7 +143,7 @@ bool translateKey(ushort wparam, uint lparam, bool keyDown, out KeySym sym) {
 		case VK_DIVIDE:			return ret(KeySym.KP_Divide);
 		case VK_MULTIPLY:		return ret(KeySym.KP_Multiply);
 		case VK_SUBTRACT:		return ret(KeySym.KP_Subtract);
-		case VK_ADD:				return ret(KeySym.KP_Add);
+		case VK_ADD:			return ret(KeySym.KP_Add);
 		case VK_DECIMAL:		return ret(KeySym.KP_Decimal);
 
 		default: {
@@ -157,16 +157,14 @@ bool translateKey(ushort wparam, uint lparam, bool keyDown, out KeySym sym) {
 				sym = KeySym.VoidSymbol;
 				return true;
 			}
-		} break;
+		}
 	}
-	
-	return false;
 }
 
 
 
 private {
-	void key(InputChannel channel, KeySym sym, bool down, ushort wparam, uint lparam) {
+	void key(InputChannel channel, KeySym sym, bool down, uint wparam, uint lparam) {
 		if (!channel) return;
 		
 		KeyboardInput kin;

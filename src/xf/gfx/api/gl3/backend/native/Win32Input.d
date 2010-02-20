@@ -53,7 +53,7 @@ KeyboardInput.Modifiers getModifiers() {
 
 
 
-bool translateKey(ushort wparam, uint lparam, bool keyDown, out KeySym sym) {
+bool translateKey(uint wparam, uint lparam, bool keyDown, out KeySym sym) {
 	if (keyDown && lparam & (1 << 30)) {		// repeated key
 		return false;
 	}
@@ -157,14 +157,12 @@ bool translateKey(ushort wparam, uint lparam, bool keyDown, out KeySym sym) {
 				sym = KeySym.VoidSymbol;
 				return true;
 			}
-		} break;
+		}
 	}
-	
-	return false;
 }
 
 
-void key(InputChannel channel, KeySym sym, bool down, ushort wparam, uint lparam) {
+void key(InputChannel channel, KeySym sym, bool down, uint wparam, uint lparam) {
 	if (!channel) return;
 	
 	KeyboardInput kin;

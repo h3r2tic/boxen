@@ -1,31 +1,36 @@
 module xf.gfx.api.gl3.backend.native.Win32;
 
 private {
-	import xf.gfx.api.gl3.Common;
-	import xf.gfx.api.gl3.Window;
-	import xf.gfx.api.gl3.WindowEvent;
-	import xf.gfx.api.gl3.GLContext;
-	import xf.gfx.api.gl3.OpenGL;
-	import xf.gfx.api.gl3.ext.WGL_ARB_pixel_format;
-	import xf.gfx.api.gl3.ext.WGL_ARB_create_context;
-	import xf.gfx.api.gl3.ext.WGL_EXT_framebuffer_sRGB;
-	import xf.gfx.api.gl3.GLContextData;
+	import
+		xf.gfx.Window,
+		xf.gfx.WindowEvent;
+
+	import
+		xf.gfx.api.gl3.Common,
+		xf.gfx.api.gl3.GLContext,
+		xf.gfx.api.gl3.OpenGL,
+		xf.gfx.api.gl3.ext.WGL_ARB_pixel_format,
+		xf.gfx.api.gl3.ext.WGL_ARB_create_context,
+		xf.gfx.api.gl3.ext.WGL_EXT_framebuffer_sRGB,
+		xf.gfx.api.gl3.ext.WGL_EXT_swap_control,
+		xf.gfx.api.gl3.GLContextData;
 	
 	import xf.input.Input;
 	import Input = xf.gfx.api.gl3.backend.native.Win32Input;
 	
-	import xf.platform.win32.wingdi;
-	import xf.platform.win32.winuser;
-	import xf.platform.win32.winnt;
-	import xf.platform.win32.windef;
-	import xf.platform.win32.winbase;
+	import
+		xf.platform.win32.wingdi,
+		xf.platform.win32.winuser,
+		xf.platform.win32.winnt,
+		xf.platform.win32.windef,
+		xf.platform.win32.winbase;
+		
 	alias xf.platform.win32.windef.POINT POINT;
 	
 	import xf.gfx.api.gl3.platform.Win32;
 	
 	import tango.stdc.stringz : fromStringz;
 	import tango.core.Thread;
-	
 	import tango.io.Stdout;
 	
 	alias xf.platform.win32.wingdi.DM_BITSPERPEL DM_BITSPERPEL;
@@ -59,7 +64,7 @@ extern (Windows) {
 }
 
 
-class GLWindow : GLContext, Window {
+class GLWindow : GLContext {
 	uint _reportedWidth, _reportedHeight;
 
 
@@ -149,6 +154,19 @@ class GLWindow : GLContext, Window {
 	
 	vec2i position() {
 		return vec2i(_xpos, _ypos);
+	}
+	
+	
+	typeof(this) swapInterval(uint i) {
+		_swapInterval = i;
+		if (created) {
+			_gl.SwapIntervalEXT(_swapInterval);
+		}
+		return this;
+	}
+	
+	uint swapInterval() {
+		return _swapInterval;
 	}
 
 
@@ -379,7 +397,7 @@ class GLWindow : GLContext, Window {
 					_ypos = newY;
 					
 					return 0;
-				} break;
+				}
 
 				case WM_SIZE: {
 					switch (wparam) {
@@ -600,10 +618,10 @@ class GLWindow : GLContext, Window {
 				|	PFD_DOUBLEBUFFER
 				|	PFD_SWAP_EXCHANGE;
 				iPixelType = PFD_TYPE_RGBA;
-				cColorBits = _colorBits;
-				cAlphaBits = _alphaBits;
-				cDepthBits = _depthBits;
-				cStencilBits = _stencilBits;
+				cColorBits = cast(ubyte)_colorBits;
+				cAlphaBits = cast(ubyte)_alphaBits;
+				cDepthBits = cast(ubyte)_depthBits;
+				cStencilBits = cast(ubyte)_stencilBits;
 			}
 			
 			uint pixelFormat = ChoosePixelFormat(_hdc, &pfd);
@@ -724,6 +742,8 @@ class GLWindow : GLContext, Window {
 		
 		_contextOwnerThread = Thread.getThis();
 		xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, _hrc);
+		
+		swapInterval = _swapInterval;
 		
 		return this;
 	}
@@ -892,7 +912,7 @@ class GLWindow : GLContext, Window {
 		}
 
 		InputChannel	_channel;
-		bool				_interceptCursor;
+		bool			_interceptCursor;
 
 		int				_cursorX	= 0;
 		int				_cursorY	= 0;
@@ -903,12 +923,13 @@ class GLWindow : GLContext, Window {
 
 	protected {
 		char[]	_title	= "xf.gfx.api.gl3.GLWindow";
-		bool		_fullscreen		= false;
-		bool		_decorations		= true;
-		bool		_visible				= false;
-		int		_xpos				= CW_USEDEFAULT;
-		int		_ypos				= CW_USEDEFAULT;
-		bool		_showingCursor	= true;
+		bool	_fullscreen		= false;
+		bool	_decorations	= true;
+		bool	_visible		= false;
+		int		_xpos			= CW_USEDEFAULT;
+		int		_ypos			= CW_USEDEFAULT;
+		bool	_showingCursor	= true;
+		uint	_swapInterval	= 1;
 	}
 }
 

@@ -15,21 +15,6 @@ private {
 }
 
 
-struct EffectSource {
-	enum Type {
-		FilePath
-	}
-	
-	static EffectSource filePath(cstring path) {
-		return EffectSource(path, toStringz(path), Type.FilePath);
-	}
-	
-	cstring _path;
-	char*	_pathStringz;
-	Type	_type;
-}
-
-
 class CgCompiler {
 	this(GL gl, CGcontext context = null) {
 		this.gl[] = gl;

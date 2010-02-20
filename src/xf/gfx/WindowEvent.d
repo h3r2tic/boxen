@@ -1,4 +1,4 @@
-module xf.gfx.api.gl3.WindowEvent;
+module xf.gfx.WindowEvent;
 
 private {
 	import xf.input.Input;

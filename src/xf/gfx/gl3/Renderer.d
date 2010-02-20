@@ -1,33 +1,9 @@
 module xf.gfx.gl3.Renderer;
 
-public {
-	import
-		xf.gfx.Buffer,
-		xf.gfx.VertexArray,
-		xf.gfx.VertexBuffer,
-		xf.gfx.IndexBuffer,
-		xf.gfx.UniformBuffer,
-		xf.gfx.Texture,
-		xf.gfx.Mesh,
-		xf.gfx.IRenderer,
-		xf.gfx.RenderList,
-		xf.gfx.gl3.Cg;
-		
-	import
-		xf.img.Image,
-		xf.omg.core.LinearAlgebra;
-		
-	import
-		xf.mem.MainHeap,
-		xf.mem.StackBuffer;
-		
-	import xf.utils.LocalArray;
-	static import tango.core.Array;
-}
-
 private {
 	import
 		xf.Common,
+		xf.core.Registry,
 
 		xf.gfx.gl3.CgEffect,
 		xf.gfx.gl3.Cg,
@@ -35,30 +11,57 @@ private {
 	
 		xf.gfx.Resource,
 		xf.gfx.Buffer,
+		xf.gfx.VertexArray,
+		xf.gfx.VertexBuffer,
+		xf.gfx.IndexBuffer,
+		xf.gfx.UniformBuffer,
+		xf.gfx.Texture,
+		xf.gfx.Framebuffer,
+		xf.gfx.Mesh,
+		xf.gfx.IRenderer,
+		xf.gfx.RenderList,
+		xf.gfx.gl3.Cg,
 
+		xf.gfx.api.gl3.backend.Native,
 		xf.gfx.api.gl3.Cg,
 		xf.gfx.api.gl3.OpenGL,
 		xf.gfx.api.gl3.ext.ARB_map_buffer_range,
 		xf.gfx.api.gl3.ext.ARB_vertex_array_object,
 		xf.gfx.api.gl3.ext.ARB_half_float_pixel,
 		xf.gfx.api.gl3.ext.ARB_framebuffer_object,
+		xf.gfx.api.gl3.ext.EXT_framebuffer_object,
+		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
+
+		xf.img.Image,
+		xf.omg.core.LinearAlgebra,
 
 		xf.mem.FreeList,
 		xf.mem.Array,
+		xf.mem.MainHeap,
+		xf.mem.StackBuffer,
+		xf.utils.LocalArray,
 		
 		xf.utils.ResourcePool;
 
 	import
 		xf.gfx.Log : log = gfxLog, error = gfxError;
+		
+	static import tango.core.Array;
 }
 
 
 
 class Renderer : IRenderer {
-	size_t _numTextureChanges = 0;
+	mixin(Implements("IRenderer"));
+	
+	
+	RendererStats _stats;
+
 	
 	// at the front because otherwise DMD is a bitch about forward refs
 	private {
+		GLWindow	_window;
+		
 		GL			gl;
 		CgCompiler	_cgCompiler;
 		
@@ -71,6 +74,12 @@ class Renderer : IRenderer {
 		ThreadUnsafeResourcePool!(TextureImpl, TextureHandle)
 			_textures;
 		
+		ThreadUnsafeResourcePool!(FramebufferImpl, FramebufferHandle)
+			_framebuffers;
+			
+		Framebuffer				_currentFramebuffer;
+		GLuint[][RenderBuffer]	_unusedRenderBuffers;
+
 		// GCd for now
 		EffectData[]
 			_effects;
@@ -80,10 +89,39 @@ class Renderer : IRenderer {
 	}
 
 
-	this(GL gl) {
-		_cgCompiler = new CgCompiler(gl);
-		this.gl[] = gl;
-		
+	this() {
+		_window = new GLWindow;
+	}
+	
+	
+	// implements IRenderer
+	Window window() {
+		return _window;
+	}
+	
+	
+	// implements IRenderer
+	void window(Window w) {
+		_window = cast(GLWindow)w;
+		if (_window is null) {
+			error("Invalid window passed to the Renderer.");
+		}
+	}
+	
+	
+	// implements IRenderer
+	void initialize() {
+		use (_window) in (GL gl) {
+			_cgCompiler = new CgCompiler(gl);
+			this.gl[] = gl;
+
+			gl.Enable(FRAMEBUFFER_SRGB_EXT);
+
+			gl.Enable(DEPTH_TEST);
+			gl.Enable(CULL_FACE);
+			gl.ClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+		};
+			
 		_buffers.initialize();
 		_vertexArrays.initialize();
 		_textures.initialize();
@@ -92,10 +130,28 @@ class Renderer : IRenderer {
 	}
 	
 	
+	// implements IRenderer
+	void swapBuffers() {
+		_window.show();
+	}
+	
+	
+	void resetStats() {
+		_stats = RendererStats.init;
+	}
+	
+	
+	RendererStats getStats() {
+		return _stats;
+	}
+
+	
+	
 	// RenderList ----
 	
 	NondestructiveFreeList!(RenderList)	_renderLists;
 	
+	// implements IRenderer
 	RenderList* createRenderList() {
 		final reused = !_renderLists.isEmpty();
 		final res = _renderLists.alloc();
@@ -110,6 +166,7 @@ class Renderer : IRenderer {
 	}
 	
 	
+	// implements IRenderer
 	void disposeRenderList(RenderList* rl) {
 		_renderLists.free(rl);
 	}
@@ -710,9 +767,263 @@ class Renderer : IRenderer {
 	}
 	
 	
+	// Framebuffer ----
+
+
+	private {
+		Framebuffer toResourceHandle(_framebuffers.ResourceReturn resource) {
+			Framebuffer res = void;
+			res._resHandle = resource.handle;
+			res._resMngr = cast(void*)cast(IFramebufferMngr)this;
+			res._refMngr = cast(void*)this;
+			final rcnt = &resCountFramebuffer;
+			res._resCountAdjust = rcnt.funcptr;
+			
+			return res;
+		}
+		
+		
+		bool resCountFramebuffer(FramebufferHandle h, int cnt) {
+			if (auto resData = _framebuffers.find(h, cnt > 0)) {
+				final res = resData.res;
+				bool goodBefore = res.refCount > 0;
+				res.refCount += cnt;
+				if (res.refCount > 0) {
+					return true;
+				} else if (goodBefore) {
+					_framebuffers.free(resData);
+				}
+			}
+			
+			return false;
+		}
+	}
+
+
+	vec2i getFramebufferSize(FramebufferHandle h) {
+		if (auto resData = _framebuffers.find(h)) {
+			final res = resData.res;
+			assert (res !is null);
+			return res.cfg.size;
+		} else {
+			return vec2i.zero;
+		}
+	}
+	
+	FramebufferConfig getFramebufferConfig(FramebufferHandle h) {
+		if (auto resData = _framebuffers.find(h)) {
+			final res = resData.res;
+			assert (res !is null);
+			return res.cfg;
+		} else {
+			return FramebufferConfig.init;
+		}
+	}
+	
+	void framebuffer(Framebuffer fb) {
+		if (fb.valid() && fb.acquire()) {
+			final resData = _framebuffers.find(fb._resHandle);
+			assert (resData !is null);
+			final res = resData.res;
+			assert (res !is null);
+			
+			if (_currentFramebuffer.valid()) {
+				_currentFramebuffer.dispose();
+			}
+			
+			_currentFramebuffer = fb;
+		}
+	}
+	
+	Framebuffer framebuffer() {
+		return _currentFramebuffer;
+	}
+	
+	
+	Framebuffer createFramebuffer(FramebufferConfig cfg) {
+		return toResourceHandle(
+			_framebuffers.alloc((FramebufferImpl* n) {
+				log.info("Creating a framebuffer.");
+				
+				GLuint id;
+				gl.GenFramebuffers(1, &id);
+				log.trace("glGenFramebuffers -> {}", id);
+				*n = FramebufferImpl(id);
+				n.cfg.size = cfg.size;
+				adaptFramebufferToConfig(n, cfg);
+			})
+		);
+	}
+	
+	
+	private void bindCurrentFramebuffer() {
+		if (_currentFramebuffer.valid()) {
+			if (auto resData = _framebuffers.find(_currentFramebuffer._resHandle)) {
+				final res = resData.res;
+				assert (res !is null);
+				gl.BindFramebuffer(FRAMEBUFFER, res.handle);
+			} else {
+				gl.BindFramebuffer(FRAMEBUFFER, 0);
+			}
+		} else {
+			gl.BindFramebuffer(FRAMEBUFFER, 0);
+		}
+	}
+	
+
+	private void adaptFramebufferToConfig(FramebufferImpl* fbo, FramebufferConfig cfg) {
+		alias FramebufferConfig.Attachment				Attachment;
+		alias FramebufferImpl.Attachments.Attachment	FBOAttachment;
+		
+		gl.BindFramebuffer(FRAMEBUFFER, fbo.handle);
+		scope (exit) bindCurrentFramebuffer();
+		
+		bool formatCompatible(RenderBuffer fbRB, RenderBuffer cfgRB) {
+			return fbRB.internalFormat == cfgRB.internalFormat;
+		}
+		
+		void detach(ref FBOAttachment fboAttachment, ref Attachment fbAttachment) {
+			//assert (!fboAttachment.isTexture);
+			assert (Attachment.Type.RenderBuffer == fbAttachment.type);
+			gl.FramebufferRenderbuffer(FRAMEBUFFER, fboAttachment.glAttachment, RENDERBUFFER, 0);
+			disposeRenderBuffer(fbAttachment.rb, fboAttachment.rb);
+		}
+		
+		void attach(ref FBOAttachment fboAttachment, ref Attachment fbAttachment) {
+			if (Attachment.Type.Texture == fbAttachment.type) {
+				auto tex = fbAttachment.tex;
+				if (tex.acquire()) {
+					fboAttachment.tex = tex;
+					//fboAttachment.isTexture = true;
+					
+					final texImpl = _getTexture(tex._resHandle);
+					assert (texImpl !is null);					
+					
+					gl.FramebufferTexture2D(
+						FRAMEBUFFER, fboAttachment.glAttachment,
+						texImpl.target, texImpl.handle, 0
+					);
+				} else {
+					fbAttachment.present = false;
+					assert (false, "shit happened");
+				}
+			} else {
+				fbAttachment.rb.size = cfg.size;
+				fboAttachment.rb = acquireRenderBuffer(fbAttachment.rb);
+				//fboAttachment.isTexture = false;
+				
+				gl.FramebufferRenderbuffer(
+					FRAMEBUFFER, fboAttachment.glAttachment,
+					RENDERBUFFER, fboAttachment.rb
+				);
+			}
+		}
+		
+		void adaptAttachment(ref FBOAttachment fboAttachment, ref Attachment fbAttachment, ref Attachment cfgAttachment) {
+			if (cfgAttachment.present) {
+				if (fbAttachment.present) {
+					assert (Attachment.Type.RenderBuffer == fbAttachment.type);
+					if (!formatCompatible(fbAttachment.rb, cfgAttachment.rb)) {
+						detach(fboAttachment, fbAttachment);
+						fbAttachment = cfgAttachment;
+						attach(fboAttachment, fbAttachment);
+					}
+				} else {
+					fbAttachment = cfgAttachment;
+					attach(fboAttachment, fbAttachment);
+				}
+			} else {
+				if (fbAttachment.present) {
+					assert (Attachment.Type.RenderBuffer == fbAttachment.type);
+					detach(fboAttachment, fbAttachment);
+				}
+				
+				fbAttachment = cfgAttachment;
+			}
+		}
+		
+		GLenum[(*fbo).cfg.color.length] drawBuffers;
+		uword numDrawBuffers = 0;
+
+		adaptAttachment(fbo.attachments.depth, fbo.cfg.depth, cfg.depth);
+		foreach (i, ref a; fbo.cfg.color) {
+			adaptAttachment(fbo.attachments.color[i], a, cfg.color[i]);
+			if (a.present) {
+				drawBuffers[numDrawBuffers++]
+					= fbo.attachments.color[i].glAttachment;
+			}
+		}
+		
+		if (numDrawBuffers > 0) {
+			if (numDrawBuffers > 1) {
+				gl.DrawBuffers(numDrawBuffers, drawBuffers.ptr);
+				gl.ReadBuffer(drawBuffers[0]);
+			} else {
+				gl.DrawBuffer(drawBuffers[0]);
+				gl.ReadBuffer(drawBuffers[0]);
+			}
+		} else {
+			gl.DrawBuffer(NONE);
+			gl.ReadBuffer(NONE);
+		}
+		
+		validateFBO(fbo);
+	}
+
+
+	private GLuint acquireRenderBuffer(RenderBuffer rb) {
+		assert (rb.size.x > 0 && rb.size.y > 0);
+		
+		if (auto unused = rb in _unusedRenderBuffers) {
+			if ((*unused).length > 0) {
+				GLuint idx = (*unused)[$-1];
+				(*unused) = (*unused)[0..$-1];
+				return idx;
+			}
+		}
+		
+		return createRenderBuffer(rb);
+	}
+
+
+	private GLuint createRenderBuffer(RenderBuffer rb) {
+		GLuint id;
+		gl.GenRenderbuffers(1, &id);
+		log.trace("glGenRenderbuffers -> {}", id);
+		gl.BindRenderbuffer(RENDERBUFFER, id);
+		gl.RenderbufferStorage(
+			RENDERBUFFER,
+			enumToGL(rb.internalFormat),
+			rb.size.x,
+			rb.size.y
+		);
+		return id;
+	}
+
+
+	private void disposeRenderBuffer(RenderBuffer rb, GLuint id) {
+		gl.DeleteRenderbuffers(1, &id);
+		log.trace("glDeleteRenderbuffers({})", id);
+	}
+	
+	
+	// assumes that the FBO is currently bound
+	private void validateFBO(FramebufferImpl* fbo) {
+		auto status = gl.CheckFramebufferStatus(FRAMEBUFFER);
+		switch (status) {
+			case FRAMEBUFFER_COMPLETE:
+				break;
+				
+			default:
+				throw new Exception("glCheckFramebufferStatus failed");
+		}
+	}
+
+	
 	// ----
 	
 	
+	// implements IRenderer
 	void minimizeStateChanges() {
 		foreach (ref e; _effects) {
 			e.sortInstances();
@@ -720,8 +1031,13 @@ class Renderer : IRenderer {
 	}
 	
 	
+	// implements IRenderer
 	void render(RenderList* renderList) {
 		renderList.computeMatrices();
+		bindCurrentFramebuffer();
+
+		gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+
 		foreach (eidx, ref renderBin; renderList.bins) {
 			if (eidx >= _effects.length) {
 				error(
@@ -794,7 +1110,7 @@ class Renderer : IRenderer {
 								cgParam,
 								cur
 							);
-							++_numTextureChanges;
+							++_stats.numTextureChanges;
 						}
 						
 						cgGLEnableTextureParameter(cgParam);
@@ -836,6 +1152,7 @@ class Renderer : IRenderer {
 				}
 			}
 		}
+		
 		
 		void unsetObjUniforms(
 				void* base,
@@ -1081,6 +1398,47 @@ private struct TextureImpl {
 		} else {
 			error("acquireCubeMapFace called on a texture that's not a cube map");
 			assert (false);
+		}
+	}
+}
+
+
+private struct FramebufferImpl {
+	struct Attachments {
+		const int numColorBuffers = FramebufferConfig.color.length;
+		
+		struct Attachment {
+			GLenum	glAttachment;
+			//bool	isTexture;
+			GLuint	rb;
+			Texture	tex;
+		}
+		
+		Attachment					depth;
+		Attachment[numColorBuffers]	color;
+	}
+
+
+	ptrdiff_t			refCount;
+	GLuint				handle;
+	FramebufferConfig	cfg;
+	Attachments			attachments;
+	bool				isMainFB;
+
+
+
+	static FramebufferImpl opCall(GLuint handle) {
+		FramebufferImpl res;
+		res.refCount = 1;
+		res.handle = handle;
+		res.initAttachmentIds();
+		return res;
+	}
+
+	private void initAttachmentIds() {
+		attachments.depth.glAttachment = DEPTH_ATTACHMENT_EXT;
+		foreach (i, ref c; attachments.color) {
+			c.glAttachment = COLOR_ATTACHMENT0_EXT + i;
 		}
 	}
 }

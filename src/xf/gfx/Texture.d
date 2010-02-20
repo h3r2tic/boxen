@@ -7,6 +7,7 @@ public {
 private {
 	import xf.gfx.Resource;
 	import xf.omg.core.LinearAlgebra;
+	import xf.img.Image;
 }
 
 
@@ -70,6 +71,7 @@ struct TextureRequest {
 
 
 interface ITextureMngr {
+	Texture createTexture(Image img, TextureRequest req = TextureRequest.init);
 	vec3i	getSize(TextureHandle handle);
 	size_t	getApiHandle(TextureHandle handle);
 }

@@ -73,10 +73,10 @@ class TestApp : GfxApp {
 		window.interceptCursor = true;
 		window.showCursor = false;
 		
-		use (window) in (GL gl) {
+		/+use (window) in (GL gl) {
 			gl.Enable(DEPTH_TEST);
 			gl.Enable(CULL_FACE);
-			gl.ClearColor(0.1f, 0.1f, 0.1f, 0.0f);
+			gl.ClearColor(0.1f, 0.1f, 0.1f, 0.0f);+/
 
 			// Create the effect from a cgfx file
 			
@@ -274,13 +274,13 @@ class TestApp : GfxApp {
 			);
 			
 			timer.start();
-		};
+		//};
 		
 		renderer.minimizeStateChanges();
 	}
 	
 	
-	void render(GL gl) {
+	override void render() {
 		final timeDelta = timer.stop();
 		timer.start();
 
@@ -325,7 +325,7 @@ class TestApp : GfxApp {
 			);
 		}
 
-		gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
+		//gl.Clear(COLOR_BUFFER_BIT | DEPTH_BUFFER_BIT);
 		
 		foreach (i, ref m; meshes) {
 			final bin = renderList.getBin(m.effectInstance.getEffect);
@@ -333,8 +333,8 @@ class TestApp : GfxApp {
 		}
 		
 		renderList.sort();
-		renderer._numTextureChanges = 0;
+		renderer.resetStats();
 		renderer.render(renderList);
-		//Stdout.formatln("Tex changes: {}", renderer._numTextureChanges);
+		Stdout.formatln("Tex changes: {}", renderer.getStats.numTextureChanges);
 	}
 }

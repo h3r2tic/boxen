@@ -4,18 +4,15 @@ private {
 	import
 		xf.Common,
 		xf.game.MainProcess,
+		xf.core.Registry,
 		xf.core.MessageHub,
 		xf.core.Message,
-		
-		xf.gfx.api.gl3.ext.WGL_EXT_swap_control,
-		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
 		xf.gfx.api.gl3.backend.Native;
 }
 
 public {
 	import
-		xf.gfx.api.gl3.OpenGL,		// tmp
-		xf.gfx.gl3.Renderer,
+		xf.gfx.IRenderer,
 
 		xf.omg.core.LinearAlgebra,
 
@@ -35,7 +32,7 @@ abstract class GfxApp {
 	}
 	
 	
-	void render(GL gl) {
+	void render() {
 	}
 	
 	
@@ -46,24 +43,21 @@ abstract class GfxApp {
 	void run() {
 		keyboard = new SimpleKeyboardReader(inputHub.mainChannel);
 
-		window = GLWindow();
+		renderer = create!(IRenderer)();
+		window = renderer.window;
 		window
 			.title(windowTitle)
 			.showCursor(true)
 			.fullscreen(false)
+			.swapInterval(vsync ? 1 : 0)
 			.width(1040)
 			.height(650)	// 1.6 aspect ratio
 			/+.fullscreen(true)
 			.width(1680)
 			.height(1050)+/
 		.create();
+		renderer.initialize();
 		
-		use (window) in (GL gl) {
-			renderer = new Renderer(gl);
-			gl.SwapIntervalEXT(vsync ? 1 : 0);
-			gl.Enable(FRAMEBUFFER_SRGB_EXT);
-		};
-
 		jobHub.addRepeatableJob({
 			if (keyboard.keyDown(KeySym.Escape)) {
 				messageHub.sendMessage(new QuitMessage);
@@ -80,11 +74,8 @@ abstract class GfxApp {
 		inputHub.mainChannel.addReader(this.new LocalInputReader);
 		
 		jobHub.addPostFrameJob({
-			use (window) in (GL gl) {
-				render(gl);
-			};
-			
-			window.show;
+			render();
+			renderer.swapBuffers();
 		});
 		jobHub.exec(new MainProcess);
 		
@@ -124,8 +115,8 @@ abstract class GfxApp {
 	cstring	windowTitle	= "GfxApp";
 	bool	vsync		= false;
 	
-	Renderer				renderer;
-	GLWindow				window;
+	IRenderer				renderer;
+	Window					window;
 	SimpleKeyboardReader	keyboard;
 	
 	int						inputUpdateFrequency = 200;

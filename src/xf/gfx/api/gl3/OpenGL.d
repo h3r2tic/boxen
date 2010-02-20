@@ -18,7 +18,6 @@ private {
 public {
 	import xf.gfx.api.gl3.Common;
 	import xf.gfx.api.gl3.GL;
-	import xf.gfx.api.gl3.Window;
 	import xf.gfx.api.gl3.GLTypes;
 	//import xf.gfx.api.gl3.backend.Native;		// HACK
 	//import xf.gfx.api.gl3.GLUFunctions;
