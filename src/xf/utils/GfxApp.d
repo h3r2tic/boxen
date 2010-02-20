@@ -6,8 +6,7 @@ private {
 		xf.game.MainProcess,
 		xf.core.Registry,
 		xf.core.MessageHub,
-		xf.core.Message,
-		xf.gfx.api.gl3.backend.Native;
+		xf.core.Message;
 }
 
 public {
@@ -38,24 +37,25 @@ abstract class GfxApp {
 	
 	void cleanup() {
 	}
+	
+	
+	void configureWindow(Window wnd) {
+		wnd
+			.title("GfxApp")
+			.showCursor(true)
+			.fullscreen(false)
+			.swapInterval(0)
+			.width(1040)
+			.height(650);	// 1.6 aspect ratio
+	}
 
 
 	void run() {
 		keyboard = new SimpleKeyboardReader(inputHub.mainChannel);
 
 		renderer = create!(IRenderer)();
-		window = renderer.window;
-		window
-			.title(windowTitle)
-			.showCursor(true)
-			.fullscreen(false)
-			.swapInterval(vsync ? 1 : 0)
-			.width(1040)
-			.height(650)	// 1.6 aspect ratio
-			/+.fullscreen(true)
-			.width(1680)
-			.height(1050)+/
-		.create();
+		configureWindow(window = renderer.window);
+		window.create();
 		renderer.initialize();
 		
 		jobHub.addRepeatableJob({
@@ -112,12 +112,8 @@ abstract class GfxApp {
 	}
 
 	
-	cstring	windowTitle	= "GfxApp";
-	bool	vsync		= false;
-	
 	IRenderer				renderer;
 	Window					window;
 	SimpleKeyboardReader	keyboard;
-	
 	int						inputUpdateFrequency = 200;
 }

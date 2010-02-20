@@ -46,7 +46,7 @@ class TestApp : GfxApp {
 	float				_sceneScale = 1.0f;
 	cstring				_sceneToLoad;
 	
-
+	
 	this(cstring[] args) {
 		version (Demo) {
 			if (args.length < 2) {
@@ -65,8 +65,14 @@ class TestApp : GfxApp {
 				_sceneToLoad = Path.normalize(args[1]);
 			}
 		}
-		this.windowTitle = "Dumb model viewer";
 	}
+	
+	
+	override void configureWindow(Window wnd) {
+		super.configureWindow(wnd);
+		wnd.title = "Dumb model viewer";
+	}
+	
 	
 	override void initialize() {
 		camera = new SimpleCamera(vec3.zero, 0.0f, 0.0f, inputHub.mainChannel);
@@ -335,6 +341,6 @@ class TestApp : GfxApp {
 		renderList.sort();
 		renderer.resetStats();
 		renderer.render(renderList);
-		Stdout.formatln("Tex changes: {}", renderer.getStats.numTextureChanges);
+		//Stdout.formatln("Tex changes: {}", renderer.getStats.numTextureChanges);
 	}
 }
