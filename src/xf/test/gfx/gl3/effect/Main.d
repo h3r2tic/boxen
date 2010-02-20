@@ -26,6 +26,14 @@ import xf.loader.scene.model.all
 	: LoaderNode = Node, LoaderMesh = Mesh, LoaderScene = Scene;
 
 
+// temp
+	import xf.terrain.HeightmapChunkLoader;
+	import xf.terrain.ChunkedTerrain;
+	import xf.terrain.ChunkData;
+	import xf.terrain.ChunkLoader;
+	import xf.terrain.Chunk;
+// ----
+
 
 UniformBuffer envUB;
 
