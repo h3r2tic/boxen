@@ -39,9 +39,9 @@ class ChunkedTerrain {
 	}
 	
 	
-	void getFullResHeightmap(ushort[] heights) {
+	/+void getFullResHeightmap(ushort[] heights) {
 		_loader.getFullResHeightmap(heights);
-	}
+	}+/
 	
 
 	void addChunkHandler(IChunkHandler h) {

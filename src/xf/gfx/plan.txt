@@ -35,15 +35,20 @@ rendering game plan:
 	+ render states for rendering operations
 		~ z, blend, stencil
 	+ framebuffers
-	
-	queries for monitoring rendering operations
-	throw up a bunch of shaders and objects and play around with profiling
+	- queries for monitoring rendering operations
+		// Boxen takes priority
+		pixels
+		sync fences
+		nvPerfKit
+		profile!("") in {};
+	- throw up a bunch of shaders and objects and play around with profiling
+		// Boxen takes priority
 
 * step 2: scene-level management
+	terrain
 	whip up some lights along with tracking their influences
 	hierarchical culling structure for the scene
 		could be a loose octree or an abt
-	terrain
 	plug the renderer into Boxen
 
 * step 3: tackling the material-light combinatorial problem

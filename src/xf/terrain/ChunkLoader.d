@@ -19,8 +19,8 @@ interface IChunkHandler {
 class ChunkLoader {
 	abstract Chunk*	root();
 	abstract void			loadPendingChunks();
-	abstract vec2i		fullResHeightmapSize();
-	abstract void			getFullResHeightmap(ushort[] heights);
+	abstract vec2i			fullResHeightmapSize();
+	//abstract void			getFullResHeightmap(ushort[] heights);
 	abstract int			getIndex(Chunk* ch);
 	
 	void addChunkHandler(IChunkHandler h) {

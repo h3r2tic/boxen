@@ -176,6 +176,8 @@ class FreeImageLoader : Loader {
 			result.width = FreeImage_GetWidth(dib);
 			result.height = FreeImage_GetHeight(dib);
 			result.scanLineBytes = FreeImage_GetPitch(dib);
+			assert (result.scanLineBytes % 4 == 0);
+			
 			result._disposalFunc = &this.disposeImage;
 			
 			word totalSize = result.height * result.scanLineBytes;

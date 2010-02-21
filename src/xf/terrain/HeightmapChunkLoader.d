@@ -39,6 +39,12 @@ class HeightmapChunkLoader : ChunkLoader {
 		}
 		assert (Image.ColorLayout.R == img.colorLayout);
 		
+		Stdout.formatln(
+			"Image data: 0x{:x} .. 0x{:x}",
+			img.data.ptr,
+			img.data.ptr + img.data.length
+		);
+		
 		load();
 	}
 	
@@ -97,7 +103,7 @@ class HeightmapChunkLoader : ChunkLoader {
 	}
 	
 	
-	override void getFullResHeightmap(u16[] heights) {
+	/+override void getFullResHeightmap(u16[] heights) {
 		auto data = _heightMap.data;
 
 		switch (_heightMap.dataType) {
@@ -115,12 +121,12 @@ class HeightmapChunkLoader : ChunkLoader {
 			
 			default: assert (false);
 		}
-	}
+	}+/
 	
 	
 	private {
 		class HeightChunkData(T) : ChunkData {
-			vec3[]		_positions;
+			vec3[]	_positions;
 			u16[]	_indices;
 			
 			
@@ -402,6 +408,7 @@ class HeightmapChunkLoader : ChunkLoader {
 			private {
 				T[]	data;
 				u32	width;
+				u32 pitch;
 				u32	height;
 				u32	x, y, xl, yl;
 			}
@@ -409,7 +416,7 @@ class HeightmapChunkLoader : ChunkLoader {
 			T[] row(u32 r) {
 				assert (r < yl);
 				assert (r+y < height);
-				int off = (y+r) * width + x;
+				int off = (y+r) * pitch + x;
 				return data[off .. off + xl];
 			}
 			
@@ -424,21 +431,21 @@ class HeightmapChunkLoader : ChunkLoader {
 			}
 			
 			T* opIn_r(vec2i pos) {
-				if (		pos.x < xl
+				if (	pos.x < xl
 					&&	pos.y < yl
 					&&	pos.x >= 0
 					&&	pos.y >= 0
 				) {
-					return &data[(y+pos.y) * width + x+pos.x];
+					return &data[(y+pos.y) * pitch + x+pos.x];
 				} else {
 					return null;
 				}
 			}
 			
 			int opApply(int delegate(ref T) dg) {
-				final T* endRow = &data.ptr[(y+yl)*width + x];
-				for (T* row = &data[y*width+x]; row < endRow; row += width) {
-					final T* colEnd = row + width;
+				final T* endRow = &data.ptr[(y+yl)*pitch + x];
+				for (T* row = &data[y*pitch + x]; row < endRow; row += pitch) {
+					final T* colEnd = row + xl;
 					for (T* col = row; col < colEnd; ++col) {
 						if (auto res = dg(*col)) {
 							return res;
@@ -457,7 +464,23 @@ class HeightmapChunkLoader : ChunkLoader {
 			assert (size.y > 0);
 			assert (from.x + size.x <= width);
 			assert (from.y + size.y <= depth);
-			return Chunk2DSlice!(T)(cast(T[])_heightMap.data, width, depth, from.x, from.y, size.x, size.y);
+			
+			const uword alignTo = 4 / T.sizeof;
+			uword pitch = (width + alignTo-1) & ~(alignTo-1);
+			
+			final data = cast(T[])_heightMap.data;
+			assert (data.length == pitch * depth);
+			
+			return Chunk2DSlice!(T)(
+				data,
+				width,
+				pitch,
+				depth,
+				from.x,
+				from.y,
+				size.x,
+				size.y
+			);
 		}
 		
 		
