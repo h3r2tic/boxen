@@ -45,10 +45,14 @@ rendering game plan:
 		// Boxen takes priority
 
 * step 2: scene-level management
-	terrain
+	~ terrain
+		+ basic rendering with chunked lod
+
+	render graph
+	culling
+		could be a loose octree or an abt... or just a plain array :P
+	
 	whip up some lights along with tracking their influences
-	hierarchical culling structure for the scene
-		could be a loose octree or an abt
 	plug the renderer into Boxen
 
 * step 3: tackling the material-light combinatorial problem
