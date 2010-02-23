@@ -71,7 +71,7 @@ class ChunkedTerrain {
 	
 	public {
 		vec3	scale = vec3.one;
-		vec3	position = vec3.one;
+		vec3	position = vec3.zero;
 	}
 	
 	private {

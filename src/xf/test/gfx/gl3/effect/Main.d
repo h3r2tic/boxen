@@ -13,28 +13,13 @@ import
 	
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
-	xf.omg.core.Misc,
-	
-	xf.utils.Memory,
 	
 	tango.io.Stdout,
 	tango.time.StopWatch;
 	
-import Float = tango.text.convert.Float;
-import Path = tango.io.Path;
-import tango.stdc.stdlib : exit;
-	
 import xf.loader.scene.model.all
 	: LoaderNode = Node, LoaderMesh = Mesh, LoaderScene = Scene;
 
-
-// temp
-	import xf.terrain.HeightmapChunkLoader;
-	import xf.terrain.ChunkedTerrain;
-	import xf.terrain.ChunkData;
-	import xf.terrain.ChunkLoader;
-	import xf.terrain.Chunk;
-// ----
 
 
 UniformBuffer envUB;
@@ -42,89 +27,6 @@ UniformBuffer envUB;
 
 void main(cstring[] args) {
 	(new TestApp(args)).run;
-}
-
-
-class MyChunkHandler : IChunkHandler {
-	void alloc(int cnt) {
-		.alloc(data, cnt);
-	}
-	
-	bool loaded(int idx) {
-		return data[idx].loaded;
-	}
-	
-	void load(int idx, Chunk*, ChunkData data) {
-		with (this.data[idx]) {
-			.alloc(positions, data.numPositions);
-			data.getPositions(positions);
-			.alloc(indices, data.numIndices);
-			data.getIndices(indices);
-			loaded = true;
-
-			efInst = renderer.instantiateEffect(effect);
-			auto vb = renderer.createVertexBuffer(
-				BufferUsage.StaticDraw,
-				cast(void[])positions
-			);
-			efInst.setVarying(
-				"VertexProgram.input.position",
-				vb,
-				VertexAttrib(
-					0,
-					vec3.sizeof,
-					VertexAttrib.Type.Vec3
-				)
-			);
-			mesh = renderer.createMeshes(1);
-			auto m = &mesh[0];
-
-			m.numIndices = indices.length;
-			// assert (indices.length > 0 && indices.length % 3 == 0);
-			
-			uword minIdx = uword.max;
-			uword maxIdx = uword.min;
-			
-			foreach (i; indices) {
-				if (i < minIdx) minIdx = i;
-				if (i > maxIdx) maxIdx = i;
-			}
-
-			m.minIndex = minIdx;
-			m.maxIndex = maxIdx;
-			
-			(m.indexBuffer = renderer.createIndexBuffer(
-				BufferUsage.StaticDraw,
-				indices
-			)).dispose();
-			
-			// Finalize the mesh
-			
-			m.effectInstance = efInst;
-		}
-	}
-	
-	void unload(int) {
-		// TODO
-	}
-	
-	void free() {
-		// TODO
-	}
-
-
-	struct UserData {
-		EffectInstance	efInst;
-		Mesh[]			mesh;
-		
-		vec3[]		positions;
-		ushort[]	indices;
-		bool		loaded;
-	}
-	
-	UserData[]	data;
-	Effect		effect;
-	IRenderer	renderer;
 }
 
 
@@ -138,12 +40,6 @@ class TestApp : GfxApp {
 	
 	float				_sceneScale = 1.0f;
 	cstring				_sceneToLoad;
-	
-	const int			chunkSize = 16;
-	Effect				terrainEffect;
-	ChunkedTerrain		terrain;
-	MyChunkHandler		chunkData;
-	Texture				albedo, lightmap, detail;
 	
 
 	this(cstring[] args) {
@@ -174,13 +70,6 @@ class TestApp : GfxApp {
 	
 	
 	override void initialize() {
-		auto ldr = new HeightmapChunkLoader;
-		ldr.load("height.png", chunkSize);
-		terrain = new ChunkedTerrain(ldr);
-		chunkData = new MyChunkHandler;
-		terrain.addChunkHandler(chunkData);
-		terrain.scale = vec3(10.f, 3.f, 10.f);
-
 		camera = new SimpleCamera(vec3.zero, 0.0f, 0.0f, inputHub.mainChannel);
 		window.interceptCursor = true;
 		window.showCursor = false;
@@ -225,13 +114,6 @@ class TestApp : GfxApp {
 			const cstring mediaDir = `../../../media/`;
 		}
 
-		/+final img2 = imgLoader.load(mediaDir~"img/Walk_Of_Fame/Mans_Outside_2k.hdr");
-		assert (img2.valid);
-		TextureRequest req;
-		req.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
-		final tex2 = renderer.createTexture(img2, req);
-		assert (tex2.valid);+/
-		
 		Texture loadTex(cstring path) {
 			return renderer.createTexture(
 				imgLoader.load(path)
@@ -243,28 +125,6 @@ class TestApp : GfxApp {
 
 		final whiteTexture = loadTex(mediaDir~"img/white.bmp");
 		assert (whiteTexture.valid);
-		
-		albedo = loadTex("albedo.png");
-		lightmap = loadTex("light.png");
-		
-		auto detailImg = imgLoader.load("detail.jpg");
-		detailImg.colorSpace = Image.ColorSpace.Linear;
-		TextureRequest req;
-		req.internalFormat = TextureInternalFormat.RGBA8;
-		detail = renderer.createTexture(detailImg, req);
-		
-		terrainEffect = renderer.createEffect(
-			"terrain",
-			EffectSource.filePath("terrain.cgfx")
-		);
-		
-		// Specialize the shader template
-
-		terrainEffect.useGeometryProgram = false;
-		terrainEffect.compile();
-		chunkData.effect = terrainEffect;
-		chunkData.renderer = renderer;
-
 		
 		// HACK: this needs to be done somewhere in a texture manager
 		Texture[cstring] loadedTextures;
@@ -403,7 +263,6 @@ class TestApp : GfxApp {
 
 
 		effect.setUniform("viewToClip", viewToClip);
-		terrainEffect.setUniform("viewToClip", viewToClip);
 		
 		renderer.minimizeStateChanges();
 		timer.start();
@@ -419,59 +278,7 @@ class TestApp : GfxApp {
 		scope (success) renderer.disposeRenderList(renderList);
 
 
-
-		const float maxError = 0.2f;
-		terrain.optimize(camera.position, maxError);
-
-		int numDrawn = 0;
-		void drawChunk(Chunk* ch, vec3 pos, float halfSize) {
-			if (!ch.split) {
-				auto userData = chunkData.data[terrain.getIndex(ch)];
-				if (userData.loaded && userData.positions && userData.indices) {
-					++numDrawn;
-					
-					final bin = renderList.getBin(chunkData.effect);
-					userData.efInst.setUniform("terrainScale", terrain.scale);
-					
-					userData.efInst.setUniform(
-						"FragmentProgram.albedoTex",
-						albedo
-					);
-
-					userData.efInst.setUniform(
-						"FragmentProgram.detailTex",
-						detail
-					);
-
-					userData.efInst.setUniform(
-						"detailRepeat",
-						vec3.one * 10.f
-					);
-
-					userData.efInst.setUniform(
-						"FragmentProgram.lightTex",
-						lightmap
-					);
-
-					userData.mesh[0].toRenderableData(bin.add(userData.efInst));
-				}
-			} else {
-				vec2[4] chpos;
-				ch.getChildPositions(vec2(pos.x, pos.z), halfSize, &chpos);
-				
-				foreach (i, c; ch.children) {
-					drawChunk(c, vec3(chpos[i].x, 0, chpos[i].y), halfSize * .5f);
-				}
-			}
-		}
-		
-		drawChunk(terrain.root, vec3(.5f, 0.f, .5f), .5f);
-
-
 		effect.setUniform("worldToView",
-			camera.getMatrix
-		);
-		terrainEffect.setUniform("worldToView",
 			camera.getMatrix
 		);
 		

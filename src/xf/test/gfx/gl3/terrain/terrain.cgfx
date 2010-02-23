@@ -17,7 +17,6 @@ float4x4 viewToClip <
 >;
 
 float3 terrainScale;
-float3 detailRepeat;
 
 
 void VertexProgram(
@@ -42,7 +41,8 @@ void FragmentProgram(
 ) {
 	float2 tc = float2(input.texCoord.x, 1.0f - input.texCoord.y);
 	output = tex2D(albedoTex, tc);
-	output += (tex2D(detailTex, tc * detailRepeat) - 0.5f) * 0.5f;
+	output *= saturate(tex2D(detailTex, tc * 10.f) + 0.3f);
+	output += (tex2D(detailTex, tc * 33.3f) - 0.5f) * 0.7f;
 	output *= tex2D(lightTex, tc);
 	output *= 6.0f;
 	//output = float4(1, 1, 1, 1) * (input.position.y - 0.5f) / 3;
