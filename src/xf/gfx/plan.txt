@@ -35,24 +35,30 @@ rendering game plan:
 	+ render states for rendering operations
 		~ z, blend, stencil
 	+ framebuffers
-	- queries for monitoring rendering operations
-		// Boxen takes priority
-		pixels
-		sync fences
-		nvPerfKit
-		profile!("") in {};
-	- throw up a bunch of shaders and objects and play around with profiling
-		// Boxen takes priority
+
+	* Boxen takes priority for now
+		- queries for monitoring rendering operations
+			pixels
+			sync fences
+			nvPerfKit
+			profile!("") in {};
+		- throw up a bunch of shaders and objects and play around with profiling
 
 * step 2: scene-level management
 	~ terrain
 		+ basic rendering with chunked lod
 
 	render graph
+		couple asset types with structure shaders
+	
 	culling
 		could be a loose octree or an abt... or just a plain array :P
-	
-	whip up some lights along with tracking their influences
+		after doing research into Yann Lombard's ABT, it seems that they are not
+		a good fit for what I'm doing, if to anything these days at all.
+		Will go with a dumb flat structure for the scene, then if need be,
+		roll something like a loose AABB tree / loose k-d Tree, e.g.
+		like Regedit's http://regedit.gamedev.pl/news_1282_kd-tree.html
+		
 	plug the renderer into Boxen
 
 * step 3: tackling the material-light combinatorial problem
@@ -61,6 +67,7 @@ rendering game plan:
 		multipass
 		complex shader generation and caching
 		light cuts
+	whip up some lights along with tracking their influences
 	re-animate the shader editor
 	pre-pass lighting
  
