@@ -35,6 +35,7 @@ enum MeshTopology : u8 {
 
 struct RenderableData {
 	CoordSys		coordSys;
+	vec3			scale = vec3.one;
 	IndexBuffer		indexBuffer;
 	uword			numInstances = 1;
 	uword			numIndices	= 0;

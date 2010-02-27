@@ -634,6 +634,18 @@ struct CgEffectBuilder {
 			
 			return true;
 		}
+
+		if (0 == strcmp(name, "modelScale")) {
+			final ptype = cgGetParameterType(p);
+			if (ptype != CG_FLOAT3 && ptype != CG_HALF3) {
+				error(
+					"The modelScale uniform must be float3"
+					" or half3, not '{}'", fromStringz(cgGetTypeString(ptype))
+				);
+			}
+			
+			return true;
+		}
 		
 		return false;
 	}

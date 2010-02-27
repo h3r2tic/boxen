@@ -121,6 +121,8 @@ class TestApp : GfxApp {
 	override void configureWindow(Window wnd) {
 		super.configureWindow(wnd);
 		wnd.title = "Terrain rendering demo";
+		wnd.interceptCursor = true;
+		wnd.showCursor = false;
 	}
 	
 	
@@ -139,8 +141,6 @@ class TestApp : GfxApp {
 		terrain.scale = vec3(100.f, 30.f, 100.f);
 
 		camera = new SimpleCamera(vec3.zero, 0.0f, 0.0f, inputHub.mainChannel);
-		window.interceptCursor = true;
-		window.showCursor = false;
 		
 		scope imgLoader = new FreeImageLoader;
 
