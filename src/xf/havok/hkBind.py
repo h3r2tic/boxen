@@ -278,9 +278,9 @@ def generateCode(classes, funcs, dcode):
 	dout = strfmt()
 	cout = strfmt()
 
-	dout('module Havok;')
+	dout('module xf.havok.Havok;')
 	dout('import tango.sys.SharedLib;')
-	dout('public import HavokDefs;')
+	dout('public import xf.havok.HavokDefs;')
 
 	dout.nl()
 	dout('// ----------------------------------------------------------------')

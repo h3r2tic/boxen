@@ -199,6 +199,8 @@ struct Vector(flt_, int dim_) {
 		
 		static if (isFloatingPointType!(flt)) {
 			/// assumes that the current vector is normalized
+			/// forms a right-handed coordinate system composed
+			/// of the basis vectors [ v1, *this, v2 ]
 			void formBasis(Vector* v1, Vector* v2) {
 				assert (ok);
 				
@@ -213,11 +215,11 @@ struct Vector(flt_, int dim_) {
 					if (any > anz) k = 2; else k = 0;
 				}
 				
-				*v1 = zero;
-				v1.cell[k] = 1;
+				*v2 = zero;
+				v2.cell[k] = 1;
 				
-				*v2 = .cross(*this, *v1);
-				*v1 = .cross(*v2, *this);
+				*v1 = .cross(*this, *v2);
+				*v2 = .cross(*v1, *this);
 			}
 		}
 	}

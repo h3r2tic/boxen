@@ -63,6 +63,7 @@ struct Mesh {
 	
 	void toRenderableData(RenderableData* rd) {
 		rd.coordSys = coordSys;
+		rd.scale = vec3.one;
 		rd.indexBuffer = indexBuffer;
 		rd.numInstances = 1;
 		rd.numIndices	= numIndices;

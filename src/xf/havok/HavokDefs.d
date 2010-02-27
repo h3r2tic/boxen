@@ -1,4 +1,4 @@
-module HavokDefs;
+module xf.havok.HavokDefs;
 static import tango.util.container.HashMap;
 alias tango.util.container.HashMap.HashMap HashMap;
 

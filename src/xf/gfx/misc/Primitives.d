@@ -7,6 +7,7 @@ private {
 
 static this() {
 	Cube.genData();
+	Cylinder.genData();
 }
 
 
@@ -53,5 +54,110 @@ static:
 		
 		assert (vert == positions.length);
 		assert (ind == indices.length);
+	}
+}
+
+
+struct Cylinder {
+static:
+	vec3[]	positions;
+	vec3[]	normals;
+	//vec2[]	texCoords;
+	uint[]	indices;
+
+
+	private void genData() {
+		vec3 pointA = vec3(0.0f, -0.5f, 0.0f);
+		vec3 pointB = vec3(0.0f, 0.5f, 0.0f);
+		float radius = 0.5f;
+
+		vec3[]	pos;
+		vec3[]	norm;
+		uint[]	ind;
+		
+		const int sides = 8;
+		
+		vec3 Z = (pointB - pointA).normalized;
+		vec3 X, Y;
+		Z.formBasis(&X, &Y);
+		
+		final int LC = pos.length;	// lower center
+		pos ~= pointA;
+		norm ~= -Z;
+		
+		final int UC = pos.length;	// upper center
+		pos ~= pointB;
+		norm ~= Z;
+
+		final int LB = pos.length;		// lower base
+		
+		// lower base positions
+		for (int i = 0; i < sides; ++i) {
+			float angle = pi * 2.f * i / sides;
+			vec3 n = cos(angle) * X + sin(angle) * Y;
+			pos ~= pointA + n * radius;
+			norm ~= -Z;
+		}
+		
+		final int UB = pos.length;	// upper base
+		
+		// upper base positions
+		for (int i = 0; i < sides; ++i) {
+			float angle = pi * 2.f * i / sides;
+			vec3 n = cos(angle) * X + sin(angle) * Y;
+			pos ~= pointB + n * radius;
+			norm ~= Z;
+		}
+		
+		final int LW = pos.length;	// lower wall base
+
+		// lower base positions
+		for (int i = 0; i < sides; ++i) {
+			float angle = pi * 2.f * i / sides;
+			vec3 n = cos(angle) * X + sin(angle) * Y;
+			pos ~= pointA + n * radius;
+			norm ~= n;
+		}
+
+		final int UW = pos.length;	// upper wall base
+		
+		// upper base positions
+		for (int i = 0; i < sides; ++i) {
+			float angle = pi * 2.f * i / sides;
+			vec3 n = cos(angle) * X + sin(angle) * Y;
+			pos ~= pointB + n * radius;
+			norm ~= n;
+		}
+
+		assert (pos.length == norm.length);
+		
+		// lower base indices
+		for (int i = 0, p = sides-1; i < sides; p = i, ++i) {
+			ind ~= LC;
+			ind ~= LB+i;
+			ind ~= LB+p;
+		}
+
+		// upper base indices
+		for (int i = 0, p = sides-1; i < sides; p = i, ++i) {
+			ind ~= UC;
+			ind ~= UB+p;
+			ind ~= UB+i;
+		}
+
+		// walls
+		for (int i = 0, p = sides-1; i < sides; p = i, ++i) {
+			ind ~= LW+p;
+			ind ~= UW+i;
+			ind ~= UW+p;
+
+			ind ~= LW+p;
+			ind ~= LW+i;
+			ind ~= UW+i;
+		}
+		
+		positions = pos;
+		normals = norm;
+		indices = ind;
 	}
 }

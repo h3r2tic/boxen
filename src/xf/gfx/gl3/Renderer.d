@@ -1385,8 +1385,9 @@ class Renderer : IRenderer {
 		);
 		
 		final instUnifParams = effect.objectInstanceUniformParams();
-		final modelToWorldIndex = instUnifParams.getUniformIndex("modelToWorld");
-		final worldToModelIndex = instUnifParams.getUniformIndex("worldToModel");
+		final modelToWorldIndex	= instUnifParams.getUniformIndex("modelToWorld");
+		final worldToModelIndex	= instUnifParams.getUniformIndex("worldToModel");
+		final modelScaleIndex	= instUnifParams.getUniformIndex("modelScale");
 
 		bool minimizeStateChanges = false;		// <-
 		
@@ -1436,6 +1437,13 @@ class Renderer : IRenderer {
 				cgSetMatrixParameterfc(
 					cast(CGparameter)instUnifParams.params.param[worldToModelIndex],
 					cast(float*)(objects.worldToModel + objIdx)
+				);
+			}
+
+			if (modelScaleIndex != UniformParamIndex.init) {
+				cgSetParameter3fv(
+					cast(CGparameter)instUnifParams.params.param[modelScaleIndex],
+					obj.scale.ptr
 				);
 			}
 			
