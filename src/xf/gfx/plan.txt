@@ -87,4 +87,6 @@ rendering game plan:
 
 * step 6: write the fucking thesis
 
-* step 7: profit!
+* step 7: add a 'press start to play' button that disappears into 'just kidding'.
+
+* step 8: profit!
