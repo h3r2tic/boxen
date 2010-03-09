@@ -704,6 +704,7 @@ struct SortedAA(Key,Value, bit ReadOnly = false, Alloc = GCAllocator) {
     case NullOnMiss: return null;
     case ThrowOnMiss: throw new IndexOutOfBoundsException("Key not in container");
     case InsertOnMiss: return insertNode(key, Value.init, parent, cmpVal);
+    default: assert (false);
     }
   }
 

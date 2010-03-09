@@ -338,7 +338,7 @@ void main() {
 //			float metric = cast(float)(cast(real)retired / cycles);
 //			float metric = cast(float)(cast(real)llcMisses / retired);
 			float metric = cast(float)(cast(real)llcMisses / llcRefs);
-			printf(" (%1.1f%%)%4.4f", cast(float)cycles*100/clk, metric);
+			printf(" (%1.1f%%)%2.2f", cast(float)cycles*100/clk, metric);
 			th.prev = th.cur;
 		}
 
