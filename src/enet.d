@@ -24,6 +24,8 @@ module enet;
 
 extern(C):
 
+static import tango.stdc.stdlib;
+
 version(Windows){
   pragma(lib, "enet.lib");
   pragma(lib, "ws2_32.lib");
@@ -48,8 +50,24 @@ else {
   static assert(0, "unsupported OS");
 }
 
+ENetCallbacks enetWordAllocCallbacks;
+void* wordMalloc(size_t size) {
+    size += (size_t.sizeof - 1);
+    size &= ~(size_t.sizeof - 1);
+    return tango.stdc.stdlib.malloc(size);
+}
+
 static this() {
-	assert(enet_initialize() == 0, "Failed to initialize networking!");
+    // WTF!
+	//assert(enet_initialize() == 0, "Failed to initialize networking!");
+
+    enetWordAllocCallbacks.free = &tango.stdc.stdlib.free;
+    enetWordAllocCallbacks.rand = &tango.stdc.stdlib.rand;
+    
+    enet_initialize_with_callbacks(
+        ENetVersion.ENET_VERSION,
+        &enetWordAllocCallbacks
+    );
 }
 
 static ~this() {
