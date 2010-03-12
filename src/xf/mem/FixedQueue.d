@@ -26,6 +26,7 @@ private template MFixedQueue() {
 
 	T* pushBack() {
 		final res = tail;
+		assert (res !is null);
 
 		tail += itemSize;
 		
@@ -48,6 +49,7 @@ private template MFixedQueue() {
 		}
 
 		final res = head;
+		assert (res !is null);
 
 		head += itemSize;
 		
@@ -101,6 +103,11 @@ private template MFixedQueue() {
 	}
 
 
+	void clear() {
+		head = tail = data;
+	}
+
+
 	private {
 		void*	head;
 		void*	tail;
@@ -112,10 +119,11 @@ private template MFixedQueue() {
 
 struct RawFixedQueue {
 	static RawFixedQueue opCall(size_t itemSize, void[] data) {
-		RawFixedQueue res;
+		RawFixedQueue res = void;
 		res.itemSize = itemSize;
 		res.data = data.ptr;
 		res.dataEnd = data.ptr + (data.length / itemSize) * itemSize;
+		res.head = res.tail = res.data;
 		assert (res.data < res.dataEnd);
 		return res;
 	}
@@ -133,9 +141,10 @@ struct RawFixedQueue {
 
 struct FixedQueue(T) {
 	static FixedQueue opCall(void[] data) {
-		FixedQueue res;
+		FixedQueue res = void;
 		res.data = data.ptr;
 		res.dataEnd = data.ptr + (data.length / itemSize) * itemSize;
+		res.head = res.tail = res.data;
 		assert (res.data < res.dataEnd);
 		return res;
 	}

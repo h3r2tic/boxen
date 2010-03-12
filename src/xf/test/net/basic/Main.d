@@ -52,7 +52,15 @@ void main(char[][] args) {
 	
 	jobHub.addRepeatableJob({
 		if (serverSide) {
-			while (server.recvPacketForTick(curTick, (playerId pid, BitStreamReader* bsr) {
+			while (server.recvPacketForTick(curTick, (playerId pid, BitStreamReader* bs) {
+				uword a, b;
+				bool c;
+				bs.read(&a);
+				bs.read(&b);
+				bs.read(&c);
+
+				Stdout.formatln("Received {} {} {}", a, b, c);
+				
 				return curTick;
 			})) {
 			}
@@ -62,10 +70,19 @@ void main(char[][] args) {
 					return curTick;
 				})) {
 				}
+
+				client.send((BitStreamWriter* bs) {
+					uword a = curTick;
+					uword b = 2 * a;
+					bool c = a % 2 == 0;
+					bs.write(a);
+					bs.write(b);
+					bs.write(c);
+				});
 			}
 		}
 		++curTick;
-	}, timeHub.ticksPerSecond);
+	}, 5);
 	
 	Stdout.formatln("starting MainProcess...");
 	jobHub.exec(new MainProcess);

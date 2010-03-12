@@ -169,7 +169,7 @@ class ENetServer : LowLevelServer {
 					*(cast(playerId*)(ev.peer.data)) = pid;
 					playersConnected[pid] = true;
 
-					peers[pid] = Peer.init;
+					peers[pid].reset();
 
 					log.info("{} connected.", pid);
 					
