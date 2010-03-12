@@ -10,7 +10,7 @@ private {
 	import xf.mem.MainHeap;
 	
 	import enet;
-	import xf.net.enet.EnetCommon;
+	import xf.net.enet.ENetCommon;
 }
 
 
@@ -87,6 +87,11 @@ class ENetClient : LowLevelClient {
 		}
 
 		return this;
+	}
+
+
+	override bool connected() {
+		return _connected;
 	}
 	
 

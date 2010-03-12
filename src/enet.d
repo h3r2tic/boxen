@@ -61,6 +61,7 @@ static this() {
     // WTF!
 	//assert(enet_initialize() == 0, "Failed to initialize networking!");
 
+    enetWordAllocCallbacks.malloc = &wordMalloc;
     enetWordAllocCallbacks.free = &tango.stdc.stdlib.free;
     enetWordAllocCallbacks.rand = &tango.stdc.stdlib.rand;
     

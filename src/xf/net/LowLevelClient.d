@@ -9,8 +9,9 @@ private {
 
 
 abstract class LowLevelClient {
-	LowLevelClient connect(u16 clientPort, cstring address, u16 port);
-	LowLevelClient disconnect();
+	LowLevelClient	connect(u16 clientPort, cstring address, u16 port);
+	LowLevelClient	disconnect();
+	bool			connected();
 
 	bool recvPacketForTick(tick, tick delegate(BitStreamReader*));
 	void send(void delegate(BitStreamWriter*));
