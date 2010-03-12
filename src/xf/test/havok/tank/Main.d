@@ -170,7 +170,7 @@ class MyCollisionListener {
 
 	void process(hkpEntity a, hkpEntity b) {
 		//fprintf(tango.stdc.stdio.stderr, "process\n");
-		//fprintf(tango.stdc.stdio.stderr, "Collision processed between %p and %p\n", cast(void*)a._impl, cast(void*)b._impl);
+		fprintf(tango.stdc.stdio.stderr, "Collision processed between %p and %p\n", cast(void*)a._impl, cast(void*)b._impl);
 	}
 	
 	this() {

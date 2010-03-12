@@ -5,7 +5,7 @@ private {
 	import xf.mem.ThreadChunkAllocator : _chunkQueueInternalAllocator = threadChunkAllocator;
 	import xf.mem.Common;
 	import xf.mem.Chunk;
-	import xf.mem.Log : error = memError;
+	import xf.mem.Log;
 }
 
 
@@ -54,7 +54,7 @@ struct RawChunkQueue {
 			ptr = alignPointerUp(chunk.ptr(), alignment);
 
 			if (ptr + bytes > chunk.ptr + chunk.capacity) {
-				error(
+				memError(
 					"Chunks too small ({}) to allocate {} bytes.",
 					chunk.capacity, bytes
 				);
@@ -70,7 +70,7 @@ struct RawChunkQueue {
 				_tail = chunk;
 
 				if (ptr + bytes > chunk.ptr + chunk.capacity) {
-					error(
+					memError(
 						"Chunks too small ({}) to allocate {} bytes.",
 						chunk.capacity, bytes
 					);
@@ -92,7 +92,7 @@ struct RawChunkQueue {
 		final chptr = ch.ptr();
 		final last = ch.lastAddr;
 		if (ptr < chptr || ptr > last) {
-			error(
+			memError(
 				"Trying to pop a wrong mem address: {:x}. head.ptr: {:x}, head.last: {:x}.",
 				ptr, chptr, last
 			);
@@ -101,9 +101,9 @@ struct RawChunkQueue {
 		if (_lastFreed !is null) {
 			if (ptr <= _lastFreed) {
 				if (ptr < _lastFreed) {
-					error("Popping an address in a wrong order.");
+					memError("Popping an address in a wrong order.");
 				} else {
-					error("Double-popping an address.");
+					memError("Double-popping an address.");
 				}
 			}
 		}
@@ -139,6 +139,11 @@ struct RawChunkQueue {
 			_head = _tail = null;
 			_lastFreed = null;
 		}
+	}
+
+
+	size_t chunkCapacity() {
+		return _pageSize - _subAllocator.maxChunkOverhead - QueueChunk.sizeof;
 	}
 
 

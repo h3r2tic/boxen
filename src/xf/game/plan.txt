@@ -1,0 +1,16 @@
+* Revive conections and events
+* NetObj creation and id management
+* Player controllers
+* NetObj state serialization and propagation ( just server->client for now )
+* Store IDs in Havok objects
+* Collect the 'process' contact callbacks from Havok from all threads
+* Linearize the callbacks and update xf.boxen.game.ContactStorage
+* Revive touch trackers / auth groups on top of the ContactStorage
+* Visualize auth transfers
+* Implement the new time sync algorithm
+* Visualize networking memory and id usage
+* Revive tanks
+* Revive projectiles
+* Revive explosions
+* Revive the physical part of terrain
+* Move to programming the editor

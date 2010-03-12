@@ -200,6 +200,8 @@ struct BitStreamWriter {
 	alias writeGenericMinMax!(long)		opCall;
 	alias writeGenericMinMax!(ulong)	opCall;
 
+	alias opCall write;
+
 
 	int iterBits(int delegate(ref uword b) dg) {
 		uword* d = dataBlockStart;
@@ -448,6 +450,8 @@ again:
 	alias readGenericMinMax!(uint)		opCall;
 	alias readGenericMinMax!(long)		opCall;
 	alias readGenericMinMax!(ulong)		opCall;
+
+	alias opCall read;
 
 
 	uword*	data;

@@ -3,6 +3,7 @@ module xf.net.NetObjMngr;
 private {
 	import xf.game.Misc;
 	import xf.net.NetObj;
+	import xf.net.Log : log = netLog, error = netError;
 	import xf.mem.ChunkQueue;
 	import xf.mem.FixedQueue;
 }
@@ -30,6 +31,19 @@ static:
 		void storeNetObjStates(tick curTick) {
 			assert (_lastTickInQueue < curTick);
 			final numStates = _netObjects.length;
+
+			{
+				size_t reqBytes = numStates * (void*).sizeof;
+				size_t maxBytes = _objStatePtrQueue.chunkCapacity;
+				if (reqBytes * 3 > maxBytes * 2) {
+					log.warn(
+						"NetObjMngr._objStatePtrQueue might be using too small chunks."
+						" Max chunk capacity: {}. Currently required capacity: {}",
+						maxBytes,
+						reqBytes
+					);
+				}
+			}
 			
 			void*[] statePtrs =
 				(cast(void**)_objStatePtrQueue.pushBack(
@@ -66,8 +80,8 @@ static:
 
 		
 		struct NetObjData {
-			float[]	stateImportances;
-			void*[]	lastWrittenStates;
+			float[]		stateImportances;
+			void*[]		lastWrittenStates;
 		}
 
 		NetObj[]	_netObjects;		// TODO

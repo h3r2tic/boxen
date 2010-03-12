@@ -63,8 +63,8 @@ abstract class Event {
 	abstract void atTick(tick);
 	abstract void immediate();
 	
-	abstract void readFromStream(BitStreamReader);
-	abstract void writeToStream(BitStreamWriter);
+	abstract void readFromStream(BitStreamReader*);
+	abstract void writeToStream(BitStreamWriter*);
 	
 	abstract ushort getEventId();
 	
@@ -117,20 +117,20 @@ template EventExpose() {
 	mixin(opCallCodegen());
 	
 	static if (is(typeof(this) : Local)) {
-		public override void writeToStream(BitStreamWriter bs) {
+		public override void writeToStream(BitStreamWriter* bs) {
 			throw new Exception("Trying to call writeToStream() on a Local event");
 		}
-		public override void readFromStream(BitStreamReader bs) {
+		public override void readFromStream(BitStreamReader* bs) {
 			throw new Exception("Trying to call readFromStream() on a Local event");
 		}
 	} else {
-		public override void writeToStream(BitStreamWriter bs) {
+		public override void writeToStream(BitStreamWriter* bs) {
 			foreach (i, field; xposeFields) {
 				static if (field.isData) {
 					const char[] _fieldName = field.name;
 					mixin(`
 					static if(is(typeof(this.`~_fieldName~`) T__ == typedef)) {
-						bs(cast(T__)this.`~_fieldName~`);
+						bs.write(cast(T__)this.`~_fieldName~`);
 					} else {
 						bsWrite(bs, this.`~_fieldName~`);
 					}`);
@@ -138,13 +138,13 @@ template EventExpose() {
 			}
 		}
 		
-		public override void readFromStream(BitStreamReader bs) {
+		public override void readFromStream(BitStreamReader* bs) {
 			foreach (i, field; xposeFields) {
 				static if (field.isData) {
 					const char[] _fieldName = field.name;
 					mixin(`
 					static if(is(typeof(this.`~_fieldName~`) T__ == typedef)) {
-						bs(cast(T__*)&this.`~_fieldName~`);
+						bs.read(cast(T__*)&this.`~_fieldName~`);
 					} else {
 						bsRead(bs, &this.`~_fieldName~`);
 					}`);
@@ -218,8 +218,8 @@ template _exposeEvent(_ThisType) {
 			return new typeof(this);
 		}
 		
-		void writeToStream(BitStreamWriter bs) {}
-		void readFromStream(BitStreamReader bs) {}
+		void writeToStream(BitStreamWriter* bs) {}
+		void readFromStream(BitStreamReader* bs) {}
 	}
 
 
@@ -275,8 +275,8 @@ class Order : Event {
 	mixin MBaseEvent;
 	
 	
-	abstract void	writeToStream(BitStreamWriter);
-	bool				strictTiming() { return false; }
+	abstract void	writeToStream(BitStreamWriter*);
+	bool			strictTiming() { return false; }
 	
 	final override bool logged() {		// not sure about it yet, but it makes sense, unless there's a separate queue for orders at client side
 													// even then, orders would have to be reversible, and it's hardly ever feasible
@@ -298,11 +298,11 @@ class Wish : Event {
 	mixin MBaseEvent;
 	
 	
-	abstract void writeToStream(BitStreamWriter);
+	abstract void writeToStream(BitStreamWriter*);
 	
-	playerId			wishOrigin;
+	playerId		wishOrigin;
 	static playerId	defaultWishOrigin;
-	uint					receptionTimeMillis;
+	uint			receptionTimeMillis;
 
 	/+mixin(xpose2(`wishOrigin|receptionTimeMillis`));
 	mixin xposeMiniDNoSubclass;+/
@@ -332,8 +332,8 @@ class Local : Event {
 
 enum EventType {
 	Order	= 0b1,
-	Wish		= 0b10,
-	Local		= 0b100,
+	Wish	= 0b10,
+	Local	= 0b100,
 	
 	Any		= Order | Wish | Local
 }
@@ -369,9 +369,9 @@ Event createEvent(typeof(Event.eventId) id) {
 }
 
 
-Event readEventOr(BitStreamReader bs, EventType typeMask, void delegate() error) {
+Event readEventOr(BitStreamReader* bs, EventType typeMask, void delegate() error) {
 	typeof(Event.eventId) eventId;
-	bs(&eventId);
+	bs.read(&eventId);
 	debug printf(`read event id: %d`\n, cast(int)eventId);
 	
 	if (!checkEventType(eventId, typeMask)) {
@@ -382,7 +382,7 @@ Event readEventOr(BitStreamReader bs, EventType typeMask, void delegate() error)
 		assert (event !is null);
 		debug printf(`created a %.*s`\n, event.classinfo.name);
 		
-		bs(&event.instanceId);
+		bs.read(&event.instanceId);
 		debug printf(`read event instance id: %d`\n, cast(int)event.instanceId);
 		
 		// read the number of dependencies - some packed int  -  TODO
@@ -396,11 +396,11 @@ Event readEventOr(BitStreamReader bs, EventType typeMask, void delegate() error)
 }
 
 
-void writeEvent(BitStreamWriter bs, Event event) {
+void writeEvent(BitStreamWriter* bs, Event event) {
 	debug printf(`writing event id: %d, instance id %d`\n, cast(int)event.getEventId(), cast(int)event.instanceId);
 	
-	bs(event.getEventId());
-	bs(event.instanceId);
+	bs.write(event.getEventId());
+	bs.write(event.instanceId);
 	
 	// write the number of dependencies - some packed int  -  TODO
 	// write the dependency list  -  TODO
@@ -410,8 +410,8 @@ void writeEvent(BitStreamWriter bs, Event event) {
 
 
 private {
-	typeof(Event.eventId)							lastFreeEventId = 1;
-	typeof(Event.eventId)[ClassInfo]			registeredEvents;
+	typeof(Event.eventId)					lastFreeEventId = 1;
+	typeof(Event.eventId)[ClassInfo]		registeredEvents;
 	Event function()[typeof(Event.eventId)]	eventFactories;
-	EventType[typeof(Event.eventId)]			eventTypes;
+	EventType[typeof(Event.eventId)]		eventTypes;
 }

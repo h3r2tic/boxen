@@ -1,6 +1,7 @@
 module xf.net.LowLevelServer;
 
 private {
+	import xf.Common;
 	import xf.core.Registry;
 	import xf.utils.BitStream;
 	import xf.game.Misc;
@@ -12,10 +13,10 @@ private {
 abstract class LowLevelServer {
 	mixin(CtorParams = "int");		// max player count
 	
-	LowLevelServer start(char[] addr, ushort port);
-	LowLevelServer	stop();
+	LowLevelServer start(cstring addr, u16 port);
+	LowLevelServer stop();
 	
-	bool recvPacket(StreamFate delegate(playerId, BitStreamReader*));
+	bool recvPacketForTick(tick, tick delegate(playerId, BitStreamReader*));
 	
 	void send(void delegate(BitStreamWriter*), playerId target);
 	void broadcast(void delegate(BitStreamWriter*), bool delegate(playerId) filter);

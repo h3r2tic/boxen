@@ -12,9 +12,9 @@ module xf.mem.Chunk;
 */
 struct Chunk {
 	package {
-		size_t							_size;
+		size_t					_size;
 		void delegate(Chunk*)	_dispose;
-		size_t							_reserved;
+		size_t					_reserved;
 	}
 	
 	static Chunk* fromPtr(void* ptr) {
@@ -44,8 +44,8 @@ struct Chunk {
 	Chunk.sizeof + xf.mem.Common.defaultAllocationAlignment - 1
 */
 struct RawChunk {
-	size_t						size;
-	void*						ptr;
+	size_t					size;
+	void*					ptr;
 	void delegate(void*)	dispose;
 }
 

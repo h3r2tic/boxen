@@ -1,13 +1,16 @@
 module xf.utils.BitSet;
 
 private {
-	import xf.utils.Memory;
+	import Memory = xf.utils.Memory;
 	import std.intrinsic;
 }
 
 
 
 struct BitSet(int minBits) {
+	const bool dynamic = false;
+
+	
 	void opIndexAssign(bool b, int idx) {		// TODO: maybe there are some intrinsics for this...
 		if (b) {
 			bts(bits.ptr, idx);
@@ -39,18 +42,26 @@ struct BitSet(int minBits) {
 	}
 
 
+	size_t length() {
+		return minBits;
+	}
+
+
 	private {
-		alias uint T;
-		
-		const uint									Tbits = T.sizeof * 8;
-		T[(minBits + Tbits - 1) / Tbits]		bits;
+		alias uint	T;
+		const uint	Tbits = T.sizeof * 8;
+		T[(minBits + Tbits - 1) / Tbits]
+					bits;
 	}
 }
 
 
 class DynamicBitSet {
+	const bool dynamic = true;
+
+
 	~this() {
-		bits.free();
+		Memory.free(bits);
 	}
 	
 
@@ -58,9 +69,9 @@ class DynamicBitSet {
 		size_t size = (count+31) / 32;
 		if (bits.length != size) {
 			if (bits !is null) {
-				bits.realloc(size);
+				Memory.realloc(bits, size);
 			} else {
-				bits.alloc(size);
+				Memory.alloc(bits, size);
 			}
 		}
 	}
