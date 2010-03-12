@@ -242,7 +242,7 @@ template DeclareNetState(T) {
 }
 
 
-struct SampleState {
+/+struct SampleState {
 	void serialize(BitStreamWriter*) {
 	}
 	
@@ -293,7 +293,7 @@ class SampleNetObj : NetObj {
 	mixin DeclareNetState!(SampleState);
 	mixin DeclareNetState!(SampleState2);
 	mixin MNetObj;
-}
+}+/
 
 
 

@@ -1,23 +1,24 @@
 module xf.net.LowLevelClient;
 
 private {
+	import xf.Common;
 	import xf.utils.BitStream;
-	import xf.net.Misc;
+	import xf.game.Misc : tick;
 }
 
 
 
 abstract class LowLevelClient {
-	LowLevelClient connect(int clientPort, char[] address, ushort port);
+	LowLevelClient connect(u16 clientPort, cstring address, u16 port);
 	LowLevelClient disconnect();
 
-	bool recvPacket(StreamFate delegate(BitStreamReader*));
+	bool recvPacketForTick(tick, tick delegate(BitStreamReader*));
 	void send(void delegate(BitStreamWriter*));
 	void unreliableSend(void delegate(BitStreamWriter*));
 	
 	float timeTuning();
 
-	uint averageRTTMillis();
+	uword averageRTTMillis();
 
 	void registerConnectionHandler(void delegate());
 }

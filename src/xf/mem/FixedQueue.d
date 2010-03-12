@@ -1,14 +1,26 @@
 module xf.mem.FixedQueue;
 
 private {
-	import xf.mem.Log : error = memError;
+	import xf.mem.Log : memError;
 }
 
 
 
 private template MFixedQueue() {
-	bool empty() {
+	bool isEmpty() {
 		return head is tail;
+	}
+
+
+	bool isFull() {
+		auto t2 = tail + itemSize;
+		
+		if (t2 is dataEnd) {
+			// wrap around
+			t2 = data;
+		}
+
+		return head is t2;
 	}
 
 
@@ -23,7 +35,7 @@ private template MFixedQueue() {
 		}
 
 		if (head is tail) {
-			error("Fixed queue overflow.");
+			memError("Fixed queue overflow.");
 		}
 
 		return cast(T*)res;
@@ -31,8 +43,8 @@ private template MFixedQueue() {
 
 
 	T* popFront() {
-		if (empty) {
-			error("Fixed queue underflow.");
+		if (isEmpty) {
+			memError("Fixed queue underflow.");
 		}
 
 		final res = head;
@@ -54,7 +66,7 @@ private template MFixedQueue() {
 
 		if (head < tail) {
 			if (ptrEnd > tail) {
-				error(
+				memError(
 					"Fixed queue out of bounds (indexing {} items to the right)",
 					(ptr - tail) / itemSize
 				);
@@ -68,7 +80,7 @@ private template MFixedQueue() {
 				ptr += off;
 				ptrEnd += off;
 				if (ptrEnd > tail) {
-					error(
+					memError(
 						"Fixed queue out of bounds (indexing {} items to the right)",
 						(ptr - tail) / itemSize
 					);
@@ -78,7 +90,7 @@ private template MFixedQueue() {
 			
 			return cast(T*)ptr;
 		} else {
-			error("Trying to index an empty queue (with {}).", i);
+			memError("Trying to index an empty queue (with {}).", i);
 			assert (false);
 		}
 	}

@@ -2,16 +2,10 @@ module xf.net.Misc;
 
 
 
-enum StreamFate {
-	Dispose,
-	Retain
-}
-
-
 template MRemovePendingNetObjects() {
 	protected void removePendingNetObjects() {
 		// BUG: should use some malloc'd container
-		static NetObjBase[] delObjects;
+		static NetObj[] delObjects;
 		
 		foreach (o; &iterNetObjects) {
 			if (o.netObjScheduledForDeletion) {
