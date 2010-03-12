@@ -17,7 +17,7 @@ private {
 	import cstdlib = tango.stdc.stdlib;
 	
 	import enet;
-	import xf.net.enet.EnetCommon;
+	import xf.net.enet.ENetCommon;
 }
 
 
@@ -64,20 +64,21 @@ class ENetServer : LowLevelServer {
 	}
 
 	
-	override ENetServer start(char[] addr, ushort port) {
+	override ENetServer start(cstring addr, ushort port) {
 		assert (!_running);
 
 		ENetAddress bindTo;
 
 		enet_address_set_host(&bindTo, toStringz(addr));
 		bindTo.port = port;
+		
 		server = enet_host_create(
 			&bindTo,
 			maxPlayers,
 			0, // Incoming bandwidth limit
 			0  // Outgoing bandwidth limit
 		);
-			
+		
 		if (!server) {
 			error("ENet failed to start.");
 		} else {
