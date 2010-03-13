@@ -52,7 +52,7 @@ void main(char[][] args) {
 	
 	jobHub.addRepeatableJob({
 		if (serverSide) {
-			while (server.recvPacketForTick(curTick, (playerId pid, BitStreamReader* bs) {
+			server.recvPacketsForTick(curTick, (playerId pid, BitStreamReader* bs, uint*) {
 				uword a, b;
 				bool c;
 				bs.read(&a);
@@ -62,23 +62,24 @@ void main(char[][] args) {
 				Stdout.formatln("Received {} {} {}", a, b, c);
 				
 				return curTick;
-			})) {
-			}
+			});
 		} else {
 			if (client.connected) {
-				while (client.recvPacketForTick(curTick, (BitStreamReader* bsr) {
+				client.recvPacketsForTick(curTick, (playerId, BitStreamReader* bsr, uint*) {
 					return curTick;
-				})) {
-				}
+				});
 
-				client.send((BitStreamWriter* bs) {
+				ubyte[128] data;
+				auto bs = BitStreamWriter(data[]);
+				{
 					uword a = curTick;
 					uword b = 2 * a;
 					bool c = a % 2 == 0;
 					bs.write(a);
 					bs.write(b);
 					bs.write(c);
-				});
+				}
+				client.send(&bs);
 			}
 		}
 		++curTick;

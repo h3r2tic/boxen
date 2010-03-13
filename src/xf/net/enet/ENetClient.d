@@ -93,49 +93,29 @@ class ENetClient : LowLevelClient {
 	override bool connected() {
 		return _connected;
 	}
-	
 
-	override bool recvPacketForTick(tick curTick, tick delegate(BitStreamReader*) dg) {
-		receiveMore(&server);
 
-		if (server.retainedPacket !is null) {
-			if (server.retainedUntilTick <= curTick) {
-				auto recvBsr = server.retainedBsr;
-				auto recvPkt = server.retainedPacket;
-				server.retainedBsr = BitStreamReader.init;
-				server.retainedPacket = null;
-				
-				if (!handlePacket(&server, recvBsr, recvPkt, curTick, dg)) {
-					return false;
-				}
-			}
-		}
-		
-		if (!server.eventQueue.isEmpty) {
-			final ev = *server.eventQueue.popFront();
-			assert (ENetEventType.ENET_EVENT_TYPE_RECEIVE == ev.type);
-			assert (DataChannel == ev.channelID);
-
-			// BitStreamReader expects data allocated to the granularity of
-			// machine words. This is guaranteed by initializing ENet with
-			// a custom allocator. See enet.d's static this() for how this works
-			
-			auto bsr = BitStreamReader(cast(uword*)ev.packet.data, ev.packet.dataLength);
-			return handlePacket(&server, bsr, ev.packet, curTick, dg);
-		}
-		
-		return false;
+	override void recvPacketsForTick(
+			tick curTick,
+			tick delegate(playerId, BitStreamReader*, uint* retained) dg
+	) {
+		.recvPacketsForTick(
+			curTick,
+			1,
+			(playerId pid) {
+				assert (0 == pid);
+				return _connected ? &server : null;
+			},
+			&receiveMore,
+			dg
+		);
 	}
 	
 	
-	override void send(void delegate(BitStreamWriter*) writer) {
+	override void send(BitStreamWriter* writer) {
 		sendImpl(&server, writer, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
 	}
-	
-	override void unreliableSend(void delegate(BitStreamWriter*) writer) {
-		sendImpl(&server, writer, ENetPacketFlag.ENET_PACKET_FLAG_UNSEQUENCED);
-	}
-	
+
 	override float timeTuning(){
 		return _timeTuning;
 	}
@@ -151,7 +131,8 @@ class ENetClient : LowLevelClient {
 
 
 	private {
-		void receiveMore(Peer* peer) {
+		void receiveMore(tick curTick, void delegate(playerId, NetEvent*) eventSink) {
+		//void receiveMore(tick curTick, Peer* peer) {
 			ENetEvent ev;
 			
 			while (enet_host_service(client, &ev, 0) > 0) {
@@ -175,12 +156,10 @@ class ENetClient : LowLevelClient {
 							_timeTuning = *cast(float*)ev.packet.data;
 							enet_packet_destroy(ev.packet);
 						} else {
-							if (peer.eventQueue.isFull) {
-								// TODO: make this disconnect gracefully
-								error("Packet backlog overflow.");
-							} else {
-								*peer.eventQueue.pushBack() = ev;
-							}
+							NetEvent nev;
+							nev.enetEvent = ev;
+							nev.receivedAtTick = curTick;
+							eventSink(0, &nev);
 						}
 					} break;
 
