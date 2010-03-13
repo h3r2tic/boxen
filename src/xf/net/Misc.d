@@ -1,5 +1,10 @@
 module xf.net.Misc;
 
+private {
+	import xf.utils.BitStream;
+	import xf.game.Misc : tick;
+}
+
 
 
 template MRemovePendingNetObjects() {
@@ -19,4 +24,11 @@ template MRemovePendingNetObjects() {
 		
 		delObjects.length = 0;
 	}
+}
+
+
+tick readTick(BitStreamReader* bs) {
+	uint tmp;
+	bs.read(&tmp);
+	return cast(tick)tmp;
 }

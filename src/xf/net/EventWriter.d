@@ -21,16 +21,17 @@ class EventWriter : EventConsumer {
 			
 	bool delegate(playerId, Order)
 			playerOrderMask;
-			
-	bool	serverSide;
+
+	NetEndpoint	endpoint;
 
 
 
 	protected void consume(Event evt, tick target) {
 		assert (iterPlayerStreams !is null);
+		assert (playerOrderMask !is null);
 
 		
-		if (serverSide) {
+		if (NetEndpoint.Server == endpoint) {
 			assert (playerOrderMask !is null);
 			
 			if (auto order = cast(Order)evt) {
