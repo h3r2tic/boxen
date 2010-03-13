@@ -3,6 +3,7 @@ module xf.utils.BitStream;
 private {
 	import Convert = tango.util.Convert;
 	import Intrinsic = std.intrinsic;
+	import tango.stdc.string : memset;
 
 	alias size_t	uword;
 	alias ptrdiff_t	word;
@@ -23,6 +24,12 @@ struct BitStreamWriter {
 		res.data = res.dataBlockStart = cast(uword*)storage.ptr;
 		res.dataBlockSize = storage.length * 8;
 		return res;
+	}
+
+	void reset() {
+		data = dataBlockStart;
+		writeOffset = header;
+		memset(data, 0, dataBlockSize / 8);
 	}
 
 	void writeUWord(uword w) {

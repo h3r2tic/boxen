@@ -101,61 +101,23 @@ class ENetServer : LowLevelServer {
 	}
 	
 
-	override bool recvPacketForTick(
+	override void recvPacketsForTick(
 			tick curTick,
-			tick delegate(playerId, BitStreamReader*) dg
+			tick delegate(playerId, BitStreamReader*, uint* retained) dg
 	) {
-		foreach (pi, ref peer; peers) {
-			if (!playersConnected[pi]) {
-				continue;
-			}
-
-			if (peer.retainedPacket !is null) {
-				if (peer.retainedUntilTick <= curTick) {
-					auto recvBsr = peer.retainedBsr;
-					auto recvPkt = peer.retainedPacket;
-					peer.retainedBsr = BitStreamReader.init;
-					peer.retainedPacket = null;
-
-					final pid = cast(playerId)pi;
-					handlePacket(&peer, recvBsr, recvPkt, curTick,
-						(BitStreamReader* bsr) {
-							return dg(pid, bsr);
-						}
-					);
-				}
-			}
-		}
-
-		receiveMore();
-
-		bool handledAny = false;
-
-		foreach (pi, ref peer; peers) {
-			if (!peer.eventQueue.isEmpty) {
-				final ev = *peer.eventQueue.popFront();
-				assert (ENetEventType.ENET_EVENT_TYPE_RECEIVE == ev.type);
-				assert (DataChannel == ev.channelID);
-
-				// BitStreamReader expects data allocated to the granularity of
-				// machine words. This is guaranteed by initializing ENet with
-				// a custom allocator. See enet.d's static this() for how this works
-				
-				auto bsr = BitStreamReader(cast(uword*)ev.packet.data, ev.packet.dataLength);
-				final pid = cast(playerId)pi;
-				handledAny |= handlePacket(&peer, bsr, ev.packet, curTick,
-					(BitStreamReader* bsr) {
-						return dg(pid, bsr);
-					}
-				);
-			}
-		}
-
-		return handledAny;
+		.recvPacketsForTick(
+			curTick,
+			cast(playerId)peers.length,
+			(playerId pid) {
+				return playersConnected[pid] ? &peers[pid] : null;
+			},
+			&receiveMore,
+			dg
+		);
 	}
 
 
-	void receiveMore() {
+	void receiveMore(tick curTick, void delegate(playerId, NetEvent*) eventSink) {
 		ENetEvent ev;
 		
 		while (enet_host_service(server, &ev, 0) > 0) {
@@ -205,14 +167,10 @@ class ENetServer : LowLevelServer {
 				case ENetEventType.ENET_EVENT_TYPE_RECEIVE: {
 					final pid = *(cast(playerId*)(ev.peer.data));
 					final peer = &peers[pid];
-					
-					if (peer.eventQueue.isFull) {
-						// TODO: make this disconnect gracefully
-						error("Packet backlog overflow.");
-					} else {
-						assert (playersConnected[pid]);	// TODO: err
-						*peer.eventQueue.pushBack() = ev;
-					}
+					NetEvent nev;
+					nev.enetEvent = ev;
+					nev.receivedAtTick = curTick;
+					eventSink(pid, &nev);
 				} break;
 
 				default: {
@@ -223,17 +181,11 @@ class ENetServer : LowLevelServer {
 	}
 
 	
-	override void send(void delegate(BitStreamWriter*) writer, playerId target) {
+	override void send(BitStreamWriter* writer, playerId target) {
 		sendImpl(&peers[target], writer, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
 	}
-	override void broadcast(void delegate(BitStreamWriter*) writer, bool delegate(playerId) filter) {
+	override void broadcast(BitStreamWriter* writer, bool delegate(playerId) filter) {
 		broadcastImpl(writer, filter, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
-	}
-	override void unreliableSend(void delegate(BitStreamWriter*) writer, playerId target) {
-		sendImpl(&peers[target], writer, ENetPacketFlag.ENET_PACKET_FLAG_UNSEQUENCED);
-	}
-	override void unreliableBroadcast(void delegate(BitStreamWriter*)writer, bool delegate(playerId) filter) {
-		broadcastImpl(writer, filter, ENetPacketFlag.ENET_PACKET_FLAG_UNSEQUENCED);
 	}
 
 	
@@ -279,7 +231,7 @@ protected:
 	}
 	
 
-	void broadcastImpl(void delegate(BitStreamWriter*) writer, bool delegate(playerId) filter, uint flags) {
+	/+void broadcastImpl(void delegate(BitStreamWriter*) writer, bool delegate(playerId) filter, uint flags) {
 		// TODO: mem (TLS cache)
 		final dataChunk = threadChunkAllocator.alloc(1024 * 8);
 		scope (exit) threadChunkAllocator.free(dataChunk);
@@ -290,8 +242,13 @@ protected:
 		auto bsw = BitStreamWriter(data);
 
 		writer(&bsw);
+
+		broadcastImpl(&bsw, filter, flags);
+	}+/
+
+	void broadcastImpl(BitStreamWriter* bsw, bool delegate(playerId) filter, uint flags) {
 		// TODO: Confirm if this flag is what we want
-		auto pkt = enet_packet_create(data.ptr, bsw.asBytes.length, flags);
+		auto pkt = enet_packet_create(bsw.asBytes.ptr, bsw.asBytes.length, flags);
 		foreach (id, peer; peers) {
 			if (filter(cast(playerId)id)) {
 				//printf("Sending a packet.\n");
