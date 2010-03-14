@@ -1,81 +1,82 @@
 module xf.net.GameClient;
 
 private {
-	import xf.net.LowLevelClient;
-	//import xf.net.NetObj;
+	import xf.Common;
 	import xf.net.ControlEvents;
-	import xf.net.Misc;
-	import xf.net.Common;
-	
-	import xf.utils.BitStream;
-	import xf.utils.HardwareTimer : HardwareTimer;
-	import xf.utils.Array;
-
-	import xf.game.EventConsumer;
+	import xf.net.LowLevelClient;
+	import xf.net.EventWriter;
+	import xf.net.EventReader;
+	import xf.net.Dispatcher;
+	import xf.net.BudgetWriter;
+	import xf.game.Misc;
 	import xf.game.Event;
-	import xf.game.Misc : tick, objId;
 	import xf.game.TimeHub;
-	import xf.game.TickTracker;
-	
-	import xf.omg.core.Misc;
-
-	import tango.stdc.stdio : printf, fflush, stdout;
+	import xf.utils.BitStream;
+	import xf.mem.MainHeap;
+	import xf.net.Log : log = netLog, error = netError;
 }
 
 
 
-/**
-	Processing order:
-		send/recv events/inputs for tick t
-		recv states for tick t
-		simulate tick t
-		store states for tick t+1
-		send states for tick t+1
-*/
-class GameClient : EventConsumer, NetObjObserver, TickTracker {
-	mixin MNetComm!(false);
+class GameClient {
+	// 1MB for the bitstream
+	const bswPrealloc		= 1024 * 1024;
+
+	// In bits per iteration   // TODO: make this per second
+	const playerWriteBudget	= 1024 * 32;
+
+	// Can't overflow this amount
+	const playerWriteBudgetMax	= playerWriteBudget * 5;
+
+
 	
-	
-	this(LowLevelClient impl) {
-		this.impl = impl;
-		serverBudgetWriter = new BudgetWriter;
-		Wish.addSubmitHandler(&this.consume);
+	this (LowLevelClient comm) {
+		assert (comm !is null);
+		_comm = comm;
+
+		initBudgetWriter();
+
+		//_playerData.alloc(maxPlayers);
+		//_maxPlayers = maxPlayers;
+		
+		_eventReader = new EventReader;
+		_eventReader.endpoint = NetEndpoint.Client;
+		_eventReader.playerWishMask = &getPlayerWishMask;
+		_eventReader.rollbackTimeToTick = &rollbackTimeToTick;
+
+		_eventWriter = new EventWriter;
+		_eventWriter.endpoint = NetEndpoint.Client;
+		_eventWriter.iterPlayerStreams = &iterPlayerStreams;
+		_eventWriter.playerOrderMask = &playerOrderMask;
+
+		_dispatcher = new Dispatcher(
+			_comm,
+			&_lastTickRecvd,
+			NetEndpoint.Client
+		);
+
+		_dispatcher.receiveEvent = &_eventReader.readEvent;
+		_dispatcher.receiveStateSnapshot = &receiveStateSnapshot;
+
+		Wish.addSubmitHandler(&_eventWriter.consume);
 		AdjustTick.addHandler(&this.adjustTick);
-		DestroyObject.addHandler(&this.onDestroyObjectOrder);
+		//DestroyObject.addHandler(&this.onDestroyObjectOrder);
 		registerConnectionHandler(&this.onConnectedToServer);
-		timeHub.addTracker(this);
 	}
 
 
-	void advanceTick(uint ticks) {
-		//printf("GameClient: advance tick @ %d"\n, cast(int)timeHub.currentTick);
-		removePendingNetObjects();
-		
-		/**
-			Store current states to be compared with future server snapshots
-		*/
-		//printf("GameClient: store states @ %d"\n, cast(int)timeHub.currentTick+1);
-		foreach (id, netObj; netObjects) {
-			if (netObj.keepServerUpdated) {
-				netObj.storeCurrentStates(0, cast(tick)(timeHub.currentTick+1));
-			}
-			/+printf("obj %d:"\n, cast(int)id);
-			netObj.dumpStates((char[] txt) {
-				printf("%.*s", txt);
-			});+/
-		}
-		//printf("State dump end"\n);
-		updateServer();
+	void receiveData(tick curTick) {
+		_dispatcher.dispatch(curTick);
 	}
 
 
 	void registerConnectionHandler(void delegate() h) {
-		return impl.registerConnectionHandler(h);
+		return _comm.registerConnectionHandler(h);
 	}
 	
 	
 	tick lastTickReceived() {
-		return lastTickRecvd;
+		return _lastTickRecvd;
 	}
 	
 	
@@ -85,169 +86,88 @@ class GameClient : EventConsumer, NetObjObserver, TickTracker {
 			return this.tickOffsetTuning;
 		}
 		else return 0;+/
-		return impl.timeTuning;
-	}
-	
-
-	protected void trimHistory(uint ticks) {
-	}
-	
-	
-	protected void rollback(uint ticks) {
+		return _comm.timeTuning;
 	}
 
-	
-	protected void onDestroyObjectOrder(DestroyObject e) {
-		printf(`Handling a DestroyObject order`\n);
-		getNetObj(e.id).netObjScheduleForDeletion();
-	}
-	
-	
+
 	// TODO: make this automatic
 	void setLocalPlayerId(playerId id) {
-		this.localPlayerId = id;
+		_localPlayerId = id;
 	}
 
-	
-	//private {
+
+
+	protected {
+		void receiveStateSnapshot(playerId, BitStreamReader*) {
+			assert (false, "TODO");
+		}
+
+
 		void adjustTick(AdjustTick e) {
-			printf(`Adjusting tick to %d`\n, e.serverTick);
+			log.info("Adjusting tick to {}", e.serverTick);
 			
-			assert (!tickAdjusted);
-			tickAdjusted = true;
+			assert (!_tickAdjusted);
+			_tickAdjusted = true;
 			
 			timeHub.overrideCurrentTick(e.serverTick);
 		}
 
 		
 		void onConnectedToServer() {
-			connectedToServer = true;
+			_connected = true;
+		}
+	}
+
+
+	private {
+		bool getPlayerWishMask(playerId pid, Wish wish) {
+			return true;
 		}
 
-
-		void rollbackTo(tick tck) {
+		void rollbackTimeToTick(tick tck) {
 			timeHub.rollback(timeHub.currentTick - tck);
 
-			foreach (id, netObj; netObjects) {
+			// TODO
+			/+foreach (id, netObj; netObjects) {
 				netObj.dropNewerStates(0, tck);
 				
 				int states = netObj.numStateTypes;
 				for (int i = 0; i < states; ++i) {
 					netObj.setToStoredState(0, i, tck);
 				}
-			}
+			}+/
 		}
-	//}
-		
 
-
-	private {
-		BudgetWriter			serverBudgetWriter;
-		LowLevelClient		impl;
-		tick						lastTickRecvd;
-		bool						tickAdjusted = false;
-		bool						connectedToServer = false;
-		bool						streamRetained = false;
-		float						tickOffsetTuning = 0.f;
-		playerId				localPlayerId = playerId.max;
-	}
-	
-	const int serverBitBudgetPerSecond = 64 * 1024;
-}
-
-
-/**
-	Precise tick synchronization. Makes the client run as closely as possible to the perfect ahead-of-server time
-	
-	client.serverTickOffset specifies server-defined tick tuning feedback.
-	It specifies how many ticks earlier the last event should've arrived.
-	If it's a small negative number, then it's ok. If it's positive, the server has received an event out of time.
-*/
-void synchronizeNetworkTicks(GameClient client) {
-	static int totalSampleCount = 0;
-	++totalSampleCount;
-	
-	static float[200] offsetTable = 0.f;
-	static int offsetPtr = 0;
-	
-	static float[200]	offsetTbl2 = void;
-	static int			offsetPtr2 = 0;
-	
-	float serverOffset = client.serverTickOffset;
-	offsetTable[offsetPtr++ % offsetTable.length] = serverOffset;
-	//float offset = offsetTable.fold(0.f, (float a, float b){ return a + b; }) / offsetTable.length;
-	
-	static float deviation = -1.f;
-	static float amortizedDeviation = 0.f;
-	
-	offsetTbl2[offsetPtr2++] = serverOffset;
-	if (offsetTbl2.length == offsetPtr2) {
-		offsetPtr2 = 0;
-	}// {
-		float mean = 0.f;
-		foreach (x; offsetTbl2) mean += x;
-		mean /= offsetTbl2.length;
-		
-		deviation = 0.f;
-		foreach (x; offsetTbl2) deviation += (mean - x) * (mean - x);
-		deviation /= offsetTbl2.length;
-		deviation = sqrt(deviation);
-	//}
-
-	amortizedDeviation = (deviation + amortizedDeviation) / 2.f;
-
-	// not enough samples to determine reliably
-	if (totalSampleCount < 50) {
-		amortizedDeviation = 2.f;
-	}
-	
-		static float[offsetTable.length] sortedOffsets;
-		sortedOffsets[] = offsetTable;
-		sortedOffsets.sort;
-		
-		float errorThresh = .4f;
-		float offset = sortedOffsets[rndint((1.f - errorThresh) * (offsetTable.length - 1))];
-		
-	offset += amortizedDeviation * 3f;
-	
-	// vary the game speed to match with the server
-	float timeMult = 1.f;
-	if (offset > 0.0f) {
-		timeMult = 1.f + 0.005f * offset;
-	} else if (offset < -1.0f) {
-		timeMult = 1.f + 0.005f * offset;
-	}
-	
-	if (timeMult > 1.6f) {
-		timeMult = 1.6f;
-	}
-	if (timeMult < 0.8f) {
-		timeMult = 0.8f;
-	}
-	HardwareTimer.multiplier = timeMult;
-
-	printf(\r`offset [srv: %1.1f, calc: %1.1f; dev: %1.2f] ; time mult: %3.3f`, serverOffset, offset, amortizedDeviation, cast(float)HardwareTimer.multiplier);
-	fflush(stdout);
-}
-
-
-void standardClientUpdate(GameClient client, void delegate() inputSampler) {
-	const int maxCatchUp = 2;
-	
-	timeHub.incTargetInputTickOffset();
-	
-	while (timeHub.targetInputTickOffset > 0) {
-		timeHub.incInputTick();
-		inputSampler();
-	}
-	
-	if (timeHub.currentTick >= timeHub.inputTick) {		// if we've simulated up to the budget, only receive data.
-		client.receiveData();
-	} else {
-		for (int i = 0; i < maxCatchUp && timeHub.currentTick < timeHub.inputTick; ++i) {
-			client.receiveData();
-			timeHub.advanceTick();
-			debug printf(`tick: %d , inputTick: %d`\n, timeHub.currentTick, timeHub.inputTick);
+		int iterPlayerStreams(int delegate(ref playerId, ref BitStreamWriter) dg) {
+			playerId meh = 0;
+			return dg(meh, _writer.bsw);
 		}
+				
+		bool playerOrderMask(playerId pid, Order order) {
+			return true;
+		}
+
+
+		void initBudgetWriter() {
+			void* bswStorage = mainHeap.allocRaw(bswPrealloc);
+			auto w = &_writer;
+			w.reset();
+			w.bsw = BitStreamWriter(
+				bswStorage[0 .. bswPrealloc]
+			);
+			w.budgetInc = playerWriteBudget;
+			w.budgetMax = playerWriteBudgetMax;
+		}
+
+
+		LowLevelClient	_comm;
+		EventWriter		_eventWriter;
+		EventReader		_eventReader;
+		Dispatcher		_dispatcher;
+		BudgetWriter	_writer;
+		tick			_lastTickRecvd;
+		bool			_tickAdjusted;
+		bool			_connected;
+		playerId		_localPlayerId;
 	}
 }
