@@ -8,6 +8,7 @@ private {
 	import xf.net.EventReader;
 	import xf.net.Dispatcher;
 	import xf.net.BudgetWriter;
+	import xf.net.GameComm;
 	import xf.game.Misc;
 	import xf.game.Event;
 	import xf.game.TimeHub;
@@ -18,7 +19,7 @@ private {
 
 
 
-class GameClient {
+class GameClient : IGameComm {
 	// 1MB for the bitstream
 	const bswPrealloc		= 1024 * 1024;
 
@@ -65,8 +66,18 @@ class GameClient {
 	}
 
 
-	void receiveData(tick curTick) {
-		_dispatcher.dispatch(curTick);
+	void receiveData() {
+		_dispatcher.dispatch(timeHub.currentTick);
+	}
+
+
+	void sendData() {
+		if (_connected) {
+			_writer.flush((u8[] bytes) {
+				log.trace("Sending data to server.");
+				_comm.send(bytes);
+			});
+		}
 	}
 
 
@@ -151,10 +162,10 @@ class GameClient {
 		void initBudgetWriter() {
 			void* bswStorage = mainHeap.allocRaw(bswPrealloc);
 			auto w = &_writer;
-			w.reset();
 			w.bsw = BitStreamWriter(
 				bswStorage[0 .. bswPrealloc]
 			);
+			w.reset();
 			w.budgetInc = playerWriteBudget;
 			w.budgetMax = playerWriteBudgetMax;
 		}

@@ -28,14 +28,17 @@ struct BudgetWriter {
 
 
 	void flush(void delegate(ubyte[]) sink) {
-		bsw.flush();
-		final bytes = bsw.asBytes();
-		sink(bytes);
-		budget -= bytes.length * 8;
-		budget += budgetInc;
-		if (budget > budgetMax) {
-			budget = budgetMax;
+		if (bsw.writeOffset > bsw.header) {
+			bsw.flush();
+			final bytes = bsw.asBytes();
+			sink(bytes);
+			budget -= bytes.length * 8;
+			budget += budgetInc;
+			if (budget > budgetMax) {
+				budget = budgetMax;
+			}
 		}
+		
 		bsw.reset();
 	}
 }

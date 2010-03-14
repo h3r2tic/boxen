@@ -8,6 +8,7 @@ private {
 	import xf.net.EventReader;
 	import xf.net.Dispatcher;
 	import xf.net.BudgetWriter;
+	import xf.net.GameComm;
 	import xf.game.Misc;
 	import xf.game.Event;
 	import xf.game.TimeHub;
@@ -17,7 +18,7 @@ private {
 
 
 
-class GameServer {
+class GameServer : IGameComm {
 	// 1MB for bitstreams per player
 	const bswPrealloc		= 1024 * 1024;
 
@@ -29,10 +30,11 @@ class GameServer {
 
 
 	
-	this (LowLevelServer comm, int maxPlayers) {
+	this (LowLevelServer comm) {
 		assert (comm !is null);
 		_comm = comm;
 
+		final maxPlayers = comm.maxPlayers();
 		_playerData.alloc(maxPlayers);
 		_maxPlayers = maxPlayers;
 		
@@ -64,8 +66,20 @@ class GameServer {
 	}
 
 
-	void receiveData(tick curTick) {
-		_dispatcher.dispatch(curTick);
+	void receiveData() {
+		_dispatcher.dispatch(timeHub.currentTick);
+	}
+
+
+	void sendData() {
+		for (int pid = 0; pid < _maxPlayers; ++pid) {
+			if (_playerData.connected[pid]) {
+				_playerData.writer[pid].flush((u8[] bytes) {
+					log.trace("Sending data to player {}.", pid);
+					_comm.send(bytes, cast(playerId)pid);
+				});
+			}
+		}
 	}
 
 
@@ -187,7 +201,7 @@ class GameServer {
 			for (int pid = 0; pid < _maxPlayers; ++pid) {
 				if (_playerData.connected[pid]) {
 					playerId meh = cast(playerId)pid;
-					if (int r = dg(meh, _playerData.writers.bsw)) {
+					if (int r = dg(meh, _playerData.writer.bsw)) {
 						return r;
 					}
 				}
@@ -211,15 +225,15 @@ class GameServer {
 		Dispatcher		_dispatcher;
 
 		struct PlayerData {
-			tick*					lastTickRecvd;
+			BudgetWriter*			writer;
 			bool delegate(Order)*	orderMask;
 			bool delegate(Wish)*	wishMask;
+			tick*					lastTickRecvd;
 			bool*					stateMask;
 			bool*					connected;
-			BudgetWriter*			writers;
 
 			void reset(playerId pid) {
-				writers[pid].reset();
+				writer[pid].reset();
 			}
 
 			void alloc(int num) {
@@ -228,11 +242,11 @@ class GameServer {
 					totalSize += typeof(*f).sizeof * num;
 				}
 				void* mem = mainHeap.allocRaw(totalSize);
+				memset(mem, 0, totalSize);
 				foreach (i, f; this.tupleof) {
 					this.tupleof[i] = cast(typeof(f))mem;
 					{
-						uword size = typeof(*f).sizeof * num;
-						memset(f, 0, size);
+						final size = typeof(*f).sizeof * num;
 						mem += size;
 					}
 				}
@@ -241,11 +255,11 @@ class GameServer {
 
 
 				void* bswStorage = mainHeap.allocRaw(bswPrealloc * num);
-				foreach (i, ref w; writers[0..num]) {
-					w.reset();
+				foreach (i, ref w; writer[0..num]) {
 					w.bsw = BitStreamWriter(
-						bswStorage[bswPrealloc * num .. bswPrealloc * (num+1)]
+						bswStorage[bswPrealloc * i .. bswPrealloc * (i+1)]
 					);
+					w.reset();
 					w.budgetInc = playerWriteBudget;
 					w.budgetMax = playerWriteBudgetMax;
 				}

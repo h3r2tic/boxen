@@ -46,8 +46,8 @@ enum {
 
 
 
-void sendImpl(Peer* peer, BitStreamWriter* bsw, uint flags) {
-	auto pkt = enet_packet_create(bsw.asBytes.ptr, bsw.asBytes.length, flags);
+void sendImpl(Peer* peer, u8[] bytes, uint flags) {
+	auto pkt = enet_packet_create(bytes.ptr, bytes.length, flags);
 	//printf("Sending a packet.\n");
 	enet_peer_send(peer.con, DataChannel, pkt);
 }

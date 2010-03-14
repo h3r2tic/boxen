@@ -20,32 +20,52 @@ import xf.omg.core.LinearAlgebra : vec2, vec3, vec4;
 
 void bsWrite(T)(BitStreamWriter* bs, ref T t) {
 	static if (is(T == vec2)) {
-		bs(t.x)(t.y);
+		bs.write(t.x);
+		bs.write(t.y);
 	}
 	else static if (is(T == vec3)) {
-		bs(t.x)(t.y)(t.z);
+		bs.write(t.x);
+		bs.write(t.y);
+		bs.write(t.z);
 	}
 	else static if (is(T == vec4)) {
-		bs(t.x)(t.y)(t.z)(t.w);
+		bs.write(t.x);
+		bs.write(t.y);
+		bs.write(t.z);
+		bs.write(t.w);
+	}
+	else static if (is(T == char[])) {
+		bs.writeString(t);
 	}
 	else {
-		bs(t);
+		bs.write(t);
 	}
 }
 
 
 void bsRead(T)(BitStreamReader* bs, T t) {
 	static if (is(T == vec2*)) {
-		bs(&t.x)(&t.y);
+		bs.read(&t.x);
+		bs.read(&t.y);
 	}
 	else static if (is(T == vec3*)) {
-		bs(&t.x)(&t.y)(&t.z);
+		bs.read(&t.x);
+		bs.read(&t.y);
+		bs.read(&t.z);
 	}
 	else static if (is(T == vec4*)) {
-		bs(&t.x)(&t.y)(&t.z)(&t.w);
+		bs.read(&t.x);
+		bs.read(&t.y);
+		bs.read(&t.z);
+		bs.read(&t.w);
+	}
+	else static if (is(T == char[]*)) {
+		bs.readString(t, (size_t len) {
+			return new char[len];		// TODO: mem
+		});
 	}
 	else {
-		bs(t);
+		bs.read(t);
 	}
 }
 

@@ -34,7 +34,7 @@ class ENetServer : LowLevelServer {
 	this (size_t maxPlayers) {
 		assert (playersConnected.dynamic || maxPlayers <= playersConnected.length);
 
-		this.maxPlayers = maxPlayers;
+		this._maxPlayers = maxPlayers;
 		this.peers.length = maxPlayers;		// TODO: mem
 
 		// alloc event backlog queues
@@ -57,6 +57,11 @@ class ENetServer : LowLevelServer {
 	}
 
 
+	override size_t maxPlayers() {
+		return _maxPlayers;
+	}
+
+
 	void dispose() {
 		if (_running) {
 			stop();
@@ -74,7 +79,7 @@ class ENetServer : LowLevelServer {
 		
 		server = enet_host_create(
 			&bindTo,
-			maxPlayers,
+			_maxPlayers,
 			0, // Incoming bandwidth limit
 			0  // Outgoing bandwidth limit
 		);
@@ -132,6 +137,7 @@ class ENetServer : LowLevelServer {
 					playersConnected[pid] = true;
 
 					peers[pid].reset();
+					peers[pid].con = ev.peer;
 
 					log.info("{} connected.", pid);
 					
@@ -181,11 +187,11 @@ class ENetServer : LowLevelServer {
 	}
 
 	
-	override void send(BitStreamWriter* writer, playerId target) {
-		sendImpl(&peers[target], writer, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
+	override void send(u8[] bytes, playerId target) {
+		sendImpl(&peers[target], bytes, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
 	}
-	override void broadcast(BitStreamWriter* writer, bool delegate(playerId) filter) {
-		broadcastImpl(writer, filter, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
+	override void broadcast(u8[] bytes, bool delegate(playerId) filter) {
+		broadcastImpl(bytes, filter, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
 	}
 
 	
@@ -214,7 +220,7 @@ protected:
 	void delegate(playerId)[] disconnHandlers;
 
 	ENetHost*	server;
-	size_t		maxPlayers;
+	size_t		_maxPlayers;
 	bool		_running = false;
 
 	BitSet!(32)	playersConnected;
@@ -222,7 +228,7 @@ protected:
 
 
 	playerId getFreeID() {
-		for (int id = 0; id < maxPlayers; ++id) {
+		for (int id = 0; id < _maxPlayers; ++id) {
 			if (!playersConnected[id]) {
 				return cast(playerId)id;
 			}
@@ -246,9 +252,9 @@ protected:
 		broadcastImpl(&bsw, filter, flags);
 	}+/
 
-	void broadcastImpl(BitStreamWriter* bsw, bool delegate(playerId) filter, uint flags) {
+	void broadcastImpl(u8[] bytes, bool delegate(playerId) filter, uint flags) {
 		// TODO: Confirm if this flag is what we want
-		auto pkt = enet_packet_create(bsw.asBytes.ptr, bsw.asBytes.length, flags);
+		auto pkt = enet_packet_create(bytes.ptr, bytes.length, flags);
 		foreach (id, peer; peers) {
 			if (filter(cast(playerId)id)) {
 				//printf("Sending a packet.\n");
