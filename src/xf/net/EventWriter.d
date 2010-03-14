@@ -26,7 +26,7 @@ class EventWriter : EventConsumer {
 
 
 
-	protected void consume(Event evt, tick target) {
+	void consume(Event evt, tick target) {
 		assert (iterPlayerStreams !is null);
 		assert (playerOrderMask !is null);
 
