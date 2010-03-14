@@ -3,7 +3,6 @@ module xf.utils.BitStream;
 private {
 	import Convert = tango.util.Convert;
 	import Intrinsic = std.intrinsic;
-	import tango.stdc.string : memset;
 
 	alias size_t	uword;
 	alias ptrdiff_t	word;
@@ -23,13 +22,16 @@ struct BitStreamWriter {
 		assert (storage.length % uword.sizeof == 0);
 		res.data = res.dataBlockStart = cast(uword*)storage.ptr;
 		res.dataBlockSize = storage.length * 8;
+		*res.data = 0;
 		return res;
 	}
 
 	void reset() {
 		data = dataBlockStart;
 		writeOffset = header;
-		memset(data, 0, dataBlockSize / 8);
+
+		// just the first uword, the rest is set as the writing commences
+		*data = 0;
 	}
 
 	void writeUWord(uword w) {
@@ -41,7 +43,7 @@ struct BitStreamWriter {
 			w1 <<= off;
 			w2 >>= wordBits - off;
 			*d++ |= w1;
-			*d |= w2;
+			*d = w2;
 			writeOffset += wordBits;
 			data = d;
 		} else {
@@ -72,7 +74,7 @@ struct BitStreamWriter {
 				w1 <<= off;
 				w2 >>= wordBits - off;
 				*d++ |= w1;
-				*d |= w2;
+				*d = w2;
 				writeOffset += bits;
 				data = d;
 			}
@@ -480,6 +482,10 @@ unittest {
 
 	{
 		void[] data = new void[1024];
+		foreach (ref uint x; cast(uint[])data) {
+			x = Kiss.instance.natural();
+		}
+		
 		auto bsw = BitStreamWriter(data);
 
 		bsw.flush();
@@ -513,6 +519,10 @@ unittest {
 
 	{
 		void[] data = new void[1024];
+		foreach (ref uint x; cast(uint[])data) {
+			x = Kiss.instance.natural();
+		}
+
 		long u = long.max, u2;
 		int i = -42, iMin = -50, iMax = -12, i2;
 		bool b = true, b2;
@@ -557,6 +567,10 @@ unittest {
 
 	{
 		uword[] data = new uword[10_000_000];
+		foreach (ref uint x; cast(uint[])data) {
+			x = Kiss.instance.natural();
+		}
+
 		auto wr = BitStreamWriter(data);
 		wr(true);
 		wr(true);

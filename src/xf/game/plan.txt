@@ -1,4 +1,11 @@
-* Revive conections and events
+~ Revive conections and events
+	+ Refactor the old ENet backend
+	+ Create components for event reading and writing
+	+ Create a dispatcher for network packets into events and states
+	+ Encapsulate budget writers
+	+ Revive the Event scheduler/queue
+	- Create functioning GameServer and GameClient out of the components
+	
 * NetObj creation and id management
 * Player controllers
 * NetObj state serialization and propagation ( just server->client for now )
