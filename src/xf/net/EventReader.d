@@ -41,6 +41,8 @@ class EventReader {
 			if (!playerWishMask(pid, cast(Wish)evt)) {
 				log.info("Wish blocked: {}", evt.classinfo.name);
 				return true;
+			} else {
+				log.trace("Received a Wish: {}.", evt.classinfo.name);
 			}
 			
 			with (cast(Wish)evt) {
@@ -48,7 +50,6 @@ class EventReader {
 				//eventTargetTick = evtTargetTick;
 
 				// TODO: move this to the low level server into net events
-				error("");
 				receptionTimeMillis = cast(uint)(hardwareTimer.timeMicros / 1000);
 			}
 			
@@ -68,6 +69,7 @@ class EventReader {
 				if ((cast(Order)evt).strictTiming) {
 					rollbackTimeToTick(evtTargetTick);
 				} else {
+					log.trace("Immediately handling an Order: {}.", evt.classinfo.name);
 					evt.eventTargetTick = evtTargetTick;
 					// TODO: is this valid? perviously only control ImmediateEvents would be executed like this
 					evt.handle();
@@ -79,7 +81,8 @@ class EventReader {
 				debug log.trace("handling the control event");
 				evt.handle();
 			} else {
-				debug log.trace("submitting the {}...", evt.classinfo.name);
+				log.trace("Received an Order: {}.", evt.classinfo.name);
+				//debug log.trace("submitting the {}...", evt.classinfo.name);
 				evt.atTick(evtTargetTick);
 			}
 		}

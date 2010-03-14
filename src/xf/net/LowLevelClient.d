@@ -14,7 +14,7 @@ abstract class LowLevelClient : LowLevelComm {
 	LowLevelClient	disconnect();
 	bool			connected();
 
-	void send(BitStreamWriter*);
+	void send(u8[] bytes);
 	
 	float timeTuning();
 

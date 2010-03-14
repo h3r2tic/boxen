@@ -6,6 +6,7 @@ private {
 	import xf.game.Event;
 	import xf.game.Misc;
 	import xf.utils.BitStream;
+	import xf.net.Log : log = netLog;
 }
 
 
@@ -30,7 +31,6 @@ class EventWriter : EventConsumer {
 		assert (iterPlayerStreams !is null);
 		assert (playerOrderMask !is null);
 
-		
 		if (NetEndpoint.Server == endpoint) {
 			assert (playerOrderMask !is null);
 			
@@ -45,19 +45,21 @@ class EventWriter : EventConsumer {
 					);
 				};
 
-				foreach (pid, bsw; iterPlayerStreams) {
+				foreach (pid, ref bsw; iterPlayerStreams) {
 					if (mask(pid)) {
 						bsw(true /* event */);
 						bsw(cast(uint)target);
+						log.trace("EventWriter :: serializing an Order.");
 						writeEvent(&bsw, order);
 					}
 				}
 			}
 		} else {
 			if (auto wish = cast(Wish)evt) {
-				foreach (pid, bsw; iterPlayerStreams) {
+				foreach (pid, ref bsw; iterPlayerStreams) {
 					bsw(true /* event */);
 					bsw(cast(uint)target);
+					log.trace("EventWriter :: serializing a Wish.");
 					writeEvent(&bsw, wish);
 				}
 			}

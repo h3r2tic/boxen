@@ -4,6 +4,7 @@ private {
 	import xf.game.Misc : NetEndpoint;
 	import xf.net.LowLevelComm;
 	import xf.net.Misc : readTick;
+	import xf.net.Log : log = netLog;
 	import xf.utils.BitStream;
 }
 
@@ -41,7 +42,9 @@ class Dispatcher {
 			curTick,
 			delegate tick(playerId pid, BitStreamReader* bs, uint* retained) {
 				bool receivedTick = *retained > 0;
-				
+
+				log.trace("Dispatcher: receiving data.");
+
 				while (!bs.empty) {
 					bool eventInStream = 0 == *retained;
 					

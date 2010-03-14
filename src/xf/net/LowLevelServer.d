@@ -17,8 +17,10 @@ abstract class LowLevelServer : LowLevelComm {
 	LowLevelServer start(cstring addr, u16 port);
 	LowLevelServer stop();
 	
-	void send(BitStreamWriter*, playerId target);
-	void broadcast(BitStreamWriter*, bool delegate(playerId) filter);
+	size_t maxPlayers();
+
+	void send(u8[], playerId target);
+	void broadcast(u8[], bool delegate(playerId) filter);
 	
 	void setPlayerTimeTuning(playerId pid, float val);
 

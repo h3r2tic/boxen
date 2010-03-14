@@ -112,8 +112,8 @@ class ENetClient : LowLevelClient {
 	}
 	
 	
-	override void send(BitStreamWriter* writer) {
-		sendImpl(&server, writer, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
+	override void send(u8[] bytes) {
+		sendImpl(&server, bytes, ENetPacketFlag.ENET_PACKET_FLAG_RELIABLE);
 	}
 
 	override float timeTuning(){

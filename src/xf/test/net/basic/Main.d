@@ -79,7 +79,7 @@ void main(char[][] args) {
 					bs.write(b);
 					bs.write(c);
 				}
-				client.send(&bs);
+				client.send(bs.asBytes);
 			}
 		}
 		++curTick;
