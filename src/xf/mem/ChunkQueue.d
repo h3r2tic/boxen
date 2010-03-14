@@ -6,6 +6,7 @@ private {
 	import xf.mem.Common;
 	import xf.mem.Chunk;
 	import xf.mem.Log;
+	import tango.stdc.string : memcpy;
 }
 
 
@@ -297,13 +298,13 @@ struct RawChunkDeque {
 	}
 
 
-	void* popFront() {
+	void popFront(void* target) {
 		final ch = _head;
 		if (ch is null) {
 			memError("Queue underflow");
 		}
 		
-		void* res = ch.ptr + ch.head;
+		memcpy(target, ch.ptr + ch.head, _itemSize);
 
 		ch.head += _itemSize;
 
@@ -326,21 +327,48 @@ struct RawChunkDeque {
 			Chunk.fromPtr(cast(void*)ch).dispose();
 			_head = nhead;
 		}
-
-		return res;
 	}
 
 
-	void* popBack() {
+	void popFront() {
+		final ch = _head;
+		if (ch is null) {
+			memError("Queue underflow");
+		}
+		
+		ch.head += _itemSize;
+
+		if (ch.head > ch.tail) {
+			memError("Queue underflow");
+		}
+
+		if (ch.head == ch.tail) {
+			final nhead = cast(QueueChunk*)ch.nextXorPrev;
+			_head = nhead;
+			
+			if (nhead is null) {
+				_tail = null;
+			} else {
+				nhead.nextXorPrev ^= cast(size_t)ch;
+			}
+
+			auto cache = &_allocator;
+			memLog.trace("RawChunkDeque :: releasing a chunk.");
+			Chunk.fromPtr(cast(void*)ch).dispose();
+			_head = nhead;
+		}
+	}
+
+
+	void popBack(void* target) {
 		final ch = _tail;
 		if (ch is null || ch.tail < ch.head + _itemSize) {
 			memError("Queue underflow");
 		}
 		
 		ch.tail -= _itemSize;
-
-		void* res = ch.ptr + ch.tail;
-
+		
+		memcpy(target, ch.ptr + ch.tail, _itemSize);
 
 		if (ch.head == ch.tail) {
 			final ntail = cast(QueueChunk*)ch.nextXorPrev;
@@ -356,8 +384,43 @@ struct RawChunkDeque {
 			Chunk.fromPtr(cast(void*)ch).dispose();
 			_tail = ntail;
 		}
+	}
 
-		return res;
+
+	void popBack() {
+		final ch = _tail;
+		if (ch is null || ch.tail < ch.head + _itemSize) {
+			memError("Queue underflow");
+		}
+		
+		ch.tail -= _itemSize;
+
+		if (ch.head == ch.tail) {
+			final ntail = cast(QueueChunk*)ch.nextXorPrev;
+			_tail = ntail;
+			
+			if (ntail is null) {
+				_head = null;
+			} else {
+				ntail.nextXorPrev ^= cast(size_t)ch;
+			}
+
+			auto cache = &_allocator;
+			Chunk.fromPtr(cast(void*)ch).dispose();
+			_tail = ntail;
+		}
+	}
+
+
+	void* front() {
+		assert (!isEmpty());
+		return _head.ptr + _head.head;
+	}
+
+
+	void* back() {
+		assert (!isEmpty());
+		return _tail.ptr + _tail.tail - _itemSize;
 	}
 
 
@@ -481,77 +544,85 @@ struct RawChunkDeque {
 struct ChunkQueue(T) {
 	const size_t _pageSize = minDefaultPageSize;
 	
-	static assert (T.sizeof <= _pageSize - Chunk.sizeof - 15 - QueueChunk.sizeof);
-	
-	private alias _chunkQueueInternalAllocator
-		_subAllocator;
-		
-	private alias chunkCache!(_pageSize - _subAllocator.maxChunkOverhead, _subAllocator)
-		_allocator;
-		
-	private alias ChunkQueue PtrType;
-	
-	
-	private struct QueueChunk {
-		QueueChunk*	next;
-		size_t		capacity;
-		size_t		length;
+	static assert (T.sizeof <= _pageSize - Chunk.sizeof - 15 - RawChunkDeque.QueueChunk.sizeof);
 
-		T[] data() {
-			return (cast(T*)(cast(void*)this + QueueChunk.sizeof))[0 .. this.length];
-		}
+	RawChunkDeque _impl = {
+		_head: null,
+		_tail: null,
+		_itemSize: T.sizeof
+	};
+
+
+	void pushBack(T x) {
+		*cast(T*)_impl.pushBack() = x;
+	}
+	
+	void pushFront(T x) {
+		*cast(T*)_impl.pushBack() = x;
 	}
 
 
-	void opCatAssign(T item) {
-		QueueChunk* chunk = void;
-
-		if (_tail is null) {
-			auto raw = _allocator.alloc();
-			assert (raw !is null);
-			assert (raw.ptr !is null);
-			_head = _tail = chunk = cast(QueueChunk*)raw.ptr;
-			chunk.length = 0;
-			chunk.capacity = (raw.size - QueueChunk.sizeof) / T.sizeof;
-			chunk.next = null;
-		} else {
-			chunk = _tail;
-			if (chunk.capacity == chunk.length) {
-				auto raw = _allocator.alloc();
-				assert (raw !is null);
-				assert (raw.ptr !is null);
-				chunk = cast(QueueChunk*)raw.ptr;
-				chunk.length = 0;
-				chunk.capacity = (raw.size - QueueChunk.sizeof) / T.sizeof;
-				_tail.next = chunk;
-				_tail = chunk;
-			}
-		}
-		
-		chunk.data()[chunk.length++] = item;
+	void popFront(T* x) {
+		return _impl.popFront(x);
 	}
-	
-	
+
+	void popFront() {
+		return _impl.popFront();
+	}
+
+	void popBack(T* x) {
+		return _impl.popBack(x);
+	}
+
+	void popBack() {
+		return _impl.popBack();
+	}
+
+
+	T* front() {
+		return cast(T*)_impl.front();
+	}
+
+	T* back() {
+		return cast(T*)_impl.back();
+	}
+
+
 	int opApply(int delegate(ref int, ref T) dg) {
 		int i = 0;
-		for (QueueChunk* cur = _head; cur; cur = cur.next) {
-			foreach (ref item; cur.data()) {
-				if (auto r = dg(i, item)) {
-					return r;
-				}
-				++i;
+		foreach (void* ptr; _impl) {
+			if (int r = dg(i, *cast(T*)ptr)) {
+				return r;
+			}
+			++i;
+		}
+		return 0;
+	}
+
+	int opApply(int delegate(ref T) dg) {
+		foreach (void* ptr; _impl) {
+			if (int r = dg(*cast(T*)ptr)) {
+				return r;
 			}
 		}
 		return 0;
 	}
 
+	int opApplyReverse(int delegate(ref int, ref T) dg) {
+		int i = 0;
+		foreach_reverse (void* ptr; _impl) {
+			if (int r = dg(i, *cast(T*)ptr)) {
+				return r;
+			}
+			++i;
+		}
+		return 0;
+	}
 
-	int opApply(int delegate(ref T) dg) {
-		for (QueueChunk* cur = _head; cur; cur = cur.next) {
-			foreach (ref item; cur.data()) {
-				if (auto r = dg(item)) {
-					return r;
-				}
+	int opApplyReverse(int delegate(ref T) dg) {
+		foreach_reverse (void* ptr; _impl) {
+			if (int r = dg(*cast(T*)ptr)) {
+				return r;
 			}
 		}
 		return 0;
@@ -559,20 +630,15 @@ struct ChunkQueue(T) {
 
 
 	void clear() {
-		if (_head) {
-			QueueChunk* cur = _head;
-			auto cache = &_allocator;
-			
-			while (cur) {
-				QueueChunk* next = cur.next;
-				Chunk.fromPtr(cast(void*)cur).dispose();
-				cur = next;
-			}
-			
-			_head = _tail = null;
-		}
+		impl._clear();
 	}
 
-	QueueChunk*	_head;
-	QueueChunk*	_tail;
+	void dispose() {
+		impl._dispose();
+	}
+
+
+	bool isEmpty() {
+		return _impl.isEmpty();
+	}
 }

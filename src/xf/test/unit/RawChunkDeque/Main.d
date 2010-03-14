@@ -16,6 +16,7 @@ void main() {
 
 		word head = 1;
 		word tail = 0;
+		word a;
 		const perIter = 100_000;
 		const iters = 30;
 
@@ -26,8 +27,8 @@ void main() {
 			*cast(word*)q.pushBack() = ++tail;
 		}
 
-		assert (*cast(word*)q.popFront() == -iters/2+1);
-		assert (*cast(word*)q.popBack() == iters/2);
+		assert ((q.popFront(&a), a == -iters/2+1));
+		assert ((q.popBack(&a), a == iters/2));
 
 		Stdout.formatln("Queue contents:");
 		foreach (void* p; q) {
@@ -77,20 +78,20 @@ void main() {
 
 		for (auto i = 0; i < iters/2; ++i) {
 			for (auto j = 0; j < perIter; ++j) {
-				assert (*cast(word*)q.popFront() == head++);
-				assert (*cast(word*)q.popBack() == tail--);
+				assert ((q.popFront(&a), a == head++));
+				assert ((q.popBack(&a), a == tail--));
 			}
 		}
 
 		for (auto i = 0; i < iters/2; ++i) {
 			for (auto j = 0; j < perIter; ++j) {
-				assert (*cast(word*)q.popFront() == head++);
+				assert ((q.popFront(&a), a == head++));
 			}
 		}
 
 		for (auto i = 0; i < iters/2; ++i) {
 			for (auto j = 0; j < perIter; ++j) {
-				assert (*cast(word*)q.popBack() == tail--);
+				assert ((q.popBack(&a), a == tail--));
 			}
 		}
 
