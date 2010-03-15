@@ -4,7 +4,7 @@ private {
 	import xf.Common;
 	import xf.net.LowLevelComm;
 	import xf.utils.BitStream;
-	import xf.game.Misc : tick;
+	import xf.game.Defs : tick;
 }
 
 

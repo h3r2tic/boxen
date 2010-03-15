@@ -4,7 +4,7 @@ private {
 	import xf.Common;
 	import xf.game.EventConsumer;
 	import xf.game.Event;
-	import xf.game.Misc;
+	import xf.game.Defs;
 	import xf.utils.BitStream;
 	import xf.net.Log : log = netLog;
 }
@@ -23,15 +23,13 @@ class EventWriter : EventConsumer {
 	bool delegate(playerId, Order)
 			playerOrderMask;
 
-	NetEndpoint	endpoint;
-
 
 
 	void consume(Event evt, tick target) {
 		assert (iterPlayerStreams !is null);
 		assert (playerOrderMask !is null);
 
-		if (NetEndpoint.Server == endpoint) {
+		version (Server) {
 			assert (playerOrderMask !is null);
 			
 			if (auto order = cast(Order)evt) {

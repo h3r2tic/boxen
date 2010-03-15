@@ -140,7 +140,7 @@ Stuple!(Repeat!(T, U.length)) toTStuple(T, U...)(U u) {
 
 
 ///
-Ret delegate(Par) functionToDelegate(Ret, Par ...)(Ret function(Par) func) {
+Ret delegate(Par) fn2dg(Ret, Par ...)(Ret function(Par) func) {
 	struct Foo {
 		void* _placeholder;
 		static assert (Foo.sizeof == typeof(func).sizeof);

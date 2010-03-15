@@ -1,7 +1,7 @@
 module xf.net.LowLevelComm;
 
 private {
-	import xf.game.Misc : tick, playerId;
+	import xf.game.Defs : tick, playerId;
 	import xf.utils.BitStream;
 }
 

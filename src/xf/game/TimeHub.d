@@ -2,7 +2,7 @@ module xf.game.TimeHub;
 
 private {
 	import xf.game.TickTracker;
-	import xf.game.Misc : tick;
+	import xf.game.Defs : tick;
 	import xf.utils.Singleton;
 }
 

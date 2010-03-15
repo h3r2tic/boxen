@@ -3,7 +3,7 @@ module xf.net.enet.ENetServer;
 private {
 	import xf.Common;
 	import xf.core.Registry;
-	import xf.game.Misc;
+	import xf.game.Defs;
 	import xf.net.LowLevelServer;
 	import xf.net.Misc;
 	import xf.net.Log : log = netLog, error = netError;

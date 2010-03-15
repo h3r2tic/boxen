@@ -11,17 +11,15 @@ private {
 
 
 class Dispatcher {
-	this (LowLevelComm comm, tick* lastTickRecvd, NetEndpoint endpoint) {
+	this (LowLevelComm comm, tick* lastTickRecvd) {
 		this.comm = comm;
 		this.lastTickRecvd = lastTickRecvd;
-		this.endpoint = endpoint;
 	}
 
 
 	private {
 		LowLevelComm	comm;
 		tick*			lastTickRecvd;
-		NetEndpoint		endpoint;
 	}
 
 
@@ -71,7 +69,7 @@ class Dispatcher {
 						}							
 						*retained = 0;
 						
-						if (NetEndpoint.Client == endpoint) {
+						version (Client) {
 							if (lastTickRecvd[pid] > curTick) {
 								debug printf(`retaining stream and returning... (recvd: %d, local: %d)`\n, lastTickRecvd, timeHub.currentTick);
 								*retained = 1;
