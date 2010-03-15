@@ -1,10 +1,10 @@
-module Events;
+module xf.boxen.Events;
 
 private {
 	import xf.game.GameObj;
 	import xf.game.Event;
-	import xf.game.Defs;
-	//import xf.net.LocalNetObj;
+	import xf.game.Misc;
+	import xf.net.LocalNetObj;
 	import xf.omg.core.LinearAlgebra;
 }
 
@@ -79,7 +79,7 @@ class InputWish : Wish {
 	}
 }
 
-/+
+
 class CreateGameObj : Order {
 	vec3					pos;
 	objId				id;
@@ -256,4 +256,3 @@ class DestroyWreck : Order {
 	playerId	attacker;
 	mixin		MEvent;
 }
-+/

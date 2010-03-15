@@ -3,7 +3,7 @@ module xf.net.EventReader;
 private {
 	import xf.Common;
 	import xf.game.Event;
-	import xf.game.Misc;
+	import xf.game.Defs;
 	import xf.net.ControlEvents;
 	import xf.net.Misc : readTick;
 	import xf.net.Log : log = netLog, error = netError;
@@ -20,8 +20,6 @@ class EventReader {
 	void delegate(tick)
 			rollbackTimeToTick;
 
-	NetEndpoint	endpoint;
-
 
 	bool readEvent(playerId pid, BitStreamReader* bs) {
 		assert (playerWishMask !is null);
@@ -31,7 +29,7 @@ class EventReader {
 		//printf("receiveEvent"\n);
 		tick evtTargetTick = readTick(bs);
 
-		if (NetEndpoint.Server == endpoint) {
+		version (Server) {
 			Event evt = readEventOr(bs, EventType.Wish, {
 				log.info("Client {} tried to send an invalid event. Kicking.", pid);
 				KickPlayer(pid).delayed(5);

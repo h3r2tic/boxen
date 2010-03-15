@@ -1,7 +1,7 @@
 ﻿module xf.game.Event;
 
 public {
-	import xf.game.Misc : playerId, tick;
+	import xf.game.Defs : playerId, tick;
 	import xf.game.TimeHub;
 	import xf.utils.BitStream : BitStreamReader, BitStreamWriter;
 	import xf.utils.Singleton;
@@ -177,7 +177,6 @@ template EventExpose() {
 
 template _exposeEvent(_ThisType) {
 	static void addHandler(void delegate(typeof(this)) h) {
-		assert (h.ptr !is null);
 		assert (h.funcptr !is null);
 		handlers ~= cast(void delegate(Event))h;
 	}

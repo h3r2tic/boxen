@@ -9,6 +9,7 @@ private {
 	import xf.net.Dispatcher;
 	import xf.net.BudgetWriter;
 	import xf.net.GameComm;
+	import xf.game.Defs;
 	import xf.game.Misc;
 	import xf.game.Event;
 	import xf.game.TimeHub;
@@ -34,24 +35,19 @@ class GameServer : IGameComm {
 		assert (comm !is null);
 		_comm = comm;
 
-		final maxPlayers = comm.maxPlayers();
-		_playerData.alloc(maxPlayers);
-		_maxPlayers = maxPlayers;
-		
+		_playerData.alloc();
+
 		_eventReader = new EventReader;
-		_eventReader.endpoint = NetEndpoint.Server;
 		_eventReader.playerWishMask = &getPlayerWishMask;
 		_eventReader.rollbackTimeToTick = &rollbackTimeToTick;
 
 		_eventWriter = new EventWriter;
-		_eventWriter.endpoint = NetEndpoint.Server;
 		_eventWriter.iterPlayerStreams = &iterPlayerStreams;
 		_eventWriter.playerOrderMask = &playerOrderMask;
 
 		_dispatcher = new Dispatcher(
 			_comm,
-			_playerData.lastTickRecvd,
-			NetEndpoint.Server
+			_playerData.lastTickRecvd.ptr
 		);
 
 		_dispatcher.receiveEvent = &_eventReader.readEvent;
@@ -72,7 +68,7 @@ class GameServer : IGameComm {
 
 
 	void sendData() {
-		for (int pid = 0; pid < _maxPlayers; ++pid) {
+		for (int pid = 0; pid < maxPlayers; ++pid) {
 			if (_playerData.connected[pid]) {
 				_playerData.writer[pid].flush((u8[] bytes) {
 					log.trace("Sending data to player {}.", pid);
@@ -198,10 +194,10 @@ class GameServer : IGameComm {
 		}
 
 		int iterPlayerStreams(int delegate(ref playerId, ref BitStreamWriter) dg) {
-			for (int pid = 0; pid < _maxPlayers; ++pid) {
+			for (int pid = 0; pid < maxPlayers; ++pid) {
 				if (_playerData.connected[pid]) {
 					playerId meh = cast(playerId)pid;
-					if (int r = dg(meh, _playerData.writer.bsw)) {
+					if (int r = dg(meh, _playerData.writer[pid].bsw)) {
 						return r;
 					}
 				}
@@ -225,37 +221,20 @@ class GameServer : IGameComm {
 		Dispatcher		_dispatcher;
 
 		struct PlayerData {
-			BudgetWriter*			writer;
-			bool delegate(Order)*	orderMask;
-			bool delegate(Wish)*	wishMask;
-			tick*					lastTickRecvd;
-			bool*					stateMask;
-			bool*					connected;
+			BudgetWriter[maxPlayers]			writer;
+			bool delegate(Order)[maxPlayers]	orderMask;
+			bool delegate(Wish)[maxPlayers]		wishMask;
+			tick[maxPlayers]					lastTickRecvd;
+			bool[maxPlayers]					stateMask;
+			bool[maxPlayers]					connected;
 
 			void reset(playerId pid) {
 				writer[pid].reset();
 			}
 
-			void alloc(int num) {
-				uword totalSize = 0;
-				foreach (f; this.tupleof) {
-					totalSize += typeof(*f).sizeof * num;
-				}
-				void* mem = mainHeap.allocRaw(totalSize);
-				memset(mem, 0, totalSize);
-				foreach (i, f; this.tupleof) {
-					this.tupleof[i] = cast(typeof(f))mem;
-					{
-						final size = typeof(*f).sizeof * num;
-						mem += size;
-					}
-				}
-				assert (lastTickRecvd !is null);
-				assert (0 == *lastTickRecvd);
-
-
-				void* bswStorage = mainHeap.allocRaw(bswPrealloc * num);
-				foreach (i, ref w; writer[0..num]) {
+			void alloc() {
+				void* bswStorage = mainHeap.allocRaw(bswPrealloc * maxPlayers);
+				foreach (i, ref w; writer) {
 					w.bsw = BitStreamWriter(
 						bswStorage[bswPrealloc * i .. bswPrealloc * (i+1)]
 					);
@@ -270,6 +249,5 @@ class GameServer : IGameComm {
 		bool delegate(Wish)		_defaultWishMask;
 
 		PlayerData		_playerData;
-		uword			_maxPlayers;
 	}
 }

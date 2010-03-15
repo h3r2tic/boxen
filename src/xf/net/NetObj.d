@@ -107,20 +107,25 @@ interface NetObj : GameObj {
 			the object but the client wants it back
 		*/
 		bool keepServerUpdated();
+
+		bool netObjScheduledForDeletion();
+		void netObjScheduleForDeletion();
 	// ----
 
-
-	void	netObjUnref();
-	bool	netObjRef();
-	bool	netObjScheduledForDeletion();
-	void	netObjScheduleForDeletion();
-
-	void	dispose();
+	void		dispose();
 
 	playerId	authOwner();
 	void		setAuthOwner(playerId pid);
 	playerId	realOwner();
 	void		setRealOwner(playerId pid);
+}
+
+void addNetObjScheduleForDeletionHandler(void delegate(NetObj) dg) {
+	netObjScheduleForDeletionHandlers ~= dg;
+}
+
+private {
+	void delegate(NetObj)[]	netObjScheduleForDeletionHandlers;
 }
 
 
@@ -133,10 +138,11 @@ template MNetObj() {
 				bool				_netObjStaticFinalized;
 			}
 
-			NetEndpoint			_initializedForEndpoint;
-			bool				_netObjInitialized;
-			bool				_predicted;
-			bool				_keepServerUpdated;
+			NetEndpoint	_initializedForEndpoint;
+			bool		_netObjInitialized;
+			bool		_predicted;
+			bool		_keepServerUpdated;
+			bool		_netObjScheduledForDeletion;
 		}
 
 
@@ -194,6 +200,22 @@ template MNetObj() {
 		
 		bool keepServerUpdated() {
 			return _keepServerUpdated;
+		}
+
+
+		bool netObjScheduledForDeletion() {
+			return _netObjScheduledForDeletion;
+		}
+
+		void netObjScheduleForDeletion() {
+			synchronized (this) {
+				if (!_netObjScheduledForDeletion) {
+					_netObjScheduledForDeletion = true;
+					foreach (h; .netObjScheduleForDeletionHandlers) {
+						h(this);
+					}
+				}
+			}
 		}
 	} else {
 		static assert (false, "Cannot mixin MNetObj twice in " ~ typeof(this).stringof);

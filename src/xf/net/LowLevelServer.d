@@ -6,7 +6,7 @@ private {
 	import xf.net.Misc;
 	import xf.core.Registry;
 	import xf.utils.BitStream;
-	import xf.game.Misc;
+	import xf.game.Defs;
 }
 
 

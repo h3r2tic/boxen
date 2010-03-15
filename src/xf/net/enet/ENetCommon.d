@@ -3,7 +3,7 @@ module xf.net.enet.ENetCommon;
 private {
 	import xf.Common;
 	import xf.utils.BitStream;
-	import xf.game.Misc : tick, playerId;
+	import xf.game.Defs : tick, playerId;
 	import xf.mem.FixedQueue;
 	import xf.mem.ThreadChunkAllocator;
 	import xf.net.Log : log = netLog, error = netError;

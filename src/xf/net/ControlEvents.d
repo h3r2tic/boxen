@@ -2,7 +2,7 @@ module xf.net.ControlEvents;
 
 private {
 	import xf.game.Event;
-	import xf.game.Misc;
+	import xf.game.Defs;
 }
 
 

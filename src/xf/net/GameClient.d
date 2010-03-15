@@ -41,19 +41,16 @@ class GameClient : IGameComm {
 		//_maxPlayers = maxPlayers;
 		
 		_eventReader = new EventReader;
-		_eventReader.endpoint = NetEndpoint.Client;
 		_eventReader.playerWishMask = &getPlayerWishMask;
 		_eventReader.rollbackTimeToTick = &rollbackTimeToTick;
 
 		_eventWriter = new EventWriter;
-		_eventWriter.endpoint = NetEndpoint.Client;
 		_eventWriter.iterPlayerStreams = &iterPlayerStreams;
 		_eventWriter.playerOrderMask = &playerOrderMask;
 
 		_dispatcher = new Dispatcher(
 			_comm,
-			&_lastTickRecvd,
-			NetEndpoint.Client
+			&_lastTickRecvd
 		);
 
 		_dispatcher.receiveEvent = &_eventReader.readEvent;

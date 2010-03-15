@@ -2,7 +2,7 @@ module xf.net.Misc;
 
 private {
 	import xf.utils.BitStream;
-	import xf.game.Misc : tick;
+	import xf.game.Defs : tick;
 }
 
 

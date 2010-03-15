@@ -8,7 +8,7 @@ private {
 	import xf.Common;
 	import xf.core.Registry : create;
 	import xf.core.JobHub;
-	import xf.game.Misc : tick, playerId;
+	import xf.game.Defs : tick, playerId;
 	import xf.game.MainProcess;
 	import xf.game.TimeHub;
 	import xf.utils.BitStream;
