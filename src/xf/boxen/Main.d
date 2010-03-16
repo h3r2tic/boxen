@@ -18,6 +18,8 @@ private {
 	import xf.game.TimeHub;
 	import xf.game.Event;
 	import xf.game.EventQueue;
+	import xf.game.GameObjEvents;
+	import xf.game.LoginEvents;
 
 	import tango.core.Thread;
 	import Integer = tango.text.convert.Integer;
@@ -33,15 +35,14 @@ private {
 }
 
 
-bool		serverSide = true;
-GameClient	client;
-GameServer	server;
+version (Client) GameClient	client;
+version (Server) GameServer	server;
 EventQueue	eventQueue;
 
 
 
 void updateGame() {
-	if (serverSide) {
+	version (Server) {
 		server.receiveData();
 		timeHub.advanceTick(1);
 		eventQueue.advanceTick(1);
@@ -71,13 +72,6 @@ struct login {
 void main(char[][] args) {
 	printf("Program started\n\n");
 	
-	if (args.length > 1 && args[1] == "client") {
-		serverSide = false;
-		args = args[2..$];
-	} else {
-		args = args[1..$];
-	}
-
 	eventQueue = new LoggingEventQueue;
 	
 
@@ -85,7 +79,7 @@ void main(char[][] args) {
 	u16		port = 8000;
 	char[]	netAddr;
 	
-	if (serverSide) {
+	version (Server) {
 		netAddr = "0.0.0.0";
 	} else {
 		netAddr = "127.0.0.1";
@@ -105,7 +99,7 @@ void main(char[][] args) {
 	Local.addSubmitHandler(&queueEvent);
 	
 
-	if (serverSide) {
+	version (Server) {
 		server = new GameServer((
 			create!(LowLevelServer).named(netBackend~"Server")(32)
 		).start(netAddr, port));
@@ -117,7 +111,7 @@ void main(char[][] args) {
 	
 	int playerNameId = 1;		// for further login requests when the name is already used
 	
-	if (serverSide) {
+	version (Server) {
 		server.setDefaultWishMask((Wish w) { return cast(LoginRequest)w !is null; });
 
 		LoginRequest.addHandler((LoginRequest e) {
@@ -125,7 +119,7 @@ void main(char[][] args) {
 				return pid == e.wishOrigin;
 			};
 			
-			LoginAccepted(e.wishOrigin, e.nick, 0).filter(filter).immediate;
+			LoginAccepted(e.wishOrigin, e.nick).filter(filter).immediate;
 		});
 		
 		LoginAccepted.addHandler((LoginAccepted e) {

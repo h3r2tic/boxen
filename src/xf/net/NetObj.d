@@ -1,7 +1,7 @@
 module xf.net.NetObj;
 
 private {
-	import xf.game.Misc;
+	import xf.game.Defs;
 	import xf.game.GameObj;
 	import xf.utils.BitStream;
 	import xf.mem.Array;

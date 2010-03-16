@@ -5,8 +5,6 @@ private {
 		import tango.core.tools.TraceExceptions;
 	}
 	
-	import Events;
-
 	import xf.Common;
 	import xf.core.Registry : create;
 	import xf.core.InputHub;
@@ -18,6 +16,7 @@ private {
 	import xf.game.TimeHub;
 	import xf.game.Event;
 	import xf.game.EventQueue;
+	import xf.game.LoginEvents;
 
 	import tango.core.Thread;
 	import Integer = tango.text.convert.Integer;
@@ -117,7 +116,7 @@ void main(char[][] args) {
 				return pid == e.wishOrigin;
 			};
 			
-			LoginAccepted(e.wishOrigin, e.nick, 0).filter(filter).immediate;
+			LoginAccepted(e.wishOrigin, e.nick).filter(filter).immediate;
 		});
 		
 		LoginAccepted.addHandler((LoginAccepted e) {

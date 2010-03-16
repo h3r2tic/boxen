@@ -3,58 +3,11 @@ module xf.boxen.Events;
 private {
 	import xf.game.GameObj;
 	import xf.game.Event;
-	import xf.game.Misc;
+	import xf.game.Defs;
 	import xf.net.LocalNetObj;
 	import xf.omg.core.LinearAlgebra;
 }
 
-
-
-class JoinGame : Wish {
-	mixin MEvent;
-}
-
-
-class LoginRequest : Wish {
-	char[]	nick;
-	mixin	MEvent;
-}
-
-
-class LoginAccepted : Order {
-	playerId	pid;
-	char[]		nick;
-	objId		ctrlId;
-	mixin		MEvent;
-
-	override bool strictTiming() {
-		return true;
-	}
-}
-
-
-class LoginRejected : Order {
-	char[]	reason;
-	mixin	MEvent;
-}
-
-
-class PlayerLogin : Order {
-	playerId	pid;
-	char[]		nick;
-	objId		ctrlId;
-	mixin		MEvent;
-
-	override bool strictTiming() {
-		return true;
-	}
-}
-
-
-class PlayerLogout : Order {
-	playerId	pid;
-	mixin		MEvent;
-}
 
 
 class InputWish : Wish {
@@ -77,63 +30,6 @@ class InputWish : Wish {
 	override bool replayed() {
 		return true;
 	}
-}
-
-
-class CreateGameObj : Order {
-	vec3					pos;
-	objId				id;
-	playerId			auth;
-	GameObjType	type;
-	mixin				MEvent;
-}
-
-
-class OverrideAuthority : Order {
-	objId		obj;
-	playerId	player;
-	mixin		MEvent;
-}
-
-
-// temporary authority request
-class RequestAuthority : Wish {
-	objId	obj;
-	mixin	MEvent;
-}
-
-
-// temporary authority release
-class GiveUpAuthority : Wish {
-	objId	obj;
-	mixin	MEvent;
-}
-
-
-// ownership change
-class AcquireObject : Wish {
-	objId	obj;
-	mixin 	MEvent;
-}
-
-
-// ownership release
-class ReleaseObject : Wish {
-	objId	obj;
-	mixin	MEvent;
-}
-
-
-class RefuseObjectAcquisition : Order {
-	objId	obj;
-	mixin	MEvent;
-}
-
-
-class ObjectOwnershipChange : Order {
-	objId		obj;
-	playerId	player;
-	mixin		MEvent;
 }
 
 
