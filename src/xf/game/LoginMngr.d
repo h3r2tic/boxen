@@ -21,8 +21,8 @@ extern (C) extern NetObj[] g_netObjects;
 
 struct PlayerInfo {
 static:
-	cstring[maxPlayers]				nick;
-	bool[maxPlayers]				loggedIn;
+	cstring[maxPlayers]	nick;
+	bool[maxPlayers]	loggedIn;
 
 
 	void reset(playerId pid) {
@@ -100,6 +100,8 @@ private {
 		final filter = (playerId pid) {
 			return pid == e.wishOrigin;
 		};
+
+		log.info("Handling a login request from player \"{}\".", e.nick);
 		
 		if (nickLoggedIn(e.nick)) {
 			LoginRejected("nickname in use").filter(filter).immediate;
@@ -108,12 +110,16 @@ private {
 			
 			objId ctrlId = NetObjMngr.allocId();//gameInterface.genObjId();
 			//auto pdata = createPlayerData(e.wishOrigin, e.nick, ctrlId);
+
+			PlayerInfo.loggedIn[e.wishOrigin] = true;
+			PlayerInfo.nick[e.wishOrigin] = e.nick.dup;
 			
 			// must be before the other events so the peer knows localPlayerId
 			LoginAccepted(e.wishOrigin, e.nick/+, ctrlId+/).filter(filter).immediate;
 
 			for (playerId rpid = 0; rpid < maxPlayers; ++rpid) {
 				if (rpid is e.wishOrigin) continue;
+				if (!PlayerInfo.loggedIn[rpid]) continue;
 
 				PlayerLogin(
 					rpid,
