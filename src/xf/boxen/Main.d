@@ -5,7 +5,7 @@ private {
 		import tango.core.tools.TraceExceptions;
 	}
 	
-	import xf.boxen.Events;
+	//import xf.boxen.Events;
 
 	import xf.Common;
 	import xf.core.Registry : create;
@@ -20,6 +20,7 @@ private {
 	import xf.game.EventQueue;
 	import xf.game.GameObjEvents;
 	import xf.game.LoginEvents;
+	import LoginMngr = xf.game.LoginMngr;
 
 	import tango.core.Thread;
 	import Integer = tango.text.convert.Integer;
@@ -100,6 +101,8 @@ void main(char[][] args) {
 	
 
 	version (Server) {
+		LoginMngr.initialize();
+		
 		server = new GameServer((
 			create!(LowLevelServer).named(netBackend~"Server")(32)
 		).start(netAddr, port));
@@ -114,14 +117,6 @@ void main(char[][] args) {
 	version (Server) {
 		server.setDefaultWishMask((Wish w) { return cast(LoginRequest)w !is null; });
 
-		LoginRequest.addHandler((LoginRequest e) {
-			auto filter = (playerId pid) {
-				return pid == e.wishOrigin;
-			};
-			
-			LoginAccepted(e.wishOrigin, e.nick).filter(filter).immediate;
-		});
-		
 		LoginAccepted.addHandler((LoginAccepted e) {
 			server.setWishMask(e.pid, null);
 		});
