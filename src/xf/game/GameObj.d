@@ -16,7 +16,8 @@ interface GameObj {
 		void		overrideId(objId);
 	// ----
 
-	vec3fi		worldPosition();
+	vec3fi	worldPosition();
+	void	update(double seconds);
 }
 
 template MGameObj() {
