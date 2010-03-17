@@ -1,2 +1,2 @@
-xfbuild -version=Server +D.s.deps +O.s.objs -version=StackTracing -d Main.d impl/ ../utils/impl/ ../net/enet/ +oServer +xtango -g -I../..
-xfbuild -version=Client +D.c.deps +O.c.objs -version=StackTracing -d Main.d impl/ ../utils/impl/ ../net/enet/ +oClient +xtango -g -I../..
+xfbuild -version=Server +D.s.deps +O.s.objs -version=StackTracing -d Main.d impl/ ../utils/impl/ ../net/enet/ +oServer +xtango -g -I../.. -version=ValidateFuncCalls -version=DogCgNoErrorChecking ../gfx/gl3/
+xfbuild -version=Client +D.c.deps +O.c.objs -version=StackTracing -d Main.d impl/ ../utils/impl/ ../net/enet/ +oClient +xtango -g -I../.. -version=ValidateFuncCalls -version=DogCgNoErrorChecking ../gfx/gl3/

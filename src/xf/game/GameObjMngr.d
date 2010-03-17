@@ -34,9 +34,7 @@ version (Server) GameObj createGameObj(cstring typeName, vec3 pos, playerId owne
 	final id = NetObjMngr.allocId();
 	final type = GameObjRegistry.getGameObjType(typeName);
 	final obj = GameObjRegistry
-		.create(type, pos, owner);
-
-	obj.overrideId(id);
+		.create(type, pos, id, owner);
 
 	NetObjMngr.onNetObjCreated(cast(NetObj)obj);
 
@@ -54,9 +52,7 @@ version (Server) GameObj createGameObj(cstring typeName, vec3 pos, playerId owne
 private {
 	version (Client) void handleCreateGameObj(CreateGameObj e) {
 		final obj = GameObjRegistry
-			.create(e.type, e.pos, e.auth);
-
-		obj.overrideId(e.id);
+			.create(e.type, e.pos, e.id, e.auth);
 		NetObjMngr.onNetObjCreated(cast(NetObj)obj);
 	}
 }

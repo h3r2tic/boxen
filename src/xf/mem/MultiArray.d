@@ -85,9 +85,20 @@ pragma(ctfe) cstring multiArray(cstring name, int _growBy, cstring def) {
 	cstring growBy = intToStringCT(_growBy);
 	cstring res;
 	res ~= `private static import xf.mem.OSHeap;`;
-	res ~= `static if (!is(_ma__OuterRef)) alias typeof(this) _ma__OuterRef;`;
+	bool needsOuter = false;
+	foreach (field; fields) {
+		if (field.isChunk) {
+			needsOuter = true;
+			break;
+		}
+	}
+	if (needsOuter) {
+		res ~= `static if (!is(_ma__OuterRef)) alias typeof(this) _ma__OuterRef;`;
+	}
 	res ~= `static struct _ma_` ~ name ~ `{`;
+	if (needsOuter) {
 		res ~= `_ma__OuterRef _this() { return cast(_ma__OuterRef)(cast(void*)this - _ma__OuterRef.init.` ~ name ~ `.offsetof); }`;
+	}
 		foreach (field; fields) {
 			if (field.isChunk) {
 				res ~= field.type ~ `* ` ~ field.name ~ ` = null;`\n;
@@ -127,9 +138,10 @@ pragma(ctfe) cstring multiArray(cstring name, int _growBy, cstring def) {
 		private {
 			void _allocCapacity() {
 				assert (_capacity > 0, "multiArray._allocCapacity :: _capacity must be > 0");
-				alias xf.mem.OSHeap.osHeap _heap;
-				auto _thisOuter = _this();
-				`;
+				alias xf.mem.OSHeap.osHeap _heap;`;
+				if (needsOuter) res ~=
+				`auto _thisOuter = _this();`;
+
 				foreach (field; fields) {
 					res ~= `assert (`~field.chunkSizeVar~` > 0, "multiArray._allocCapacity :: `~field.chunkSizeVar~` must be > 0");`;
 					res ~= field.name~` = cast(`~field.type~`*)_heap.reallocRaw(`~field.name~`, _capacity * (`~field.type~`).sizeof * `~field.chunkSizeVar~`);`\n;
