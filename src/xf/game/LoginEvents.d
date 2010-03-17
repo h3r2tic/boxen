@@ -8,11 +8,6 @@ private {
 
 
 
-class JoinGame : Wish {
-	mixin MEvent;
-}
-
-
 class LoginRequest : Wish {
 	char[]	nick;
 	mixin	MEvent;

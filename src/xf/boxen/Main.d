@@ -5,7 +5,7 @@ private {
 		import tango.core.tools.TraceExceptions;
 	}
 	
-	//import xf.boxen.Events;
+	import xf.boxen.Events;
 
 	import xf.Common;
 	import xf.core.Registry : create;
@@ -14,13 +14,17 @@ private {
 	import xf.core.MessageHub;
 	import xf.core.Message;
 
+	import xf.game.Defs;
+	import xf.game.GameObj;
 	import xf.game.MainProcess;
 	import xf.game.TimeHub;
 	import xf.game.Event;
 	import xf.game.EventQueue;
 	import xf.game.GameObjEvents;
 	import xf.game.LoginEvents;
+	import GameObjMngr = xf.game.GameObjMngr;
 	import LoginMngr = xf.game.LoginMngr;
+	import GameObjRegistry = xf.game.GameObjRegistry;
 
 	import tango.core.Thread;
 	import Integer = tango.text.convert.Integer;
@@ -30,6 +34,9 @@ private {
 	import xf.net.ControlEvents;
 	import xf.net.LowLevelClient;
 	import xf.net.LowLevelServer;
+	import NetObjMngr = xf.net.NetObjMngr;
+
+	import xf.utils.Meta : fn2dg;
 
 	import tango.io.Stdout;
 	import tango.stdc.stdio : printf;
@@ -64,6 +71,39 @@ void updateGame() {
 		client.sendData();
 	}
 }
+
+
+version (Server) void createGameWorld() {
+	/+final type = GameObjRegistry.getGameObjType("PlayerController");
+	final id = NetObjMngr.allocId();
+	
+	CreateGameObj(
+		vec3.zero,
+		id,
+		NoAuthority,
+		type
+	).immediate();+/
+}
+
+
+version (Server) void handlePlayerLogin(playerId pid) {
+	final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, pid);
+
+	AssignController(
+		obj.id
+	).filter((playerId id) { return id == pid; }).immediate();
+}
+
+version (Client) {
+	GameObj	_playerController;
+
+	void handleAssignController(AssignController e) {
+		_playerController = GameObjMngr.getObj(e.id);
+		assert (_playerController !is null);
+		Stdout.formatln("Got a controller assigned.");
+	}
+}
+
 
 struct login {
 	static cstring nick = "Test";
@@ -100,13 +140,17 @@ void main(char[][] args) {
 	Local.addSubmitHandler(&queueEvent);
 	
 
+	GameObjMngr.initialize();
 	version (Server) {
 		LoginMngr.initialize();
+		createGameWorld();
 		
 		server = new GameServer((
 			create!(LowLevelServer).named(netBackend~"Server")(32)
 		).start(netAddr, port));
 	} else {
+		AssignController.addHandler(fn2dg(&handleAssignController));
+		
 		client = new GameClient((
 			create!(LowLevelClient).named(netBackend~"Client")()
 		).connect(0, netAddr, port));
@@ -119,10 +163,8 @@ void main(char[][] args) {
 
 		LoginAccepted.addHandler((LoginAccepted e) {
 			server.setWishMask(e.pid, null);
-		});
-		
-		JoinGame.addHandler((JoinGame e) {
-			server.setStateMask(e.wishOrigin, true);
+			server.setStateMask(e.pid, true);
+			handlePlayerLogin(e.pid);
 		});
 		
 		KickPlayer.addHandler((KickPlayer e) {
@@ -145,7 +187,6 @@ void main(char[][] args) {
 		LoginAccepted.addHandler((LoginAccepted e) {
 			Stdout.formatln("Login accepted!");
 			client.setLocalPlayerId(e.pid);
-			JoinGame().immediate;		// ask the server for state snapshots
 		});
 	}
 	

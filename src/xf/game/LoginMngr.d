@@ -8,7 +8,7 @@ private {
 	import xf.game.GameObjEvents;
 	import xf.game.Log : log = gameLog, error = gameError;
 	import xf.net.ControlEvents;
-	import xf.net.NetObjMngr;
+	import NetObjMngr = xf.net.NetObjMngr;
 	import xf.net.NetObj;
 	import xf.utils.Meta : fn2dg;
 	import xf.omg.core.LinearAlgebra;
@@ -16,7 +16,7 @@ private {
 
 
 // Defined in xf.net.NetObjMngr
-extern (C) extern NetObj[] g_netObjects;
+private extern (C) extern NetObj[] g_netObjects;
 
 
 struct PlayerInfo {
@@ -134,6 +134,8 @@ private {
 			PlayerLogin(e.wishOrigin, e.nick/+, ctrlId+/).filter((playerId pid) { return pid != e.wishOrigin; }).immediate;
 			
 			foreach (o; g_netObjects) {
+				if (o is null) continue;
+				
 				log.trace(
 					"Ordering the client to build an object of type {}",
 					o.gameObjType

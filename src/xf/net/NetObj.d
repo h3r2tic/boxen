@@ -124,6 +124,12 @@ void addNetObjScheduleForDeletionHandler(void delegate(NetObj) dg) {
 	netObjScheduleForDeletionHandlers ~= dg;
 }
 
+void runNetObjScheduleForDeletionHandlers(NetObj o) {
+	foreach (h; netObjScheduleForDeletionHandlers) {
+		h(o);
+	}
+}
+
 private {
 	void delegate(NetObj)[]	netObjScheduleForDeletionHandlers;
 }
@@ -131,6 +137,8 @@ private {
 
 template MNetObj() {
 	static if (!is(typeof(this._netStateInfo))) {
+		private static import xf.game.GameObjRegistry;
+		
 		protected {
 			static {
 				NetStateInfo[32]	_netStateInfo;
@@ -138,7 +146,6 @@ template MNetObj() {
 				bool				_netObjStaticFinalized;
 			}
 
-			NetEndpoint	_initializedForEndpoint;
 			bool		_netObjInitialized;
 			bool		_predicted;
 			bool		_keepServerUpdated;
@@ -158,12 +165,12 @@ template MNetObj() {
 				typeid(typeof(this)),
 				totalStateSize
 			));
+			xf.game.GameObjRegistry.register!(typeof(this))();
 		}
 
-		void	initializeNetObj(NetEndpoint endpt) {
+		void	initializeNetObj() {
 			assert (!_netObjInitialized);
 			_netObjInitialized = true;
-			_initializedForEndpoint = endpt;
 			// TODO: install a debug mechanism for detecing omission of disposal
 		}
 
@@ -211,9 +218,7 @@ template MNetObj() {
 			synchronized (this) {
 				if (!_netObjScheduledForDeletion) {
 					_netObjScheduledForDeletion = true;
-					foreach (h; .netObjScheduleForDeletionHandlers) {
-						h(this);
-					}
+					.runNetObjScheduleForDeletionHandlers(this);
 				}
 			}
 		}

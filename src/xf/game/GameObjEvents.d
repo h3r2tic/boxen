@@ -10,11 +10,11 @@ private {
 
 
 class CreateGameObj : Order {
-	vec3					pos;
-	objId				id;
-	playerId			auth;
+	vec3		pos;
+	objId		id;
+	playerId	auth;
 	GameObjType	type;
-	mixin				MEvent;
+	mixin		MEvent;
 }
 
 

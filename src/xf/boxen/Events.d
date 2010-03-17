@@ -10,16 +10,23 @@ private {
 
 
 
+class AssignController : Order {
+	objId	id;
+	mixin	MEvent;
+}
+
+
 class InputWish : Wish {
 	enum : ubyte {
 		Shoot = 0b1,
 		Use = 0b10
 	}
 	
-	byte		thrust;
-	byte		strafe;
-	vec2		rot = vec2.zero;
+	byte	thrust;
+	byte	strafe;
+	vec2	rot = vec2.zero;
 	ubyte	action;
+	
 	mixin	MEvent;
 
 
@@ -36,19 +43,6 @@ class InputWish : Wish {
 class CreateProjectileOrder : Order {
 	localNetObjId	objId;
 	playerId		creator;
-	vec3				pos;
-	vec3				vel;
-	vec4				col;
-	float				size;
-	float				damage;
-	float				explosionRadius;
-	float				life;
-	mixin			MEvent;
-}
-
-
-class CreateProjectile : Local {
-	playerId	creator;
 	vec3			pos;
 	vec3			vel;
 	vec4			col;
@@ -56,6 +50,19 @@ class CreateProjectile : Local {
 	float			damage;
 	float			explosionRadius;
 	float			life;
+	mixin			MEvent;
+}
+
+
+class CreateProjectile : Local {
+	playerId	creator;
+	vec3		pos;
+	vec3		vel;
+	vec4		col;
+	float		size;
+	float		damage;
+	float		explosionRadius;
+	float		life;
 	mixin		MEvent;
 	
 	
@@ -75,9 +82,9 @@ class DestroyLocalNetObj : Order {
 
 
 class CreateExplosion : Order {
-	vec3			pos;
-	float			damage;
-	float			radius;
+	vec3		pos;
+	float		damage;
+	float		radius;
 	playerId	creator;
 	mixin		MEvent;
 }
@@ -85,7 +92,7 @@ class CreateExplosion : Order {
 
 class EnterVehicleRequest : Wish {
 	objId	obj;
-	byte		seat = -1;		// -1 == first free
+	byte	seat = -1;		// -1 == first free
 	mixin	MEvent;
 }
 
@@ -98,14 +105,14 @@ class LeaveVehicleRequest : Wish {
 class EnterVehicleOrder : Order {
 	playerId	player;
 	objId		obj;
-	byte			seat;
+	byte		seat;
 	mixin		MEvent;
 }
 
 
 class LeaveVehicleOrder : Order {
 	playerId	player;
-	vec3			pos;
+	vec3		pos;
 	mixin		MEvent;
 }
 
@@ -142,7 +149,7 @@ class NotifyPlayerScore : Order {
 
 class RespawnPlayer : Order {
 	playerId	player;
-	vec3			pos;
+	vec3		pos;
 	mixin		MEvent;
 }
 
