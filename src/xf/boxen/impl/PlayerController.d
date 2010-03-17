@@ -6,6 +6,10 @@ private {
 	import xf.game.Defs;
 	import xf.utils.BitStream;
 	import xf.omg.core.LinearAlgebra;
+	import xf.omg.core.CoordSys;
+
+	import xf.boxen.Rendering;
+	import DebugDraw = xf.boxen.DebugDraw;
 }
 
 
@@ -36,10 +40,17 @@ struct PosState {
 
 
 final class PlayerController : NetObj {
-	this(vec3 off, playerId owner) {
+	this(vec3 off, objId id, playerId owner) {
 		_pos = off;
 		_owner = owner;
+		_id = id;
 		initializeNetObj();
+
+		addMesh(
+			DebugDraw.create(DebugDraw.Prim.Box),
+			CoordSys.identity,
+			id
+		);
 	}
 
 	// Implement NetObj

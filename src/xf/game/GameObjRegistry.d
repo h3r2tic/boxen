@@ -2,7 +2,7 @@ module xf.game.GameObjRegistry;
 
 private {
 	import xf.game.GameObj;
-	import xf.game.Defs : playerId;
+	import xf.game.Defs : playerId, objId;
 	import xf.game.Log : log = gameLog;
 	import xf.omg.core.LinearAlgebra;
 }
@@ -13,9 +13,9 @@ void register(T)() {
 	auto type = _nextType++;
 	T.overrideGameObjType(type);
 	_typeFactories ~=
-		function GameObj(vec3 offset, playerId owner) {
+		function GameObj(vec3 offset, objId id, playerId owner) {
 			log.trace("Creating a {}", T.stringof);
-			return new T(offset, owner);
+			return new T(offset, id, owner);
 		};
 	_typeToName ~= T.stringof;
 	_nameToType[T.stringof] = type;
@@ -44,15 +44,15 @@ void reassignType(char[] typeName, GameObjType type) {
 }
 
 
-GameObj create(char[] typeName, vec3 offset, playerId owner) {
+GameObj create(char[] typeName, vec3 offset, objId id, playerId owner) {
 	log.trace("Attempting to create an object of type \"{}\"", typeName);
-	return create(_nameToType[typeName], offset, owner);
+	return create(_nameToType[typeName], offset, id, owner);
 }
 
 
-GameObj create(GameObjType type, vec3 offset, playerId owner) {
+GameObj create(GameObjType type, vec3 offset, objId id, playerId owner) {
 	log.trace("Attempting to create an object of type={}", cast(int)type);
-	return _typeFactories[type](offset, owner);
+	return _typeFactories[type](offset, id, owner);
 }
 
 
@@ -66,6 +66,6 @@ private {
 	char[][]			_typeToName;
 	GameObjType			_nextType = 0;
 
-	GameObj function(vec3, playerId)[] _typeFactories;
+	GameObj function(vec3, objId, playerId)[] _typeFactories;
 }
 

@@ -6,6 +6,8 @@ private {
 	}
 	
 	import xf.boxen.Events;
+	import xf.boxen.Rendering;
+	import DebugDraw = xf.boxen.DebugDraw;
 
 	import xf.Common;
 	import xf.core.Registry : create;
@@ -37,6 +39,11 @@ private {
 	import NetObjMngr = xf.net.NetObjMngr;
 
 	import xf.utils.Meta : fn2dg;
+	import xf.utils.GfxApp;
+	import xf.utils.SimpleCamera;
+
+	import xf.omg.core.LinearAlgebra;
+	import xf.omg.core.CoordSys;
 
 	import tango.io.Stdout;
 	import tango.stdc.stdio : printf;
@@ -74,15 +81,7 @@ void updateGame() {
 
 
 version (Server) void createGameWorld() {
-	/+final type = GameObjRegistry.getGameObjType("PlayerController");
-	final id = NetObjMngr.allocId();
-	
-	CreateGameObj(
-		vec3.zero,
-		id,
-		NoAuthority,
-		type
-	).immediate();+/
+	GameObjMngr.createGameObj("PlayerController", vec3(2, 0, 0), NoAuthority);
 }
 
 
@@ -110,87 +109,168 @@ struct login {
 }
 
 
-void main(char[][] args) {
-	printf("Program started\n\n");
+class TestApp : GfxApp {
+	SimpleCamera camera;
 	
-	eventQueue = new LoggingEventQueue;
-	
+	void initialize() {
+		camera = new SimpleCamera(vec3(0, 2, 5), 0, 0, window.inputChannel);
+		camera.movementSpeed = vec3.one * 40.f;
 
-	char[]	netBackend = "ENet";
-	u16		port = 8000;
-	char[]	netAddr;
-	
-	version (Server) {
-		netAddr = "0.0.0.0";
-	} else {
-		netAddr = "127.0.0.1";
+		DebugDraw.initialize(renderer, window);
+		version (Server) {
+			window.title = "Boxen server";
+		} else {
+			window.title = "Boxen client";
+		}
+		
+		eventQueue = new LoggingEventQueue;
+
+		char[]	netBackend = "ENet";
+		u16		port = 8000;
+		char[]	netAddr;
+		
+		version (Server) {
+			netAddr = "0.0.0.0";
+		} else {
+			netAddr = "127.0.0.1";
+		}
+
+		void queueEvent(Event ev, tick target) {
+			Stdout.formatln(
+				"Submitting {} for tick {} (current = {}).",
+				ev.classinfo.name,
+				target,
+				timeHub.currentTick
+			);
+			eventQueue.addEvent(ev, cast(int)target - timeHub.currentTick);
+		}
+		Order.addSubmitHandler(&queueEvent);
+		Wish.addSubmitHandler(&queueEvent);
+		Local.addSubmitHandler(&queueEvent);
+
+		GameObjMngr.initialize();
+
+		version (Server) {
+			LoginMngr.initialize();
+			createGameWorld();
+			
+			server = new GameServer((
+				create!(LowLevelServer).named(netBackend~"Server")(32)
+			).start(netAddr, port));
+		} else {
+			AssignController.addHandler(fn2dg(&handleAssignController));
+			
+			client = new GameClient((
+				create!(LowLevelClient).named(netBackend~"Client")()
+			).connect(0, netAddr, port));
+		}
+		
+		int playerNameId = 1;		// for further login requests when the name is already used
+		
+		version (Server) {
+			server.setDefaultWishMask((Wish w) { return cast(LoginRequest)w !is null; });
+
+			LoginAccepted.addHandler((LoginAccepted e) {
+				server.setWishMask(e.pid, null);
+				server.setStateMask(e.pid, true);
+				handlePlayerLogin(e.pid);
+			});
+			
+			KickPlayer.addHandler((KickPlayer e) {
+				server.kickPlayer(e.pid);
+			});
+			
+			server.registerDisconnectionHandler((playerId pid) {
+				PlayerLogout(pid).atTick(0);
+			});
+		} else {
+			client.registerConnectionHandler({
+				Stdout.formatln("Sending a LoginRequest wish.");
+				LoginRequest(login.nick).immediate;
+			});
+			
+			LoginRejected.addHandler((LoginRejected e) {
+				LoginRequest(login.nick ~ Integer.toString(++playerNameId)).immediate;		// TODO
+			});
+			
+			LoginAccepted.addHandler((LoginAccepted e) {
+				Stdout.formatln("Login accepted!");
+				client.setLocalPlayerId(e.pid);
+			});
+		}
+
+		jobHub.addRepeatableJob(&update, 60.f);
 	}
 
-	void queueEvent(Event ev, tick target) {
-		Stdout.formatln(
-			"Submitting {} for tick {} (current = {}).",
-			ev.classinfo.name,
-			target,
-			timeHub.currentTick
+
+	void update() {
+		updateGame();
+	}
+
+
+	override void render() {
+		final renderList = renderer.createRenderList();
+		assert (renderList !is null);
+		scope (success) renderer.disposeRenderList(renderList);
+
+		Stdout.formatln("Rendering {} meshes.", meshes.length);
+		for (uword i = 0; i < meshes.length; ++i) {
+			final mesh = meshes.mesh[i];
+			final bin = renderList.getBin(mesh.effect);
+			auto data = bin.add(mesh.effectInstance);
+			mesh.toRenderableData(data);
+			data.coordSys =	meshes.offset[i] in CoordSys(
+				GameObjMngr.getObj(meshes.offsetFrom[i]).worldPosition,
+				quat.identity
+			);
+			data.scale = vec3.one;
+		}
+
+
+		/+void drawCube(vec3 position, quat rotation, vec3 size) {
+			auto mesh = &meshes[0];
+			final bin = renderList.getBin(mesh.effect);
+			auto data = bin.add(mesh.effectInstance);
+			mesh.toRenderableData(data);
+			data.coordSys = CoordSys(vec3fi.from(position), rotation);
+			data.scale = size;
+		}
+
+		void drawCylinder(vec3 position, quat rotation, vec3 size, CoordSys baseCS) {
+			auto mesh = &meshes[1];
+			final bin = renderList.getBin(mesh.effect);
+			auto data = bin.add(mesh.effectInstance);
+			mesh.toRenderableData(data);
+			data.coordSys = baseCS in CoordSys(vec3fi.from(position), rotation);
+			data.scale = size;
+		}
+
+
+		effect.setUniform("worldToView",
+			camera.getMatrix
 		);
-		eventQueue.addEvent(ev, cast(int)target - timeHub.currentTick);
-	}
-	Order.addSubmitHandler(&queueEvent);
-	Wish.addSubmitHandler(&queueEvent);
-	Local.addSubmitHandler(&queueEvent);
-	
+		
+		foreach (ref box; g_boxes) {
+			//gl.Color3fv(box.color.ptr);
+			drawCube(box.position, box.rotation, box.size);
+		}
+		
+		foreach (ref cyl; g_cylinders) {
+			//gl.Color3fv(cyl.color.ptr);
+			drawCylinder(cyl.position, cyl.rotation, cyl.scale, cyl.baseCS);
+		}+/
 
-	GameObjMngr.initialize();
-	version (Server) {
-		LoginMngr.initialize();
-		createGameWorld();
-		
-		server = new GameServer((
-			create!(LowLevelServer).named(netBackend~"Server")(32)
-		).start(netAddr, port));
-	} else {
-		AssignController.addHandler(fn2dg(&handleAssignController));
-		
-		client = new GameClient((
-			create!(LowLevelClient).named(netBackend~"Client")()
-		).connect(0, netAddr, port));
-	}
-	
-	int playerNameId = 1;		// for further login requests when the name is already used
-	
-	version (Server) {
-		server.setDefaultWishMask((Wish w) { return cast(LoginRequest)w !is null; });
+//	TODO
+		DebugDraw.setWorldToView(camera.getMatrix);
 
-		LoginAccepted.addHandler((LoginAccepted e) {
-			server.setWishMask(e.pid, null);
-			server.setStateMask(e.pid, true);
-			handlePlayerLogin(e.pid);
-		});
-		
-		KickPlayer.addHandler((KickPlayer e) {
-			server.kickPlayer(e.pid);
-		});
-		
-		server.registerDisconnectionHandler((playerId pid) {
-			PlayerLogout(pid).atTick(0);
-		});
-	} else {
-		client.registerConnectionHandler({
-			Stdout.formatln("Sending a LoginRequest wish.");
-			LoginRequest(login.nick).immediate;
-		});
-		
-		LoginRejected.addHandler((LoginRejected e) {
-			LoginRequest(login.nick ~ Integer.toString(++playerNameId)).immediate;		// TODO
-		});
-		
-		LoginAccepted.addHandler((LoginAccepted e) {
-			Stdout.formatln("Login accepted!");
-			client.setLocalPlayerId(e.pid);
-		});
+		renderList.sort();
+		renderer.framebuffer.settings.clearColorValue[0] = vec4(0.1, 0.1, 0.1, 1.0);
+		renderer.clearBuffers();
+		renderer.render(renderList);
 	}
-	
+}
 
-	jobHub.addRepeatableJob({ updateGame; }, timeHub.ticksPerSecond);
-	jobHub.exec(new MainProcess);
+
+void main() {
+	(new TestApp).run;
 }

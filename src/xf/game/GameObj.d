@@ -39,7 +39,7 @@ template MGameObj() {
 	private static {
 		GameObjType _gameObjType;
 	}
-	private {
+	protected {
 		objId		_id;
 	}
 }
