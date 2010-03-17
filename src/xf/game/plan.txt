@@ -5,16 +5,24 @@
 	+ Encapsulate budget writers
 	+ Revive the Event scheduler/queue
 	+ Create functioning GameServer and GameClient out of the components
-	
-* NetObj creation and id management
++ NetObj creation and id management
+	+ List all net objects somewhere
+	+ Implement methods to store all net objects' states
+	+ NetObj creation for new players
+	+ Revive game object factories
 
-* Player controllers
+- Player controllers
+	- Implement basic player controllers: no physics, local sim only
+	- Assignment to players
+	- Rendering
+
 * NetObj state serialization and propagation ( just server->client for now )
-* Store IDs in Havok objects
+* Plug Havok for player controllers
+* Debris boxen
+* Visualize auth
 * Collect the 'process' contact callbacks from Havok from all threads
 * Linearize the callbacks and update xf.boxen.game.ContactStorage
 * Revive touch trackers / auth groups on top of the ContactStorage
-* Visualize auth transfers
 * Implement the new time sync algorithm
 * Visualize networking memory and id usage
 * Revive tanks

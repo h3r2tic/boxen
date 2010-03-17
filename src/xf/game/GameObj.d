@@ -10,8 +10,36 @@ private {
 typedef ushort GameObjType = ushort.max;
 
 interface GameObj {
-	objId		id();
-	void		overrideId(objId);
+	// Covered by MGameObj
+		GameObjType	gameObjType();
+		objId		id();
+		void		overrideId(objId);
+	// ----
+
 	vec3fi		worldPosition();
-	GameObjType	gameObjType();
+}
+
+template MGameObj() {
+	final GameObjType gameObjType() {
+		return _gameObjType;
+	}
+	
+	static void overrideGameObjType(GameObjType t) {
+		_gameObjType = t;
+	}
+
+	final objId id() {
+		return _id;
+	}
+
+	final void overrideId(objId i) {
+		_id = i;
+	}
+
+	private static {
+		GameObjType _gameObjType;
+	}
+	private {
+		objId		_id;
+	}
 }
