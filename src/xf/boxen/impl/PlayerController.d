@@ -137,6 +137,9 @@ final class PlayerController : NetObj, IPlayerController {
 
 		_coordSys.rotation = moveQuat * quat.xRotation(_rotation.pitch);
 		_coordSys.origin += vec3fi.from(move);
+
+		_movePending = vec3.zero;
+		_rotationPending = YawPitch.zero;
 	}
 
 	

@@ -10,12 +10,10 @@
 	+ Implement methods to store all net objects' states
 	+ NetObj creation for new players
 	+ Revive game object factories
-
-~ Player controllers
-	- Implement basic player controllers: no physics, local sim only
++ Player controllers
+	+ Implement basic player controllers: no physics, local sim only
 	+ Assignment to players
 	+ Rendering
-
 + NetObj state serialization and propagation ( just server->client for now )
 
 * Plug Havok for player controllers
