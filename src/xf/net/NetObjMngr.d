@@ -1,12 +1,14 @@
 module xf.net.NetObjMngr;
 
 private {
+	import xf.Common;
 	import xf.game.Misc;
 	import xf.game.Defs;
 	import xf.net.NetObj;
 	import xf.net.Log : log = netLog, error = netError;
 	import xf.mem.ChunkQueue;
 	import xf.mem.FixedQueue;
+	import xf.mem.MainHeap;
 	import xf.utils.UidPool;
 }
 
@@ -104,16 +106,26 @@ void onNetObjCreated(NetObj o){
 				"NetObj already exists in the manager: {}",
 				cast(Object)_netObjects[o.id]
 			);
-		} else {
-			_netObjects[o.id] = o;
 		}
 	} else {
 		size_t reqLen = o.id() + 1;
 		const expandBy = 64;
 		reqLen = ((reqLen + expandBy-1) / expandBy) * expandBy;
 		_netObjects.length = reqLen;
-		_netObjects[o.id] = o;
+		
+		version (Server) {
+			foreach (ref d; _netObjData) {
+				d = cast(NetObjData*)
+					mainHeap.reallocRaw(d, reqLen * NetObjData.sizeof);
+			}
+		} else {
+			_netObjData = cast(NetObjData*)
+				mainHeap.reallocRaw(_netObjData, reqLen * NetObjData.sizeof);
+		}
 	}
+
+	_netObjects[o.id] = o;
+	allocObjStates(o.id, o.numNetStateTypes);
 }
 
 
@@ -149,17 +161,64 @@ private {
 
 	
 	struct NetObjData {
-		float[]		stateImportances;
+		// Storage allocated from the scratch _objDataMemCur
 		void*[]		lastWrittenStates;
+		float[]		stateImportances;
+
+		static uword memRequired(uword numStates) {
+			return numStates * ((void*).sizeof + float.sizeof);
+		}
+
+		static NetObjData alloc(void* mem, uword numStates) {
+			NetObjData res;
+			res.lastWrittenStates = (cast(void**)mem)[0..numStates];
+			mem += (void*).sizeof + numStates;
+			res.stateImportances = (cast(float*)mem)[0..numStates];
+			return res;
+		}
 	}
 
-	alias .g_netObjects			_netObjects;
-	
-	NetObjData[][maxPlayers]	_serverNetObjData;
-	NetObjData[]				_clientNetObjData;
+	alias .g_netObjects _netObjects;
 
-	ScratchFIFO				_rawStateQueue;
-	ScratchFIFO				_objStatePtrQueue;
+	version (Server) {
+		// Storage in mainHeap. TODO: something less prone to fragmentation or prealloc.
+		NetObjData*[maxPlayers]	_netObjData;
+	} else {
+		NetObjData*				_netObjData;
+	}
+
+	ScratchFIFO		_rawStateQueue;
+	ScratchFIFO		_objStatePtrQueue;
+
+	ScratchFIFO		_objDataMem1;
+	ScratchFIFO		_objDataMem2;
+
+	ScratchFIFO*	_objDataMemCur;
+	ScratchFIFO*	_objDataMemPrev;
+
+	static this() {
+		_objDataMemCur = &_objDataMem1;
+		_objDataMemPrev = &_objDataMem2;
+	}
+
+	void swapObjDataMem() {
+		final t = _objDataMemCur;
+		_objDataMemCur = _objDataMemPrev;
+		_objDataMemPrev = t;
+	}
+
+	void allocObjStates(objId id, uword numStates) {
+		final memReq = NetObjData.memRequired(numStates);
+
+		version (Server) {
+			foreach (ref d; _netObjData) {
+				d[id] = NetObjData.alloc(_objDataMemCur.pushBack(memReq), numStates);
+			}
+		} else {
+			_netObjData[id] = NetObjData.alloc(_objDataMemCur.pushBack(memReq), numStates);
+		}
+	}
+	
 	FixedQueue!(void*[])	_tickStateQueue;
 	tick					_firstTickInQueue;
 	tick					_lastTickInQueue;
