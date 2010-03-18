@@ -7,6 +7,8 @@ private {
 	
 	import xf.boxen.Events;
 	import xf.boxen.Rendering;
+	import xf.boxen.Input;
+	import xf.boxen.model.IPlayerController;
 	import DebugDraw = xf.boxen.DebugDraw;
 
 	import xf.Common;
@@ -66,6 +68,7 @@ void updateGame() {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
 		}
+		GameObjMngr.update(timeHub.secondsPerTick);
 		NetObjMngr.storeNetObjStates(timeHub.currentTick);
 		for (playerId i = 0; i < maxPlayers; ++i) {
 			if (LoginMngr.PlayerInfo.loggedIn[i]) {
@@ -93,12 +96,17 @@ void updateGame() {
 			timeHub.trimHistory(timeHub.currentTick - client.lastTickReceived);
 		}
 
+		_playerInputMap.update();
+		_playerInputSampler.sample();
+
 		timeHub.advanceTick(1);
 		eventQueue.advanceTick(1);
 		while (eventQueue.moreEvents) {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
 		}
+
+		GameObjMngr.update(timeHub.secondsPerTick);
 
 		if (client.connected) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
@@ -124,26 +132,89 @@ void updateGame() {
 }
 
 
-version (Server) void createGameWorld() {
-	GameObjMngr.createGameObj("PlayerController", vec3(2, 0, 0), NoAuthority);
+version (Server) {
+	void createGameWorld() {
+		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, 0), NoAuthority);
+	}
+
+
+	GameObj[maxPlayers] _playerControllers;
+
+
+	void handlePlayerLogin(playerId pid) {
+		final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, ServerAuthority/+pid+/);
+
+		AssignController(
+			obj.id
+		).filter((playerId id) { return id == pid; }).immediate();
+
+		_playerControllers[pid] = obj;
+	}
+
+	void handleInputWish(InputWish e) {
+		/+if (serverSide) {
+			tuneClientTiming(e);
+		}+/
+		
+		float b2f(byte b) {
+			return cast(float)b / 127.f;
+		}
+
+		bool useAction = (e.action & 2) != 0;
+		bool shootAction = (e.action & 1) != 0;
+		auto pid = e.wishOrigin;
+		auto ctrl = cast(IPlayerController)_playerControllers[pid];
+			
+		float strafe = b2f(e.strafe) * timeHub.secondsPerTick();
+		float fwd = b2f(e.thrust) * timeHub.secondsPerTick();
+
+		// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
+		float moveSpeed = 10.f;
+		ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
+
+		Stdout.formatln("Controller.move({})", vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
+
+		float rotSpeed = 10.f;
+		float yawRot = e.rot.x * timeHub.secondsPerTick();
+		float pitchRot = e.rot.y * timeHub.secondsPerTick();
+		ctrl.yawRotate(yawRot * rotSpeed);
+		ctrl.pitchRotate(pitchRot * rotSpeed);
+	}
 }
 
-
-version (Server) void handlePlayerLogin(playerId pid) {
-	final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, ServerAuthority/+pid+/);
-
-	AssignController(
-		obj.id
-	).filter((playerId id) { return id == pid; }).immediate();
+class PlayerInputReader : InputReader {
+	void handle(PlayerInput* i) {
+		const double delaySeconds = 0.04;		
+		tick targetTick = cast(tick)(timeHub.inputTick + timeHub.secondsToTicks(delaySeconds));
+		
+		ubyte action = 0;
+		if (i.shoot) {
+			action |= InputWish.Shoot;
+		}
+		if (i.use) {
+			action |= InputWish.Use;
+		}
+		
+		InputWish(i.thrust, i.strafe, i.rot, action).atTick(targetTick);
+	}
+	
+	this() {
+		registerReader!(PlayerInput)(&this.handle);
+	}
 }
 
 version (Client) {
-	GameObj	_playerController;
+	PlayerInputMap		_playerInputMap;
+	PlayerInputSampler	_playerInputSampler;	
+	GameObj				_playerController;
 
 	void handleAssignController(AssignController e) {
 		_playerController = GameObjMngr.getObj(e.id);
 		assert (_playerController !is null);
 		Stdout.formatln("Got a controller assigned.");
+
+		_playerInputSampler
+			.outgoing.addReader(new PlayerInputReader);		// start reading inputs			
 	}
 }
 
@@ -202,6 +273,10 @@ class TestApp : GfxApp {
 				create!(LowLevelServer).named(netBackend~"Server")(32)
 			).start(netAddr, port));
 		} else {
+			_playerInputMap = new PlayerInputMap(inputHub.mainChannel);
+			_playerInputMap.outgoing.addReader(_playerInputSampler = new PlayerInputSampler);
+
+
 			AssignController.addHandler(fn2dg(&handleAssignController));
 			
 			client = new GameClient((
@@ -217,9 +292,9 @@ class TestApp : GfxApp {
 			server.setDefaultWishMask((Wish w) { return cast(LoginRequest)w !is null; });
 
 			LoginAccepted.addHandler((LoginAccepted e) {
+				handlePlayerLogin(e.pid);
 				server.setWishMask(e.pid, null);
 				server.setStateMask(e.pid, true);
-				handlePlayerLogin(e.pid);
 			});
 			
 			KickPlayer.addHandler((KickPlayer e) {
@@ -229,6 +304,8 @@ class TestApp : GfxApp {
 			server.registerDisconnectionHandler((playerId pid) {
 				PlayerLogout(pid).atTick(0);
 			});
+
+			InputWish.addHandler(fn2dg(&handleInputWish));
 		} else {
 			client.registerConnectionHandler({
 				Stdout.formatln("Sending a LoginRequest wish.");

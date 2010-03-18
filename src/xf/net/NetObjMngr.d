@@ -233,7 +233,10 @@ private {
 
 
 	// Pretty arbitrary, just large so unsent states get priority
-	const float defaultStateImportance = 1e+10;
+	const float _defaultStateImportance = 1e+10;
+
+	// Not zero, so even still objects get updated sometimes to verify their states
+	const float _minStateImportance = 1e-10;
 
 	void updateStateImportances(NetObjData* objData) {
 		assert (_curTickStates !is null);
@@ -259,7 +262,7 @@ private {
 
 					imp += diff;
 				} else {
-					imp += defaultStateImportance;
+					imp += _defaultStateImportance;
 				}
 			}
 		}
@@ -270,7 +273,7 @@ private {
 		foreach (id, obj; _netObjects) {
 			if (obj !is null) {
 				final data = &objData[id];
-				data.stateImportances[0..data.numStates] = defaultStateImportance;
+				data.stateImportances[0..data.numStates] = _defaultStateImportance;
 			}
 		}
 	}
@@ -361,7 +364,7 @@ private {
 				dg(&writer.bsw);
 
 				final data = &objData[s.id];
-				data.stateImportances[s.state] = 0.0f;
+				data.stateImportances[s.state] = _minStateImportance;
 				data.lastWrittenAtTick[s.state] = curTick;
 				data.lastWrittenStates[s.state] = curState;
 			}

@@ -30,6 +30,15 @@ GameObj getObj(objId id) {
 }
 
 
+void update(double seconds) {
+	foreach (o; g_netObjects) {
+		if (o) {
+			o.update(seconds);
+		}
+	}
+}
+
+
 version (Server) GameObj createGameObj(cstring typeName, vec3 pos, playerId owner) {	
 	final id = NetObjMngr.allocId();
 	final type = GameObjRegistry.getGameObjType(typeName);
