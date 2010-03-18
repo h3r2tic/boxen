@@ -45,13 +45,13 @@ void reassignType(char[] typeName, GameObjType type) {
 
 
 GameObj create(char[] typeName, vec3 offset, objId id, playerId owner) {
-	log.trace("Attempting to create an object of type \"{}\"", typeName);
+	log.trace("Attempting to create an object of type \"{}\", id={}, owner={}", typeName, id, owner);
 	return create(_nameToType[typeName], offset, id, owner);
 }
 
 
 GameObj create(GameObjType type, vec3 offset, objId id, playerId owner) {
-	log.trace("Attempting to create an object of type={}", cast(int)type);
+	log.trace("Attempting to create an object of type={}, id={}, owner={}", cast(int)type, id, owner);
 	return _typeFactories[type](offset, id, owner);
 }
 

@@ -31,13 +31,13 @@ class EventReader {
 
 		version (Server) {
 			Event evt = readEventOr(bs, EventType.Wish, {
-				log.info("Client {} tried to send an invalid event. Kicking.", pid);
+				log.error("Client {} tried to send an invalid event. Kicking.", pid);
 				KickPlayer(pid).delayed(5);
 			});
 			if (evt is null) return false;
 			
 			if (!playerWishMask(pid, cast(Wish)evt)) {
-				log.info("Wish blocked: {}", evt.classinfo.name);
+				log.warn("Wish blocked: {}", evt.classinfo.name);
 				return true;
 			} else {
 				log.trace("Received a Wish: {}.", evt.classinfo.name);

@@ -31,6 +31,7 @@ private {
 	import tango.core.Thread;
 	import Integer = tango.text.convert.Integer;
 
+	import xf.net.NetObj;
 	import xf.net.GameClient;
 	import xf.net.GameServer;
 	import xf.net.ControlEvents;
@@ -65,16 +66,59 @@ void updateGame() {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
 		}
+		NetObjMngr.storeNetObjStates(timeHub.currentTick);
+		for (playerId i = 0; i < maxPlayers; ++i) {
+			if (LoginMngr.PlayerInfo.loggedIn[i]) {
+				NetObjMngr.updateStateImportances(i);
+				final writer = server.getWriterForPlayer(i);
+				writer.bsw.write(false);		// end of events
+				static assert (uint.sizeof == tick.sizeof);
+				writer.bsw.write(cast(uint)timeHub.currentTick);
+				NetObjMngr.writeStates(
+					i,
+					timeHub.currentTick,
+					(NetObj) {
+						return 1.0f;		// importance
+					},
+					writer
+				);
+			}
+		}
 		server.sendData();
 		debug printf(`tick: %d`\n, timeHub.currentTick);
 	} else {
 		client.receiveData();
+
+		if (timeHub.currentTick > client.lastTickReceived) {
+			timeHub.trimHistory(timeHub.currentTick - client.lastTickReceived);
+		}
+
 		timeHub.advanceTick(1);
 		eventQueue.advanceTick(1);
 		while (eventQueue.moreEvents) {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
 		}
+
+		if (client.connected) {
+			NetObjMngr.storeNetObjStates(timeHub.currentTick);
+			/+NetObjMngr.updateStateImportances();
+			final writer = client.getWriter();
+			Stdout.formatln("Bits in writer before states: {}.\n{}", writer.bsw.writeOffset, writer.bsw.toString);
+			writer.bsw.write(false);		// end of events
+			static assert (uint.sizeof == tick.sizeof);
+			writer.bsw.write(cast(uint)timeHub.currentTick);
+			writer.bsw.flush();
+			Stdout.formatln("Sending:\n{}", writer.bsw.toString);
+			/+NetObjMngr.writeStates(
+				timeHub.currentTick,
+				(NetObj) {
+					return 1.0f;		// importance
+				},
+				writer
+			);+/+/
+		}
+		
 		client.sendData();
 	}
 }
@@ -86,7 +130,7 @@ version (Server) void createGameWorld() {
 
 
 version (Server) void handlePlayerLogin(playerId pid) {
-	final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, pid);
+	final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, ServerAuthority/+pid+/);
 
 	AssignController(
 		obj.id
@@ -213,7 +257,7 @@ class TestApp : GfxApp {
 		assert (renderList !is null);
 		scope (success) renderer.disposeRenderList(renderList);
 
-		Stdout.formatln("Rendering {} meshes.", meshes.length);
+		//Stdout.formatln("Rendering {} meshes.", meshes.length);
 		for (uword i = 0; i < meshes.length; ++i) {
 			final mesh = meshes.mesh[i];
 			final bin = renderList.getBin(mesh.effect);

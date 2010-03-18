@@ -59,6 +59,7 @@ struct NetStateInfo {
 				calcDifference;
 
 	uword		size;
+	uword		offset;
 	TypeInfo	typeInfo;
 }
 
@@ -70,8 +71,10 @@ struct NetObjInfo {
 }
 
 
-void registerNetObjInfo(NetObjInfo info) {
+ushort registerNetObjInfo(NetObjInfo info) {
+	ushort res = cast(ushort)_netObjInfo.length;
 	_netObjInfo.pushBack(info);
+	return res;
 }
 
 
@@ -86,6 +89,11 @@ NetObjInfo* findNetObjInfo(TypeInfo ti) {
 }
 
 
+NetObjInfo* getNetObjInfo(ushort idx) {
+	return &_netObjInfo.ptr[idx];
+}
+
+
 private {
 	Array!(NetObjInfo)	_netObjInfo;
 }
@@ -93,8 +101,9 @@ private {
 
 interface NetObj : GameObj {
 	// Covered by MNetObj:
-		uint	numNetStateTypes();
-		void	getNetStateInfo(uint state, NetStateInfo* info);
+		uint		numNetStateTypes();
+		void		getNetStateInfo(uint state, NetStateInfo* info);
+		NetObjInfo*	getNetObjInfo();
 
 		bool	isPredicted();
 		void	overridePredicted(bool);
@@ -144,6 +153,7 @@ template MNetObj() {
 				NetStateInfo[32]	_netStateInfo;
 				int					_numNetStateInfo;
 				bool				_netObjStaticFinalized;
+				ushort				_netObjInfoIdx;
 			}
 
 			bool		_netObjInitialized;
@@ -157,10 +167,11 @@ template MNetObj() {
 			assert (!_netObjStaticFinalized);
 			_netObjStaticFinalized = true;
 			size_t totalStateSize = 0;
-			foreach (nsi; _netStateInfo[0.._numNetStateInfo]) {
+			foreach (ref nsi; _netStateInfo[0.._numNetStateInfo]) {
+				nsi.offset = totalStateSize;
 				totalStateSize += nsi.size;
 			}
-			.registerNetObjInfo(NetObjInfo(
+			_netObjInfoIdx = .registerNetObjInfo(NetObjInfo(
 				_netStateInfo[0.._numNetStateInfo],
 				typeid(typeof(this)),
 				totalStateSize
@@ -187,6 +198,10 @@ template MNetObj() {
 			assert (_netObjInitialized);
 			assert (state < _numNetStateInfo);
 			*info = _netStateInfo[state];
+		}
+
+		NetObjInfo*	getNetObjInfo() {
+			return .getNetObjInfo(_netObjInfoIdx);
 		}
 		
 

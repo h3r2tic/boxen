@@ -6,6 +6,9 @@ private {
 
 	alias size_t	uword;
 	alias ptrdiff_t	word;
+
+// tmp
+	import tango.io.Stdout;
 }
 
 
@@ -63,23 +66,24 @@ struct BitStreamWriter {
 
 		auto d = data;
 		auto off = writeOffset % wordBits;
-		if (off) {
-			if (off + bits <= wordBits) {
-				w <<= off;
-				*d |= w;
-				writeOffset += bits;
-				data = d;
-			} else {
-				uword w1 = w, w2 = w;
-				w1 <<= off;
-				w2 >>= wordBits - off;
-				*d++ |= w1;
-				*d = w2;
-				writeOffset += bits;
-				data = d;
-			}
+
+		if (off + bits == wordBits) {
+			w <<= off;
+			*d++ |= w;
+			*d = 0;
+			writeOffset += bits;
+			data = d;
+		} else if (off + bits < wordBits) {
+			w <<= off;
+			*d |= w;
+			writeOffset += bits;
+			data = d;
 		} else {
-			*d++ = w;
+			uword w1 = w, w2 = w;
+			w1 <<= off;
+			w2 >>= wordBits - off;
+			*d++ |= w1;
+			*d = w2;
 			writeOffset += bits;
 			data = d;
 		}
@@ -141,7 +145,10 @@ struct BitStreamWriter {
 	}
 
 	BitStreamWriter* writeGeneric(T)(T x) {
-		static if (T.sizeof > uword.sizeof) {
+		static if (is(T == bool)) {
+			uword y = x ? 1 : 0;
+			writeBits(y, 1);
+		} else static if (T.sizeof > uword.sizeof) {
 			static assert (uword.sizeof * 2 == T.sizeof);
 			writeUWord(*cast(uword*)&x);
 			writeUWord(*(cast(uword*)&x+1));
@@ -265,6 +272,7 @@ struct BitStreamReader {
 	static BitStreamReader opCall(uword* storage, uint bytes) {
 		BitStreamReader res;
 		res.data = cast(uword*)storage;
+		res.dataBlockStart = res.data;
 		uword lenMod8 = *res.data & 0b111;
 		res.dataBlockSize = (bytes * 8) - ((8 - lenMod8) & 0b111);
 		assert (res.dataBlockSize % 8 == lenMod8);
@@ -299,24 +307,24 @@ struct BitStreamReader {
 		auto off = readOffset % wordBits;
 		uword mask = (1 << bits) - 1;
 
-		if (off) {
-			if (off + bits <= wordBits) {
-				uword w1 = *d;
-				w1 >>= off;
-				*w = w1 & mask;
-				data = d;
-				readOffset += bits;
-			} else {
-				uword w1 = *d++;
-				uword w2 = *d;
-				w1 >>= off;
-				w2 <<= wordBits - off;
-				*w = (w1 | w2) & mask;
-				data = d;
-				readOffset += bits;
-			}
+		if (off + bits == wordBits) {
+			uword w1 = *d++;
+			w1 >>= off;
+			*w = w1 & mask;
+			data = d;
+			readOffset += bits;
+		} else if (off + bits < wordBits) {
+			uword w1 = *d;
+			w1 >>= off;
+			*w = w1 & mask;
+			data = d;
+			readOffset += bits;
 		} else {
-			*w = *d++ & mask;
+			uword w1 = *d++;
+			uword w2 = *d;
+			w1 >>= off;
+			w2 <<= wordBits - off;
+			*w = (w1 | w2) & mask;
 			data = d;
 			readOffset += bits;
 		}
@@ -385,7 +393,11 @@ again:
 
 
 	BitStreamReader* readGeneric(T)(T* x) {
-		static if (T.sizeof > uword.sizeof) {
+		static if (is(T == bool)) {
+			uword y;
+			readBits(&y, 1);
+			*x = (1 == y) ? true : false;
+		} else static if (T.sizeof > uword.sizeof) {
 			static assert (uword.sizeof * 2 == T.sizeof);
 			readUWord(cast(uword*)x);
 			readUWord(cast(uword*)x+1);
@@ -396,6 +408,9 @@ again:
 			readBits(&y, T.sizeof * 8);
 			*x = *cast(T*)&y;
 		}
+
+		Stdout.formatln("readGeneric({}) -> {}", T.stringof, *x);
+
 		return this;
 	}
 
@@ -439,6 +454,39 @@ again:
 	}
 
 
+	int iterBits(int delegate(ref uword b) dg) {
+		uword* d = dataBlockStart;
+		for (word len = cast(word)dataBlockSize; len > 0; len -= wordBits, ++d) {
+			word l = len;
+			if (l > wordBits) l = wordBits;
+			for (word i = 0; i < l; ++i) {
+				uword b = ((*d & (1 << i)) != 0 ? 1 : 0);
+				if (auto r = dg(b)) {
+					return r;
+				}
+			}
+		}
+		return 0;
+	}
+
+
+	char[] toString() {
+		char[] str;
+		str ~= '(';
+		str ~= Convert.to!(char[])(dataBlockSize);
+		str ~= ") ";
+		static assert (header <= 8);
+		word i = 8 - header;
+		foreach (b; &iterBits) {
+			str ~= cast(char)('0' + b);
+			if (i++ % 8 == 7) {
+				str ~= ' ';
+			}
+		}
+		return str;
+	}
+
+
 	alias readFloat				opCall;
 	alias readString			opCall;
 	alias readGeneric!(bool)	opCall;
@@ -464,6 +512,7 @@ again:
 
 
 	uword*	data;
+	uword*	dataBlockStart;
 	uword	dataBlockSize;
 	uword	readOffset = header;
 }

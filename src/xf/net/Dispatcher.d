@@ -6,6 +6,7 @@ private {
 	import xf.net.Misc : readTick;
 	import xf.net.Log : log = netLog;
 	import xf.utils.BitStream;
+	import tango.io.Stdout;	// tmp
 }
 
 
@@ -41,7 +42,8 @@ class Dispatcher {
 			delegate tick(playerId pid, BitStreamReader* bs, uint* retained) {
 				bool receivedTick = *retained > 0;
 
-				log.trace("Dispatcher: receiving data.");
+				log.trace("Dispatcher: receiving {} bits of data. Retained = {}.", bs.dataBlockSize, *retained);
+				Stdout.formatln("{}", bs.toString);
 
 				while (!bs.empty) {
 					bool eventInStream = 0 == *retained;
@@ -59,25 +61,19 @@ class Dispatcher {
 							receivedTick = true;
 
 							lastTickRecvd[pid] = readTick(bs);
-
-							assert (false, "TODO outside of the Dispatcher");
-							/+if (NetEndpoint.Client == endpoint) {
-								if (curTick > lastTickRecvd[pid]) {
-									timeHub.trimHistory(timeHub.currentTick - lastTickRecvd[pid]);
-								}
-							}+/
-						}							
+						}
 						*retained = 0;
 						
 						version (Client) {
 							if (lastTickRecvd[pid] > curTick) {
-								debug printf(`retaining stream and returning... (recvd: %d, local: %d)`\n, lastTickRecvd, timeHub.currentTick);
+								log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
 								*retained = 1;
 								return lastTickRecvd[pid];
 							}
 						}
 						
 						if (!bs.empty) {
+							log.trace("Snapshot has {} bits", bs.dataBlockSize - bs.readOffset);
 							//printf("snapshot");
 							receiveStateSnapshot(pid, bs);
 						}

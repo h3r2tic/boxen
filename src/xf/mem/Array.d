@@ -161,6 +161,11 @@ struct Array(
 		return _ptr;
 	}
 
+
+	size_t capacity() {
+		return _capacity;
+	}
+
 	
 	private {
 		T*		_ptr = null;
