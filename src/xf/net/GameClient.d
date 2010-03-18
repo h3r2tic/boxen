@@ -9,7 +9,7 @@ private {
 	import xf.net.Dispatcher;
 	import xf.net.BudgetWriter;
 	import xf.net.GameComm;
-	import xf.game.Misc;
+	import xf.game.Defs;
 	import xf.game.Event;
 	import xf.game.TimeHub;
 	import xf.utils.BitStream;
@@ -29,6 +29,8 @@ class GameClient : IGameComm {
 	// Can't overflow this amount
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
 
+
+	void delegate(playerId, BitStreamReader*) receiveStateSnapshot;
 
 	
 	this (LowLevelClient comm) {
@@ -54,7 +56,6 @@ class GameClient : IGameComm {
 		);
 
 		_dispatcher.receiveEvent = &_eventReader.readEvent;
-		_dispatcher.receiveStateSnapshot = &receiveStateSnapshot;
 
 		Wish.addSubmitHandler(&_eventWriter.consume);
 		AdjustTick.addHandler(&this.adjustTick);
@@ -64,6 +65,8 @@ class GameClient : IGameComm {
 
 
 	void receiveData() {
+		assert (receiveStateSnapshot !is null);
+		_dispatcher.receiveStateSnapshot = this.receiveStateSnapshot;
 		_dispatcher.dispatch(timeHub.currentTick);
 	}
 
@@ -115,11 +118,6 @@ class GameClient : IGameComm {
 
 
 	protected {
-		void receiveStateSnapshot(playerId, BitStreamReader*) {
-			assert (false, "TODO");
-		}
-
-
 		void adjustTick(AdjustTick e) {
 			log.info("Adjusting tick to {}", e.serverTick);
 			

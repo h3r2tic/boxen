@@ -16,7 +16,8 @@
 	+ Assignment to players
 	+ Rendering
 
-* NetObj state serialization and propagation ( just server->client for now )
++ NetObj state serialization and propagation ( just server->client for now )
+
 * Plug Havok for player controllers
 * Debris boxen
 * Visualize auth

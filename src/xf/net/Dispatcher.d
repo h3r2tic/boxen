@@ -45,9 +45,9 @@ class Dispatcher {
 				log.trace("Dispatcher: receiving {} bits of data. Retained = {}.", bs.dataBlockSize, *retained);
 				Stdout.formatln("{}", bs.toString);
 
-				while (!bs.empty) {
-					bool eventInStream = 0 == *retained;
-					
+				bool eventInStream = 0 == *retained;
+
+				while (!bs.isEmpty) {
 					if (eventInStream && (bs.read(&eventInStream), eventInStream)) {
 						//printf("event");
 						if (!receiveEvent(pid, bs)) {
@@ -72,7 +72,7 @@ class Dispatcher {
 							}
 						}
 						
-						if (!bs.empty) {
+						if (!bs.isEmpty) {
 							log.trace("Snapshot has {} bits", bs.dataBlockSize - bs.readOffset);
 							//printf("snapshot");
 							receiveStateSnapshot(pid, bs);

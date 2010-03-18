@@ -93,6 +93,29 @@ void storeNetObjStates(tick curTick) {
 }
 
 
+version (Client) void receiveStateSnapshot(playerId, BitStreamReader* bs) {
+	assert (!bs.isEmpty);
+	static assert (objId.sizeof == ushort.sizeof);
+	objId id;
+	ushort stateI;
+	bs.read(cast(ushort*)&id);
+	bs.read(&stateI);
+	final obj = _netObjects[id];
+	assert (obj !is null);
+	final objInfo = obj.getNetObjInfo();
+	final stateInfo = &objInfo.netStateInfo[stateI];
+	final stateMemSize = stateInfo.size;
+	final stateMem = _objDataMemCur.pushBack(stateMemSize);
+
+	void delegate(BitStreamReader*) dg;
+	dg.funcptr = stateInfo[stateI].unserialize;
+	dg.ptr = stateMem;
+	dg(bs);
+
+	stateInfo.load(obj, stateMem);
+}
+
+
 void dropStatesOlderThan(tick tck) {
 	assert (tck >= _firstTickInQueue);
 	int numToDrop = tck - _firstTickInQueue;
@@ -107,7 +130,7 @@ void dropStatesOlderThan(tick tck) {
 }
 
 
-void onNetObjCreated(NetObj o){
+void onNetObjCreated(NetObj o) {
 	assert (o !is null);
 	if (o.id < _netObjects.length) {
 		if (_netObjects[o.id] !is null) {
