@@ -71,7 +71,7 @@ class GameServer : IGameComm {
 		for (int pid = 0; pid < maxPlayers; ++pid) {
 			if (_playerData.connected[pid]) {
 				_playerData.writer[pid].flush((u8[] bytes) {
-					log.trace("Sending data to player {}.", pid);
+					log.trace("Sending {} bytes of data to player {}.", bytes.length, pid);
 					_comm.send(bytes, cast(playerId)pid);
 				});
 			}
@@ -118,6 +118,12 @@ class GameServer : IGameComm {
 	
 	void registerDisconnectionHandler(void delegate(playerId) h) {
 		return _comm.registerDisconnectionHandler(h);
+	}
+
+
+	BudgetWriter* getWriterForPlayer(playerId pid) {
+		assert (_playerData.connected[pid]);
+		return &_playerData.writer[pid];
 	}
 
 

@@ -5,7 +5,7 @@ module xf.game.Defs;
 enum { maxPlayers = 32 }
 
 typedef uint	tick;
-typedef uint	objId;
+typedef ushort	objId;
 typedef ubyte	playerId;
 
 

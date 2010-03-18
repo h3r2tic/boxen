@@ -71,7 +71,7 @@ class GameClient : IGameComm {
 	void sendData() {
 		if (_connected) {
 			_writer.flush((u8[] bytes) {
-				log.trace("Sending data to server.");
+				log.trace("Sending {} bytes of data to server.", bytes.length);
 				_comm.send(bytes);
 			});
 		}
@@ -103,6 +103,15 @@ class GameClient : IGameComm {
 		_localPlayerId = id;
 	}
 
+
+	BudgetWriter* getWriter() {
+		return &_writer;
+	}
+
+
+	bool connected() {
+		return _connected;
+	}
 
 
 	protected {
