@@ -449,7 +449,7 @@ again:
 		}
 	}
 
-	bool empty() {
+	bool isEmpty() {
 		return readOffset >= dataBlockSize;
 	}
 
@@ -610,7 +610,7 @@ unittest {
 
 			assert (re.readOffset == lenWritten);
 			assert (re.readOffset == re.dataBlockSize, Format("{} != {}", re.readOffset, re.dataBlockSize));
-			assert (re.empty);
+			assert (re.isEmpty);
 		}
 	}
 
@@ -725,7 +725,7 @@ unittest {
 		assert("onoz i can has string" == spam);
 
 		assert (wr.writeOffset == re.readOffset);
-		assert (re.empty);
+		assert (re.isEmpty);
 	}
 
 	Stdout.formatln("All tests passed");

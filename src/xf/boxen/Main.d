@@ -207,6 +207,8 @@ class TestApp : GfxApp {
 			client = new GameClient((
 				create!(LowLevelClient).named(netBackend~"Client")()
 			).connect(0, netAddr, port));
+
+			client.receiveStateSnapshot = fn2dg(&NetObjMngr.receiveStateSnapshot);
 		}
 		
 		int playerNameId = 1;		// for further login requests when the name is already used
