@@ -22,7 +22,27 @@ struct hkVector4 {
 	align(16) {
 		float x = 0.f, y = 0.f, z = 0.f, w = 0.f;
 	}
+
+	const hkVector4 zero = {
+		x : 0, y : 0, z : 0, w : 0
+	};
 	
+	const hkVector4 unitX = {
+		x : 1, y : 0, z : 0, w : 0
+	};
+
+	const hkVector4 unitY = {
+		x : 0, y : 1, z : 0, w : 0
+	};
+
+	const hkVector4 unitZ = {
+		x : 0, y : 0, z : 1, w : 0
+	};
+
+	const hkVector4 unitW = {
+		x : 0, y : 0, z : 0, w : 1
+	};
+
 	void setInterpolate4(hkVector4 a, hkVector4 b, hkReal t) {
 		x = a.x * (1.f - t) + b.x * t;
 		y = a.y * (1.f - t) + b.y * t;
@@ -53,14 +73,26 @@ struct hkMatrix3 {
 	hkVector4 m_col0;
 	hkVector4 m_col1;
 	hkVector4 m_col2;
+
+	const hkMatrix3 identity = {
+		m_col0 : hkVector4.unitX,
+		m_col1 : hkVector4.unitY,
+		m_col2 : hkVector4.unitZ,
+	};
 }
 
 
-typedef hkMatrix3 hkRotation;
+// Because typedefs suck in dmdfe
+alias hkMatrix3 hkRotation;
 
 struct hkTransform {
 	hkRotation	m_rotation;
 	hkVector4	m_translation;
+
+	const hkTransform identity = {
+		m_rotation : hkRotation.identity,
+		m_translation : hkVector4.zero
+	};
 }
 
 
