@@ -11,11 +11,17 @@
 #include <Physics/Collide/Agent/ConvexAgent/SphereBox/hkpSphereBoxAgent.h>	
 #include <Physics/Collide/Shape/Convex/Box/hkpBoxShape.h>					
 #include <Physics/Collide/Shape/Convex/Cylinder/hkpCylinderShape.h>					
+#include <Physics/Collide/Shape/Convex/Capsule/hkpCapsuleShape.h>
 #include <Physics/Collide/Shape/Convex/Sphere/hkpSphereShape.h>				
 #include <Physics/Collide/Dispatch/hkpAgentRegisterUtil.h>					
 
 #include <Physics/Dynamics/Collide/hkpCollisionListener.h>
+#include <Physics/Dynamics/Phantom/hkpSimpleShapePhantom.h>
+#include <Physics/ConstraintSolver/Simplex/hkpSimplexSolver.h>
 
+#include <Physics/Utilities/CharacterControl/hkpCharacterControl.h>
+#include <Physics/Utilities/CharacterControl/CharacterProxy/hkpCharacterProxy.h>
+#include <Physics/Utilities/CharacterControl/StateMachine/hkpDefaultCharacterStates.h>
 
 
 #include <Physics/Dynamics/Constraint/Bilateral/Wheel/hkpWheelConstraintData.h>

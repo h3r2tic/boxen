@@ -39,6 +39,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="$(havokRoot)/Source"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;HAVOKC_EXPORTS;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -59,7 +60,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="hkbase.lib hkserialize.lib hkcompat.lib hkpconstraintsolver.lib hkpcollide.lib hkpdynamics.lib hkinternal.lib hkpinternal.lib hkputilities.lib hkpvehicle.lib hkGeometryUtilities.lib hkVisualize.lib hkCompat.lib hkgCommon.lib hkaAnimation.lib hkSceneData.lib hkaInternal.lib hksCommon.lib"
+				AdditionalDependencies="$(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkbase.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkserialize.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkcompat.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkpconstraintsolver.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkpcollide.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkpdynamics.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkinternal.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkpinternal.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkputilities.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkpvehicle.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkGeometryUtilities.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkVisualize.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkCompat.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkgCommon.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkaAnimation.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkSceneData.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hkaInternal.lib $(havokRoot)/Lib/win32_net_9-0/debug_multithreaded_dll/hksCommon.lib"
 				LinkIncremental="2"
 				GenerateManifest="true"
 				GenerateDebugInformation="true"
@@ -111,6 +112,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories="$(havokRoot)/Source"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;HAVOKC_EXPORTS;HK_DEBUG_MULTI_THREADING"
 				RuntimeLibrary="2"
 				UsePrecompiledHeader="0"
@@ -129,7 +131,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="hkbase.lib hkserialize.lib hkcompat.lib hkpconstraintsolver.lib hkpcollide.lib hkpdynamics.lib hkinternal.lib hkpinternal.lib hkputilities.lib hkpvehicle.lib hkGeometryUtilities.lib hkVisualize.lib hkCompat.lib hkgCommon.lib hkaAnimation.lib hkSceneData.lib hkaInternal.lib hksCommon.lib"
+				AdditionalDependencies="$(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkbase.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkserialize.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkcompat.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkpconstraintsolver.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkpcollide.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkpdynamics.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkinternal.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkpinternal.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkputilities.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkpvehicle.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkGeometryUtilities.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkVisualize.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkCompat.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkgCommon.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkaAnimation.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkSceneData.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hkaInternal.lib $(havokRoot)/Lib/win32_net_9-0/release_multithreaded_dll/hksCommon.lib"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"

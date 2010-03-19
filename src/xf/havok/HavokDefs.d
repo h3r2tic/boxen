@@ -231,3 +231,37 @@ enum SolverDeactivation : hkInt8
 		/// Very fast deactivation, visible artifacts
 	SOLVER_DEACTIVATION_MAX
 }
+
+
+enum SupportedState {
+	/// This state implies there are no surfaces underneath the character.
+	UNSUPPORTED = 0,
+
+	/// This state means that there are surfaces underneath the character, but they are too
+	/// steep to prevent the character sliding downwards.
+	SLIDING = 1,
+
+	/// This state means the character is supported, and will not slide.
+	SUPPORTED = 2
+}
+
+
+enum hkpCharacterStateType {
+	// default states
+	HK_CHARACTER_ON_GROUND = 0,
+	HK_CHARACTER_JUMPING,
+	HK_CHARACTER_IN_AIR,
+	HK_CHARACTER_CLIMBING,
+	HK_CHARACTER_FLYING,
+
+	// user states
+	HK_CHARACTER_USER_STATE_0,
+	HK_CHARACTER_USER_STATE_1,
+	HK_CHARACTER_USER_STATE_2,
+	HK_CHARACTER_USER_STATE_3,
+	HK_CHARACTER_USER_STATE_4,
+	HK_CHARACTER_USER_STATE_5,
+
+	HK_CHARACTER_MAX_STATE_ID
+}
+

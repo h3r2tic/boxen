@@ -45,13 +45,17 @@ def generateDClass(cls, fmt):
 	for f in cls.fields:
 		fmt('%s %s()', f.type_.forFacade(), f.name)
 		fmt.push()
-		fmt('return ' + f.type_.forDReturn('*%s(_impl)' % f.bridgeName()) + ';')
+		fmt('return ' + f.type_.forDPropGetter('%s(_impl)' % f.bridgeName()) + ';')
 		fmt.pop()
 
-		fmt('final void %s(%s _value)', f.name, f.type_.forFacade())
-		fmt.push()
-		fmt('*%s(_impl) = %s;', f.bridgeName(), HkFuncParam('_value', f.type_).passToC())
-		fmt.pop()
+		p = HkFuncParam('_value', f.type_)
+		if f.type_.plain and f.type_.cls:
+			pass	# Uh oh, can't do this now. TODO: do this later for POD classes
+		else:
+			fmt('final void %s(%s _value)', f.name, f.type_.forFacade())
+			fmt.push()
+			fmt('*%s(_impl) = %s;', f.bridgeName(), p.passToC())
+			fmt.pop()
 
 	if not cls.isPOD:
 		# ---- interface casting ----
