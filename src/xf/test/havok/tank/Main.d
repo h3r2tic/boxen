@@ -94,6 +94,12 @@ Tank				g_tank;
 MyCollisionListener	g_colListener;
 
 
+hkpCapsuleShape			g_standShape;
+hkpSimpleShapePhantom	g_phantom;
+hkpCharacterProxy		g_proxy;
+hkpCharacterContext		g_characterContext;
+vec3					g_characterPosition = vec3.zero;
+
 uint g_simTick;
 
 class MyCollisionListener {
@@ -309,7 +315,7 @@ class TestApp : GfxApp {
 			Primitives.Cylinder.indices
 		);
 	}
-	
+
 
 	void initializePhysics() {
 		auto lib = SharedLib.load("HavokC.dll");
@@ -360,12 +366,128 @@ class TestApp : GfxApp {
 			contexts.pushBack(context._as_hkProcessContext()._impl);
 		}
 
+		initializeCharacter();
+
 		physicsWorld.unmarkForWrite();
 		
 		this.vdb = hkVisualDebugger(contexts);
 		vdb.serve();
 		
 		jobHub.addRepeatableJob(&update, 60.f);
+	}
+
+
+	void initializeCharacter() {
+		g_standShape = hkpCapsuleShape(
+			hkVector4(vec3(0, 0, 0)),
+			hkVector4(vec3(0, 4, 0)),
+			1.0f
+		);
+
+		g_phantom = hkpSimpleShapePhantom(
+			g_standShape._as_hkpShape(),
+			hkTransform.identity,
+			hkpGroupFilter.calcFilterInfo(0,2)
+		);
+
+		physicsWorld.addPhantom(g_phantom._as_hkpPhantom).removeReference();
+
+		auto cpci = hkpCharacterProxyCinfo();
+		cpci.m_position = hkVector4(-9.1f, 35, .4f);
+		cpci.m_staticFriction = 0.0f;
+		cpci.m_dynamicFriction = 1.0f;
+		cpci.m_up = hkVector4.unitY;
+		cpci.m_userPlanes = 4;
+		cpci.m_maxSlope = 3.1415926f / 3.f;
+		cpci.m_shapePhantom = g_phantom._as_hkpShapePhantom();
+		cpci.m_characterStrength = 5000.0f;
+		
+		g_proxy = hkpCharacterProxy(cpci);		
+
+
+		final manager = hkpCharacterStateManager();
+
+		{
+			final state = hkpCharacterStateOnGround()._as_hkpCharacterState();
+			manager.registerState( state,	hkpCharacterStateType.HK_CHARACTER_ON_GROUND);
+			state.removeReference();
+		}
+		{
+			final state = hkpCharacterStateInAir()._as_hkpCharacterState();
+			manager.registerState( state,	hkpCharacterStateType.HK_CHARACTER_IN_AIR);
+			state.removeReference();
+		}
+		{
+			final state = hkpCharacterStateJumping()._as_hkpCharacterState();
+			manager.registerState( state,	hkpCharacterStateType.HK_CHARACTER_JUMPING);
+			state.removeReference();
+		}
+		{
+			final state = hkpCharacterStateClimbing()._as_hkpCharacterState();
+			manager.registerState( state,	hkpCharacterStateType.HK_CHARACTER_CLIMBING);
+			state.removeReference();
+		}
+
+		g_characterContext = hkpCharacterContext(manager, hkpCharacterStateType.HK_CHARACTER_ON_GROUND);
+		manager.removeReference();
+	}
+
+
+	void updateCharacter() {
+		static hkpCharacterInput input;
+		static hkpCharacterOutput output;
+		static hkStepInfo si;
+		
+		if (input._impl is null) {
+			input = hkpCharacterInput();
+			output = hkpCharacterOutput();
+			si = hkStepInfo();
+		}
+		
+		{
+			float LR = 0.f;
+			float UD = 0.f;
+
+			if (keyboard.keyDown(KeySym.i)) {
+				UD += 1.0f;
+			}
+			if (keyboard.keyDown(KeySym.k)) {
+				UD -= 1.0f;
+			}
+			if (keyboard.keyDown(KeySym.l)) {
+				LR += 1.0f;
+			}
+			if (keyboard.keyDown(KeySym.j)) {
+				LR -= 1.0f;
+			}
+
+			input.m_inputLR = LR;
+			input.m_inputUD = UD;
+
+			input.m_wantJump = false;
+			input.m_atLadder = false;
+
+			input.m_up = hkVector4.unitY;
+			input.m_forward = hkVector4(0, 0, -1);
+
+			input.m_stepInfo.m_deltaTime = 1.f / 60;
+			input.m_stepInfo.m_invDeltaTime = 60.0f;
+			input.m_characterGravity = hkVector4(0, -9.81, 0);
+			input.m_velocity = g_proxy.getLinearVelocity();
+			input.m_position = g_proxy.getPosition();
+
+			hkVector4 down = hkVector4(0, -1, 0);
+			g_proxy.checkSupport(down, input.m_surfaceInfo);
+		}
+
+		g_characterContext.update(input, output);
+
+		// Feed output from state machine into character proxy
+		g_proxy.setLinearVelocity(output.m_velocity);
+
+		si.m_deltaTime = 1.f / 60;
+		si.m_invDeltaTime = 60.0f;
+		g_proxy.integrate(si, hkVector4(0, -9.81, 0));
 	}
 
 	
@@ -409,6 +531,8 @@ class TestApp : GfxApp {
 
 		physicsWorld.markForWrite();
 
+		updateCharacter();
+
 		if (left != 0 || right != 0) {
 			foreach (entity; g_tankEntities) {
 				entity.activate();
@@ -434,6 +558,7 @@ class TestApp : GfxApp {
 			cyl.position = vec3.from(cyl.entity.getPosition());
 			cyl.rotation = cyl.entity.getRotation();
 		}
+		g_characterPosition = vec3.from(g_proxy.getPosition());
 		physicsWorld.unmarkForRead();
 
 		// ----------------------------------------------------------------
@@ -486,6 +611,8 @@ class TestApp : GfxApp {
 			//gl.Color3fv(cyl.color.ptr);
 			drawCylinder(cyl.position, cyl.rotation, cyl.scale, cyl.baseCS);
 		}
+
+		drawCube(g_characterPosition, quat.identity, vec3.one);
 
 		renderList.sort();
 		renderer.framebuffer.settings.clearColorValue[0] = vec4(0.1, 0.1, 0.1, 1.0);

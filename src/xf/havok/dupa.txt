@@ -451,12 +451,15 @@ class hkpSimpleShapePhantom hkpShapePhantom
 
 class hkpCharacterProxyCinfo
 	# TODO: POD
+	func this
 	field m_position hkVector4
 	field m_staticFriction hkReal
 	field m_dynamicFriction hkReal
 	field m_up hkVector4
 	field m_userPlanes hkUint32
 	field m_maxSlope hkReal
+	field m_characterStrength hkReal
+	field m_characterMass hkReal
 	field m_shapePhantom hkpShapePhantom*
 
 class hkpSurfaceInfo
@@ -470,6 +473,8 @@ class hkpSurfaceInfo
 
 class hkStepInfo
 	# TODO: POD
+	func this
+
 	field m_deltaTime hkReal
 		forceCast
 
@@ -478,6 +483,7 @@ class hkStepInfo
 
 class hkpCharacterInput
 	# TODO: POD
+	func this
 	field m_inputLR hkReal
 	field m_inputUD hkReal
 	field m_wantJump hkBool
@@ -492,6 +498,7 @@ class hkpCharacterInput
 	field m_userData hkUlong
 
 class hkpCharacterOutput
+	func this
 	field m_velocity hkVector4
 
 class hkpCharacterProxy hkReferencedObject
@@ -520,10 +527,19 @@ class hkpCharacterProxy hkReferencedObject
 
 class hkpCharacterState hkReferencedObject
 class hkpCharacterStateOnGround hkpCharacterState
+	func this
+
 class hkpCharacterStateInAir hkpCharacterState
+	func this
+
 class hkpCharacterStateJumping hkpCharacterState
+	func this
+
 class hkpCharacterStateClimbing hkpCharacterState
+	func this
+
 class hkpCharacterStateFlying hkpCharacterState
+	func this
 
 class hkpCharacterStateManager hkReferencedObject
 	func this
