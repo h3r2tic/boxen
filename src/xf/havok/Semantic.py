@@ -223,6 +223,39 @@ class TypeAnalysis:
 			return ''
 		return worker(self, expr)
 
+	def forDPropGetter(self, expr):
+		def worker(t, expr):		# TODO
+			if t.plain:
+				if t.cls:
+					return '%s(%s)' % (t.base, expr)
+				else:
+					return '*'+expr
+			if (t.ptr or t.ref) and t.base.plain and t.base.cls:
+				return '%s(*%s)' % (t.base.base, expr)
+			assert False, expr
+		return worker(self, expr)
+
+	def forDPropSetter(self, expr):
+		def worker(t, expr):		# TODO
+			if t.plain:
+				if t.cls:
+					return expr+'._impl'
+				else:
+					return expr
+			if (t.ptr or t.ref) and t.base.plain and t.base.cls:
+				return expr+'._impl'
+
+			# const ref
+			if t.ref and t.base.plain and not t.base.cls and t.base.const:
+				return '&'+expr
+
+			if t.ptr and ((t.base.plain and not t.base.cls) or t.base.ptr):
+				return expr
+			if t.ref and t.base.plain and not t.base.cls:
+				return expr
+			return ''
+		return worker(self, expr)
+
 	def passToC(self, expr):
 		def worker(t, expr):		# TODO
 			if t.plain:

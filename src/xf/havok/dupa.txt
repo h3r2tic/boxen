@@ -155,6 +155,10 @@ class hkpWorld hkReferencedObject
 		param entityBatch hkpEntity*const*
 		param numEntities int
 
+	func addPhantom
+		param phantom hkpPhantom*
+		return hkpPhantom*
+
 	func castRay
 		param input const hkpWorldRayCastInput&
 		param output hkpWorldRayCastOutput&
@@ -294,6 +298,12 @@ class hkpCylinderShape hkpConvexShape
 		param vertexB const hkVector4&
 		param radius hkReal
 
+class hkpCapsuleShape hkpConvexShape
+	func this
+		param vertexA const hkVector4&
+		param vertexB const hkVector4&
+		param radius hkReal
+
 class hkpConvexShape hkpSphereRepShape
 	func getRadius
 		return hkReal
@@ -426,3 +436,111 @@ class EntityCollisionListener hkpCollisionListener
 		DEntityCollisionFunc process;
 	}
 D>
+
+# ----------------------------------------------------------------
+
+class hkpPhantom hkpWorldObject
+
+class hkpShapePhantom hkpPhantom
+
+class hkpSimpleShapePhantom hkpShapePhantom
+	func this
+		param shape const hkpShape*
+		param transform const hkTransform&
+		param m_collisionFilterInfo hkUint32
+
+class hkpCharacterProxyCinfo
+	# TODO: POD
+	field m_position hkVector4
+	field m_staticFriction hkReal
+	field m_dynamicFriction hkReal
+	field m_up hkVector4
+	field m_userPlanes hkUint32
+	field m_maxSlope hkReal
+	field m_shapePhantom hkpShapePhantom*
+
+class hkpSurfaceInfo
+	# TODO: POD
+	field m_supportedState SupportedState
+		hkType hkpSurfaceInfo::SupportedState
+	field m_surfaceNormal hkVector4
+	field m_surfaceVelocity hkVector4
+	field m_surfaceDistanceExcess hkReal
+	field m_surfaceIsDynamic hkBool
+
+class hkStepInfo
+	# TODO: POD
+	field m_deltaTime hkReal
+		forceCast
+
+	field m_invDeltaTime hkReal
+		forceCast
+
+class hkpCharacterInput
+	# TODO: POD
+	field m_inputLR hkReal
+	field m_inputUD hkReal
+	field m_wantJump hkBool
+	field m_up hkVector4
+	field m_forward hkVector4
+	field m_atLadder hkBool
+	field m_surfaceInfo hkpSurfaceInfo
+	field m_stepInfo hkStepInfo
+	field m_position hkVector4
+	field m_velocity hkVector4
+	field m_characterGravity hkVector4
+	field m_userData hkUlong
+
+class hkpCharacterOutput
+	field m_velocity hkVector4
+
+class hkpCharacterProxy hkReferencedObject
+	func this
+		param info const hkpCharacterProxyCinfo&
+	
+	func getPosition
+		return const hkVector4&
+
+	func setPosition
+		param position const hkVector4&
+
+	func getLinearVelocity
+		return const hkVector4&
+
+	func setLinearVelocity
+		param vel const hkVector4&
+
+	func checkSupport
+		param direction const hkVector4&
+		param ground hkpSurfaceInfo&
+
+	func integrate
+		param stepInfo const hkStepInfo&
+		param worldGravity const hkVector4&
+
+class hkpCharacterState hkReferencedObject
+class hkpCharacterStateOnGround hkpCharacterState
+class hkpCharacterStateInAir hkpCharacterState
+class hkpCharacterStateJumping hkpCharacterState
+class hkpCharacterStateClimbing hkpCharacterState
+class hkpCharacterStateFlying hkpCharacterState
+
+class hkpCharacterStateManager hkReferencedObject
+	func this
+
+	func registerState
+		param m_state hkpCharacterState*
+		param state hkpCharacterStateType
+
+class hkpCharacterContext hkReferencedObject
+	func this
+		param manager const hkpCharacterStateManager*
+		param initialState hkpCharacterStateType
+
+	func update
+		param input const hkpCharacterInput&
+		param output hkpCharacterOutput&
+
+	func getState
+		return hkpCharacterStateType
+
