@@ -54,10 +54,10 @@ class PlayerInputMap : InputConverter {
 
 		void feedKeyboardInput() {
 			PlayerInput pinput;
-			if (keyDown('i'))	pinput.thrust += maxThrust;
-			if (keyDown('k'))	pinput.thrust -= maxThrust;
-			if (keyDown('j'))	pinput.strafe -= maxThrust;
-			if (keyDown('l'))	pinput.strafe += maxThrust;
+			if (keyDown('w'))	pinput.thrust += maxThrust;
+			if (keyDown('s'))	pinput.thrust -= maxThrust;
+			if (keyDown('a'))	pinput.strafe -= maxThrust;
+			if (keyDown('d'))	pinput.strafe += maxThrust;
 			
 			if (keyDown('e')) {
 				pinput.use = true;
@@ -70,7 +70,7 @@ class PlayerInputMap : InputConverter {
 		
 		this() {
 			registerReader!(KeyboardInput)(&this.onInput);
-			//registerReader!(MouseInput)(&this.onInput);
+			registerReader!(MouseInput)(&this.onInput);
 		}
 	}
 	

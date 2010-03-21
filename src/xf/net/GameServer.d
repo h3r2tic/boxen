@@ -71,7 +71,7 @@ class GameServer : IGameComm {
 		for (int pid = 0; pid < maxPlayers; ++pid) {
 			if (_playerData.connected[pid]) {
 				_playerData.writer[pid].flush((u8[] bytes) {
-					log.trace("Sending {} bytes of data to player {}.", bytes.length, pid);
+					//log.trace("Sending {} bytes of data to player {}.", bytes.length, pid);
 					_comm.send(bytes, cast(playerId)pid);
 				});
 			}

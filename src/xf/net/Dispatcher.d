@@ -42,8 +42,8 @@ class Dispatcher {
 			delegate tick(playerId pid, BitStreamReader* bs, uint* retained) {
 				bool receivedTick = *retained > 0;
 
-				log.trace("Dispatcher: receiving {} bits of data. Retained = {}.", bs.dataBlockSize, *retained);
-				Stdout.formatln("{}", bs.toString);
+				//log.trace("Dispatcher: receiving {} bits of data. Retained = {}.", bs.dataBlockSize, *retained);
+				//Stdout.formatln("{}", bs.toString);
 
 				bool eventInStream = 0 == *retained;
 
@@ -66,14 +66,14 @@ class Dispatcher {
 						
 						version (Client) {
 							if (lastTickRecvd[pid] > curTick) {
-								log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
+								//log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
 								*retained = 1;
 								return lastTickRecvd[pid];
 							}
 						}
 						
 						if (!bs.isEmpty) {
-							log.trace("Snapshot has {} bits", bs.dataBlockSize - bs.readOffset);
+							//log.trace("Snapshot has {} bits", bs.dataBlockSize - bs.readOffset);
 							//printf("snapshot");
 							receiveStateSnapshot(pid, bs);
 						}

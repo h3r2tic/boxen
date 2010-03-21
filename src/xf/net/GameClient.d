@@ -74,7 +74,7 @@ class GameClient : IGameComm {
 	void sendData() {
 		if (_connected) {
 			_writer.flush((u8[] bytes) {
-				log.trace("Sending {} bytes of data to server.", bytes.length);
+				//log.trace("Sending {} bytes of data to server.", bytes.length);
 				_comm.send(bytes);
 			});
 		}

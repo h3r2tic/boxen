@@ -98,9 +98,10 @@ void updateGame() {
 		server.sendData();
 		debug printf(`tick: %d`\n, timeHub.currentTick);
 
-		/+if (timeHub.currentTick > 100) {
+		// tmp HACK
+		if (timeHub.currentTick > 100) {
 			NetObjMngr.dropStatesOlderThan(cast(tick)(timeHub.currentTick - 100));
-		}+/
+		}
 	} else {
 		client.receiveData();
 
@@ -150,6 +151,9 @@ version (Server) {
 	void createGameWorld() {
 		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), NoAuthority);
 		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), NoAuthority);
+		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
+		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
+		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
 	}
 
 
@@ -189,8 +193,6 @@ version (Server) {
 		// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
 		float moveSpeed = 1.f;
 		ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
-
-		Stdout.formatln("Controller.move({})", vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
 
 		float rotSpeed = 10.f;
 		float yawRot = e.rot.x * timeHub.secondsPerTick();
@@ -245,6 +247,15 @@ struct login {
 class TestApp : GfxApp {
 	SimpleCamera camera;
 	
+
+	version (Client) override void configureWindow(Window wnd) {
+		super.configureWindow(wnd);
+		wnd.title = "Boxen Tech #1";
+		wnd.interceptCursor = true;
+		wnd.showCursor = false;
+	}
+	
+
 	void initialize() {
 		camera = new SimpleCamera(vec3(0, 2, 5), 0, 0, window.inputChannel);
 		camera.movementSpeed = vec3.one * 40.f;
@@ -252,8 +263,6 @@ class TestApp : GfxApp {
 		DebugDraw.initialize(renderer, window);
 		version (Server) {
 			window.title = "Boxen server";
-		} else {
-			window.title = "Boxen client";
 		}
 		
 		eventQueue = new LoggingEventQueue;
@@ -269,12 +278,12 @@ class TestApp : GfxApp {
 		}
 
 		void queueEvent(Event ev, tick target) {
-			Stdout.formatln(
+			/+Stdout.formatln(
 				"Submitting {} for tick {} (current = {}).",
 				ev.classinfo.name,
 				target,
 				timeHub.currentTick
-			);
+			);+/
 			eventQueue.addEvent(ev, cast(int)target - timeHub.currentTick);
 		}
 		Order.addSubmitHandler(&queueEvent);
@@ -363,61 +372,28 @@ class TestApp : GfxApp {
 			final bin = renderList.getBin(mesh.effect);
 			auto data = bin.add(mesh.effectInstance);
 			mesh.toRenderableData(data);
+
+			final obj = GameObjMngr.getObj(meshes.offsetFrom[i]);
 			data.coordSys =	meshes.offset[i] in CoordSys(
-				GameObjMngr.getObj(meshes.offsetFrom[i]).worldPosition,
-				quat.identity
+				obj.worldPosition,
+				obj.worldRotation
 			);
-			data.scale = vec3.one;
+			data.scale = meshes.scale[i];
 		}
 
-
-		/+void drawCube(vec3 position, quat rotation, vec3 size) {
-			auto mesh = &meshes[0];
-			final bin = renderList.getBin(mesh.effect);
-			auto data = bin.add(mesh.effectInstance);
-			mesh.toRenderableData(data);
-			data.coordSys = CoordSys(vec3fi.from(position), rotation);
-			data.scale = size;
-		}
-
-		void drawCylinder(vec3 position, quat rotation, vec3 size, CoordSys baseCS) {
-			auto mesh = &meshes[1];
-			final bin = renderList.getBin(mesh.effect);
-			auto data = bin.add(mesh.effectInstance);
-			mesh.toRenderableData(data);
-			data.coordSys = baseCS in CoordSys(vec3fi.from(position), rotation);
-			data.scale = size;
-		}
-
-
-		effect.setUniform("worldToView",
-			camera.getMatrix
-		);
-		
-		foreach (ref box; g_boxes) {
-			//gl.Color3fv(box.color.ptr);
-			drawCube(box.position, box.rotation, box.size);
-		}
-		
-		foreach (ref cyl; g_cylinders) {
-			//gl.Color3fv(cyl.color.ptr);
-			drawCylinder(cyl.position, cyl.rotation, cyl.scale, cyl.baseCS);
-		}+/
-
-//	TODO
 		version (Server) {
 			final observedCtrl =
 				_observedPlayer != playerId.max
-					? _playerControllers[_observedPlayer]
+					? cast(IPlayerController)_playerControllers[_observedPlayer]
 					: null;
 		} else {
-			final observedCtrl = _playerController;
+			final observedCtrl = cast(IPlayerController)_playerController;
 		}
 
 		if (observedCtrl !is null) {
-			final ctrlCS = CoordSys(observedCtrl.worldPosition, observedCtrl.worldRotation);
-			final camCS = CoordSys(vec3fi[0, 1.5, 1.5], quat.identity) in ctrlCS;
-			DebugDraw.setWorldToView(camCS.inverse.toMatrix);
+			final ctrlCS = CoordSys(observedCtrl.worldPosition, observedCtrl.cameraRotation);
+			final offCamCS = CoordSys(vec3fi[0, 2.2, 2.2], quat.identity) in ctrlCS;
+			DebugDraw.setWorldToView(offCamCS.inverse.toMatrix);
 		} else {
 			DebugDraw.setWorldToView(mat4.identity);
 		}

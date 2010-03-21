@@ -25,6 +25,9 @@ class hkpWorldObject hkReferencedObject
 
 class hkpEntity hkpWorldObject
 	func activate
+	func deactivate
+	func isActive
+		return hkBool
 
 	func setProcessContactCallbackDelay
 		param delay hkUint16
@@ -38,8 +41,26 @@ class hkpRigidBody hkpEntity
 	func getPosition
 		return const hkVector4&
 
+	func setPosition
+		param position const hkVector4&
+
+	func getLinearVelocity
+		return const hkVector4&
+
+	func setLinearVelocity
+		param vel const hkVector4&
+
+	func getAngularVelocity
+		return const hkVector4&
+
+	func setAngularVelocity
+		param vel const hkVector4&
+
 	func getRotation
 		return const hkQuaternion&
+
+	func setRotation
+		param rotation const hkQuaternion&
 
 	func getTransform
 		return const hkTransform&
