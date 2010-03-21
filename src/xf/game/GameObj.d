@@ -17,6 +17,7 @@ interface GameObj {
 	// ----
 
 	vec3fi	worldPosition();
+	quat	worldRotation();
 	void	update(double seconds);
 }
 
