@@ -9,6 +9,8 @@ private {
 	import xf.boxen.Rendering;
 	import xf.boxen.Input;
 	import xf.boxen.model.IPlayerController;
+	import xf.boxen.model.ILevel;
+	import Phys = xf.boxen.Phys;
 	import DebugDraw = xf.boxen.DebugDraw;
 
 	import xf.Common;
@@ -55,6 +57,7 @@ private {
 
 version (Client) GameClient	client;
 version (Server) GameServer	server;
+ILevel		level;
 EventQueue	eventQueue;
 
 
@@ -68,8 +71,13 @@ void updateGame() {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
 		}
+
 		GameObjMngr.update(timeHub.secondsPerTick);
+		level.update(timeHub.secondsPerTick);
+		Phys.update(timeHub.secondsPerTick);
+
 		NetObjMngr.storeNetObjStates(timeHub.currentTick);
+
 		for (playerId i = 0; i < maxPlayers; ++i) {
 			if (LoginMngr.PlayerInfo.loggedIn[i]) {
 				NetObjMngr.updateStateImportances(i);
@@ -89,6 +97,10 @@ void updateGame() {
 		}
 		server.sendData();
 		debug printf(`tick: %d`\n, timeHub.currentTick);
+
+		/+if (timeHub.currentTick > 100) {
+			NetObjMngr.dropStatesOlderThan(cast(tick)(timeHub.currentTick - 100));
+		}+/
 	} else {
 		client.receiveData();
 
@@ -107,8 +119,10 @@ void updateGame() {
 		}
 
 		GameObjMngr.update(timeHub.secondsPerTick);
+		level.update(timeHub.secondsPerTick);
+		Phys.update(timeHub.secondsPerTick);
 
-		if (client.connected) {
+		/+if (client.connected) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
 			/+NetObjMngr.updateStateImportances();
 			final writer = client.getWriter();
@@ -125,7 +139,7 @@ void updateGame() {
 				},
 				writer
 			);+/+/
-		}
+		}+/
 		
 		client.sendData();
 	}
@@ -134,15 +148,19 @@ void updateGame() {
 
 version (Server) {
 	void createGameWorld() {
-		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, 0), NoAuthority);
+		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), NoAuthority);
+		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), NoAuthority);
 	}
 
 
 	GameObj[maxPlayers] _playerControllers;
+	playerId			_observedPlayer = playerId.max;
 
 
 	void handlePlayerLogin(playerId pid) {
 		final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, ServerAuthority/+pid+/);
+
+		_observedPlayer = pid;
 
 		AssignController(
 			obj.id
@@ -165,11 +183,11 @@ version (Server) {
 		auto pid = e.wishOrigin;
 		auto ctrl = cast(IPlayerController)_playerControllers[pid];
 			
-		float strafe = b2f(e.strafe) * timeHub.secondsPerTick();
-		float fwd = b2f(e.thrust) * timeHub.secondsPerTick();
+		float strafe = b2f(e.strafe);
+		float fwd = b2f(e.thrust);
 
 		// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
-		float moveSpeed = 10.f;
+		float moveSpeed = 1.f;
 		ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
 
 		Stdout.formatln("Controller.move({})", vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
@@ -264,6 +282,9 @@ class TestApp : GfxApp {
 		Local.addSubmitHandler(&queueEvent);
 
 		GameObjMngr.initialize();
+
+		Phys.initialize();
+		.level = create!(ILevel).named("TestLevel")();
 
 		version (Server) {
 			LoginMngr.initialize();
@@ -384,7 +405,22 @@ class TestApp : GfxApp {
 		}+/
 
 //	TODO
-		DebugDraw.setWorldToView(camera.getMatrix);
+		version (Server) {
+			final observedCtrl =
+				_observedPlayer != playerId.max
+					? _playerControllers[_observedPlayer]
+					: null;
+		} else {
+			final observedCtrl = _playerController;
+		}
+
+		if (observedCtrl !is null) {
+			final ctrlCS = CoordSys(observedCtrl.worldPosition, observedCtrl.worldRotation);
+			final camCS = CoordSys(vec3fi[0, 1.5, 1.5], quat.identity) in ctrlCS;
+			DebugDraw.setWorldToView(camCS.inverse.toMatrix);
+		} else {
+			DebugDraw.setWorldToView(mat4.identity);
+		}
 
 		renderList.sort();
 		renderer.framebuffer.settings.clearColorValue[0] = vec4(0.1, 0.1, 0.1, 1.0);

@@ -54,8 +54,8 @@ class PlayerInputMap : InputConverter {
 
 		void feedKeyboardInput() {
 			PlayerInput pinput;
-			if (keyDown('i'))	pinput.thrust -= maxThrust;
-			if (keyDown('k'))	pinput.thrust += maxThrust;
+			if (keyDown('i'))	pinput.thrust += maxThrust;
+			if (keyDown('k'))	pinput.thrust -= maxThrust;
 			if (keyDown('j'))	pinput.strafe -= maxThrust;
 			if (keyDown('l'))	pinput.strafe += maxThrust;
 			
