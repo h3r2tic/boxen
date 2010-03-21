@@ -17,13 +17,13 @@ interface IPlayerController  {
 /+	abstract void createPhysics();
 	abstract void dispose();
 	abstract float radius();+/
-	abstract void	move(vec3);
-	abstract void	yawRotate(float);
-	abstract void	pitchRotate(float);
-	abstract vec3	worldDirection();
-	abstract vec3fi	worldPosition();
-	abstract void	teleport(vec3fi);
-	abstract quat	rotationQuat();
+	void	move(vec3);
+	void	yawRotate(float);
+	void	pitchRotate(float);
+	vec3fi	worldPosition();
+	quat	worldRotation();
+	void	teleport(vec3fi);
+	quat	cameraRotation();
 	/+abstract ITouchTracker controllerTouchTracker();
 	abstract void shoot();+/
 }

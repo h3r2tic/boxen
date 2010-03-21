@@ -45,12 +45,12 @@ static:
 			}
 		}
 		
-		genFace(vec3(-1, -1, 1),	[0, 1]);		// front
-		genFace(vec3(1, -1, 1),		[2, 1]);		// right
-		genFace(vec3(1, -1, -1),	[0, 1]);		// back
-		genFace(vec3(-1, -1, -1),	[2, 1]);		// left
-		genFace(vec3(-1, -1, -1),	[0, 2]);		// bottom
-		genFace(vec3(-1, 1, 1),		[0, 2]);		// top
+		genFace(vec3(-0.5, -0.5, 0.5),		[0, 1]);		// front
+		genFace(vec3(0.5, -0.5, 0.5),		[2, 1]);		// right
+		genFace(vec3(0.5, -0.5, -0.5),		[0, 1]);		// back
+		genFace(vec3(-0.5, -0.5, -0.5),		[2, 1]);		// left
+		genFace(vec3(-0.5, -0.5, -0.5),		[0, 2]);		// bottom
+		genFace(vec3(-0.5, 0.5, 0.5),		[0, 2]);		// top
 		
 		assert (vert == positions.length);
 		assert (ind == indices.length);

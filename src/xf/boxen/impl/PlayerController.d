@@ -67,8 +67,9 @@ final class PlayerController : NetObj, IPlayerController {
 
 		addMesh(
 			DebugDraw.create(DebugDraw.Prim.Cylinder),
-			CoordSys(vec3fi[0, 0.5, 0], quat.identity),
-			id
+			CoordSys(vec3fi[0, 0.9, 0], quat.identity),
+			id,
+			vec3(1.2, 1.8, 1.2)
 		);
 	}
 
@@ -190,16 +191,12 @@ final class PlayerController : NetObj, IPlayerController {
 		_rotationPending.pitch += a;
 	}
 	
-	vec3	worldDirection() {
-		return _coordSys.rotation.xform(-vec3.unitZ);
-	}
-	
 	void	teleport(vec3fi p) {
 		_coordSys.origin = p;
 	}
 	
-	quat	rotationQuat() {
-		return _coordSys.rotation;
+	quat	cameraRotation() {
+		return _cameraQuat;
 	}
 	// ----
 
@@ -214,8 +211,7 @@ final class PlayerController : NetObj, IPlayerController {
 			_rotation.pitch = -90.f;
 		}
 
-		final moveQuat = quat.yRotation(_rotation.yaw);
-
+		calcRotationAndDirection();
 
 		Phys.world.markForWrite();
 		scope (success) Phys.world.unmarkForWrite();
@@ -240,7 +236,7 @@ final class PlayerController : NetObj, IPlayerController {
 			input.m_atLadder = false;
 
 			input.m_up = hkVector4.unitY;
-			input.m_forward = hkVector4(moveQuat.xform(-vec3.unitZ));
+			input.m_forward = hkVector4(_direction);
 
 			input.m_stepInfo.m_deltaTime = seconds;
 			input.m_stepInfo.m_invDeltaTime = 1.0 / seconds;
@@ -261,17 +257,25 @@ final class PlayerController : NetObj, IPlayerController {
 		si.m_invDeltaTime = 1.0 / seconds;
 		_proxy.integrate(si, gravity);
 
-		_coordSys.rotation = moveQuat * quat.xRotation(_rotation.pitch);
 		_coordSys.origin = vec3fi.from(_proxy.getPosition());
 
 		_movePending = vec3.zero;
 		_rotationPending = YawPitch.zero;
 	}
 
+
+	void calcRotationAndDirection() {
+		_coordSys.rotation = quat.yRotation(_rotation.yaw);
+		_cameraQuat = _coordSys.rotation * quat.xRotation(_rotation.pitch);
+		_direction = _cameraQuat.xform(-vec3.unitZ);
+	}
+
 	
 
 	CoordSys	_coordSys = CoordSys.identity;
+	quat		_cameraQuat = quat.identity;
 	YawPitch	_rotation = YawPitch.zero;
+	vec3		_direction = { x: 0, y: 0, z: -1 };
 
 	vec3		_movePending = vec3.zero;
 	YawPitch	_rotationPending = YawPitch.zero;

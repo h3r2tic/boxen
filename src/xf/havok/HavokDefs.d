@@ -16,7 +16,7 @@ alias uint		hkUint32;
 alias ushort	hkUint16;
 alias ulong		hkUint64;
 
-static assert (char.sizeof == hkBool.sizeof);
+static assert (1 == hkBool.sizeof);
 
 struct hkVector4 {
 	align(16) {

@@ -122,7 +122,9 @@ void dropStatesOlderThan(tick tck) {
 	while (numToDrop--) {
 		void*[] ptrs = *_tickStateQueue.popFront();
 		foreach (p; ptrs) {
-			_rawStateQueue.popFront(p);
+			if (p) {
+				_rawStateQueue.popFront(p);
+			}
 		}
 		_objStatePtrQueue.popFront(ptrs.ptr);
 	}
@@ -346,14 +348,14 @@ private {
 				final curStateRaw = _curTickStates[s.id];
 				final curState = curStateRaw + stateInfo[s.state].offset;
 
-				log.trace(
+				/+log.trace(
 					"Writing state {} ({}) (i={}) of obj {} ({})",
 					s.state,
 					stateInfo[s.state].typeInfo.toString,
 					s.importance,
 					s.id,
 					(cast(Object)obj).classinfo.name
-				);
+				);+/
 
 				void delegate(BitStreamWriter*) dg;
 				dg.funcptr = stateInfo[s.state].serialize;

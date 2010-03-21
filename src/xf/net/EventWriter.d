@@ -48,24 +48,24 @@ class EventWriter : EventConsumer {
 
 				foreach (pid, ref bsw; iterPlayerStreams) {
 					if (mask(pid)) {
-						Stdout.formatln("Before:\n{}", bsw.toString);
+						//Stdout.formatln("Before:\n{}", bsw.toString);
 						bsw(true /* event */);
 						bsw(cast(uint)target);
-						log.trace("EventWriter :: serializing an Order.");
+						//log.trace("EventWriter :: serializing an Order.");
 						writeEvent(&bsw, order);
-						Stdout.formatln("After:\n{}", bsw.toString);
+						//Stdout.formatln("After:\n{}", bsw.toString);
 					}
 				}
 			}
 		} else {
 			if (auto wish = cast(Wish)evt) {
 				foreach (pid, ref bsw; iterPlayerStreams) {
-					Stdout.formatln("Before:\n{}", bsw.toString);
+					//Stdout.formatln("Before:\n{}", bsw.toString);
 					bsw(true /* event */);
 					bsw(cast(uint)target);
-					log.trace("EventWriter :: serializing a Wish.");
+					//log.trace("EventWriter :: serializing a Wish.");
 					writeEvent(&bsw, wish);
-					Stdout.formatln("After:\n{}", bsw.toString);
+					//Stdout.formatln("After:\n{}", bsw.toString);
 				}
 			}
 		}
