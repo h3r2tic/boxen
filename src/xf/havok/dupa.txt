@@ -1,3 +1,5 @@
+# TODO: add automatic versioning
+
 class hkBaseObject
 
 # ----------------------------------------------------------------
@@ -460,6 +462,29 @@ D>
 
 # ----------------------------------------------------------------
 
+class hkpCharacterProxyListener
+
+class CharacterProxyListener hkpCharacterProxyListener
+	func this
+		param dListener const DCharacterProxyListener&
+
+
+<D
+	extern (C) {
+		alias void function(void*, hkpCharacterProxy, hkpCharacterProxy)	DCharCharInteractFunc;
+		alias void function(void*, hkpCharacterProxy, hkpRigidBody)			DCharBodyInteractFunc;
+	}
+
+
+	struct DCharacterProxyListener {
+		void* thisptr;
+		DCharCharInteractFunc charChar;
+		DCharBodyInteractFunc charBody;
+	}
+D>
+
+# ----------------------------------------------------------------
+
 class hkpPhantom hkpWorldObject
 
 class hkpShapePhantom hkpPhantom
@@ -545,6 +570,12 @@ class hkpCharacterProxy hkReferencedObject
 	func integrate
 		param stepInfo const hkStepInfo&
 		param worldGravity const hkVector4&
+
+	func addCharacterProxyListener
+		param listener hkpCharacterProxyListener*
+
+	func getShapePhantom
+		return const hkpShapePhantom*
 
 class hkpCharacterState hkReferencedObject
 class hkpCharacterStateOnGround hkpCharacterState
