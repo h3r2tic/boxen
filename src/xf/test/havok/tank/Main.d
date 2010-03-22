@@ -92,6 +92,7 @@ class Tank {
 
 Tank				g_tank;
 MyCollisionListener	g_colListener;
+MyCharProxyListener	g_charProxyListener;
 
 
 hkpCapsuleShape			g_standShape;
@@ -190,6 +191,57 @@ class MyCollisionListener {
 	}
 	
 	hkpCollisionListener hk;
+}
+
+
+class MyCharProxyListener {
+	extern (C) static {
+		void cf_charChar(void* thisptr, hkpCharacterProxy a, hkpCharacterProxy b) {
+			(cast(MyCharProxyListener)thisptr).charChar(a, b);
+		}
+
+		void cf_charBody(void* thisptr, hkpCharacterProxy a, hkpRigidBody b) {
+			(cast(MyCharProxyListener)thisptr).charBody(a, b);
+		}
+	}
+	
+	void charChar(hkpCharacterProxy a, hkpCharacterProxy b) {
+		/+++collisions;
+		collisionsTS.increment();
+		
+		CPData data;
+		data.thread = cast(ushort)hkThread.getMyThreadId();
+		data.tick = cast(ushort)g_simTick;
+		+/
+		//assert (*userData == 0);
+		//volatile *userData = 1;
+		//*userData = data.data;
+		//fprintf(tango.stdc.stdio.stderr, "(%d / %d)\n", collisions, collisionsTS.load());
+		fprintf(tango.stdc.stdio.stderr, "char-char\n");
+	}
+
+	void charBody(hkpCharacterProxy a, hkpRigidBody b) {
+		/+++collisions;
+		fprintf(tango.stdc.stdio.stderr, "(%d) Collision confirmed between %p and %p\n", collisions, cast(void*)a._impl, cast(void*)b._impl);
+		+/
+		fprintf(tango.stdc.stdio.stderr, "char-body\n");
+
+		// just a test
+		assert (cast(void*)a.getShapePhantom.getUserData() == cast(void*)1234);
+	}
+	
+	this() {
+		DCharacterProxyListener wrapper;
+		wrapper.thisptr = cast(void*)this;
+		//wrapper.added = &cf_added;
+		//wrapper.confirmed = &cf_confirmed;
+		//wrapper.removed = &cf_removed;
+		wrapper.charChar = &cf_charChar;
+		wrapper.charBody = &cf_charBody;
+		this.hk = CharacterProxyListener(wrapper)._as_hkpCharacterProxyListener;
+	}
+	
+	hkpCharacterProxyListener hk;
 }
 
 
@@ -343,6 +395,8 @@ class TestApp : GfxApp {
 
 		physicsWorld.addCollisionListener((g_colListener = new MyCollisionListener).hk);
 
+		g_charProxyListener = new MyCharProxyListener;
+
 		// Register all collision agents, even though only box - box will be used in this particular example.
 		// It's important to register collision agents before adding any entities to the world.
 		hkpAgentRegisterUtil.registerAllAgents(physicsWorld.getCollisionDispatcher());
@@ -390,6 +444,9 @@ class TestApp : GfxApp {
 			hkpGroupFilter.calcFilterInfo(0,2)
 		);
 
+		// just for a test
+		g_phantom.setUserData(cast(void*)1234);
+
 		physicsWorld.addPhantom(g_phantom._as_hkpPhantom).removeReference();
 
 		auto cpci = hkpCharacterProxyCinfo();
@@ -402,7 +459,9 @@ class TestApp : GfxApp {
 		cpci.m_shapePhantom = g_phantom._as_hkpShapePhantom();
 		cpci.m_characterStrength = 5000.0f;
 		
-		g_proxy = hkpCharacterProxy(cpci);		
+		g_proxy = hkpCharacterProxy(cpci);
+
+		g_proxy.addCharacterProxyListener(g_charProxyListener.hk);
 
 
 		final manager = hkpCharacterStateManager();
@@ -585,7 +644,7 @@ class TestApp : GfxApp {
 			auto data = bin.add(mesh.effectInstance);
 			mesh.toRenderableData(data);
 			data.coordSys = CoordSys(vec3fi.from(position), rotation);
-			data.scale = size;
+			data.scale = size * 2.0f;
 		}
 
 		void drawCylinder(vec3 position, quat rotation, vec3 size, CoordSys baseCS) {

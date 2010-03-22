@@ -21,6 +21,7 @@
 
 #include <Physics/Utilities/CharacterControl/hkpCharacterControl.h>
 #include <Physics/Utilities/CharacterControl/CharacterProxy/hkpCharacterProxy.h>
+#include <Physics/Utilities/CharacterControl/CharacterProxy/hkpCharacterProxyListener.h>
 #include <Physics/Utilities/CharacterControl/StateMachine/hkpDefaultCharacterStates.h>
 
 
@@ -162,6 +163,8 @@ HavokInitData* initHavok() {
 
 extern "C" {
 	typedef void (*DEntityCollisionFunc)(void*, const hkpEntity*, const hkpEntity*, hkUlong*);
+	typedef void (*DCharCharInteractFunc)(void*, const hkpCharacterProxy*, const hkpCharacterProxy*);
+	typedef void (*DCharBodyInteractFunc)(void*, const hkpCharacterProxy*, const hkpRigidBody*);
 }
 
 
@@ -178,6 +181,19 @@ struct DCollisionListener {
 		confirmed(NULL),
 		removed(NULL),
 		process(NULL)
+	{}
+};
+
+
+struct DCharacterProxyListener {
+	void* thisptr;
+	DCharCharInteractFunc charChar;
+	DCharBodyInteractFunc charBody;
+
+	DCharacterProxyListener() :
+		thisptr(NULL),
+		charChar(NULL),
+		charBody(NULL)
 	{}
 };
 
@@ -257,6 +273,30 @@ public:
 					}*/
 				}
 			}
+		}
+	}
+};
+
+
+class CharacterProxyListener : public hkpCharacterProxyListener {
+public:
+	DCharacterProxyListener	m_dListener;
+
+
+	CharacterProxyListener(const DCharacterProxyListener& dListener) :
+		m_dListener(dListener)
+	{}
+
+
+	void characterInteractionCallback(hkpCharacterProxy *proxy, hkpCharacterProxy *otherProxy, const hkContactPoint &contact) {
+		if (m_dListener.charChar) {
+			m_dListener.charChar(m_dListener.thisptr, proxy, otherProxy);
+		}
+	}
+
+	void objectInteractionCallback(hkpCharacterProxy *proxy, const hkpCharacterObjectInteractionEvent &input, hkpCharacterObjectInteractionResult &output) {
+		if (m_dListener.charBody) {
+			m_dListener.charBody(m_dListener.thisptr, proxy, input.m_body);
 		}
 	}
 };

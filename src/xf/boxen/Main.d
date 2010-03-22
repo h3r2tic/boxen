@@ -174,7 +174,7 @@ version (Server) {
 	}
 
 	void handleInputWish(InputWish e) {
-		/+if (serverSide) {
+		/+version (Server) {
 			tuneClientTiming(e);
 		}+/
 		
