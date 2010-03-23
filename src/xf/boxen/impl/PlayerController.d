@@ -60,11 +60,10 @@ struct PosRotState {
 final class PlayerController : NetObj, IPlayerController {
 	this(vec3 off, objId id, playerId owner) {
 		_coordSys = CoordSys(vec3fi.from(off), quat.identity);
-		_owner = owner;
 		_id = id;
 		
 		initPhys(off);
-		initializeNetObj();
+		initializeNetObj(owner);
 
 		addMesh(
 			DebugDraw.create(DebugDraw.Prim.Cylinder),
@@ -151,22 +150,6 @@ final class PlayerController : NetObj, IPlayerController {
 	}
 
 	// Implement NetObj
-	playerId	authOwner() {
-		return _auth;
-	}
-	
-	void		setAuthOwner(playerId pid) {
-		_auth = pid;
-	}	
-	
-	playerId	realOwner() {
-		return _owner;
-	}
-	
-	void		setRealOwner(playerId pid) {
-		_owner = pid;
-	}
-
 	void		dispose() {
 	}
 	// ----
@@ -269,6 +252,12 @@ final class PlayerController : NetObj, IPlayerController {
 	}
 
 
+	// They are NEVER asleep! - if this func returned true, auth would be given up
+	bool isActive() {
+		return true;
+	}
+
+
 	void calcRotationAndDirection() {
 		_coordSys.rotation = quat.yRotation(_rotation.yaw);
 		_cameraQuat = _coordSys.rotation * quat.xRotation(_rotation.pitch);
@@ -285,8 +274,6 @@ final class PlayerController : NetObj, IPlayerController {
 	vec3		_movePending = vec3.zero;
 	YawPitch	_rotationPending = YawPitch.zero;
 	
-	playerId	_owner;
-	playerId	_auth;
 
 	void storeState(PosRotState* st) {
 		st.pos = _coordSys.origin;

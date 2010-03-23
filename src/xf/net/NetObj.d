@@ -116,17 +116,26 @@ interface NetObj : GameObj {
 			the object but the client wants it back
 		*/
 		bool keepServerUpdated();
+		void keepServerUpdated(bool);
 
 		bool netObjScheduledForDeletion();
 		void netObjScheduleForDeletion();
+
+		playerId	authOwner();
+		void		setAuthOwner(playerId pid);
+		playerId	realOwner();
+		void		setRealOwner(playerId pid);
+		playerId	prevAuthOwner();
+		void		setPrevAuthOwner(playerId pid);
+		bool		authValid();
+		void		authValid(bool);
+		bool		authRequested();
+		void		authRequested(bool v);
+		bool		givingUpAuth();
+		void		givingUpAuth(bool v);
 	// ----
 
 	void		dispose();
-
-	playerId	authOwner();
-	void		setAuthOwner(playerId pid);
-	playerId	realOwner();
-	void		setRealOwner(playerId pid);
 }
 
 void addNetObjScheduleForDeletionHandler(void delegate(NetObj) dg) {
@@ -156,10 +165,17 @@ template MNetObj() {
 				ushort				_netObjInfoIdx;
 			}
 
+			playerId	_owner;
+			playerId	_auth;
+			playerId	_prevAuthOwner;
+
 			bool		_netObjInitialized;
 			bool		_predicted;
 			bool		_keepServerUpdated;
 			bool		_netObjScheduledForDeletion;
+			bool		_authValid;
+			bool		_authRequested;
+			bool		_givingUpAuth;
 		}
 
 
@@ -179,8 +195,11 @@ template MNetObj() {
 			xf.game.GameObjRegistry.register!(typeof(this))();
 		}
 
-		void	initializeNetObj() {
+		void	initializeNetObj(playerId owner) {
 			assert (!_netObjInitialized);
+			_owner = owner;
+			_auth = owner;
+			_prevAuthOwner = owner;
 			_netObjInitialized = true;
 			// TODO: install a debug mechanism for detecing omission of disposal
 		}
@@ -216,12 +235,11 @@ template MNetObj() {
 
 
 
-		void keepServerUpdated(bool v) {
-			_keepServerUpdated = v;
-		}
-		
 		bool keepServerUpdated() {
 			return _keepServerUpdated;
+		}
+		void keepServerUpdated(bool v) {
+			_keepServerUpdated = v;
 		}
 
 
@@ -237,6 +255,56 @@ template MNetObj() {
 				}
 			}
 		}
+
+
+		playerId	authOwner() {
+			return _auth;
+		}
+		
+		void		setAuthOwner(playerId pid) {
+			_auth = pid;
+		}	
+		
+		playerId	realOwner() {
+			return _owner;
+		}
+		
+		void		setRealOwner(playerId pid) {
+			_owner = pid;
+		}
+
+		playerId	prevAuthOwner() {
+			return _prevAuthOwner;
+		}
+		
+		void		setPrevAuthOwner(playerId pid) {
+			_prevAuthOwner = pid;
+		}
+
+		bool		authValid() {
+			return _authValid;
+		}
+		
+		void		authValid(bool v) {
+			_authValid = v;
+		}
+
+		bool		authRequested() {
+			return _authRequested;
+		}
+
+		void		authRequested(bool v) {
+			_authRequested = v;
+		}
+		
+		bool		givingUpAuth() {
+			return _givingUpAuth;
+		}
+
+		void		givingUpAuth(bool v) {
+			_givingUpAuth = v;
+		}
+
 	} else {
 		static assert (false, "Cannot mixin MNetObj twice in " ~ typeof(this).stringof);
 	}

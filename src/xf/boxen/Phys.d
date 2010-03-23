@@ -18,6 +18,23 @@ hkpGroupFilter		groupFilter;
 
 
 
+/**
+ * For authority tracking.
+ *
+ * Objects will be reported to be touching for up to this many ticks after the
+ * last contact. This can reduce the number of authority transfer events and
+ * callbacks from Havok, but having it too high may cause false auth collisions
+ * to be reported and the server to take authority when it doesn't really have to.
+ *
+ * TODO: The optimal value of this parameter is to be determined.
+ *
+ * IMPORTANT: Call .setProcessContactCallbackDelay(Phys.contactPersistence) on
+ * new hkpRigidBodies, otherwise contact reporting will not work as supposed to.
+ * BUG: hide it so the user may not forget to call that func.
+ */
+enum : ushort { contactPersistence = 3 };
+
+
 void update(double seconds) {
 	world.stepMultithreaded(jobQueue, threadPool, seconds);
 	

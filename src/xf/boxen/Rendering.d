@@ -18,10 +18,11 @@ mixin(multiArray(`meshes`, `
 `));
 
 
-void addMesh(Mesh* m, CoordSys offset, objId offsetFrom, vec3 scale = vec3.one) {
+size_t addMesh(Mesh* m, CoordSys offset, objId offsetFrom, vec3 scale = vec3.one) {
 	final idx = meshes.growBy(1);
 	meshes.mesh[idx] = m;
 	meshes.offset[idx] = offset;
 	meshes.offsetFrom[idx] = offsetFrom;
 	meshes.scale[idx] = scale;
+	return idx;
 }

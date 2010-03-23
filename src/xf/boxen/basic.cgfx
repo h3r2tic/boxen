@@ -35,8 +35,9 @@ void VertexProgram(
 
 void FragmentProgram(
 	in fragInput input,
+	uniform float4 tintColor,
 	out float4 output : COLOR
 ) {
-	output = ((input.normal + 1.0f) * 0.5f).xyzz;
+	output = tintColor * ((input.normal + 1.0f) * 0.5f).xyzz;
 }
 

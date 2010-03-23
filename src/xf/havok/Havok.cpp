@@ -302,6 +302,11 @@ public:
 };
 
 
+struct C_hkVector4 {
+	float x, y, z, w;
+};
+
+
 extern "C"
 {
 	#include "HavokC.cpp.i"

@@ -211,7 +211,7 @@ def generateCFunc(func, scope, fmt):
 
 		if scope is None or func.static:
 			pstr = ', '.join(params)
-			fmt('HKCAPI %s %s(%s)', func.ret.forCBridge(), func.bridgeName(), pstr)
+			fmt('HKCAPI %s %s(%s)', func.ret.forCBridgeTypeOverride(), func.bridgeName(), pstr)
 			fmt.push()
 
 			callstr = ''
@@ -221,7 +221,7 @@ def generateCFunc(func, scope, fmt):
 			callstr += '%s(%s)' % (func.hkname, ', '.join(argPass))
 		else:
 			pstr = ', '.join(['void* const impl_'] + params)
-			fmt('HKCAPI %s %s(%s)', func.ret.forCBridge(), func.bridgeName(), pstr)
+			fmt('HKCAPI %s %s(%s)', func.ret.forCBridgeTypeOverride(), func.bridgeName(), pstr)
 			fmt.push()
 			fmt('assert (impl_ != NULL);')
 
