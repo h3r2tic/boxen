@@ -205,6 +205,14 @@ class TypeAnalysis:
 			return ''
 		return worker(self)
 
+	def forCBridgeTypeOverride(self, param = None):
+		if self.plain:
+			if 'hkBool' == self.c:
+				return 'char'
+			elif 'hkVector4' == self.c:
+				return 'C_hkVector4'
+		return self.forCBridge(param);
+
 	def forDReturn(self, expr):
 		def worker(t, expr):		# TODO
 			if t.plain:
@@ -295,7 +303,12 @@ class TypeAnalysis:
 	def returnFromHavok(self, expr):
 		def worker(t, expr):		# TODO
 			if t.plain:
-				return expr
+				if 'hkBool' == t.c:
+					return '(char)(bool)' + expr
+				elif 'hkVector4' == t.c:
+					return '*(C_hkVector4*)&' + expr
+				else:
+					return expr
 			if (t.ptr or t.ref) and t.base.plain and t.base.cls:
 				return (expr if t.ptr else '&'+expr)
 

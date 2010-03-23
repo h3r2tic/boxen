@@ -62,8 +62,9 @@ class EventReader {
 			});
 
 			//log.trace("Event for tick {}", evtTargetTick);
-			if (evtTargetTick < timeHub.currentTick) {
-				log.info("# evtTargetTick < timeHub.currentTick");
+			// NOTE: changed < from the original netcode to <=
+			if (evtTargetTick <= timeHub.currentTick) {
+				log.info("# evtTargetTick <= timeHub.currentTick");
 				if ((cast(Order)evt).strictTiming) {
 					rollbackTimeToTick(evtTargetTick);
 				} else {

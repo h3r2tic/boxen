@@ -62,8 +62,13 @@ private {
 }
 
 
-version (Client) GameClient	client;
-version (Server) GameServer	server;
+version (Client) {
+	GameClient	client;
+	playerId	_localPlayerId;
+} else {
+	GameServer	server;
+}
+
 ILevel		level;
 EventQueue	eventQueue;
 
@@ -96,7 +101,6 @@ union IdTicks {
 }
 static assert (4 == IdTicks.sizeof);
 
-enum : ushort { contactPersistence = 60 };
 
 extern (C) void boxen_processGameObjInteraction(void* o1, void* o2) {
 	final id1 = (cast(GameObj)cast(Object)o1).id();
@@ -112,7 +116,20 @@ extern (C) void boxen_processGameObjInteraction(void* o1, void* o2) {
 }
 
 
-void iterInteractions(objId id0_, objId[] queue, void delegate(objId) sink) {
+struct InteractionsFound {
+	uword	queueLen;
+	objId[]	queue;
+	
+	int opApply(int delegate(ref objId) dg) {
+		foreach (ref x; queue[0..queueLen]) {
+			if (int r = dg(x)) return r;
+		}
+		return 0;
+	}
+}
+
+
+InteractionsFound findIteractions(objId id0_, objId[] queue) {
 	assert (queue.length >= NetObjMngr.g_netObjects.length);
 	
 	uword queueLen = 1;
@@ -123,7 +140,7 @@ void iterInteractions(objId id0_, objId[] queue, void delegate(objId) sink) {
 		final id = queue[i];
 		final bs = &AuthStorage.binStorage[id];
 		assert (true == bs.readVisitedFlag());
-		sink(id);
+
 		foreach (rawIt; *bs) {
 			final it = cast(IdTicks*)&rawIt;
 			final id2 = it.id;
@@ -135,13 +152,19 @@ void iterInteractions(objId id0_, objId[] queue, void delegate(objId) sink) {
 		}
 	}
 
-	for (uword i = 0; i < queueLen; ++i) {
-		final id = queue[i];
+	return InteractionsFound(queueLen, queue);
+}
+
+
+void cleanupInteractionsFound(InteractionsFound* intf) {
+	foreach (id; *intf) {
 		final bs = &AuthStorage.binStorage[id];
 		assert (true == bs.readVisitedFlag());
 		bs.unsetVisitedFlag();
+		assert (false == bs.readVisitedFlag());
 	}
 }
+
 
 
 void refreshInteractions() {
@@ -163,11 +186,11 @@ void refreshInteractions() {
 			bs.iterOrAdd((ref u32 i) {
 				final it = cast(IdTicks*)&i;
 				if (it.id == id2) {
-					it.ticks = .contactPersistence;
+					it.ticks = Phys.contactPersistence;
 					return true;
 				}
 				return false;
-			}, IdTicks(id2, .contactPersistence).packed);
+			}, IdTicks(id2, Phys.contactPersistence).packed);
 		}
 
 		{
@@ -178,11 +201,11 @@ void refreshInteractions() {
 			bs.iterOrAdd((ref u32 i) {
 				final it = cast(IdTicks*)&i;
 				if (it.id == id2) {
-					it.ticks = .contactPersistence;
+					it.ticks = Phys.contactPersistence;
 					return true;
 				}
 				return false;
-			}, IdTicks(id2, .contactPersistence).packed);
+			}, IdTicks(id2, Phys.contactPersistence).packed);
 		}
 	}
 
@@ -207,7 +230,7 @@ void refreshInteractions() {
 		});
 	}
 
-	scope stack = new StackBuffer();
+	/+scope stack = new StackBuffer();
 	final arr = LocalArray!(objId)(NetObjMngr.g_netObjects.length, stack);
 	scope (success) arr.dispose();
 
@@ -224,9 +247,372 @@ void refreshInteractions() {
 		});
 		
 		printf("\n");
+	}+/
+}
+
+
+void findTouchGroupInfo(
+		ref InteractionsFound inter,
+		out bool singleOwner, out bool singleAuth, out bool containsServerAuth,
+		out playerId theAuth,
+		out playerId theOwner
+) {
+	singleOwner = true;
+	singleAuth = true;
+	containsServerAuth = false;
+	theAuth	= NoAuthority;
+	theOwner = NoAuthority;
+
+	foreach (id; inter) {
+		final t = NetObjMngr.g_netObjects[id];
+		
+		if (t.realOwner != NoAuthority) {
+			if (ServerAuthority == t.realOwner) {
+				containsServerAuth = true;
+			} else {
+				if (NoAuthority == theOwner) {
+					theOwner = t.realOwner;
+				} else {
+					if (theOwner != t.realOwner) {
+						singleOwner = false;
+					}
+				}
+			}
+		}
+		
+		if (t.authOwner != NoAuthority) {
+			if (ServerAuthority == t.authOwner) {
+				containsServerAuth = true;
+			} else {
+				if (NoAuthority == theAuth) {
+					theAuth = t.authOwner;
+				} else {
+					if (theAuth != t.authOwner) {
+						singleAuth = false;
+					}
+				}
+			}
+		}
 	}
 }
 
+
+void updateAuthority() {
+	foreach (id_, obj; NetObjMngr.g_netObjects) {
+		if (obj is null) {
+			continue;
+		}
+		obj.authValid = false;
+	}
+
+	scope stack = new StackBuffer();
+	final interactionsScratch = LocalArray!(objId)(NetObjMngr.g_netObjects.length, stack);
+	scope (success) interactionsScratch.dispose();
+
+
+	foreach (id_, obj; NetObjMngr.g_netObjects) {
+		if (obj is null) {
+			continue;
+		}
+
+		InteractionsFound intf = findIteractions(obj.id, interactionsScratch.data);
+		findTouchingGroupAuth(obj, intf);
+		cleanupInteractionsFound(&intf);
+	}
+
+	foreach (id_, obj; NetObjMngr.g_netObjects) {
+		if (obj is null) {
+			continue;
+		}
+
+		version (Client) {
+			if (_localPlayerId == obj.authOwner || obj.authRequested) {
+				obj.keepServerUpdated = true;
+			}
+		} else if (obj.prevAuthOwner != obj.authOwner) {
+			OverrideAuthority(obj.id, obj.authOwner).immediate;
+			obj.setPrevAuthOwner(obj.authOwner);
+		}
+	}
+}
+
+
+bool isGroupAsleep(ref InteractionsFound intf) {
+	foreach (t; intf) {
+		final obj = NetObjMngr.g_netObjects[t];
+		if (obj.isActive) {
+			return false;
+		}
+	}
+	return true;
+}
+
+
+version (Server) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound intf) {
+	if (obj.authValid) return;
+	
+	bool singleOwner, singleAuth, containsServerAuth;
+	playerId theAuth, theOwner;
+	findTouchGroupInfo(intf, singleOwner, singleAuth, containsServerAuth, theAuth, theOwner);
+
+	alias NetObjMngr.g_netObjects _netObjects;
+	
+	void setAllAuthTo(playerId auth) {
+		foreach (ref t; intf) {
+			_netObjects[t].setAuthOwner(auth);
+		}
+	}
+	
+	void validateAllAuth() {
+		foreach (ref t; intf) {
+			_netObjects[t].authValid = true;
+		}
+	}
+	
+	if (singleOwner && singleAuth && containsServerAuth && NoAuthority == theOwner) {
+		// a group of non-owned objects under the server auth
+		// this is analogous to giving out client-side authority when the objects come to rest
+		if (isGroupAsleep(intf)) {
+			setAllAuthTo(NoAuthority);
+		}
+	} else if (singleOwner && !singleAuth && !containsServerAuth && theOwner != NoAuthority) {
+		// if there's an important object touching a bunch of objects owned by other players
+		// but none of them is important as well, give control of all the non-important objects
+		// to the player owning the important one
+		setAllAuthTo(theOwner);
+	} else if (!singleOwner || !singleAuth || containsServerAuth) {
+		// multiple owners, multiple temporary owners or some objects are controlled by the server
+		
+		bool canGiveBack = false;
+		if (singleOwner && singleAuth && theOwner != NoAuthority) {
+			// if all objects in the group are owned by one player, check if they can be given back
+			canGiveBack = true;
+			const float maxError = .5f;
+
+			// TODO
+			/+foreach (t; intf) {
+				if (_netObjects[t].authOwner != NoAuthority) {
+					auto go = cast(GameObj)t.userData;
+					assert (go !is null);
+					float err = go.compareCurrentStateWithStored(theOwner, timeHub.currentTick);
+					if (err > maxError) {
+						printf("can't give object back. error = %f"\n, err);
+						canGiveBack = false;
+						break;
+					}
+				}
+			}+/
+		}
+		
+		if (canGiveBack) {
+			// the player objects are within a tolerance threshold to the server state, give them all
+			// to the player
+			setAllAuthTo(theOwner);
+		} else {
+			// otherwise, server takes control
+			setAllAuthTo(ServerAuthority);
+		}
+	} else if (theOwner != NoAuthority) {
+		// the objects are owned by one player, plus there may be some without owners,
+		// give them all to the player
+		setAllAuthTo(theOwner);
+	} else if (theAuth != NoAuthority) {
+		// the objects are temporarily owned by one player, plus there may be some without owners,
+		// give them all to the player
+		setAllAuthTo(theAuth);
+	} else {
+		// do nothing, there is no auth or owner for this group
+		assert (NoAuthority == theAuth);
+		assert (NoAuthority == theOwner);
+	}
+	
+	// mark objects in the touch group as processed
+	validateAllAuth;
+}
+
+// ----------------------------------------------------------------
+
+version (Client) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound intf) {
+	if (obj.authValid) return;
+
+	alias NetObjMngr.g_netObjects _netObjects;
+
+	void requestAllAuth() {
+		foreach (t; intf) {
+			if (!_netObjects[t].authRequested) {
+				_netObjects[t].givingUpAuth = false;
+				_netObjects[t].authRequested = true;
+				printf("requesting auth of obj %d"\n, cast(int)t);
+				RequestAuthority(t).immediate;
+			}
+		}
+	}
+	
+	void giveUpAllAuth() {
+		foreach (t; intf) {
+			if (!_netObjects[t].givingUpAuth) {
+				_netObjects[t].givingUpAuth = true;
+				_netObjects[t].authRequested = false;
+				printf("giving up auth of obj %d"\n, cast(int)t);
+				GiveUpAuthority(t).immediate;
+			}
+		}
+	}
+	
+	void validateAllAuth() {
+		foreach (t; intf) {
+			_netObjects[t].authValid = true;
+		}
+	}
+
+	bool singleOwner, singleAuth, containsServerAuth;
+	playerId theAuth, theOwner;
+	findTouchGroupInfo(intf, singleOwner, singleAuth, containsServerAuth, theAuth, theOwner);
+	
+	bool touchesLocallyOwned = false;
+	foreach (t; intf) {
+		if (_localPlayerId == _netObjects[t].realOwner) {
+			touchesLocallyOwned = true;
+		}
+	}
+	
+	if (touchesLocallyOwned) {
+		// try to take control over all the objects
+		requestAllAuth;
+	} else {
+		bool groupAsleep = isGroupAsleep(intf);
+		
+		if (singleAuth && _localPlayerId == theAuth) {
+			// we're the only client that has any auth over objects in this group
+			
+			if (groupAsleep) {
+				// we control the objects but since they fell asleep, we don't care anymore
+				// give them back to the server
+				giveUpAllAuth;
+			}
+		}
+		
+		if (!groupAsleep) {
+			// if the group is active and we've requested control over some of its objects,
+			// we'll also try to take control over the others, since the server might want
+			// to give them to us and we want to keep it updated with out vision of their state
+			
+			bool touchesLocalAuth = false;
+			foreach (t; intf) {
+				if (_localPlayerId == _netObjects[t].authOwner || _netObjects[t].authRequested) {
+					touchesLocalAuth = true;
+					break;
+				}
+			}
+			
+			if (touchesLocalAuth) {
+				requestAllAuth;
+			}
+		}
+	}
+	
+	// mark objects in the touch group as processed
+	validateAllAuth;
+}
+// ----------------------------------------------------------------
+
+NetObj getNetObj(objId id) {
+	if (id < NetObjMngr.g_netObjects.length) {
+		return NetObjMngr.g_netObjects[id];
+	} else {
+		return null;
+	}
+}
+
+
+version (Server) {
+	private void handleRequestAuthority(RequestAuthority e) {
+		// TODO: security
+		if (auto netObj = getNetObj(e.obj)) {
+			if (NoAuthority == netObj.authOwner) {
+				netObj.setAuthOwner(e.wishOrigin);
+			} else {
+				// TODO: tell the client they couldn't get the auth?
+			}
+		}
+	}
+
+
+	private void handleGiveUpAuthority(GiveUpAuthority e) {
+		// TODO: security
+		if (auto netObj = getNetObj(e.obj)) {
+			if (e.wishOrigin == netObj.authOwner) {
+				netObj.setAuthOwner(NoAuthority);
+			}
+		}
+	}
+
+
+	// ----
+
+	protected void handleAcquireObject(AcquireObject e) {
+		// TODO: security
+		if (auto netObj = getNetObj(e.obj)) {
+			if (NoAuthority == netObj.realOwner || e.wishOrigin == netObj.realOwner) {
+				printf("AcquireObject: success"\n);
+				netObj.setRealOwner = e.wishOrigin;
+				ObjectOwnershipChange(e.obj, e.wishOrigin).immediate;
+			} else {
+				printf("AcquireObject: refused"\n);
+				RefuseObjectAcquisition(e.obj).filter((playerId pid) {
+					return pid == e.wishOrigin;
+				}).immediate;
+			}
+		}
+	}
+
+
+	protected void handleReleaseObject(ReleaseObject e) {
+		// TODO: security
+		if (auto netObj = getNetObj(e.obj)) {
+			if (e.wishOrigin == netObj.realOwner) {
+				netObj.setRealOwner = NoAuthority;
+				ObjectOwnershipChange(e.obj, NoAuthority).immediate;
+			}
+			if (e.wishOrigin == netObj.authOwner) {
+				netObj.setAuthOwner(NoAuthority);
+			}
+		}
+	}
+}
+
+// ----------------------------------------------------------------
+
+version (Client) {
+	private void handleOverrideAuthority(OverrideAuthority e) {
+		printf("OverrideAuthority %d -> %d: ", cast(int)e.obj, cast(int)e.player);
+		if (auto netObj = getNetObj(e.obj)) {
+			printf("OK"\n);
+			netObj.givingUpAuth = false;
+			netObj.authRequested = false;
+			netObj.setAuthOwner(e.player);
+			return;
+		}
+		printf("FAIL"\n);
+	}
+
+	protected void handleObjectOwnershipChange(ObjectOwnershipChange e) {
+		printf("ObjectOwnershipChange %d -> %d: ", cast(int)e.obj, cast(int)e.player);
+		if (auto netObj = getNetObj(e.obj)) {
+			printf("OK"\n);
+			netObj.setRealOwner = e.player;
+		} else {
+			printf("FAIL"\n);
+		}
+	}
+	
+	
+	protected void handleRefuseObjectAcquisition(RefuseObjectAcquisition e) {
+		// nothing here
+	}
+}
+
+// ----------------------------------------------------------------
 
 void updateGame() {
 	version (Server) {
@@ -242,6 +628,7 @@ void updateGame() {
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
 		refreshInteractions();
+		updateAuthority();
 
 		NetObjMngr.storeNetObjStates(timeHub.currentTick);
 
@@ -290,6 +677,7 @@ void updateGame() {
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
 		refreshInteractions();
+		updateAuthority();
 
 		/+if (client.connected) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
@@ -330,7 +718,7 @@ version (Server) {
 
 
 	void handlePlayerLogin(playerId pid) {
-		final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, ServerAuthority/+pid+/);
+		final obj = GameObjMngr.createGameObj("PlayerController", vec3.zero, pid);
 
 		_observedPlayer = pid;
 
@@ -465,6 +853,11 @@ class TestApp : GfxApp {
 		.level = create!(ILevel).named("TestLevel")();
 
 		version (Server) {
+			RequestAuthority.addHandler(fn2dg(&handleRequestAuthority));
+			GiveUpAuthority.addHandler(fn2dg(&handleGiveUpAuthority));
+			AcquireObject.addHandler(fn2dg(&handleAcquireObject));
+			ReleaseObject.addHandler(fn2dg(&handleReleaseObject));
+
 			LoginMngr.initialize();
 			createGameWorld();
 			
@@ -472,9 +865,12 @@ class TestApp : GfxApp {
 				create!(LowLevelServer).named(netBackend~"Server")(32)
 			).start(netAddr, port));
 		} else {
+			OverrideAuthority.addHandler(fn2dg(&handleOverrideAuthority));
+			ObjectOwnershipChange.addHandler(fn2dg(&handleObjectOwnershipChange));
+			RefuseObjectAcquisition.addHandler(fn2dg(&handleRefuseObjectAcquisition));
+
 			_playerInputMap = new PlayerInputMap(inputHub.mainChannel);
 			_playerInputMap.outgoing.addReader(_playerInputSampler = new PlayerInputSampler);
-
 
 			AssignController.addHandler(fn2dg(&handleAssignController));
 			
@@ -518,6 +914,7 @@ class TestApp : GfxApp {
 			LoginAccepted.addHandler((LoginAccepted e) {
 				Stdout.formatln("Login accepted!");
 				client.setLocalPlayerId(e.pid);
+				._localPlayerId = e.pid;
 			});
 		}
 
@@ -530,6 +927,13 @@ class TestApp : GfxApp {
 	}
 
 
+	static vec4[] playerColors = [
+		{ r: 0.1f, g: 1.0f, b: 0.2f, a: 1.0f },
+		{ r: 0.1f, g: 0.2f, b: 1.0f, a: 1.0f },
+		{ r: 0.7f, g: 0.9f, b: 0.2f, a: 1.0f }
+	];
+
+
 	override void render() {
 		final renderList = renderer.createRenderList();
 		assert (renderList !is null);
@@ -539,10 +943,30 @@ class TestApp : GfxApp {
 		for (uword i = 0; i < meshes.length; ++i) {
 			final mesh = meshes.mesh[i];
 			final bin = renderList.getBin(mesh.effect);
-			auto data = bin.add(mesh.effectInstance);
+			final efInst = mesh.effectInstance;
+
+			auto data = bin.add(efInst);
 			mesh.toRenderableData(data);
 
-			final obj = GameObjMngr.getObj(meshes.offsetFrom[i]);
+			final obj = cast(NetObj)cast(Object)GameObjMngr.getObj(meshes.offsetFrom[i]);
+
+			final auth = obj.authOwner();
+			vec4 tintColor = void;
+			if (NoAuthority == auth) {
+				tintColor = vec4.one;
+			} else if (ServerAuthority == auth) {
+				tintColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+			} else {
+				assert (auth < 2);		// for now
+				tintColor = playerColors[auth % $];
+			}
+
+			if (!obj.isActive) {
+				tintColor *= 0.5f;
+			}
+			
+			efInst.setUniform("FragmentProgram.tintColor", tintColor);
+
 			data.coordSys =	meshes.offset[i] in CoordSys(
 				obj.worldPosition,
 				obj.worldRotation

@@ -12,6 +12,8 @@ private {
 	import DebugDraw = xf.boxen.DebugDraw;
 	import Phys = xf.boxen.Phys;
 	import xf.havok.Havok;
+
+	import tango.stdc.stdio;
 }
 
 
@@ -100,11 +102,10 @@ final class DebrisObject : NetObj {
 	
 	this(vec3 off, objId id, playerId owner) {
 		_coordSys = CoordSys(vec3fi.from(off), quat.identity);
-		_owner = owner;
 		_id = id;
 		
 		initPhys(off);
-		initializeNetObj();
+		initializeNetObj(owner);
 
 		addMesh(
 			DebugDraw.create(DebugDraw.Prim.Box),
@@ -148,6 +149,7 @@ final class DebrisObject : NetObj {
 
 		_rigidBody = hkpRigidBody(boxInfo);
 		//boxRigidBody.setUserData(0);
+		_rigidBody.setProcessContactCallbackDelay(Phys.contactPersistence);
 
 		Phys.world.addEntity(_rigidBody._as_hkpEntity);
 		box.removeReference();
@@ -157,22 +159,6 @@ final class DebrisObject : NetObj {
 
 
 	// Implement NetObj
-	playerId	authOwner() {
-		return _auth;
-	}
-	
-	void		setAuthOwner(playerId pid) {
-		_auth = pid;
-	}	
-	
-	playerId	realOwner() {
-		return _owner;
-	}
-	
-	void		setRealOwner(playerId pid) {
-		_owner = pid;
-	}
-
 	void		dispose() {
 	}
 	// ----
@@ -199,12 +185,15 @@ final class DebrisObject : NetObj {
 		Phys.world.unmarkForRead();
 	}
 
+
+	bool isActive() {
+		return _rigidBody.isActive();
+	}
+
 	
 
 	CoordSys	_coordSys = CoordSys.identity;
 	
-	playerId	_owner;
-	playerId	_auth;
 
 	void storeState(PosRotVelState* st) {
 		Phys.world.markForRead();
