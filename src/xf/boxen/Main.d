@@ -31,6 +31,8 @@ private {
 	import GameObjMngr = xf.game.GameObjMngr;
 	import LoginMngr = xf.game.LoginMngr;
 	import GameObjRegistry = xf.game.GameObjRegistry;
+	import InteractionTracking = xf.game.InteractionTracking;
+	import AuthStorage = xf.game.AuthStorage;
 
 	import tango.core.Thread;
 	import Integer = tango.text.convert.Integer;
@@ -47,6 +49,11 @@ private {
 	import xf.utils.GfxApp;
 	import xf.utils.SimpleCamera;
 
+	import xf.mem.ChunkQueue;
+	import xf.utils.GlobalThreadDataRegistry;
+	import xf.utils.LocalArray;
+	import xf.mem.StackBuffer;
+
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 
@@ -60,6 +67,165 @@ version (Server) GameServer	server;
 ILevel		level;
 EventQueue	eventQueue;
 
+
+struct Interaction {
+	objId id1;
+	objId id2;
+}
+
+__thread ChunkQueue!(Interaction)							interactionQueue;
+mixin GlobalThreadDataRegistryM!(typeof(interactionQueue)*)	InteractionQueueRegistry;
+ChunkQueue!(Interaction)									serializedInteractions;
+
+
+
+union IdTicks {
+	static IdTicks opCall(objId id, ushort ticks) {
+		IdTicks res = void;
+		res.id = id;
+		res.ticks = ticks;
+		return res;
+	}
+	
+	struct {
+		objId	id;
+		ushort	ticks;
+	}
+
+	u32	packed;
+}
+static assert (4 == IdTicks.sizeof);
+
+enum : ushort { contactPersistence = 60 };
+
+extern (C) void boxen_processGameObjInteraction(void* o1, void* o2) {
+	final id1 = (cast(GameObj)cast(Object)o1).id();
+	final id2 = (cast(GameObj)cast(Object)o2).id();
+
+	assert (NetObjMngr.g_netObjects[id1] !is null);
+	assert (NetObjMngr.g_netObjects[id2] !is null);
+
+	if (id1 != id2) {
+		InteractionQueueRegistry.register(&interactionQueue);
+		interactionQueue.pushBack(Interaction(id1, id2));
+	}
+}
+
+
+void iterInteractions(objId id0_, objId[] queue, void delegate(objId) sink) {
+	assert (queue.length >= NetObjMngr.g_netObjects.length);
+	
+	uword queueLen = 1;
+	queue[0] = id0_;
+	AuthStorage.binStorage[id0_].setVisitedFlag();
+
+	for (uword i = 0; i < queueLen; ++i) {
+		final id = queue[i];
+		final bs = &AuthStorage.binStorage[id];
+		assert (true == bs.readVisitedFlag());
+		sink(id);
+		foreach (rawIt; *bs) {
+			final it = cast(IdTicks*)&rawIt;
+			final id2 = it.id;
+			final bs2 = &AuthStorage.binStorage[id2];
+			if (false == bs2.readVisitedFlag()) {
+				bs2.setVisitedFlag();
+				queue[queueLen++] = id2;
+			}
+		}
+	}
+
+	for (uword i = 0; i < queueLen; ++i) {
+		final id = queue[i];
+		final bs = &AuthStorage.binStorage[id];
+		assert (true == bs.readVisitedFlag());
+		bs.unsetVisitedFlag();
+	}
+}
+
+
+void refreshInteractions() {
+	foreach (thi, thq; InteractionQueueRegistry.each) {
+		foreach (i, x; *thq) {
+			serializedInteractions.pushBack(x);
+		}
+		(*thq).clear();
+	}
+	
+	InteractionQueueRegistry.clearRegistrations();
+
+	foreach (x; serializedInteractions) {
+		{
+			final id1 = x.id1;
+			final id2 = x.id2;
+			
+			final bs = &AuthStorage.binStorage[id1];
+			bs.iterOrAdd((ref u32 i) {
+				final it = cast(IdTicks*)&i;
+				if (it.id == id2) {
+					it.ticks = .contactPersistence;
+					return true;
+				}
+				return false;
+			}, IdTicks(id2, .contactPersistence).packed);
+		}
+
+		{
+			final id2 = x.id1;
+			final id1 = x.id2;
+			
+			final bs = &AuthStorage.binStorage[id1];
+			bs.iterOrAdd((ref u32 i) {
+				final it = cast(IdTicks*)&i;
+				if (it.id == id2) {
+					it.ticks = .contactPersistence;
+					return true;
+				}
+				return false;
+			}, IdTicks(id2, .contactPersistence).packed);
+		}
+	}
+
+	serializedInteractions.clear();
+
+	foreach (id_, obj; NetObjMngr.g_netObjects) {
+		if (obj is null) {
+			continue;
+		}
+		
+		objId id = cast(objId)id_;
+		final bs = &AuthStorage.binStorage[id];
+
+		bs.updateRemove((ref uint rawIt) {
+			final it = cast(IdTicks*)&rawIt;
+			if (it.ticks > 0) {
+				--it.ticks;
+				return false;
+			} else {
+				return true;
+			}
+		});
+	}
+
+	scope stack = new StackBuffer();
+	final arr = LocalArray!(objId)(NetObjMngr.g_netObjects.length, stack);
+	scope (success) arr.dispose();
+
+	foreach (id_, obj; NetObjMngr.g_netObjects) {
+		if (obj is null) {
+			continue;
+		}
+
+		objId id = cast(objId)id_;
+		printf("Obj %d interactions:", cast(int)id);
+
+		iterInteractions(id, arr.data, (objId id2) {
+			printf(" %d", cast(int)id2);
+		});
+		
+		printf("\n");
+	}
+}
 
 
 void updateGame() {
@@ -75,6 +241,7 @@ void updateGame() {
 		GameObjMngr.update(timeHub.secondsPerTick);
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
+		refreshInteractions();
 
 		NetObjMngr.storeNetObjStates(timeHub.currentTick);
 
@@ -122,6 +289,7 @@ void updateGame() {
 		GameObjMngr.update(timeHub.secondsPerTick);
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
+		refreshInteractions();
 
 		/+if (client.connected) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
@@ -293,6 +461,7 @@ class TestApp : GfxApp {
 		GameObjMngr.initialize();
 
 		Phys.initialize();
+		InteractionTracking.initialize(Phys.world);
 		.level = create!(ILevel).named("TestLevel")();
 
 		version (Server) {

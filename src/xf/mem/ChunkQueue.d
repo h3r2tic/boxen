@@ -381,6 +381,7 @@ struct RawChunkDeque {
 			}
 
 			auto cache = &_allocator;
+			memLog.trace("RawChunkDeque :: releasing a chunk.");
 			Chunk.fromPtr(cast(void*)ch).dispose();
 			_tail = ntail;
 		}
@@ -406,6 +407,7 @@ struct RawChunkDeque {
 			}
 
 			auto cache = &_allocator;
+			memLog.trace("RawChunkDeque :: releasing a chunk.");
 			Chunk.fromPtr(cast(void*)ch).dispose();
 			_tail = ntail;
 		}
@@ -630,11 +632,11 @@ struct ChunkQueue(T) {
 
 
 	void clear() {
-		impl._clear();
+		_impl.clear();
 	}
 
 	void dispose() {
-		impl._dispose();
+		_impl.dispose();
 	}
 
 

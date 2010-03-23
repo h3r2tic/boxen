@@ -16,7 +16,7 @@
 	The total storage is completely pre-allocated at program startup to the size of 1MB.
 */
 
-module xf.boxen.game.ContactStorage;
+module xf.game.AuthStorage;
 
 
 private const int numInitialBins = 8;
@@ -278,7 +278,7 @@ private struct ContactAuxBin {
 
 
 private ContactAuxBin[]	auxBinStorage;
-private ContactBin[]		binStorage;
+private ContactBin[]	binStorage;
 private uint			nextFreeAuxBin;
 private Object			auxBinAllocMutex;
 
