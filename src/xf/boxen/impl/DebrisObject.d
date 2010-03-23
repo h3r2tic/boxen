@@ -151,6 +151,8 @@ final class DebrisObject : NetObj {
 
 		Phys.world.addEntity(_rigidBody._as_hkpEntity);
 		box.removeReference();
+
+		_rigidBody.setUserData(cast(uword)cast(void*)this);
 	}
 
 

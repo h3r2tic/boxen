@@ -17,11 +17,11 @@
 + NetObj state serialization and propagation ( just server->client for now )
 + Plug Havok for player controllers
 + Debris boxen
++ Linearize the callbacks and update xf.boxen.game.ContactStorage
++ Revive touch trackers / auth groups on top of the ContactStorage
++ Collect the 'process' contact callbacks from Havok from all threads
 
 * Visualize auth
-* Collect the 'process' contact callbacks from Havok from all threads
-* Linearize the callbacks and update xf.boxen.game.ContactStorage
-* Revive touch trackers / auth groups on top of the ContactStorage
 * Implement the new time sync algorithm
 * Visualize networking memory and id usage
 * Revive tanks

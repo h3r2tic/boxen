@@ -2,6 +2,7 @@ module xf.boxen.impl.PlayerController;
 
 private {
 	import xf.boxen.model.IPlayerController;
+	import InteractionTracking = xf.game.InteractionTracking;
 	
 	import xf.net.NetObj;
 	import xf.game.GameObj;
@@ -124,6 +125,8 @@ final class PlayerController : NetObj, IPlayerController {
 			0
 		);
 
+		_phantom.setUserData(cast(uword)cast(void*)this);
+
 		Phys.world.addPhantom(_phantom._as_hkpPhantom).removeReference();
 
 		auto cpci = hkpCharacterProxyCinfo();
@@ -137,6 +140,8 @@ final class PlayerController : NetObj, IPlayerController {
 		cpci.m_characterStrength = 5000.0f;
 		
 		_proxy = hkpCharacterProxy(cpci);
+
+		_proxy.addCharacterProxyListener(InteractionTracking.charProxyListener);
 
 		// adds a ref to _stateMngr
 		_characterContext = hkpCharacterContext(
