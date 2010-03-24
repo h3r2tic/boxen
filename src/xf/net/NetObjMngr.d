@@ -24,16 +24,15 @@ interface NetObjObserver {
 }
 
 
-enum StateOverrideMethod {
-	Replace,
-	ApplyDiff
-}
-
-
 
 // Managed by NetObjMngr. In GC memory. May contain null elements.
 extern (C) NetObj[] g_netObjects;
 
+// Defined in xf.net.GameClient
+version (Client) extern (C) extern {
+	playerId	g_localPlayerId;
+	tick		g_lastTickRecvd;
+}
 
 
 objId allocId() {
@@ -95,7 +94,392 @@ void storeNetObjStates(tick curTick) {
 }
 
 
-version (Client) void receiveStateSnapshot(playerId, BitStreamReader* bs) {
+/+float	readStateFromStream(playerId pid, uint stateI, tick tck, tick dropEarlierThan, BitStreamReader bs, StateOverrideMethod som)	{	// returns an error level
+	if (_netObj_clientSideChecks) assert (0 == pid);
+	
+	foreach (i, dummy; States) {
+		States[i]*	localState = getTimedState!(i)(pid, tck);
+		States[i]	auth = States[i].init;
+		
+		xf.game.StateUtils.readState(auth, bs);
+		/+printf("Received state:"\n);
+		auth.dump((char[] txt) {
+			printf("%.*s", txt);
+		});
+		printf("State dump end"\n);+/
+		
+		if (localState !is null) {
+			/+printf("Local state:"\n);
+			localState.dump((char[] txt) {
+				printf("%.*s", txt);
+			});
+			printf("State dump end"\n);+/
+
+			int numToRemove = 0;
+			scope (exit) {
+				while (numToRemove--) {
+					stateQueues(pid).queues[i].removeHead();
+				}
+			}
+			
+			foreach (itemIdx, ref item; stateQueues(pid).queues[i]) {
+				if (&item.state is localState) {
+					break;
+				} else {
+					++numToRemove;
+				}
+			}
+
+			float diff = xf.game.StateUtils.compareStates(*localState, auth);
+			if (diff > 0.f) {
+				switch (som) {
+					case StateOverrideMethod.Replace:
+						*localState = auth;		// store the state, for a future override
+						break;
+						
+					case StateOverrideMethod.ApplyDiff:
+						if (diff > 5.f) {
+							*localState = auth;
+							this.setState(auth, tck);
+							_currentlySetStates[i] = auth;
+							printf(\n"State difference too huge. Hard snapping"\n);
+							break;
+						}
+					
+						synchronized (queueMutex) {
+							auto q = stateQueues(pid).queues[i];
+
+							int qlen = q.length;
+							
+							const bool canApplyDiff = is(typeof(this.applyStateDiff(States[i].init, States[i].init, tick.init)));
+							
+							static if (canApplyDiff) {
+								States[i] prev = *localState;
+								this.setState(auth, tck);
+								_currentlySetStates[i] = auth;
+								*localState = auth;
+								
+								foreach (itemIdx, ref item; q) {
+									if (item.tck > tck) {
+										States[i] foo;
+										this.getState(&foo);
+										this.applyStateDiff(prev, item.state, tck);
+										States[i] bar;
+										this.getState(&bar);
+										
+										static if (is(typeof(bar.pos))) {
+											auto diff = bar.pos - foo.pos;
+											Stdout.formatln("moved {}; wanted {}", diff, item.state.pos - prev.pos);
+										}
+										
+										prev = item.state;
+										item.state = bar;
+										//this.getState(&item.state);
+										_currentlySetStates[i] = item.state;
+									}
+								}												
+							} else {
+								States[i]	prev = *localState;
+								States[i]*	prevAuth = &auth;
+								const constMult = 1.f;
+								const multMult = 1.f;
+								float mult = 1.f;
+								foreach (itemIdx, ref item; q) {
+									if (item.tck > tck) {
+										auto backup = item.state;
+										item.state = *prevAuth;
+										item.state.applyDiff(prev, backup, mult * constMult);
+										mult *= multMult;
+										prev = backup;
+										prevAuth = &item.state;
+									}
+									
+									if (qlen-1 == itemIdx) {
+										this.setState(item.state, item.tck);
+										_currentlySetStates[i] = item.state;
+										/+printf("Set delta'd state:"\n);
+										item.state.dump((char[] txt) {
+											printf("%.*s", txt);
+										});
+										printf("State dump end"\n);+/
+										break;
+									}
+								}
+
+								*localState = auth;
+							}
+
+							
+							/+foreach (itemIdx, ref item; q) {
+								if (item.tck > tck) {
+									item.state.applyDiff(*localState, auth);
+								}
+								
+								if (qlen-1 == itemIdx) {
+									this.setState(item.state, item.tck);
+								}
+							}+/
+							
+							if (this.isPredicted) {
+								//printf("* applied a state diff to a predicted object"\n);
+							}
+							
+							diff = 0.f;
+						}
+						break;
+				}
+			}
+			
+			return diff;
+		} else {
+			//printf(`state not found!!!`\n);
+			auto q = &stateQueues(pid).queues[i];
+
+			while (!q.isEmpty && (*q)[0].tck < dropEarlierThan) {
+				q.removeHead();
+			}
+
+			q.addTail(StateQueueItem!(States[i])(auth, tck));		// store the state, for a future override
+			int qlen = q.length;
+			const int maxQLen = 200;
+			if (qlen > maxQLen) {
+				//printf("1state queue len: %d :S removing some"\n, qlen);
+				for (int j = maxQLen; j < qlen; ++j) {
+					q.removeHead;
+				}
+			}
+			return 1.f;
+		}
+	}
+	}
+
+			assert (false);	// should never get here
+		});
+	}+/
+
+
+float applyObjectState(
+		playerId pid,
+		NetObj obj,
+		tick stateForTick,
+		void* auth,
+		void* localStateMem,
+		ushort stateI,
+		NetStateInfo* stateInfo,
+		StateOverrideMethod som
+) {
+	float diff = stateInfo.calcDifference(auth, localStateMem);
+
+	switch (som) {
+		case StateOverrideMethod.Replace: {
+			stateInfo.load(obj, auth);
+
+			// store the state in case something might want to query it later
+			memcpy(localStateMem, auth, stateInfo.size);
+		} break;
+		
+		case StateOverrideMethod.ApplyDiff: {
+			if (diff <= 0.0f) {
+				return 0.0f;
+			}
+
+			if (diff > 5.f) {
+				stateInfo.load(obj, auth);
+
+				log.info("State difference is large ({}). Hard snapping.", diff);
+
+				// store the state in case something might want to query it later
+				memcpy(localStateMem, auth, stateInfo.size);
+				break;
+			}
+
+			//auto q = stateQueues(pid).queues[i];
+
+			//int qlen = q.length;
+			
+			if (stateInfo.applyDiffToObject !is null) {
+//final foo = _objDataMemCur.pushBack(stateInfo.size);
+				final bar = _objDataMemCur.pushBack(stateInfo.size);
+				final prev = _objDataMemCur.pushBack(stateInfo.size);
+
+				//void* prev = *localState;
+				memcpy(prev, localStateMem, stateInfo.size);
+				stateInfo.load(obj, auth);
+				memcpy(localStateMem, auth, stateInfo.size);
+
+				for (
+						tick tck = cast(tick)(_firstTickInQueue+1);
+						tck < _lastTickInQueue;
+						++tck
+				) {
+
+					void*[] tickStatePtrs = *_tickStateQueue[tck - _firstTickInQueue];
+					assert (tickStatePtrs !is null);
+					assert (tickStatePtrs[obj.id] !is null);
+					void* tickState = tickStatePtrs[obj.id] + stateInfo.offset;
+				//foreach (itemIdx, ref item; q) {
+					//if (item.tck > tck) {
+						//States[i] foo;
+//stateInfo.store(obj, foo);
+						//this.getState(&foo);
+
+						stateInfo.applyDiffToObject(obj, prev, tickState);
+						//this.applyStateDiff(prev, item.state, tck);
+						//States[i] bar;
+						stateInfo.store(obj, bar);
+						//this.getState(&bar);
+						
+						/+static if (is(typeof(bar.pos))) {
+							auto diff = bar.pos - foo.pos;
+							Stdout.formatln("moved {}; wanted {}", diff, item.state.pos - prev.pos);
+						}+/
+
+						memcpy(prev, tickState, stateInfo.size);
+						//prev = item.state;
+						memcpy(tickState, bar, stateInfo.size);
+						//item.state = bar;
+						//this.getState(&item.state);
+						//_currentlySetStates[i] = item.state;
+					//}
+				}
+			} else {
+				final prev = _objDataMemCur.pushBack(stateInfo.size);
+				final backup = _objDataMemCur.pushBack(stateInfo.size);
+				void* prevAuth = auth;
+
+				memcpy(prev, localStateMem, stateInfo.size);
+				//States[i]	prev = *localState;
+				//States[i]*	prevAuth = &auth;
+				
+				const constMult = 1.f;
+				const multMult = 1.f;
+				float mult = 1.f;
+
+				for (
+						tick tck = cast(tick)(_firstTickInQueue+1);
+						tck < _lastTickInQueue;
+						++tck
+				) {
+					void*[] tickStatePtrs = *_tickStateQueue[tck - _firstTickInQueue];
+					assert (tickStatePtrs !is null);
+					assert (tickStatePtrs[obj.id] !is null);
+					void* tickState = tickStatePtrs[obj.id] + stateInfo.offset;
+				
+				//foreach (itemIdx, ref item; q) {
+//					if (item.tck > tck) {
+						memcpy(backup, tickState, stateInfo.size);
+						//auto backup = item.state;
+						memcpy(tickState, prevAuth, stateInfo.size);
+						//item.state = *prevAuth;
+						//item.state.applyDiff(prev, backup, mult * constMult);
+						void delegate(void* a, void* b, float) applyDiff;
+						applyDiff.funcptr = stateInfo.applyDiff;
+						applyDiff.ptr = tickState;
+						applyDiff(prev, backup, mult * constMult);
+
+						mult *= multMult;
+						memcpy(prev, backup, stateInfo.size);
+						//prev = backup;
+						//prevAuth = &item.state;
+						prevAuth = tickState;
+					//}
+					
+					//if (qlen-1 == itemIdx) {
+					if (tck+1 == _lastTickInQueue) {
+						stateInfo.load(obj, tickState);
+						//this.setState(item.state, item.tck);
+						//_currentlySetStates[i] = item.state;
+						/+printf("Set delta'd state:"\n);
+						item.state.dump((char[] txt) {
+							printf("%.*s", txt);
+						});
+						printf("State dump end"\n);+/
+						break;
+					}
+				}
+
+				memcpy(localStateMem, auth, stateInfo.size);
+				//*localState = auth;
+			}
+
+			
+			/+foreach (itemIdx, ref item; q) {
+				if (item.tck > tck) {
+					item.state.applyDiff(*localState, auth);
+				}
+				
+				if (qlen-1 == itemIdx) {
+					this.setState(item.state, item.tck);
+				}
+			}+/
+			
+			if (obj.isPredicted) {
+				//printf("* applied a state diff to a predicted object"\n);
+			}
+			
+			diff = 0.f;
+		} break;
+
+		default: assert (false);
+	}	
+
+	return diff;
+}
+
+
+float applyObjectState(
+		playerId pid,
+		NetObj obj,
+		tick stateForTick,
+		void* stateMem,
+		ushort stateI,
+		NetStateInfo* stateInfo,
+		StateOverrideMethod som
+) {
+	if (stateForTick >= _firstTickInQueue && stateForTick <= _lastTickInQueue) {
+		void*[] localStatePtrs = *_tickStateQueue[stateForTick - _firstTickInQueue];
+		
+		if (localStatePtrs is null) {
+			log.warn(
+				"State {} for tick {} of net obj {} was not stored.",
+				stateI,
+				stateForTick,
+				obj.id
+			);
+
+			stateInfo.load(obj, stateMem);
+
+			return 0.0f;
+		}
+
+		void* localStateMem = localStatePtrs[obj.id] + stateInfo.offset;
+
+		return applyObjectState(
+			pid,
+			obj,
+			stateForTick,
+			stateMem,
+			localStateMem,
+			stateI,
+			stateInfo,
+			som
+		);
+	} else {
+		log.error(
+			"State {} for tick {} of net obj {} not found.",
+			stateI,
+			stateForTick,
+			obj.id
+		);
+
+		stateInfo.load(obj, stateMem);
+
+		return 1e10;
+	}
+}
+
+
+float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 	assert (!bs.isEmpty);
 	static assert (objId.sizeof == ushort.sizeof);
 	objId id;
@@ -114,7 +498,64 @@ version (Client) void receiveStateSnapshot(playerId, BitStreamReader* bs) {
 	dg.ptr = stateMem;
 	dg(bs);
 
-	stateInfo.load(obj, stateMem);
+
+	// ----------------------------------------------------------------
+
+
+	playerId objAuth = obj.authOwner;
+
+	version (Server) {
+		bool localAuthority = ServerAuthority == objAuth || NoAuthority == objAuth;
+		bool locallyOwned = false;
+		//printf("received obj %d state for tick %d. Current tick %d; localAuth: %.*s"\n, id, lastTickRecvd, timeHub.currentTick, localAuthority ? "true" : "false");
+	} else {
+		bool locallyOwned = obj.realOwner == g_localPlayerId;
+		bool localAuthority = g_localPlayerId == objAuth;
+	}
+	
+	StateOverrideMethod som = StateOverrideMethod.Replace;
+	version (Client) if (!localAuthority && /+obj.isPredicted+/locallyOwned) {
+		som = StateOverrideMethod.ApplyDiff;
+	}
+
+	// TODO: drop some olde states (or maybe have a fixed queue of them?)
+	
+	if (!localAuthority) {
+		version (Server) {
+			if (pid != obj.authOwner) {
+				log.warn(
+					"Client {} tried to send a snapshot for object owned by {}.",
+					pid,
+					obj.authOwner
+				);
+				return 0.0f;
+			}
+		}
+
+		version (Client) {
+			tick interpFrom = g_lastTickRecvd;
+		} else {
+			assert (StateOverrideMethod.Replace == som);
+			tick interpFrom = curTick;
+		}
+
+		float objError = applyObjectState(
+			pid,
+			obj,
+			interpFrom,
+			stateMem,
+			stateI,
+			stateInfo,
+			som
+		);
+
+		if (obj.isPredicted && true == stateInfo.isCritical) {
+			debug printf(`Obj state error: %f`\n, objError);
+			return objError;
+		}
+	}
+
+	return 0.0f;
 }
 
 

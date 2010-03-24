@@ -45,7 +45,7 @@ struct NetStateInfo {
 				serialize;
 	void function(BitStreamReader*)
 				unserialize;
-	void function(void* b, void* dst, float)
+	void function(void* a, void* b, float)
 				applyDiff;
 
 	// Static functions of the game object
@@ -53,6 +53,8 @@ struct NetStateInfo {
 				store;
 	void function(NetObj, void*)
 				load;
+	void function(NetObj, void*, void*)
+				applyDiffToObject;
 
 	// Free function operating on state instances
 	float function(void*, void*)
@@ -61,6 +63,7 @@ struct NetStateInfo {
 	uword		size;
 	uword		offset;
 	TypeInfo	typeInfo;
+	bool		isCritical = true;		// TODO
 }
 
 
@@ -322,17 +325,34 @@ template DeclareNetState(T) {
 	static assert (is(typeof(T.unserialize((BitStreamReader*).init)) == void));
 	static assert (is(typeof(T.calcDifference((T*).init, (T*).init)) == float));
 
+	private const canApplyDiffToObject =
+		is(typeof(typeof(this).init.applyStateDiff((T*).init, (T*).init)));
+
 	private {
 		static void _storeStateImpl(NetObj o, void* s) {
 			final obj = (cast(typeof(this))o);
 			assert (obj !is null);
+			assert (s !is null);
 			obj.storeState(cast(T*)s);
 		}
 
 		static void _loadStateImpl(NetObj o, void* s) {
 			final obj = (cast(typeof(this))o);
 			assert (obj !is null);
+			assert (s !is null);
 			obj.loadState(cast(T*)s);
+		}
+
+		static if (canApplyDiffToObject) {
+			static assert (false);	// verify if it works :P
+
+			static void _applyDiffToObjectImpl(NetObj o, void* a, void* b) {
+				final obj = (cast(typeof(this))o);
+				assert (obj !is null);
+				assert (a !is null);
+				assert (b !is null);
+				obj.applyDiffToObject(cast(T*)a, cast(T*)b);
+			}
 		}
 	}
 
@@ -348,6 +368,9 @@ template DeclareNetState(T) {
 		nsi.calcDifference = cast(float function(void*, void*))&T.calcDifference;
 		nsi.size = T.sizeof;
 		nsi.typeInfo = typeid(T);
+		static if (canApplyDiffToObject) {
+			nsi.applyDiffToObject = &T._applyDiffToObjectImpl;
+		}
 	}
 }
 

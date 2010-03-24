@@ -51,8 +51,8 @@ struct PosRotState {
 		// TODO
 		return
 			vec3.from(a.pos - b.pos).length
-			+ (circleAbsDiff!(360.f)(a.yaw, b.yaw) / 180.f) * .2f
-			+ (circleAbsDiff!(360.f)(a.pitch, b.pitch) / 180.f) * .2f;
+			+ (circleAbsDiff!(360.f)(a.yaw, b.yaw) / 180.f) * 2.0f
+			+ (circleAbsDiff!(360.f)(a.pitch, b.pitch) / 180.f) * 2.0f;
 	}
 }
 

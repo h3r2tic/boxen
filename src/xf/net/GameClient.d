@@ -19,6 +19,13 @@ private {
 
 
 
+extern (C) {
+	playerId	g_localPlayerId;
+	tick		g_lastTickRecvd;
+}
+
+
+
 class GameClient : IGameComm {
 	// 1MB for the bitstream
 	const bswPrealloc		= 1024 * 1024;
@@ -30,7 +37,7 @@ class GameClient : IGameComm {
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
 
 
-	void delegate(playerId, BitStreamReader*) receiveStateSnapshot;
+	float delegate(tick, playerId, BitStreamReader*) receiveStateSnapshot;
 
 	
 	this (LowLevelClient comm) {
@@ -52,7 +59,7 @@ class GameClient : IGameComm {
 
 		_dispatcher = new Dispatcher(
 			_comm,
-			&_lastTickRecvd
+			&g_lastTickRecvd
 		);
 
 		_dispatcher.receiveEvent = &_eventReader.readEvent;
@@ -64,13 +71,20 @@ class GameClient : IGameComm {
 	}
 
 
+	private void _receiveStateSnapshot(playerId pid, BitStreamReader* bsr) {
+		assert (this.receiveStateSnapshot !is null);
+		float err = receiveStateSnapshot(timeHub.currentTick, pid, bsr);
+		// TODO: sum the error and do stuff when it's > allowed :P
+	}
+
+
 	void receiveData() {
 		assert (receiveStateSnapshot !is null);
-		_dispatcher.receiveStateSnapshot = this.receiveStateSnapshot;
+		_dispatcher.receiveStateSnapshot = &this._receiveStateSnapshot;
 		_dispatcher.dispatch(timeHub.currentTick);
 
-		//if (timeHub.currentTick > _lastTickRecvd) {
-			timeHub.trimHistory(timeHub.currentTick - _lastTickRecvd);
+		//if (timeHub.currentTick > g_lastTickRecvd) {
+			timeHub.trimHistory(timeHub.currentTick - g_lastTickRecvd);
 		//}
 	}
 
@@ -91,12 +105,12 @@ class GameClient : IGameComm {
 	
 	
 	tick lastTickReceived() {
-		return _lastTickRecvd;
+		return g_lastTickRecvd;
 	}
 	
 	
 	float serverTickOffset() {
-		/+if (lastTickRecvd != lastTickRecvd.init) {
+		/+if (g_lastTickRecvd != g_lastTickRecvd.init) {
 			//return cast(long)lastTickReceived - cast(long)timeHub.inputTick;
 			return this.tickOffsetTuning;
 		}
@@ -107,7 +121,7 @@ class GameClient : IGameComm {
 
 	// TODO: make this automatic
 	void setLocalPlayerId(playerId id) {
-		_localPlayerId = id;
+		g_localPlayerId = id;
 	}
 
 
@@ -184,9 +198,7 @@ class GameClient : IGameComm {
 		EventReader		_eventReader;
 		Dispatcher		_dispatcher;
 		BudgetWriter	_writer;
-		tick			_lastTickRecvd;
 		bool			_tickAdjusted;
 		bool			_connected;
-		playerId		_localPlayerId;
 	}
 }
