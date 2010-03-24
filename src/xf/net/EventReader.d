@@ -38,6 +38,7 @@ class EventReader {
 			
 			if (!playerWishMask(pid, cast(Wish)evt)) {
 				log.warn("Wish blocked: {}", evt.classinfo.name);
+				evt.unref();
 				return true;
 			} else {
 				//log.trace("Received a Wish: {}.", evt.classinfo.name);
@@ -72,6 +73,7 @@ class EventReader {
 					evt.eventTargetTick = evtTargetTick;
 					// TODO: is this valid? perviously only control ImmediateEvents would be executed like this
 					evt.handle();
+					evt.unref();
 					return true;
 				}
 			}
@@ -79,6 +81,7 @@ class EventReader {
 			if (cast(ImmediateEvent)evt) {
 				debug log.trace("handling the control event");
 				evt.handle();
+				evt.unref();
 			} else {
 				//log.trace("Received an Order: {}.", evt.classinfo.name);
 				//debug log.trace("submitting the {}...", evt.classinfo.name);

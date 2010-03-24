@@ -58,6 +58,7 @@ class EventQueue/+(alias CustomMix = emptyMix)+/ {
 	}
 	
 	
+	// the event should be unreferenced by whatever grabs it
 	Event nextEvent() {
 		assert (moreEvents());
 		Item item = *queue.front();
@@ -120,12 +121,14 @@ class LoggingEventQueue/+(alias CustomMix = emptyMix)+/ : EventQueue/+!(CustomMi
 	}
 
 
+	// the event should be unreferenced by whatever grabs it
 	override Event nextEvent() {
 		assert (moreEvents());
 		Item item = *queue.front();
 		queue.popFront;
 		
 		if (item.event.logged) {
+			item.event.addRef();
 			historyQueue.pushBack(item);
 		}
 		
@@ -133,6 +136,7 @@ class LoggingEventQueue/+(alias CustomMix = emptyMix)+/ : EventQueue/+!(CustomMi
 	}
 
 
+	// the event is unreferenced automatically
 	void rollback(uint ticks, void delegate(Event) handler) {
 		foreach (ref node; &iterQueues) {
 			node().ticksToGo += ticks;
@@ -146,6 +150,8 @@ class LoggingEventQueue/+(alias CustomMix = emptyMix)+/ : EventQueue/+!(CustomMi
 				
 				if (it().event.replayed) {
 					queue.pushFront(item);
+				} else {
+					it().event.unref();
 				}
 			}
 		}
@@ -156,6 +162,7 @@ class LoggingEventQueue/+(alias CustomMix = emptyMix)+/ : EventQueue/+!(CustomMi
 		// only leave events with ticksToGo > -'ticks'
 		int thresh = -cast(int)ticks;
 		while (!historyQueue.empty && historyQueue.front.ticksToGo <= thresh) {
+			historyQueue.front.event.unref();
 			historyQueue.popFront();
 		}
 	}

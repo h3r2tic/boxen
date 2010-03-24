@@ -28,6 +28,9 @@ private {
 	import xf.game.EventQueue;
 	import xf.game.GameObjEvents;
 	import xf.game.LoginEvents;
+	
+	version (Client) import xf.game.TickTracker;
+	
 	import GameObjMngr = xf.game.GameObjMngr;
 	import LoginMngr = xf.game.LoginMngr;
 	import GameObjRegistry = xf.game.GameObjRegistry;
@@ -110,7 +113,10 @@ extern (C) void boxen_processGameObjInteraction(void* o1, void* o2) {
 	assert (NetObjMngr.g_netObjects[id2] !is null);
 
 	if (id1 != id2) {
-		InteractionQueueRegistry.register(&interactionQueue);
+		if (InteractionQueueRegistry.register(&interactionQueue)) {
+			interactionQueue.clear();
+		}
+		
 		interactionQueue.pushBack(Interaction(id1, id2));
 	}
 }
@@ -172,7 +178,6 @@ void refreshInteractions() {
 		foreach (i, x; *thq) {
 			serializedInteractions.pushBack(x);
 		}
-		(*thq).clear();
 	}
 	
 	InteractionQueueRegistry.clearRegistrations();
@@ -622,6 +627,7 @@ void updateGame() {
 		while (eventQueue.moreEvents) {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
+			ev.unref();
 		}
 
 		GameObjMngr.update(timeHub.secondsPerTick);
@@ -671,6 +677,7 @@ void updateGame() {
 		while (eventQueue.moreEvents) {
 			Event ev = eventQueue.nextEvent;
 			ev.handle();
+			ev.unref();
 		}
 
 		GameObjMngr.update(timeHub.secondsPerTick);
@@ -699,6 +706,14 @@ void updateGame() {
 		}+/
 		
 		client.sendData();
+	}
+
+
+	enum { stateSwapFreq = 10 }
+	static int ticksToStateSwap = stateSwapFreq;
+	if (--ticksToStateSwap < 0) {
+		NetObjMngr.swapObjDataMem();
+		ticksToStateSwap = stateSwapFreq;
 	}
 }
 
@@ -800,6 +815,17 @@ struct login {
 }
 
 
+version (Client) class QueueTrimmer : TickTracker {
+	void advanceTick(uint ticks) {}
+	
+	void trimHistory(uint ticks) {
+		eventQueue.trimHistory(ticks);
+	}
+	
+	void rollback(uint ticks) {}
+}
+
+
 class TestApp : GfxApp {
 	SimpleCamera camera;
 	
@@ -820,8 +846,12 @@ class TestApp : GfxApp {
 		version (Server) {
 			window.title = "Boxen server";
 		}
-		
-		eventQueue = new LoggingEventQueue;
+
+		version (Server) {
+			eventQueue = new EventQueue;
+		} else {
+			eventQueue = new LoggingEventQueue;
+		}
 
 		char[]	netBackend = "ENet";
 		u16		port = 8000;
@@ -865,6 +895,8 @@ class TestApp : GfxApp {
 				create!(LowLevelServer).named(netBackend~"Server")(32)
 			).start(netAddr, port));
 		} else {
+			timeHub.addTracker(new QueueTrimmer);
+
 			OverrideAuthority.addHandler(fn2dg(&handleOverrideAuthority));
 			ObjectOwnershipChange.addHandler(fn2dg(&handleObjectOwnershipChange));
 			RefuseObjectAcquisition.addHandler(fn2dg(&handleRefuseObjectAcquisition));

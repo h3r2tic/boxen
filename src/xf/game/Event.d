@@ -82,6 +82,9 @@ abstract class Event {
 	}
 	abstract void atTick(tick);
 	abstract void immediate();
+
+	abstract void unref();
+	abstract void addRef();
 	
 	abstract void readFromStream(BitStreamReader*);
 	abstract void writeToStream(BitStreamWriter*);
@@ -100,15 +103,67 @@ abstract class Event {
 		return false;
 	}
 	
-	ushort			instanceId = ushort.max;
-	tick				eventTargetTick;
+	ushort	instanceId = ushort.max;
+	tick	eventTargetTick;
 
 	//mixin(xpose2(`instanceId|eventTargetTick|logged|replayed|atTick|immediate|delayed|getEventId`));
 	//mixin xposeMiniDNoSubclass;
 }
 
 
+template MEventFreeList() {
+	typeof(this)		_freeListNext;
+	int					_references = 1;
+	static typeof(this)	_freeListHead;
+
+	private static import tango.stdc.stdio;
+
+
+	static typeof(this) _alloc() {
+		if (auto h = _freeListHead) {
+			_freeListHead = h._freeListNext;
+			final init = this.classinfo.init;
+			(cast(void*)h)[0..init.length] = init;
+			assert (1 == h._references);
+			return h;
+		} else {
+			printf("Allocating a new instance of event %.*s\n", typeof(this).stringof);
+			return new typeof(this);
+		}
+	}
+
+
+	override void unref() {
+		assert (_references > 0);
+		if (0 == --_references) {
+			_freeListNext = _freeListHead;
+			_freeListHead = this;
+		}
+	}
+
+
+	override void addRef() {
+		assert (_references > 0);
+		++_references;
+	}
+
+
+	~this() {
+		if (_references > 0) {
+			tango.stdc.stdio.printf(
+				"Onoz, ~%.*s() has %d references still in dtor.\n",
+				typeof(this).stringof,
+				_references
+			);
+		}
+	}
+}
+
+
 template EventExpose() {
+	mixin MEventFreeList;
+	
+	
 	pragma(ctfe) private static char[] argListCodegen(bool types = true) {
 		char[] res = "";
 		foreach (i, field; xposeFields) {
@@ -129,7 +184,7 @@ template EventExpose() {
 	
 	pragma(ctfe) private static char[] opCallCodegen() {
 		char[] res = "static typeof(this) opCall(" ~ argListCodegen ~ "){";
-		res ~= "return new _ThisType(" ~ argListCodegen(false) ~ ");";
+		res ~= "return _alloc().initialize(" ~ argListCodegen(false) ~ ");";
 		res ~= "}";
 		return res;
 	}
@@ -188,7 +243,8 @@ template _exposeEvent(_ThisType) {
 	}
 
 	static typeof(this) createUninitialized() {
-		return new typeof(this);
+		return _alloc();
+		//return new typeof(this);
 		//return cast(typeof(this))typeof(this).classinfo.init.dup.ptr;
 	}
 	
@@ -205,6 +261,7 @@ template _exposeEvent(_ThisType) {
 		if (eventTargetTick == eventTargetTick.init) {
 			eventTargetTick = t;
 		}
+		_references = submitHandlers.length;
 		super.atTick(t);
 	}
 	
@@ -214,27 +271,28 @@ template _exposeEvent(_ThisType) {
 	private import xf.xpose2.MiniD;+/
 	private import xf.game.Event : EventExpose;
 	
-	this (typeof(_ThisType.tupleof) args) {
+	typeof(this) initialize(typeof(_ThisType.tupleof) args) {
 		foreach (i, a; args) {
 			this.tupleof[i] = a;
 		}
 		static if (is(typeof(this) : Wish)) {
 			wishOrigin = Wish.defaultWishOrigin;
 		}
+		return this;
 	}
 	
 	static if (typeof(_ThisType.tupleof).length > 0) {
-		mixin(xpose2(`.*|_ctor`));
+		mixin(xpose2(`.*`));
 		mixin EventExpose;
 
 		this() {
 			// for createUninitialized
 		}
 	} else {
-		mixin(xpose2(`_ctor`));
+		mixin MEventFreeList;
 		
 		static typeof(this) opCall() {
-			return new typeof(this);
+			return _alloc().initialize();
 		}
 		
 		void writeToStream(BitStreamWriter* bs) {}

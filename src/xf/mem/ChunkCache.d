@@ -3,7 +3,10 @@ module xf.mem.ChunkCache;
 private {
 	import xf.mem.Chunk;
 	import xf.mem.Common;
+	import xf.mem.Log;
 	import tango.text.convert.Format;
+	import Trace = tango.core.tools.StackTrace;
+	import tango.core.Thread;
 	static import tango.core.Exception;
 }
 
@@ -21,11 +24,12 @@ private struct ChunkCache(int _pageSize, alias _allocator) {
 	
 	private {
 		struct CachedChunk {
-			Chunk*				chunk;
+			Chunk*			chunk;
 			CachedChunk*	next;
 		}
 
-		CachedChunk* next;
+		CachedChunk*	next;
+		int				_totalAllocated = 0;
 	}
 	
 
@@ -42,6 +46,25 @@ private struct ChunkCache(int _pageSize, alias _allocator) {
 			next = res.next;
 			return res.chunk;
 		} else {
+			++_totalAllocated;
+			
+			if (Thread.getThis()) {
+				auto tr = Trace.basicTracer(null);
+				char[] msg;
+				tr.writeOut((char[] s) { msg ~= s; });
+				memLog.trace(
+					"ChunkCache: allocating a new chunk ({}). At:\n{}",
+					_totalAllocated,
+					msg
+				);
+				delete tr;
+			} else {
+				memLog.trace(
+					"ChunkCache: allocating a new chunk ({}) in foreign thread.",
+					_totalAllocated
+				);
+			}
+			
 			auto raw = _allocator.allocRaw(_pageSize);
 
 			auto res = cast(Chunk*)(alignPointerUp(raw.ptr + Chunk.sizeof, defaultAllocationAlignment) - Chunk.sizeof);

@@ -51,6 +51,8 @@ struct ScratchFIFO {
 		void*		ptr = void;
 
 		if (_tail is null) {
+			assert (_head is null);
+			
 			_head = _tail = chunk = allocNewChunk();
 			ptr = alignPointerUp(chunk.ptr(), alignment);
 
@@ -61,6 +63,8 @@ struct ScratchFIFO {
 				);
 			}
 		} else {
+			assert (_head !is null);
+			
 			chunk = _tail;
 			ptr = alignPointerUp(chunk.ptr() + chunk.used, alignment);
 			
@@ -114,7 +118,7 @@ struct ScratchFIFO {
 			
 			auto cache = &_allocator;
 			final QueueChunk* next = ch.next;
-			Chunk.fromPtr(cast(void*)ch).dispose();
+			cache.free(Chunk.fromPtr(cast(void*)ch));
 			_head = next;
 
 			if (next is null) {
@@ -133,7 +137,7 @@ struct ScratchFIFO {
 			
 			while (cur) {
 				QueueChunk* next = cur.next;
-				Chunk.fromPtr(cast(void*)cur).dispose();
+				cache.free(Chunk.fromPtr(cast(void*)cur));
 				cur = next;
 			}
 			
@@ -200,7 +204,7 @@ struct RawChunkDeque {
 	private alias _chunkQueueInternalAllocator
 		_subAllocator;
 		
-	private alias chunkCache!(_pageSize - _subAllocator.maxChunkOverhead, _subAllocator)
+	alias chunkCache!(_pageSize - _subAllocator.maxChunkOverhead, _subAllocator)
 		_allocator;
 
 
@@ -226,7 +230,7 @@ struct RawChunkDeque {
 
 
 	private QueueChunk* allocNewChunk() {
-		memLog.trace("RawChunkDeque :: requesting a new chunk.");
+//		memLog.trace("RawChunkDeque :: requesting a new chunk.");
 
 		auto raw = _allocator.alloc();
 		assert (raw !is null);
@@ -323,8 +327,8 @@ struct RawChunkDeque {
 			}
 
 			auto cache = &_allocator;
-			memLog.trace("RawChunkDeque :: releasing a chunk.");
-			Chunk.fromPtr(cast(void*)ch).dispose();
+//			memLog.trace("RawChunkDeque :: releasing a chunk.");
+			cache.free(Chunk.fromPtr(cast(void*)ch));
 			_head = nhead;
 		}
 	}
@@ -353,8 +357,8 @@ struct RawChunkDeque {
 			}
 
 			auto cache = &_allocator;
-			memLog.trace("RawChunkDeque :: releasing a chunk.");
-			Chunk.fromPtr(cast(void*)ch).dispose();
+//			memLog.trace("RawChunkDeque :: releasing a chunk.");
+			cache.free(Chunk.fromPtr(cast(void*)ch));
 			_head = nhead;
 		}
 	}
@@ -381,8 +385,8 @@ struct RawChunkDeque {
 			}
 
 			auto cache = &_allocator;
-			memLog.trace("RawChunkDeque :: releasing a chunk.");
-			Chunk.fromPtr(cast(void*)ch).dispose();
+//			memLog.trace("RawChunkDeque :: releasing a chunk.");
+			cache.free(Chunk.fromPtr(cast(void*)ch));
 			_tail = ntail;
 		}
 	}
@@ -407,8 +411,8 @@ struct RawChunkDeque {
 			}
 
 			auto cache = &_allocator;
-			memLog.trace("RawChunkDeque :: releasing a chunk.");
-			Chunk.fromPtr(cast(void*)ch).dispose();
+//			memLog.trace("RawChunkDeque :: releasing a chunk.");
+			cache.free(Chunk.fromPtr(cast(void*)ch));
 			_tail = ntail;
 		}
 	}
@@ -429,6 +433,7 @@ struct RawChunkDeque {
 	void clear() {
 		size_t		prev	= 0;
 		QueueChunk*	cur		= _head;
+		auto cache = &_allocator;
 		
 		while (cur) {
 			final next = cast(QueueChunk*)(prev ^ cur.nextXorPrev);
@@ -437,8 +442,8 @@ struct RawChunkDeque {
 				cur = next;
 			}
 
-			memLog.trace("RawChunkDeque :: releasing a chunk.");
-			Chunk.fromPtr(cast(void*)cur).dispose();
+//			memLog.trace("RawChunkDeque :: releasing a chunk.");
+			cache.free(Chunk.fromPtr(cast(void*)cur));
 		}
 
 		_head = _tail = null;
@@ -553,6 +558,8 @@ struct ChunkQueue(T) {
 		_tail: null,
 		_itemSize: T.sizeof
 	};
+
+	alias _impl._allocator _allocator;
 
 
 	void pushBack(T x) {

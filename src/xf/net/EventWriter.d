@@ -29,6 +29,10 @@ class EventWriter : EventConsumer {
 
 
 	void consume(Event evt, tick target) {
+		scope (exit) {
+			evt.unref();
+		}
+		
 		assert (iterPlayerStreams !is null);
 		assert (playerOrderMask !is null);
 
