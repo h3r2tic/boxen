@@ -208,42 +208,45 @@ final class PlayerController : NetObj, IPlayerController {
 		static hkpCharacterOutput output;
 		static hkStepInfo si;
 		
-		if (input._impl is null) {
-			input = hkpCharacterInput();
-			output = hkpCharacterOutput();
-			si = hkStepInfo();
-		}
+		//if (0 != _movePending.x || 0 != _movePending.z) {
 
-		final gravity = hkVector4(0, -9.81, 0);
-		
-		{
-			input.m_inputLR = -_movePending.x;
-			input.m_inputUD = -_movePending.z;
+			if (input._impl is null) {
+				input = hkpCharacterInput();
+				output = hkpCharacterOutput();
+				si = hkStepInfo();
+			}
 
-			input.m_wantJump = false;
-			input.m_atLadder = false;
+			final gravity = hkVector4(0, -9.81, 0);
+			
+			{
+				input.m_inputLR = -_movePending.x;
+				input.m_inputUD = -_movePending.z;
 
-			input.m_up = hkVector4.unitY;
-			input.m_forward = hkVector4(_direction);
+				input.m_wantJump = false;
+				input.m_atLadder = false;
 
-			input.m_stepInfo.m_deltaTime = seconds;
-			input.m_stepInfo.m_invDeltaTime = 1.0 / seconds;
-			input.m_characterGravity = gravity;
-			input.m_velocity = _proxy.getLinearVelocity();
-			input.m_position = _proxy.getPosition();
+				input.m_up = hkVector4.unitY;
+				input.m_forward = hkVector4(_direction);
 
-			hkVector4 down = hkVector4(0, -1, 0);
-			_proxy.checkSupport(down, input.m_surfaceInfo);
-		}
+				input.m_stepInfo.m_deltaTime = seconds;
+				input.m_stepInfo.m_invDeltaTime = 1.0 / seconds;
+				input.m_characterGravity = gravity;
+				input.m_velocity = _proxy.getLinearVelocity();
+				input.m_position = _proxy.getPosition();
 
-		_characterContext.update(input, output);
+				hkVector4 down = hkVector4(0, -1, 0);
+				_proxy.checkSupport(down, input.m_surfaceInfo);
+			}
 
-		// Feed output from state machine into character proxy
-		_proxy.setLinearVelocity(output.m_velocity);
+			_characterContext.update(input, output);
 
-		si.m_deltaTime = seconds;
-		si.m_invDeltaTime = 1.0 / seconds;
-		_proxy.integrate(si, gravity);
+			// Feed output from state machine into character proxy
+			_proxy.setLinearVelocity(output.m_velocity);
+
+			si.m_deltaTime = seconds;
+			si.m_invDeltaTime = 1.0 / seconds;
+			_proxy.integrate(si, gravity);
+		//}
 
 		_coordSys.origin = vec3fi.from(_proxy.getPosition());
 

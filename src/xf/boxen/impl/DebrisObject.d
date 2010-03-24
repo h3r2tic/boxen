@@ -182,16 +182,23 @@ final class DebrisObject : NetObj {
 			vec3fi.from(_rigidBody.getPosition()),
 			_rigidBody.getRotation()
 		);
+		if (_rigidBody.isActive()) {
+			_ticksAsleep = 0;
+		} else {
+			++_ticksAsleep;
+		}
 		Phys.world.unmarkForRead();
 	}
 
 
 	bool isActive() {
-		return _rigidBody.isActive();
+		return _ticksAsleep < minTicksAsleep;
 	}
 
 	
 
+	enum {		minTicksAsleep = 2 }
+	int			_ticksAsleep = 0;
 	CoordSys	_coordSys = CoordSys.identity;
 	
 
@@ -201,7 +208,7 @@ final class DebrisObject : NetObj {
 		st.vel = vec3.from(_rigidBody.getLinearVelocity());
 		st.rot = _rigidBody.getRotation();
 		st.angVel = vec3.from(_rigidBody.getAngularVelocity());
-		st.isActive = _rigidBody.isActive();
+		st.isActive = isActive();
 		Phys.world.unmarkForRead();
 	}
 	
@@ -217,8 +224,10 @@ final class DebrisObject : NetObj {
 		
 		if (st.isActive) {
 			_rigidBody.activate();
+			_ticksAsleep = 0;
 		} else {
 			_rigidBody.deactivate();
+			_ticksAsleep = minTicksAsleep;
 		}
 		
 		Phys.world.unmarkForWrite();
