@@ -14,3 +14,9 @@ enum : playerId {
 	NoPlayer		= NoAuthority,
 	ServerAuthority	= playerId.max
 }
+
+
+enum StateOverrideMethod {
+	Replace,
+	ApplyDiff
+}

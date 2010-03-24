@@ -92,7 +92,7 @@ struct PosRotVelState {
 			+ (a.vel - b.vel).length * 0.3f
 			+ compareQuats(a.rot, b.rot)
 			+ (a.angVel - b.angVel).length * 0.2f
-			+ (a.isActive != b.isActive) ? 0.1f : 0.0f;
+			+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
 	}
 }
 

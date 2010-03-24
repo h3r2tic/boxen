@@ -681,7 +681,7 @@ void updateGame() {
 		refreshInteractions();
 		updateAuthority();
 
-		/+if (client.connected) {
+		if (client.connected) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
 			NetObjMngr.updateStateImportances();
 			final writer = client.getWriter();
@@ -698,7 +698,7 @@ void updateGame() {
 				},
 				writer
 			);
-		}+/
+		}
 		
 		client.sendData();
 	}
@@ -737,35 +737,42 @@ version (Server) {
 
 		_playerControllers[pid] = obj;
 	}
-
-	void handleInputWish(InputWish e) {
-		/+version (Server) {
-			tuneClientTiming(e);
-		}+/
-		
-		float b2f(byte b) {
-			return cast(float)b / 127.f;
-		}
-
-		bool useAction = (e.action & 2) != 0;
-		bool shootAction = (e.action & 1) != 0;
-		auto pid = e.wishOrigin;
-		auto ctrl = cast(IPlayerController)_playerControllers[pid];
-			
-		float strafe = b2f(e.strafe);
-		float fwd = b2f(e.thrust);
-
-		// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
-		float moveSpeed = 1.f;
-		ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
-
-		float rotSpeed = 10.f;
-		float yawRot = e.rot.x * timeHub.secondsPerTick();
-		float pitchRot = e.rot.y * timeHub.secondsPerTick();
-		ctrl.yawRotate(yawRot * rotSpeed);
-		ctrl.pitchRotate(pitchRot * rotSpeed);
-	}
 }
+
+
+void handleInputWish(InputWish e) {
+	/+version (Server) {
+		tuneClientTiming(e);
+	}+/
+	
+	float b2f(byte b) {
+		return cast(float)b / 127.f;
+	}
+
+	bool useAction = (e.action & 2) != 0;
+	bool shootAction = (e.action & 1) != 0;
+	auto pid = e.wishOrigin;
+
+	version (Server) {
+		auto ctrl = cast(IPlayerController)_playerControllers[pid];
+	} else {
+		auto ctrl = cast(IPlayerController)_playerController;
+	}
+		
+	float strafe = b2f(e.strafe);
+	float fwd = b2f(e.thrust);
+
+	// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
+	float moveSpeed = 1.f;
+	ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
+
+	float rotSpeed = 10.f;
+	float yawRot = e.rot.x * timeHub.secondsPerTick();
+	float pitchRot = e.rot.y * timeHub.secondsPerTick();
+	ctrl.yawRotate(yawRot * rotSpeed);
+	ctrl.pitchRotate(pitchRot * rotSpeed);
+}
+
 
 class PlayerInputReader : InputReader {
 	void handle(PlayerInput* i) {
@@ -890,6 +897,8 @@ class TestApp : GfxApp {
 			server = new GameServer((
 				create!(LowLevelServer).named(netBackend~"Server")(32)
 			).start(netAddr, port));
+
+			server.receiveStateSnapshot = fn2dg(&NetObjMngr.receiveStateSnapshot);
 		} else {
 			timeHub.addTracker(new QueueTrimmer);
 
@@ -927,8 +936,6 @@ class TestApp : GfxApp {
 			server.registerDisconnectionHandler((playerId pid) {
 				PlayerLogout(pid).atTick(0);
 			});
-
-			InputWish.addHandler(fn2dg(&handleInputWish));
 		} else {
 			client.registerConnectionHandler({
 				Stdout.formatln("Sending a LoginRequest wish.");
@@ -945,6 +952,8 @@ class TestApp : GfxApp {
 				._localPlayerId = e.pid;
 			});
 		}
+
+		InputWish.addHandler(fn2dg(&handleInputWish));
 
 		jobHub.addRepeatableJob(&update, 60.f);
 	}

@@ -24,10 +24,13 @@ class GameServer : IGameComm {
 	const bswPrealloc		= 1024 * 1024;
 
 	// In bits per iteration   // TODO: make this per second
-	const playerWriteBudget	= 1024 * 32;
+	const playerWriteBudget	= 1024 * 1;
 
 	// Can't overflow this amount
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
+
+
+	float delegate(tick, playerId, BitStreamReader*) receiveStateSnapshot;
 
 
 	
@@ -51,7 +54,7 @@ class GameServer : IGameComm {
 		);
 
 		_dispatcher.receiveEvent = &_eventReader.readEvent;
-		_dispatcher.receiveStateSnapshot = &receiveStateSnapshot;
+		_dispatcher.receiveStateSnapshot = &_receiveStateSnapshot;
 
 		Order.addSubmitHandler(&_eventWriter.consume);
 		
@@ -180,8 +183,9 @@ class GameServer : IGameComm {
 		}
 
 
-		void receiveStateSnapshot(playerId, BitStreamReader*) {
-			assert (false, "TODO");
+		void _receiveStateSnapshot(playerId pid, BitStreamReader* bsr) {
+			assert (this.receiveStateSnapshot !is null);
+			receiveStateSnapshot(timeHub.currentTick, pid, bsr);
 		}
 	}
 
