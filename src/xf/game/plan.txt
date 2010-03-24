@@ -28,6 +28,10 @@
 	- corrections
 	- giving back objects
 	- make sure the game subsystems update order is OK
+		*	must send events for a tick before states, so that the authority transfers
+			will take place before states are processed
+		*	must update physics and objects before events are finalized because the sim
+			and objects (character controllers) generate auth transfer events
 
 * Implement the new time sync algorithm
 * Visualize networking memory and id usage

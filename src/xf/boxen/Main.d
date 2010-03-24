@@ -708,20 +708,14 @@ void updateGame() {
 		NetObjMngr.dropStatesOlderThan(cast(tick)(timeHub.currentTick - 100));
 	}
 
-
-	enum { stateSwapFreq = 10 }
-	static int ticksToStateSwap = stateSwapFreq;
-	if (--ticksToStateSwap < 0) {
-		NetObjMngr.swapObjDataMem();
-		ticksToStateSwap = stateSwapFreq;
-	}
+	NetObjMngr.swapObjDataMem();
 }
 
 
 version (Server) {
 	void createGameWorld() {
-		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), NoAuthority);
-		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), NoAuthority);
+		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 1);
+		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 2);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
@@ -839,6 +833,8 @@ class TestApp : GfxApp {
 	
 
 	void initialize() {
+		timeHub.overrideTicksPerSecond(60);
+		
 		camera = new SimpleCamera(vec3(0, 2, 5), 0, 0, window.inputChannel);
 		camera.movementSpeed = vec3.one * 40.f;
 
@@ -962,7 +958,8 @@ class TestApp : GfxApp {
 	static vec4[] playerColors = [
 		{ r: 0.1f, g: 1.0f, b: 0.2f, a: 1.0f },
 		{ r: 0.1f, g: 0.2f, b: 1.0f, a: 1.0f },
-		{ r: 0.7f, g: 0.9f, b: 0.2f, a: 1.0f }
+		{ r: 0.7f, g: 0.9f, b: 0.2f, a: 1.0f },
+		{ r: 0.6f, g: 0.2f, b: 0.9f, a: 1.0f }
 	];
 
 
@@ -989,7 +986,6 @@ class TestApp : GfxApp {
 			} else if (ServerAuthority == auth) {
 				tintColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
 			} else {
-				assert (auth < 2);		// for now
 				tintColor = playerColors[auth % $];
 			}
 
