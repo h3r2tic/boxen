@@ -622,6 +622,7 @@ version (Client) {
 void updateGame() {
 	version (Server) {
 		server.receiveData();
+		
 		timeHub.advanceTick(1);
 		eventQueue.advanceTick(1);
 		while (eventQueue.moreEvents) {
@@ -659,11 +660,13 @@ void updateGame() {
 		debug printf(`tick: %d`\n, timeHub.currentTick);
 	} else {
 		client.receiveData();
+		.synchronizeNetworkTicks(client);
 
 		if (timeHub.currentTick > client.lastTickReceived) {
 			timeHub.trimHistory(timeHub.currentTick - client.lastTickReceived);
 		}
 
+		timeHub.incInputTick();
 		_playerInputMap.update();
 		_playerInputSampler.sample();
 
@@ -674,6 +677,9 @@ void updateGame() {
 			ev.handle();
 			ev.unref();
 		}
+
+		// unless rollback and catch-up gets implemented
+		assert (timeHub.currentTick == timeHub.inputTick);
 
 		GameObjMngr.update(timeHub.secondsPerTick);
 		level.update(timeHub.secondsPerTick);
@@ -714,8 +720,8 @@ void updateGame() {
 
 version (Server) {
 	void createGameWorld() {
-		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 1);
-		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 2);
+		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), NoAuthority);
+		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
@@ -741,9 +747,24 @@ version (Server) {
 
 
 void handleInputWish(InputWish e) {
-	/+version (Server) {
-		tuneClientTiming(e);
-	}+/
+	version (Server) {
+		debug if (e.action) printf(`handling input from %d meant for tick %d (at tick %d)`\n, cast(int)e.wishOrigin, e.eventTargetTick, timeHub.currentTick);
+
+		tick targetTick = e.eventTargetTick;
+		tick recvTick = e.receptionTick;
+		const uint desiredOffsetTicks = 2;
+
+		// the event should have arrived this many ticks earlier
+		int offset = recvTick + desiredOffsetTicks - targetTick;
+		
+		printf(`Wish should've arrived %d ticks %s`\n, offset > 0 ? offset : -offset, offset > 0 ? `earlier`.ptr : `later`.ptr);
+		TuneClientTiming(e.wishOrigin, offset).immediate;
+	}
+
+	if (e.eventTargetTick < timeHub.currentTick) {
+		Stdout.formatln("Input wish arrived too late by {} ticks. Ignoring.", timeHub.currentTick - e.eventTargetTick);
+		return;
+	}
 	
 	float b2f(byte b) {
 		return cast(float)b / 127.f;
@@ -776,7 +797,7 @@ void handleInputWish(InputWish e) {
 
 class PlayerInputReader : InputReader {
 	void handle(PlayerInput* i) {
-		const double delaySeconds = 0.04;		
+		const double delaySeconds = 0.04;
 		tick targetTick = cast(tick)(timeHub.inputTick + timeHub.secondsToTicks(delaySeconds));
 		
 		ubyte action = 0;

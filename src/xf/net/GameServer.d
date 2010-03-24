@@ -24,7 +24,7 @@ class GameServer : IGameComm {
 	const bswPrealloc		= 1024 * 1024;
 
 	// In bits per iteration   // TODO: make this per second
-	const playerWriteBudget	= 1024 * 1;
+	const playerWriteBudget	= 1024 * 8;
 
 	// Can't overflow this amount
 	const playerWriteBudgetMax	= playerWriteBudget * 5;

@@ -64,6 +64,8 @@ private final class TimeHub : TickTracker {
 	
 	
 	void rollback(uint ticks) {
+		assert (false, "TODO");
+		
 		assert (currentTick_ >= ticks);
 		currentTick_ -= ticks;
 		

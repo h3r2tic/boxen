@@ -9,6 +9,6 @@ private {
 abstract class LowLevelComm {
 	abstract void recvPacketsForTick(
 		tick,
-		tick delegate(playerId, BitStreamReader*, uint* retained)
+		tick delegate(playerId, tick, BitStreamReader*, uint* retained)
 	);
 }

@@ -25,7 +25,7 @@ class Dispatcher {
 
 
 	public {
-		bool delegate(playerId, BitStreamReader*)
+		bool delegate(playerId, tick, BitStreamReader*)
 			receiveEvent;
 			
 		void delegate(playerId, BitStreamReader*)
@@ -39,7 +39,7 @@ class Dispatcher {
 	) {
 		comm.recvPacketsForTick(
 			curTick,
-			delegate tick(playerId pid, BitStreamReader* bs, uint* retained) {
+			delegate tick(playerId pid, tick recvdAt, BitStreamReader* bs, uint* retained) {
 				bool receivedTick = *retained > 0;
 
 				//log.trace("Dispatcher: receiving {} bits of data. Retained = {}.", bs.dataBlockSize, *retained);
@@ -50,7 +50,7 @@ class Dispatcher {
 				while (!bs.isEmpty) {
 					if (eventInStream && (bs.read(&eventInStream), eventInStream)) {
 						//printf("event");
-						if (!receiveEvent(pid, bs)) {
+						if (!receiveEvent(pid, recvdAt, bs)) {
 							//printf("donotwant");
 							*retained = 0;
 							return curTick;
@@ -64,13 +64,13 @@ class Dispatcher {
 						}
 						*retained = 0;
 						
-						version (Client) {
+						//version (Client) {
 							if (lastTickRecvd[pid] > curTick) {
-								//log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
+								log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
 								*retained = 1;
 								return lastTickRecvd[pid];
 							}
-						}
+						//}
 						
 						if (!bs.isEmpty) {
 							//log.trace("Snapshot has {} bits", bs.dataBlockSize - bs.readOffset);

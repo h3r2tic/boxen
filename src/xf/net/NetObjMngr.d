@@ -264,7 +264,6 @@ float applyObjectState(
 		tick stateForTick,
 		void* auth,
 		void* localStateMem,
-		ushort stateI,
 		NetStateInfo* stateInfo,
 		StateOverrideMethod som
 ) {
@@ -283,7 +282,9 @@ float applyObjectState(
 				return 0.0f;
 			}
 
-			if (diff > 5.f) {
+			const hardSnapErrorThresh = 5.0f;
+
+			if (diff > hardSnapErrorThresh) {
 				stateInfo.load(obj, auth);
 
 				log.info("State difference is large ({}). Hard snapping.", diff);
@@ -298,6 +299,8 @@ float applyObjectState(
 			//int qlen = q.length;
 			
 			if (stateInfo.applyDiffToObject !is null) {
+				log.trace("Running state fixup algorithm #1.");
+
 //final foo = _objDataMemCur.pushBack(stateInfo.size);
 				final bar = _objDataMemCur.pushBack(stateInfo.size);
 				final prev = _objDataMemCur.pushBack(stateInfo.size);
@@ -308,7 +311,7 @@ float applyObjectState(
 				memcpy(localStateMem, auth, stateInfo.size);
 
 				for (
-						tick tck = cast(tick)(_firstTickInQueue+1);
+						tick tck = cast(tick)(stateForTick+1);
 						tck < _lastTickInQueue;
 						++tck
 				) {
@@ -343,6 +346,8 @@ float applyObjectState(
 					//}
 				}
 			} else {
+				log.trace("Running state fixup algorithm #2.");
+				
 				final prev = _objDataMemCur.pushBack(stateInfo.size);
 				final backup = _objDataMemCur.pushBack(stateInfo.size);
 				void* prevAuth = auth;
@@ -356,8 +361,8 @@ float applyObjectState(
 				float mult = 1.f;
 
 				for (
-						tick tck = cast(tick)(_firstTickInQueue+1);
-						tck < _lastTickInQueue;
+						tick tck = cast(tick)(stateForTick+1);
+						tck <= _lastTickInQueue;
 						++tck
 				) {
 					void*[] tickStatePtrs = *_tickStateQueue[tck - _firstTickInQueue];
@@ -385,7 +390,7 @@ float applyObjectState(
 					//}
 					
 					//if (qlen-1 == itemIdx) {
-					if (tck+1 == _lastTickInQueue) {
+					if (tck == _lastTickInQueue) {
 						stateInfo.load(obj, tickState);
 						//this.setState(item.state, item.tck);
 						//_currentlySetStates[i] = item.state;
@@ -436,10 +441,14 @@ float applyObjectState(
 		NetStateInfo* stateInfo,
 		StateOverrideMethod som
 ) {
-	if (stateForTick >= _firstTickInQueue && stateForTick <= _lastTickInQueue) {
+	if (
+			stateForTick >= _firstTickInQueue
+		&&	stateForTick <= _lastTickInQueue
+		&& !_tickStateQueue.isEmpty
+	) {
 		void*[] localStatePtrs = *_tickStateQueue[stateForTick - _firstTickInQueue];
 		
-		if (localStatePtrs is null) {
+		if (localStatePtrs is null || localStatePtrs[obj.id] is null) {
 			log.warn(
 				"State {} for tick {} of net obj {} was not stored.",
 				stateI,
@@ -460,7 +469,6 @@ float applyObjectState(
 			stateForTick,
 			stateMem,
 			localStateMem,
-			stateI,
 			stateInfo,
 			som
 		);

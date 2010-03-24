@@ -31,7 +31,7 @@ class GameClient : IGameComm {
 	const bswPrealloc		= 1024 * 1024;
 
 	// In bits per iteration   // TODO: make this per second
-	const playerWriteBudget	= 1024 * 32;
+	const playerWriteBudget	= 1024;
 
 	// Can't overflow this amount
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
@@ -201,4 +201,86 @@ class GameClient : IGameComm {
 		bool			_tickAdjusted;
 		bool			_connected;
 	}
+}
+
+
+private {
+	import xf.omg.core.Misc;
+	import tango.stdc.stdio;
+	import xf.utils.HardwareTimer;
+}
+
+
+/**
+	Precise tick synchronization. Makes the client run as closely as possible to the perfect ahead-of-server time
+	
+	client.serverTickOffset specifies server-defined tick tuning feedback.
+	It specifies how many ticks earlier the last event should've arrived.
+	If it's a small negative number, then it's ok. If it's positive, the server has received an event out of time.
+*/
+void synchronizeNetworkTicks(GameClient client) {
+	static int totalSampleCount = 0;
+	++totalSampleCount;
+	
+	static float[200] offsetTable = 0.f;
+	static int offsetPtr = 0;
+	
+	static float[200]	offsetTbl2 = void;
+	static int			offsetPtr2 = 0;
+	
+	float serverOffset = client.serverTickOffset;
+	offsetTable[offsetPtr++ % offsetTable.length] = serverOffset;
+	//float offset = offsetTable.fold(0.f, (float a, float b){ return a + b; }) / offsetTable.length;
+	
+	static float deviation = -1.f;
+	static float amortizedDeviation = 0.f;
+	
+	offsetTbl2[offsetPtr2++] = serverOffset;
+	if (offsetTbl2.length == offsetPtr2) {
+		offsetPtr2 = 0;
+	}// {
+		float mean = 0.f;
+		foreach (x; offsetTbl2) mean += x;
+		mean /= offsetTbl2.length;
+		
+		deviation = 0.f;
+		foreach (x; offsetTbl2) deviation += (mean - x) * (mean - x);
+		deviation /= offsetTbl2.length;
+		deviation = sqrt(deviation);
+	//}
+
+	amortizedDeviation = (deviation + amortizedDeviation) / 2.f;
+
+	// not enough samples to determine reliably
+	if (totalSampleCount < 50) {
+		amortizedDeviation = 2.f;
+	}
+	
+		static float[offsetTable.length] sortedOffsets;
+		sortedOffsets[] = offsetTable;
+		sortedOffsets.sort;
+		
+		float errorThresh = .4f;
+		float offset = sortedOffsets[rndint((1.f - errorThresh) * (offsetTable.length - 1))];
+		
+	offset += amortizedDeviation * 3f;
+	
+	// vary the game speed to match with the server
+	float timeMult = 1.f;
+	if (offset > 0.0f) {
+		timeMult = 1.f + 0.005f * offset;
+	} else if (offset < -1.0f) {
+		timeMult = 1.f + 0.005f * offset;
+	}
+	
+	if (timeMult > 1.6f) {
+		timeMult = 1.6f;
+	}
+	if (timeMult < 0.8f) {
+		timeMult = 0.8f;
+	}
+	HardwareTimer.multiplier = timeMult;
+
+	printf(\r`offset [srv: %1.1f, calc: %1.1f; dev: %1.2f] ; time mult: %3.3f`, serverOffset, offset, amortizedDeviation, cast(float)HardwareTimer.multiplier);
+	fflush(stdout);
 }
