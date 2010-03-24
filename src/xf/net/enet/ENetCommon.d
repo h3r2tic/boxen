@@ -26,6 +26,7 @@ struct Peer {
 	ENetPeer*		con;
 	BitStreamReader	retainedBsr;
 	ENetPacket*		retainedPacket;
+	tick			retainedRecvdAt;
 	tick			retainedUntilTick;
 	uint			retainedCntr;
 
@@ -57,6 +58,7 @@ bool handlePacket(
 		Peer* peer,
 		BitStreamReader bsr,
 		ENetPacket* pkt,
+		tick recvdAt,
 		tick curTick,
 		uint retainedCntr,
 		tick delegate(BitStreamReader*, uint*) dg
@@ -76,6 +78,7 @@ bool handlePacket(
 		peer.retainedPacket = pkt;
 		peer.retainedUntilTick = targetTick;
 		peer.retainedCntr = retainedCntr;
+		peer.retainedRecvdAt = recvdAt;
 		return false;
 	}
 }
@@ -86,7 +89,7 @@ void recvPacketsForTick(
 		playerId numPeers,
 		Peer* delegate(playerId) getPeer,
 		void delegate(tick, void delegate(playerId, NetEvent*)) recvPackets,
-		tick delegate(playerId, BitStreamReader*, uint*) sink
+		tick delegate(playerId, tick, BitStreamReader*, uint*) sink
 ) {
 	void handleEvent(playerId pid, NetEvent* ev) {
 		assert (ENetEventType.ENET_EVENT_TYPE_RECEIVE == ev.enetEvent.type);
@@ -101,9 +104,9 @@ void recvPacketsForTick(
 		assert (peer !is null);
 		
 		final bsr = BitStreamReader(cast(uword*)packet.data, packet.dataLength);
-		handlePacket(peer, bsr, packet, curTick, 0,
+		handlePacket(peer, bsr, packet, ev.receivedAtTick, curTick, 0,
 			(BitStreamReader* bsr, uint* retCntr) {
-				return sink(pid, bsr, retCntr);
+				return sink(pid, ev.receivedAtTick, bsr, retCntr);
 			}
 		);
 	}
@@ -119,19 +122,22 @@ void recvPacketsForTick(
 				auto recvBsr = peer.retainedBsr;
 				auto recvPkt = peer.retainedPacket;
 				auto retCntr = peer.retainedCntr;
+				auto retRec = peer.retainedRecvdAt;
 				peer.retainedBsr = BitStreamReader.init;
 				peer.retainedPacket = null;
 				peer.retainedCntr = 0;
 
-				handlePacket(peer, recvBsr, recvPkt, curTick, retCntr,
+				handlePacket(peer, recvBsr, recvPkt, retRec, curTick, retCntr,
 					(BitStreamReader* bsr, uint* retCntr) {
-						return sink(pid, bsr, retCntr);
+						return sink(pid, retRec, bsr, retCntr);
 					}
 				);
 			}
 		}
 
-		// TODO: handle the queue
+		while (peer.retainedPacket is null && !peer.eventQueue.isEmpty) {
+			handleEvent(pid, peer.eventQueue.popFront());
+		}
 	}
 
 	recvPackets(curTick, (playerId pid, NetEvent* ev) {

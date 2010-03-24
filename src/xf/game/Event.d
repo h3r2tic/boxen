@@ -379,7 +379,8 @@ class Wish : Event {
 	
 	playerId		wishOrigin;
 	static playerId	defaultWishOrigin;
-	uint			receptionTimeMillis;
+	//uint			receptionTimeMillis;
+	tick			receptionTick;
 
 	/+mixin(xpose2(`wishOrigin|receptionTimeMillis`));
 	mixin xposeMiniDNoSubclass;+/

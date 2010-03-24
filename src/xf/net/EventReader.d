@@ -21,7 +21,7 @@ class EventReader {
 			rollbackTimeToTick;
 
 
-	bool readEvent(playerId pid, BitStreamReader* bs) {
+	bool readEvent(playerId pid, tick recvdAt, BitStreamReader* bs) {
 		assert (playerWishMask !is null);
 		assert (rollbackTimeToTick !is null);
 		
@@ -49,7 +49,8 @@ class EventReader {
 				//eventTargetTick = evtTargetTick;
 
 				// TODO: move this to the low level server into net events
-				receptionTimeMillis = cast(uint)(hardwareTimer.timeMicros / 1000);
+				//receptionTimeMillis = cast(uint)(hardwareTimer.timeMicros / 1000);
+				receptionTick = recvdAt;
 			}
 			
 			if (evtTargetTick < timeHub.currentTick) {
@@ -65,10 +66,12 @@ class EventReader {
 			//log.trace("Event for tick {}", evtTargetTick);
 			// NOTE: changed < from the original netcode to <=
 			if (evtTargetTick <= timeHub.currentTick) {
-				log.info("# evtTargetTick <= timeHub.currentTick");
-				if ((cast(Order)evt).strictTiming) {
+				log.info("# evtTargetTick ({}) <= timeHub.currentTick ({})", evtTargetTick, timeHub.currentTick);
+
+				// TODO: rollbacks
+				/+if ((cast(Order)evt).strictTiming && evtTargetTick < timeHub.currentTick) {
 					rollbackTimeToTick(evtTargetTick);
-				} else {
+				} else +/{
 					//log.trace("Immediately handling an Order: {}.", evt.classinfo.name);
 					evt.eventTargetTick = evtTargetTick;
 					// TODO: is this valid? perviously only control ImmediateEvents would be executed like this

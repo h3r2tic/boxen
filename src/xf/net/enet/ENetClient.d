@@ -97,7 +97,7 @@ class ENetClient : LowLevelClient {
 
 	override void recvPacketsForTick(
 			tick curTick,
-			tick delegate(playerId, BitStreamReader*, uint* retained) dg
+			tick delegate(playerId, tick, BitStreamReader*, uint* retained) dg
 	) {
 		.recvPacketsForTick(
 			curTick,
