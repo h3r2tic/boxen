@@ -64,9 +64,11 @@ void storeNetObjStates(tick curTick) {
 	}
 	
 	void*[] statePtrs =
-		(cast(void**)_objStatePtrQueue.pushBack(
-			numStates * (void*).sizeof
-		))[0..numStates];
+		numStates > 0
+		?	(cast(void**)_objStatePtrQueue.pushBack(
+				numStates * (void*).sizeof
+			))[0..numStates]
+		: null;
 	
 	foreach (i, netObj; _netObjects) {
 		if (netObj !is null) {
@@ -117,18 +119,20 @@ version (Client) void receiveStateSnapshot(playerId, BitStreamReader* bs) {
 
 
 void dropStatesOlderThan(tick tck) {
-	assert (tck >= _firstTickInQueue);
 	int numToDrop = tck - _firstTickInQueue;
-	while (numToDrop--) {
+	while (numToDrop-- > 0 && !_tickStateQueue.isEmpty) {
 		void*[] ptrs = *_tickStateQueue.popFront();
-		foreach (p; ptrs) {
-			if (p) {
-				_rawStateQueue.popFront(p);
+		if (ptrs) {
+			assert (!_objStatePtrQueue.isEmpty());
+			foreach (p; ptrs) {
+				if (p) {
+					_rawStateQueue.popFront(p);
+				}
 			}
+			_objStatePtrQueue.popFront(ptrs.ptr);
 		}
-		_objStatePtrQueue.popFront(ptrs.ptr);
+		++_firstTickInQueue;
 	}
-	_firstTickInQueue = tck;
 }
 
 
@@ -276,8 +280,6 @@ private {
 	const float _minStateImportance = 1e-10;
 
 	void updateStateImportances(NetObjData* objData) {
-		assert (_curTickStates !is null);
-		
 		foreach (id, obj; _netObjects) {
 			if (obj is null) {
 				continue;
@@ -291,6 +293,7 @@ private {
 
 				auto wrState = data.lastWrittenStates[stateI];
 				if (wrState && data.lastWrittenAtTick[stateI] >= _firstTickInQueue) {
+					assert (_curTickStates !is null);
 					final curStateRaw = _curTickStates[id];
 					final curState = curStateRaw + stateInfo[stateI].offset;
 					

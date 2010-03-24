@@ -47,6 +47,8 @@ struct ScratchFIFO {
 
 
 	void* pushBack(size_t bytes, size_t alignment = size_t.sizeof) {
+		assert (bytes > 0);
+		
 		QueueChunk*	chunk = void;
 		void*		ptr = void;
 
@@ -147,7 +149,7 @@ struct ScratchFIFO {
 	}
 
 
-	/+bool isEmpty() {
+	bool isEmpty() {
 		if (_head !is null) {
 			assert (_head.used > 0);
 		}
@@ -155,7 +157,7 @@ struct ScratchFIFO {
 	}
 
 
-	struct IterateFruct {
+	/+struct IterateFruct {
 		RawChunkQueue	q;
 		size_t			itemSize;
 

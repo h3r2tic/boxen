@@ -21,6 +21,13 @@
 + Revive touch trackers / auth groups on top of the ContactStorage
 + Collect the 'process' contact callbacks from Havok from all threads
 + Visualize auth
++ Eliminate memory leaks
+
+- The authority scheme
+	- client->server state propagation
+	- corrections
+	- giving back objects
+	- make sure the game subsystems update order is OK
 
 * Implement the new time sync algorithm
 * Visualize networking memory and id usage
