@@ -68,6 +68,10 @@ class GameClient : IGameComm {
 		assert (receiveStateSnapshot !is null);
 		_dispatcher.receiveStateSnapshot = this.receiveStateSnapshot;
 		_dispatcher.dispatch(timeHub.currentTick);
+
+		//if (timeHub.currentTick > _lastTickRecvd) {
+			timeHub.trimHistory(timeHub.currentTick - _lastTickRecvd);
+		//}
 	}
 
 

@@ -227,6 +227,41 @@ version (Server) {
 }
 
 
+void swapObjDataMem() {
+	// Swap allocators
+	
+	final t = _objDataMemCur;
+	_objDataMemCur = _objDataMemPrev;
+	_objDataMemPrev = t;
+
+	// Realloc storage using the new allocator, copy the data
+
+	void reallocData(NetObjData* data) {
+		foreach (id, ref no; _netObjects) {
+			if (no) {
+				final numStates = data[id].numStates;
+				final memReq = NetObjData.memRequired(numStates);
+				final nd = NetObjData.alloc(_objDataMemCur.pushBack(memReq), numStates);
+				NetObjData.copy(&nd, &data[id]);
+				data[id] = nd;
+			}
+		}
+	}
+
+	version (Server) {
+		foreach (ref d; _netObjData) {
+			reallocData(d);
+		}
+	} else {
+		reallocData(_netObjData);
+	}
+
+	// Purge the old data
+
+	_objDataMemPrev.clear();
+}
+
+
 
 private {
 	void withStateInfo(NetObj obj, void delegate(NetObjInfo*) sink) {
@@ -447,38 +482,6 @@ private {
 		_objDataMemPrev = &_objDataMem2;
 	}
 
-	void swapObjDataMem() {
-		// Swap allocators
-		
-		final t = _objDataMemCur;
-		_objDataMemCur = _objDataMemPrev;
-		_objDataMemPrev = t;
-
-		// Realloc storage using the new allocator, copy the data
-
-		void reallocData(NetObjData* data) {
-			foreach (id, ref no; _netObjects) {
-				if (no) {
-					final numStates = data[id].numStates;
-					final memReq = NetObjData.memRequired(numStates);
-					final nd = NetObjData.alloc(_objDataMemCur.pushBack(memReq), numStates);
-					NetObjData.copy(&nd, &data[id]);
-				}
-			}
-		}
-
-		version (Server) {
-			foreach (ref d; _netObjData) {
-				reallocData(d);
-			}
-		} else {
-			reallocData(_netObjData);
-		}
-
-		// Purge the old data
-
-		_objDataMemPrev.clear();
-	}
 
 	void allocObjStates(objId id, uword numStates) {
 		final memReq = NetObjData.memRequired(numStates);

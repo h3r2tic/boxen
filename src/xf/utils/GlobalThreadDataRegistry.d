@@ -23,7 +23,7 @@ template GlobalThreadDataRegistryM(T) {
 	}
 	
 	private {
-		alias ThreadDataRegistry* PtrType;
+		alias ThreadDataRegistry*		PtrType;
 		__thread ThreadDataRegistry		t_registry;
 	}
 
@@ -31,10 +31,13 @@ template GlobalThreadDataRegistryM(T) {
 		PtrType								g_firstThread;
 		Object								g_registrationMutex;
 
-		void register(T val) {
+		bool register(T val) {
 			auto reg = &t_registry;
 			if (!reg._globallyAdded) {
 				t_registry.register(val);
+				return true;
+			} else {
+				return false;
 			}
 		}
 		

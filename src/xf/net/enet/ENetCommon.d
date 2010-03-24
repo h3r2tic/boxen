@@ -130,6 +130,8 @@ void recvPacketsForTick(
 				);
 			}
 		}
+
+		// TODO: handle the queue
 	}
 
 	recvPackets(curTick, (playerId pid, NetEvent* ev) {
