@@ -657,11 +657,6 @@ void updateGame() {
 		}
 		server.sendData();
 		debug printf(`tick: %d`\n, timeHub.currentTick);
-
-		// tmp HACK
-		if (timeHub.currentTick > 100) {
-			NetObjMngr.dropStatesOlderThan(cast(tick)(timeHub.currentTick - 100));
-		}
 	} else {
 		client.receiveData();
 
@@ -688,24 +683,29 @@ void updateGame() {
 
 		/+if (client.connected) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
-			/+NetObjMngr.updateStateImportances();
+			NetObjMngr.updateStateImportances();
 			final writer = client.getWriter();
-			Stdout.formatln("Bits in writer before states: {}.\n{}", writer.bsw.writeOffset, writer.bsw.toString);
+			//Stdout.formatln("Bits in writer before states: {}.\n{}", writer.bsw.writeOffset, writer.bsw.toString);
 			writer.bsw.write(false);		// end of events
 			static assert (uint.sizeof == tick.sizeof);
 			writer.bsw.write(cast(uint)timeHub.currentTick);
 			writer.bsw.flush();
-			Stdout.formatln("Sending:\n{}", writer.bsw.toString);
-			/+NetObjMngr.writeStates(
+			//Stdout.formatln("Sending:\n{}", writer.bsw.toString);
+			NetObjMngr.writeStates(
 				timeHub.currentTick,
 				(NetObj) {
 					return 1.0f;		// importance
 				},
 				writer
-			);+/+/
+			);
 		}+/
 		
 		client.sendData();
+	}
+
+	// tmp HACK
+	if (timeHub.currentTick > 100) {
+		NetObjMngr.dropStatesOlderThan(cast(tick)(timeHub.currentTick - 100));
 	}
 
 
