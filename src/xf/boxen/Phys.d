@@ -64,6 +64,7 @@ void initialize(cstring libPath = "HavokC.dll") {
 	worldInfo.m_broadPhaseBorderBehaviour = BroadPhaseBorderBehaviour.BROADPHASE_BORDER_REMOVE_ENTITY;
 
 	world = hkpWorld(worldInfo);
+	world.m_contactPointGeneration = ContactPointGeneration.CONTACT_POINT_REJECT_DUBIOUS;
 
 	// When the simulation type is SIMULATION_TYPE_MULTITHREADED, in the debug build, the sdk performs checks
 	// to make sure only one thread is modifying the world at once to prevent multithreaded bugs. Each thread

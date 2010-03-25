@@ -207,6 +207,15 @@ class hkpWorld hkReferencedObject
 		param mode ReintegrationRecollideMode
 			hkType hkpWorld::ReintegrationRecollideMode 
 
+	func findInitialContactPoints
+		param entities hkpEntity**
+		param numEntities int
+
+	field m_contactPointGeneration ContactPointGeneration
+		hkType hkInt8
+		forceCast
+		
+
 # ----------------------------------------------------------------
 
 class hkpCollisionDispatcher
@@ -512,6 +521,7 @@ class hkpCharacterProxyCinfo
 	field m_characterStrength hkReal
 	field m_characterMass hkReal
 	field m_shapePhantom hkpShapePhantom*
+	field m_keepDistance hkReal
 
 class hkpSurfaceInfo
 	# TODO: POD

@@ -24,15 +24,15 @@ private {
 
 
 struct PosRotState {
-	vec3fi	pos = vec3fi.zero;
+	vec3	pos = vec3.zero;
 	vec3	vel = vec3.zero;
 	float	yaw = 0.0f;
 	float	pitch = 0.0f;
 
 	void serialize(BitStreamWriter* bs) {
-		bs.write(pos.x.store);
-		bs.write(pos.y.store);
-		bs.write(pos.z.store);
+		bs.write(pos.x);
+		bs.write(pos.y);
+		bs.write(pos.z);
 		bs.write(vel.x);
 		bs.write(vel.y);
 		bs.write(vel.z);
@@ -41,9 +41,9 @@ struct PosRotState {
 	}
 	
 	void unserialize(BitStreamReader* bs) {
-		bs.read(&pos.x.store);
-		bs.read(&pos.y.store);
-		bs.read(&pos.z.store);
+		bs.read(&pos.x);
+		bs.read(&pos.y);
+		bs.read(&pos.z);
 		bs.read(&vel.x);
 		bs.read(&vel.y);
 		bs.read(&vel.z);
@@ -61,7 +61,7 @@ struct PosRotState {
 	static float calcDifference(PosRotState* a, PosRotState* b) {
 		// TODO
 		return
-			vec3.from(a.pos - b.pos).length
+			(a.pos - b.pos).length
 			+ (a.vel - b.vel).length * 0.3f
 			+ (circleAbsDiff!(360.f)(a.yaw, b.yaw) / 180.f) * 2.0f
 			+ (circleAbsDiff!(360.f)(a.pitch, b.pitch) / 180.f) * 2.0f;
@@ -161,6 +161,7 @@ final class PlayerController : NetObj, IPlayerController {
 		cpci.m_maxSlope = 3.1415926f / 3.f;
 		cpci.m_shapePhantom = _phantom._as_hkpShapePhantom();
 		cpci.m_characterStrength = 5000.0f;
+		//cpci.m_keepDistance = 0.2f;
 		
 		_proxy = hkpCharacterProxy(cpci);
 
@@ -274,7 +275,7 @@ final class PlayerController : NetObj, IPlayerController {
 			_proxy.integrate(si, gravity);
 		//}
 
-		_coordSys.origin = vec3fi.from(_proxy.getPosition());
+		_coordSys.origin = vec3fi.from(_proxy.getPosition()) * 0.8f + _coordSys.origin * 0.2f;
 
 		_movePending = vec3.zero;
 		_rotationPending = YawPitch.zero;
@@ -305,14 +306,16 @@ final class PlayerController : NetObj, IPlayerController {
 	
 
 	void storeState(PosRotState* st) {
-		st.pos = _coordSys.origin;
+		Phys.world.markForRead();
+		st.pos = vec3.from(_proxy.getPosition());
 		st.vel = vec3.from(_proxy.getLinearVelocity());
 		st.yaw = _rotation.yaw;
 		st.pitch = _rotation.pitch;
+		Phys.world.unmarkForRead();
 	}
 	
 	void loadState(PosRotState* st) {
-		_coordSys.origin = st.pos;
+		//_coordSys.origin = st.pos;
 		_rotation.yaw = st.yaw;
 		_rotation.pitch = st.pitch;
 

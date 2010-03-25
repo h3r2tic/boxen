@@ -28,6 +28,8 @@ private {
 	import xf.game.EventQueue;
 	import xf.game.GameObjEvents;
 	import xf.game.LoginEvents;
+
+	import xf.input.Input;
 	
 	version (Client) import xf.game.TickTracker;
 	
@@ -392,7 +394,7 @@ version (Server) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 		if (singleOwner && singleAuth && theOwner != NoAuthority) {
 			// if all objects in the group are owned by one player, check if they can be given back
 			canGiveBack = true;
-			const float maxError = .5f;//0.1f;//.5f;
+			const float maxError = 0.15f;//.5f;
 
 			foreach (t; intf) {
 				final go = _netObjects[t];
@@ -443,12 +445,12 @@ version (Server) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 								auto s1 = d1().dup;
 								auto s2 = d2();
 								
-								printf(
+								/+printf(
 									"Critical state: %d. Server:\n  %.*s\nClient:\n  %.*s\n",
 									cast(int)stateI,
 									s1,
 									s2
-								);
+								);+/
 
 								delete s1;
 							}
@@ -458,12 +460,12 @@ version (Server) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 
 					if (err > maxError) {
 					cantGiveBack:
-						printf(
+						/+printf(
 							"Can't give back object %d: %s Error = %f\n",
 							cast(int)t,
 							reason,
 							err
-						);
+						);+/
 						canGiveBack = false;
 						break;
 					}
@@ -694,9 +696,9 @@ void updateGame() {
 			ev.unref();
 		}
 
-		GameObjMngr.update(timeHub.secondsPerTick);
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
+		GameObjMngr.update(timeHub.secondsPerTick);
 		refreshInteractions();
 
 		NetObjMngr.storeNetObjStates(timeHub.currentTick);
@@ -745,9 +747,9 @@ void updateGame() {
 		// unless rollback and catch-up gets implemented
 		assert (timeHub.currentTick == timeHub.inputTick);
 
-		GameObjMngr.update(timeHub.secondsPerTick);
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
+		GameObjMngr.update(timeHub.secondsPerTick);
 		refreshInteractions();
 
 		if (client.connectedAndReady) {
@@ -816,12 +818,12 @@ void handleInputWish(InputWish e) {
 
 		tick targetTick = e.eventTargetTick;
 		tick recvTick = e.receptionTick;
-		const uint desiredOffsetTicks = 2;
+		const uint desiredOffsetTicks = 5;//1;
 
 		// the event should have arrived this many ticks earlier
 		int offset = recvTick + desiredOffsetTicks - targetTick;
 		
-		printf(`Wish should've arrived %d ticks %s`\n, offset > 0 ? offset : -offset, offset > 0 ? `earlier`.ptr : `later`.ptr);
+		//printf(`Wish should've arrived %d ticks %s`\n, offset > 0 ? offset : -offset, offset > 0 ? `earlier`.ptr : `later`.ptr);
 		TuneClientTiming(e.wishOrigin, offset).immediate;
 	}
 
@@ -847,7 +849,7 @@ void handleInputWish(InputWish e) {
 	float strafe = b2f(e.strafe);
 	float fwd = b2f(e.thrust);
 
-	version (Client) Stdout.newline().newline();
+	/+version (Client) Stdout.newline().newline();
 	Stdout.formatln(
 		"Applying input {} (lr:{}, ud:{}) to ctrl @ {} @ tick {}",
 		e.eventTargetTick,
@@ -855,7 +857,7 @@ void handleInputWish(InputWish e) {
 		fwd,
 		ctrl.worldPosition,
 		timeHub.currentTick
-	);
+	);+/
 
 	// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
 	float moveSpeed = 1.f;
@@ -923,7 +925,8 @@ version (Client) class QueueTrimmer : TickTracker {
 
 
 class TestApp : GfxApp {
-	SimpleCamera camera;
+	SimpleCamera			camera;
+	SimpleKeyboardReader	keyboard;
 	
 
 	version (Client) override void configureWindow(Window wnd) {
@@ -938,6 +941,8 @@ class TestApp : GfxApp {
 		timeHub.overrideTicksPerSecond(60);
 		
 		camera = new SimpleCamera(vec3(0, 2, 5), 0, 0, window.inputChannel);
+		keyboard = new SimpleKeyboardReader(window.inputChannel);
+		
 		camera.movementSpeed = vec3.one * 40.f;
 
 		DebugDraw.initialize(renderer, window);
@@ -1056,7 +1061,14 @@ class TestApp : GfxApp {
 
 	void update() {
 		updateGame();
+		if (keyboard.keyDown(KeySym.c)) {
+			keyboard.setKeyState(KeySym.c, false);
+			useColors ^= true;
+		}
 	}
+
+
+	bool useColors = true;
 
 
 	static vec4[] playerColors = [
@@ -1084,17 +1096,20 @@ class TestApp : GfxApp {
 			final obj = cast(NetObj)cast(Object)GameObjMngr.getObj(meshes.offsetFrom[i]);
 
 			final auth = obj.authOwner();
-			vec4 tintColor = void;
-			if (NoAuthority == auth) {
-				tintColor = vec4.one;
-			} else if (ServerAuthority == auth) {
-				tintColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
-			} else {
-				tintColor = playerColors[auth % $];
-			}
+			vec4 tintColor = vec4.one;
 
-			if (!obj.isActive) {
-				tintColor *= 0.5f;
+			if (useColors) {
+				if (NoAuthority == auth) {
+					tintColor = vec4.one;
+				} else if (ServerAuthority == auth) {
+					tintColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+				} else {
+					tintColor = playerColors[auth % $];
+				}
+
+				if (!obj.isActive) {
+					tintColor *= 0.5f;
+				}
 			}
 			
 			efInst.setUniform("FragmentProgram.tintColor", tintColor);

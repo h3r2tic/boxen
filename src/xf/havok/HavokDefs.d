@@ -319,3 +319,21 @@ enum hkpStepResult {
 	HK_STEP_RESULT_MEMORY_FAILURE_DURING_TOI_SOLVE,
 
 }
+
+
+enum ContactPointGeneration : hkInt8 {
+	/// Try to gather as many contact points as possible. This
+	/// gives you the highest quality at the cost of some (up to 25%)
+	/// extra CPU. You should use this setting if you want to stack
+	/// very small objects in your game
+	CONTACT_POINT_ACCEPT_ALWAYS,
+
+	/// Accept good contact points immediately and try to
+	/// to reject the rest. This is a compromise
+	CONTACT_POINT_REJECT_DUBIOUS,
+
+	/// Uses some optimistic algorithms to speed up contact point generation.
+	/// This can seriously increase the performance of the engine.
+	/// Note: Stacking small objects becomes very difficult with this option enabled
+	CONTACT_POINT_REJECT_MANY,
+}
