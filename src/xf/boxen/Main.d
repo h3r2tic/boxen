@@ -818,7 +818,7 @@ void handleInputWish(InputWish e) {
 
 		tick targetTick = e.eventTargetTick;
 		tick recvTick = e.receptionTick;
-		const uint desiredOffsetTicks = 5;//1;
+		const uint desiredOffsetTicks = 1;
 
 		// the event should have arrived this many ticks earlier
 		int offset = recvTick + desiredOffsetTicks - targetTick;
@@ -927,6 +927,20 @@ version (Client) class QueueTrimmer : TickTracker {
 class TestApp : GfxApp {
 	SimpleCamera			camera;
 	SimpleKeyboardReader	keyboard;
+	char[]					netAddr;
+
+
+	this(char[][] args) {
+		if (args.length > 0) {
+			netAddr = args[0];
+		} else {
+			version (Client) {
+				netAddr = "127.0.0.1";
+			} else {
+				netAddr = "0.0.0.0";
+			}
+		}
+	}
 	
 
 	version (Client) override void configureWindow(Window wnd) {
@@ -958,14 +972,7 @@ class TestApp : GfxApp {
 
 		char[]	netBackend = "ENet";
 		u16		port = 8000;
-		char[]	netAddr;
 		
-		version (Server) {
-			netAddr = "0.0.0.0";
-		} else {
-			netAddr = "127.0.0.1";
-		}
-
 		void queueEvent(Event ev, tick target) {
 			/+Stdout.formatln(
 				"Submitting {} for tick {} (current = {}).",
@@ -1146,6 +1153,6 @@ class TestApp : GfxApp {
 }
 
 
-void main() {
-	(new TestApp).run;
+void main(char[][] args) {
+	(new TestApp(args[1..$])).run;
 }

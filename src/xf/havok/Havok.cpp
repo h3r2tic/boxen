@@ -44,6 +44,8 @@
 #include <Common/Base/Thread/Job/ThreadPool/Spu/hkSpuJobThreadPool.h>
 #include <Common/Base/Thread/JobQueue/hkJobQueue.h>
 
+#include <Common/Base/UnitTest/hkUnitTest.h>
+
 // Visual Debugger includes
 #include <Common/Visualize/hkVisualDebugger.h>
 #include <Physics/Utilities/VisualDebugger/hkpPhysicsContext.h>				
@@ -298,6 +300,16 @@ class ZeroPlanesCharacterInteractionListener : public hkReferencedObject, public
 struct C_hkVector4 {
 	float x, y, z, w;
 };
+
+
+#ifdef NDEBUG
+hkTestEntry* hkUnitTestDatabase;
+hkBool HK_CALL hkTestReport(hkBool32 cond, const char* desc, const char* file, int line)
+{
+    errorReport(desc, 0);
+    return false;
+}
+#endif
 
 
 extern "C"
