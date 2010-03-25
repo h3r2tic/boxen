@@ -244,6 +244,57 @@ public:
 };
 
 
+// This listener can be used to prevent objects from moving the character at all.
+// It should only be used if the charater strength has been set to REAL_MAX.
+class ZeroPlanesCharacterInteractionListener : public hkReferencedObject, public hkpCharacterProxyListener
+{
+	public:
+		HK_DECLARE_CLASS_ALLOCATOR(HK_MEMORY_CLASS_DEMO);
+
+		ZeroPlanesCharacterInteractionListener(const hkVector4& up)
+		{
+			m_up = up;
+		}
+
+		// In this callback we examine the constraints passed to the simplex.
+		// WARNING: This only works when the character is not in a moving environment, as the velocities
+		// are zeroed. 
+		void processConstraintsCallback( const hkpCharacterProxy* proxy, const hkArray<hkpRootCdPoint>& manifold, hkpSimplexSolverInput& input ) 
+		{
+			// Do not move the character for dynamic bodies.
+			int i;
+			for (i=0; i < manifold.getSize(); i++)
+			{
+				// For each constraint, check if it comes from a dynamic body.
+				// If it does, zero the constraint velocity.
+
+				// Get the rigid body.
+				hkpRigidBody* rigidBody = hkpGetRigidBody(manifold[i].m_rootCollidableB);
+
+				// Make sure we got a rigid body, not another phantom.
+				if (rigidBody && !rigidBody->isFixedOrKeyframed())
+				{
+					hkpSurfaceConstraintInfo& surface = input.m_constraints[i];
+					surface.m_velocity.setZero4();
+				}
+			}
+			// The remaining planes are vertical planes which have been added in to prevent character movement up
+			// slopes which are too steep.
+			// Unfortunately we do not have a corresponging manifold point, so we just set all these velocities to
+			// the velocity of the character.
+			while (i < input.m_numConstraints)
+			{
+				hkpSurfaceConstraintInfo& surface = input.m_constraints[i];
+				surface.m_velocity.setZero4();
+				i++;
+			}
+		}
+
+		hkVector4 m_up;
+};
+
+
+
 struct C_hkVector4 {
 	float x, y, z, w;
 };

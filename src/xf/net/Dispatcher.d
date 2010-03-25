@@ -70,7 +70,7 @@ class Dispatcher {
 						
 						//version (Client) {
 							if (lastTickRecvd[pid] > curTick) {
-								log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
+								//log.trace(`Retaining stream and returning... (recvd: {}, local: {})`\n, lastTickRecvd[pid], curTick);
 								*retained = 1;
 								return lastTickRecvd[pid];
 							}

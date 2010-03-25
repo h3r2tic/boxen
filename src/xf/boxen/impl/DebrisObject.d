@@ -213,9 +213,8 @@ final class DebrisObject : NetObj {
 	// Implements GameObj
 	synchronized void update(double seconds) {
 		Phys.world.markForRead();
-		_coordSys = CoordSys(		// lags one frame :S
-			vec3fi.from(_rigidBody.getPosition()),
-			_rigidBody.getRotation()
+		updateInterpolatedState(	// lags one frame :<
+			vec3.from(_rigidBody.getPosition()), _rigidBody.getRotation()
 		);
 		if (_rigidBody.isActive()) {
 			_ticksAsleep = 0;
@@ -235,6 +234,17 @@ final class DebrisObject : NetObj {
 	enum {		minTicksAsleep = 2 }
 	int			_ticksAsleep = 0;
 	CoordSys	_coordSys = CoordSys.identity;
+
+
+	void updateInterpolatedState(vec3 pos, quat rot) {
+		const float i1 = 0.2;
+		const float i2 = 1.0 - i1;
+		_coordSys.origin = _coordSys.origin * i1 + vec3fi.from(pos) * i2;
+		_coordSys.rotation = quat.slerp(_coordSys.rotation, rot, i2);
+			/+vec3fi.from(),
+			_rigidBody.getRotation()
+		);+/
+	}
 	
 
 	void storeState(PosRotVelState* st) {
@@ -248,9 +258,6 @@ final class DebrisObject : NetObj {
 	}
 	
 	void loadState(PosRotVelState* st) {
-		_coordSys.origin = vec3fi.from(st.pos);
-		_coordSys.rotation = st.rot;
-
 		Phys.world.markForWrite();
 		_rigidBody.setPosition(hkVector4(st.pos));
 		_rigidBody.setRotation(st.rot);
@@ -261,16 +268,21 @@ final class DebrisObject : NetObj {
 			_rigidBody.activate();
 			_ticksAsleep = 0;
 		} else {
-			_rigidBody.deactivate();
+			//_rigidBody.deactivate();
 			_ticksAsleep = minTicksAsleep;
 		}
 
-		hkpEntity_cptr eptr = _rigidBody._as_hkpEntity._impl;
+		/+hkpEntity_cptr eptr = _rigidBody._as_hkpEntity._impl;
+		/+Phys.world.findInitialContactPoints(
+			&eptr,
+			1
+		);+/
 		Phys.world.reintegrateAndRecollideEntities(
 			&eptr,
 			1,
-			ReintegrationRecollideMode.RR_MODE_ALL
-		);
+			ReintegrationRecollideMode.RR_MODE_RECOLLIDE_NARROWPHASE
+			| ReintegrationRecollideMode.RR_MODE_REINTEGRATE
+		);+/
 		
 		Phys.world.unmarkForWrite();
 	}

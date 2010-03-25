@@ -54,6 +54,7 @@ private {
 		final o2 = cast(void*)b.getUserData();
 		if (o1 && o2 && o1 !is o2) {
 			boxen_processGameObjInteraction(o1, o2);
+			b.activate();
 		}
 	}	
 }

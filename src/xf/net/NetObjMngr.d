@@ -118,15 +118,21 @@ void storeNetObjStates(tick curTick) {
 				statePtrs[i] = state;
 				foreach (nsi; netObjInfo.netStateInfo) {
 					nsi.store(netObj, state);
+
+					/+char[] delegate() stringize;
+					stringize.funcptr = nsi.stringize;
+					stringize.ptr = state;
+					log.trace("@tck {} storing state of obj {}:\n{}", curTick, i, stringize());+/
 					
-					/+// TMP
-					 + setPosition/setTransform/setRotation wreck internal havok state
-					 + and e.g. pushing a box by a controller is not smooth any more :(
-					 + reintegration doesn't help
-					if (cast(IPlayerController)netObj is null) {
+					// TMP
+					// setPosition/setTransform/setRotation wreck internal havok state
+					// and e.g. pushing a box by a controller is not smooth any more :(
+					// reintegration doesn't help
+					/+if (cast(IPlayerController)netObj is null) {
 						nsi.load(netObj, state);
-					}
-					state += nsi.size;+/
+					}+/
+					
+					state += nsi.size;
 				}
 			});
 		} else {
@@ -334,7 +340,7 @@ float applyObjectState(
 
 			const hardSnapErrorThresh = 5.0f;
 
-			if (diff > hardSnapErrorThresh) {
+			/+if (diff > hardSnapErrorThresh) {
 				stateInfo.load(obj, auth);
 
 				log.info("State difference is large ({}). Hard snapping.", diff);
@@ -342,14 +348,14 @@ float applyObjectState(
 				// store the state in case something might want to query it later
 				memcpy(localStateMem, auth, stateInfo.size);
 				break;
-			}
+			}+/
 
 			//auto q = stateQueues(pid).queues[i];
 
 			//int qlen = q.length;
 			
 			if (stateInfo.applyDiffToObject !is null) {
-				log.trace("Running state fixup algorithm #1.");
+				//log.trace("Running state fixup algorithm #1.");
 
 //final foo = _objDataMemCur.pushBack(stateInfo.size);
 				final bar = _objDataMemCur.pushBack(stateInfo.size);
@@ -395,8 +401,28 @@ float applyObjectState(
 						//_currentlySetStates[i] = item.state;
 					//}
 				}
-			} /+else {
-				log.trace("Running state fixup algorithm #3.");
+			} else {
+				//log.trace("Running state fixup algorithm #3.");
+
+				/+final zero = _objDataMemCur.pushBack(stateInfo.size);
+				memset(zero, 0, stateInfo.size);
+
+				{
+					void delegate(void* a, void* b, float) applyDiff;
+					applyDiff.funcptr = stateInfo.applyDiff;
+					applyDiff.ptr = zero;
+					zero[0..stateInfo.typeInfo.init.length] = stateInfo.typeInfo.init;
+					applyDiff(localStateMem, auth, 1.0f);
+
+					char[] delegate() meh;
+					meh.ptr = zero;
+					meh.funcptr = stateInfo.stringize;
+					log.trace("Diff: {}", meh());
+				}+/
+
+				//int spam = 1;
+
+				const resetFactor = 0.1f;
 				
 				for (
 						tick tck = cast(tick)(stateForTick+1);
@@ -411,16 +437,30 @@ float applyObjectState(
 					void delegate(void* a, void* b, float) applyDiff;
 					applyDiff.funcptr = stateInfo.applyDiff;
 					applyDiff.ptr = tickState;
-					applyDiff(localStateMem, auth, 1.0f);
+					applyDiff(localStateMem, auth, resetFactor);
+
+					char[] delegate() meh;
+					meh.ptr = tickState;
+					meh.funcptr = stateInfo.stringize;
+
+					/+if (spam-- > 0) {
+						log.trace("Approx state for tck {}:\n{}", tck, meh());
+					}+/
 
 					if (tck == _lastTickInQueue) {
+						// in case it might be needed somewhere
+						applyDiff.ptr = localStateMem;
+						applyDiff(localStateMem, auth, resetFactor);
+
+						//assert (stateInfo.calcDifference(auth, localStateMem) < 0.001f);
+
 						stateInfo.load(obj, tickState);
 						break;
 					}
 				}
 
 				memcpy(localStateMem, auth, stateInfo.size);
-			}+/ else {
+			}/+ else {
 				log.trace("Running state fixup algorithm #2.");
 				
 				final prev = _objDataMemCur.pushBack(stateInfo.size);
@@ -429,9 +469,15 @@ float applyObjectState(
 
 				memcpy(prev, localStateMem, stateInfo.size);
 				
-				const constMult = 1.f;
-				const multMult = 1.f;
+				float constMult = 0.98f;
+				float multMult = 0.99f;
 				float mult = 1.f;
+
+				version (Client) {
+					if (cast(IPlayerController)obj && obj.realOwner == g_localPlayerId) {
+						constMult = multMult = 1.0f;
+					}
+				}
 
 				for (
 						tick tck = cast(tick)(stateForTick+1);
@@ -462,7 +508,7 @@ float applyObjectState(
 				}
 
 				memcpy(localStateMem, auth, stateInfo.size);
-			}
+			}+/
 
 			
 			/+foreach (itemIdx, ref item; q) {
@@ -587,6 +633,13 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 		error("LastPlayerSnapshotData backlog overflow. Can't receive more snapshots than {}.", maxStatesPerSnapshot);
 	}
 
+	/+version (Client) {
+		char[] delegate() stringize;
+		stringize.funcptr = stateInfo.stringize;
+		stringize.ptr = stateMem;
+		log.trace("@tck {} recvd state for tck {} of obj {}:\n{}", curTick, g_lastTickRecvd, id, stringize());
+	}+/
+
 	// ----------------------------------------------------------------
 
 
@@ -598,12 +651,13 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 		//printf("received obj %d state for tick %d. Current tick %d; localAuth: %.*s"\n, id, lastTickRecvd, timeHub.currentTick, localAuthority ? "true" : "false");
 	} else {
 		bool locallyOwned = obj.realOwner == g_localPlayerId;
-		bool localAuthority = g_localPlayerId == objAuth;
+		bool localAuthority =	g_localPlayerId == objAuth
+								|| (obj.authRequested && NoAuthority == objAuth);
 	}
 	
 	if (!localAuthority) {
 		StateOverrideMethod som = StateOverrideMethod.Replace;
-		version (Client) if (!localAuthority && /+obj.isPredicted+/locallyOwned) {
+		version (Client) if (locallyOwned || obj.authRequested || ServerAuthority == objAuth) {
 			som = StateOverrideMethod.ApplyDiff;
 		}
 
@@ -638,7 +692,7 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 		);
 
 		if (obj.isPredicted && true == stateInfo.isCritical) {
-			debug printf(`Obj state error: %f`\n, objError);
+			//debug printf(`Obj state error: %f`\n, objError);
 			return objError;
 		}
 	}
