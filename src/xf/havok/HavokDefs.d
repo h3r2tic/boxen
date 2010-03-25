@@ -297,3 +297,25 @@ enum hkpCharacterStateType {
 	HK_CHARACTER_MAX_STATE_ID
 }
 
+enum ReintegrationRecollideMode {
+	RR_MODE_REINTEGRATE = 1,			// only reintegrates the motion in the middle of a physics step
+	RR_MODE_RECOLLIDE_BROADPHASE = 2,	// only reapplies the broadphase
+	RR_MODE_RECOLLIDE_NARROWPHASE = 4,	// only reapplies the narrowphase
+	RR_MODE_ALL = 7
+}
+
+
+enum hkpStepResult {
+	/// The call to stepDelta time was a processed to the end
+	HK_STEP_RESULT_SUCCESS,
+
+	/// The engine predicted that it would run out of memory before doing any work
+	HK_STEP_RESULT_MEMORY_FAILURE_BEFORE_INTEGRATION,
+
+	/// The collide call failed as some collision agents were allocated too much memory
+	HK_STEP_RESULT_MEMORY_FAILURE_DURING_COLLIDE,
+
+	/// The advanceTime call failed during TOI solving
+	HK_STEP_RESULT_MEMORY_FAILURE_DURING_TOI_SOLVE,
+
+}

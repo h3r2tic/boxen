@@ -85,6 +85,7 @@ void freeId(objId id) {
 	_uidPool.free(_uidPool.UID(id));
 }
 
+import xf.boxen.model.IPlayerController;
 
 void storeNetObjStates(tick curTick) {
 	assert (_lastTickInQueue < curTick);
@@ -117,7 +118,15 @@ void storeNetObjStates(tick curTick) {
 				statePtrs[i] = state;
 				foreach (nsi; netObjInfo.netStateInfo) {
 					nsi.store(netObj, state);
-					state += nsi.size;
+					
+					/+// TMP
+					 + setPosition/setTransform/setRotation wreck internal havok state
+					 + and e.g. pushing a box by a controller is not smooth any more :(
+					 + reintegration doesn't help
+					if (cast(IPlayerController)netObj is null) {
+						nsi.load(netObj, state);
+					}
+					state += nsi.size;+/
 				}
 			});
 		} else {
@@ -386,7 +395,32 @@ float applyObjectState(
 						//_currentlySetStates[i] = item.state;
 					//}
 				}
-			} else {
+			} /+else {
+				log.trace("Running state fixup algorithm #3.");
+				
+				for (
+						tick tck = cast(tick)(stateForTick+1);
+						tck <= _lastTickInQueue;
+						++tck
+				) {
+					void*[] tickStatePtrs = *_tickStateQueue[tck - _firstTickInQueue];
+					assert (tickStatePtrs !is null);
+					assert (tickStatePtrs[obj.id] !is null);
+					void* tickState = tickStatePtrs[obj.id] + stateInfo.offset;
+
+					void delegate(void* a, void* b, float) applyDiff;
+					applyDiff.funcptr = stateInfo.applyDiff;
+					applyDiff.ptr = tickState;
+					applyDiff(localStateMem, auth, 1.0f);
+
+					if (tck == _lastTickInQueue) {
+						stateInfo.load(obj, tickState);
+						break;
+					}
+				}
+
+				memcpy(localStateMem, auth, stateInfo.size);
+			}+/ else {
 				log.trace("Running state fixup algorithm #2.");
 				
 				final prev = _objDataMemCur.pushBack(stateInfo.size);
@@ -394,8 +428,6 @@ float applyObjectState(
 				void* prevAuth = auth;
 
 				memcpy(prev, localStateMem, stateInfo.size);
-				//States[i]	prev = *localState;
-				//States[i]*	prevAuth = &auth;
 				
 				const constMult = 1.f;
 				const multMult = 1.f;
@@ -411,41 +443,25 @@ float applyObjectState(
 					assert (tickStatePtrs[obj.id] !is null);
 					void* tickState = tickStatePtrs[obj.id] + stateInfo.offset;
 				
-				//foreach (itemIdx, ref item; q) {
-//					if (item.tck > tck) {
-						memcpy(backup, tickState, stateInfo.size);
-						//auto backup = item.state;
-						memcpy(tickState, prevAuth, stateInfo.size);
-						//item.state = *prevAuth;
-						//item.state.applyDiff(prev, backup, mult * constMult);
-						void delegate(void* a, void* b, float) applyDiff;
-						applyDiff.funcptr = stateInfo.applyDiff;
-						applyDiff.ptr = tickState;
-						applyDiff(prev, backup, mult * constMult);
+					memcpy(backup, tickState, stateInfo.size);
+					memcpy(tickState, prevAuth, stateInfo.size);
 
-						mult *= multMult;
-						memcpy(prev, backup, stateInfo.size);
-						//prev = backup;
-						//prevAuth = &item.state;
-						prevAuth = tickState;
-					//}
+					void delegate(void* a, void* b, float) applyDiff;
+					applyDiff.funcptr = stateInfo.applyDiff;
+					applyDiff.ptr = tickState;
+					applyDiff(prev, backup, mult * constMult);
+
+					mult *= multMult;
+					memcpy(prev, backup, stateInfo.size);
+					prevAuth = tickState;
 					
-					//if (qlen-1 == itemIdx) {
 					if (tck == _lastTickInQueue) {
 						stateInfo.load(obj, tickState);
-						//this.setState(item.state, item.tck);
-						//_currentlySetStates[i] = item.state;
-						/+printf("Set delta'd state:"\n);
-						item.state.dump((char[] txt) {
-							printf("%.*s", txt);
-						});
-						printf("State dump end"\n);+/
 						break;
 					}
 				}
 
 				memcpy(localStateMem, auth, stateInfo.size);
-				//*localState = auth;
 			}
 
 			
