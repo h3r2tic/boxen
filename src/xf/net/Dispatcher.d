@@ -40,6 +40,10 @@ class Dispatcher {
 		comm.recvPacketsForTick(
 			curTick,
 			delegate tick(playerId pid, tick recvdAt, BitStreamReader* bs, uint* retained) {
+				
+				// so lastTickRecvd[pid] doesn't step out of bounds
+				version (Client) assert (0 == pid);
+				
 				bool receivedTick = *retained > 0;
 
 				//log.trace("Dispatcher: receiving {} bits of data. Retained = {}.", bs.dataBlockSize, *retained);

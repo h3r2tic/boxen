@@ -1,6 +1,8 @@
 module xf.boxen.impl.DebrisObject;
 
 private {
+	import xf.Common;
+	
 	import xf.net.NetObj;
 	import xf.game.GameObj;
 	import xf.game.Defs;
@@ -93,6 +95,18 @@ struct PosRotVelState {
 			+ compareQuats(a.rot, b.rot)
 			+ (a.angVel - b.angVel).length * 0.2f
 			+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
+	}
+
+	char[] toString() {
+		static char[256] buf;
+		sprintf(
+			buf.ptr, "pos:%f %f %f vel: %f %f %f rot: %f %f %f %f angVel: %f %f %f",
+			vec3.from(pos).tuple,
+			vel.tuple,
+			rot.xyzw.tuple,
+			angVel.tuple
+		);
+		return fromStringz(buf.ptr);
 	}
 }
 

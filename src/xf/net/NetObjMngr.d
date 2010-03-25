@@ -28,6 +28,47 @@ interface NetObjObserver {
 // Managed by NetObjMngr. In GC memory. May contain null elements.
 extern (C) NetObj[] g_netObjects;
 
+enum { maxStatesPerSnapshot = 512 }
+
+// TODO: maybe make it dynamically allocated not to stress the linker
+// NOTE: always stores data for <= tick that was current at the time receiveData()
+// was called on the client / server. Use the data before advancing the simulation
+// or explicitly compare it to the data from the tick before the simulation.
+struct LastPlayerSnapshotData {
+static:
+	objId[maxStatesPerSnapshot][maxPlayers]		id;
+	ushort[maxStatesPerSnapshot][maxPlayers]	stateIdx;
+	void*[maxStatesPerSnapshot][maxPlayers]		data;
+	uword[maxPlayers]							length;
+
+	void reset() {
+		length[] = 0;
+	}
+
+	bool addSnapshot(playerId pid, objId oid, ushort stateI, void* d) {
+		if (length[pid] >= maxStatesPerSnapshot) {
+			return false;
+		}
+		uword i = length[pid]++;
+		id[pid][i] = oid;
+		stateIdx[pid][i] = stateI;
+		data[pid][i] = d;
+		return true;
+	}
+
+	int find(playerId pid, objId oid, void*[] result) {
+		final len = length[pid];
+		int numFound = 0;
+		foreach (i, storedOid; id[pid][0..len]) {
+			if (storedOid == oid) {
+				result[stateIdx[pid][i]] = data[pid][i];
+				++numFound;
+			}
+		}
+		return numFound;
+	}
+}
+
 // Defined in xf.net.GameClient
 version (Client) extern (C) extern {
 	playerId	g_localPlayerId;
@@ -85,7 +126,7 @@ void storeNetObjStates(tick curTick) {
 	}
 
 	if (_tickStateQueue.isEmpty) {
-		_firstTickInQueue = curTick;
+		_firstTickInQueue = _lastTickInQueue = curTick;
 	}
 	
 	*_tickStateQueue.pushBack() = statePtrs;
@@ -432,6 +473,24 @@ float applyObjectState(
 }
 
 
+version (Server) void* getStateStoredForObjectAtTick(objId id, ushort stateI, tick tck) {
+	assert (id < g_netObjects.length && g_netObjects[id] !is null);
+	
+	if (tck < _firstTickInQueue || tck > _lastTickInQueue || _tickStateQueue.isEmpty) {
+		return null;
+	}
+	
+	void*[] ptrs = *_tickStateQueue[tck - _firstTickInQueue];
+	void* base = ptrs[id];
+	
+	if (base is null) {
+		return null;
+	}
+
+	return base + g_netObjects[id].getNetObjInfo().netStateInfo[stateI].offset;
+}
+
+
 float applyObjectState(
 		playerId pid,
 		NetObj obj,
@@ -506,6 +565,11 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 	dg.ptr = stateMem;
 	dg(bs);
 
+	bool stored = LastPlayerSnapshotData.addSnapshot(pid, id, stateI, stateMem);
+	if (!stored) {
+		// TODO: kick the player
+		error("LastPlayerSnapshotData backlog overflow. Can't receive more snapshots than {}.", maxStatesPerSnapshot);
+	}
 
 	// ----------------------------------------------------------------
 
@@ -521,14 +585,14 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 		bool localAuthority = g_localPlayerId == objAuth;
 	}
 	
-	StateOverrideMethod som = StateOverrideMethod.Replace;
-	version (Client) if (!localAuthority && /+obj.isPredicted+/locallyOwned) {
-		som = StateOverrideMethod.ApplyDiff;
-	}
-
-	// TODO: drop some olde states (or maybe have a fixed queue of them?)
-	
 	if (!localAuthority) {
+		StateOverrideMethod som = StateOverrideMethod.Replace;
+		version (Client) if (!localAuthority && /+obj.isPredicted+/locallyOwned) {
+			som = StateOverrideMethod.ApplyDiff;
+		}
+
+		// TODO: drop some olde states (or maybe have a fixed queue of them?)
+
 		version (Server) {
 			if (pid != obj.authOwner) {
 				log.warn(
@@ -571,6 +635,7 @@ void dropStatesOlderThan(tick tck) {
 	int numToDrop = tck - _firstTickInQueue;
 	while (numToDrop-- > 0 && !_tickStateQueue.isEmpty) {
 		void*[] ptrs = *_tickStateQueue.popFront();
+		++_firstTickInQueue;
 		if (ptrs) {
 			assert (!_objStatePtrQueue.isEmpty());
 			foreach (p; ptrs) {
@@ -580,7 +645,6 @@ void dropStatesOlderThan(tick tck) {
 			}
 			_objStatePtrQueue.popFront(ptrs.ptr);
 		}
-		++_firstTickInQueue;
 	}
 }
 
@@ -681,6 +745,9 @@ version (Server) {
 
 
 void swapObjDataMem() {
+	// Will be invalid after this step
+	LastPlayerSnapshotData.reset();
+	
 	// Swap allocators
 	
 	final t = _objDataMemCur;
@@ -826,8 +893,9 @@ private {
 			}
 		);
 
+		uword numWritten = 0;
 		foreach (ref s; osiMem) {
-			if (writer.canWriteMore) {
+			if (writer.canWriteMore && numWritten++ < .maxStatesPerSnapshot) {
 				final obj = _netObjects[s.id];
 				assert (obj !is null);
 

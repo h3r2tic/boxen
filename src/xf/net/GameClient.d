@@ -130,8 +130,12 @@ class GameClient : IGameComm {
 	}
 
 
-	bool connected() {
-		return _connected;
+	bool connectedAndReady() {
+		// Some stuff is not ready when the tick has not been adjusted
+		// E.g. storing data with associated timeHub.currentTick is erroneous
+		// Thus the client must wait for connectedAndReady before e.g. attempting
+		// to store NetObj states
+		return _connected && _tickAdjusted;
 	}
 
 

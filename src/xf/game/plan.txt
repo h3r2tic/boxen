@@ -28,22 +28,28 @@
 	~ corrections
 		+ general-purpose corrections
 		- corrections specialized for kinematic actors
-	- giving back objects
+	+ giving back objects
 	~ make sure the game subsystems update order is OK
 		*	must send events for a tick before states, so that the authority transfers
 			will take place before states are processed
 		*	must update physics and objects before events are finalized because the sim
 			and objects (character controllers) generate auth transfer events
-
+		*	auth checking and giving up objects must be done after receiving data from
+			the clients and before simulating the next tick or even advancing it, so
+			the comparisons of the last stored states are performed against the clients'
+			states for that very tick
+			
 ~ Implement the new time sync algorithm
 	+ Revive the old time sync
 	- Implement the new one
 	- Perform enet servicing in a separate thread to get precise reception times
 
 
-* Visualize networking memory and id usage
 * Revive tanks
 * Revive projectiles
 * Revive explosions
 * Revive the physical part of terrain
 * Move to programming the editor
+
+- Visualize networking memory and id usage
+	* will wait for Hybrid and graphing

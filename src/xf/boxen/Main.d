@@ -392,21 +392,83 @@ version (Server) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 		if (singleOwner && singleAuth && theOwner != NoAuthority) {
 			// if all objects in the group are owned by one player, check if they can be given back
 			canGiveBack = true;
-			const float maxError = .5f;
+			const float maxError = 0.001f;//.5f;
 
-			// TODO
-			/+foreach (t; intf) {
-				if (_netObjects[t].authOwner != NoAuthority) {
-					auto go = cast(GameObj)t.userData;
-					assert (go !is null);
-					float err = go.compareCurrentStateWithStored(theOwner, timeHub.currentTick);
+			foreach (t; intf) {
+				final go = _netObjects[t];
+				assert (go !is null);
+				
+				if (go.authOwner != NoAuthority) {
+					void*[maxStates] foundStateData_;
+					void*[] foundStateData = foundStateData_[0..go.numNetStateTypes];
+					NetObjMngr.LastPlayerSnapshotData.find(theOwner, t, foundStateData);
+
+					float err = 0.0f;
+					char* reason = "";
+
+					final objInfo = go.getNetObjInfo();
+					foreach (stateI, clientState; foundStateData) {
+						final stateInfo = objInfo.netStateInfo[stateI];
+
+						if (clientState is null) {
+							if (stateInfo.isCritical) {
+								reason = "Critical state not found.";
+								goto cantGiveBack;
+							} else {
+								continue;
+							}
+						}
+
+						void* serverState = NetObjMngr.getStateStoredForObjectAtTick(
+							t, cast(ushort)stateI, timeHub.currentTick
+						);
+
+						if (serverState is null) {
+							reason = "State not found at server-side.";
+							goto cantGiveBack;
+						}
+
+						err += stateInfo.calcDifference(
+							clientState, serverState
+						);
+
+						if (err > maxError) {
+							if (stateInfo.stringize !is null) {
+								char[] delegate() d1, d2;
+								d1.funcptr = stateInfo.stringize;
+								d2.funcptr = stateInfo.stringize;
+								d1.ptr = serverState;
+								d2.ptr = clientState;
+
+								auto s1 = d1().dup;
+								auto s2 = d2();
+								
+								printf(
+									"Critical state: %d. Server:\n  %.*s\nClient:\n  %.*s\n",
+									cast(int)stateI,
+									s1,
+									s2
+								);
+
+								delete s1;
+							}
+							goto cantGiveBack;
+						}
+					}
+
 					if (err > maxError) {
-						printf("can't give object back. error = %f"\n, err);
+					cantGiveBack:
+						printf(
+							"Can't give back object %d: %s Error = %f\n",
+							cast(int)t,
+							reason,
+							err
+						);
 						canGiveBack = false;
 						break;
 					}
 				}
-			}+/
+			}
 		}
 		
 		if (canGiveBack) {
@@ -622,6 +684,7 @@ version (Client) {
 void updateGame() {
 	version (Server) {
 		server.receiveData();
+		updateAuthority();
 		
 		timeHub.advanceTick(1);
 		eventQueue.advanceTick(1);
@@ -635,7 +698,6 @@ void updateGame() {
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
 		refreshInteractions();
-		updateAuthority();
 
 		NetObjMngr.storeNetObjStates(timeHub.currentTick);
 
@@ -660,6 +722,8 @@ void updateGame() {
 		debug printf(`tick: %d`\n, timeHub.currentTick);
 	} else {
 		client.receiveData();
+		updateAuthority();
+
 		.synchronizeNetworkTicks(client);
 
 		if (timeHub.currentTick > client.lastTickReceived) {
@@ -685,10 +749,10 @@ void updateGame() {
 		level.update(timeHub.secondsPerTick);
 		Phys.update(timeHub.secondsPerTick);
 		refreshInteractions();
-		updateAuthority();
 
-		if (client.connected) {
+		if (client.connectedAndReady) {
 			NetObjMngr.storeNetObjStates(timeHub.currentTick);
+
 			NetObjMngr.updateStateImportances();
 			final writer = client.getWriter();
 			//Stdout.formatln("Bits in writer before states: {}.\n{}", writer.bsw.writeOffset, writer.bsw.toString);
@@ -720,8 +784,8 @@ void updateGame() {
 
 version (Server) {
 	void createGameWorld() {
-		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), NoAuthority);
-		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), NoAuthority);
+		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
+		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
@@ -779,9 +843,19 @@ void handleInputWish(InputWish e) {
 	} else {
 		auto ctrl = cast(IPlayerController)_playerController;
 	}
-		
+
 	float strafe = b2f(e.strafe);
 	float fwd = b2f(e.thrust);
+
+	version (Client) Stdout.newline().newline();
+	Stdout.formatln(
+		"Applying input {} (lr:{}, ud:{}) to ctrl @ {} @ tick {}",
+		e.eventTargetTick,
+		strafe,
+		fwd,
+		ctrl.worldPosition,
+		timeHub.currentTick
+	);
 
 	// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
 	float moveSpeed = 1.f;
