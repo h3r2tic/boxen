@@ -267,7 +267,7 @@ void synchronizeNetworkTicks(GameClient client) {
 		float errorThresh = .4f;
 		float offset = sortedOffsets[rndint((1.f - errorThresh) * (offsetTable.length - 1))];
 		
-	offset += amortizedDeviation * 3f;
+	offset += amortizedDeviation * 2f;
 	
 	// vary the game speed to match with the server
 	float timeMult = 1.f;
