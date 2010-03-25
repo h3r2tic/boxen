@@ -1,6 +1,8 @@
 module xf.boxen.impl.PlayerController;
 
 private {
+	import xf.Common;
+	
 	import xf.boxen.model.IPlayerController;
 	import InteractionTracking = xf.game.InteractionTracking;
 	
@@ -16,12 +18,14 @@ private {
 	import DebugDraw = xf.boxen.DebugDraw;
 	import Phys = xf.boxen.Phys;
 	import xf.havok.Havok;
+	import tango.stdc.stdio;
 }
 
 
 
 struct PosRotState {
 	vec3fi	pos = vec3fi.zero;
+	vec3	vel = vec3.zero;
 	float	yaw = 0.0f;
 	float	pitch = 0.0f;
 
@@ -29,6 +33,9 @@ struct PosRotState {
 		bs.write(pos.x.store);
 		bs.write(pos.y.store);
 		bs.write(pos.z.store);
+		bs.write(vel.x);
+		bs.write(vel.y);
+		bs.write(vel.z);
 		bs.write(yaw);
 		bs.write(pitch);
 	}
@@ -37,12 +44,16 @@ struct PosRotState {
 		bs.read(&pos.x.store);
 		bs.read(&pos.y.store);
 		bs.read(&pos.z.store);
+		bs.read(&vel.x);
+		bs.read(&vel.y);
+		bs.read(&vel.z);
 		bs.read(&yaw);
 		bs.read(&pitch);
 	}
 
 	void applyDiff(PosRotState* a, PosRotState* b, float t) {
 		pos += (b.pos - a.pos) * t;
+		vel += (b.vel - a.vel) * t;
 		yaw += (b.yaw - a.yaw) * t;
 		pitch += (b.pitch - a.pitch) * t;
 	}
@@ -51,8 +62,21 @@ struct PosRotState {
 		// TODO
 		return
 			vec3.from(a.pos - b.pos).length
+			+ (a.vel - b.vel).length * 0.3f
 			+ (circleAbsDiff!(360.f)(a.yaw, b.yaw) / 180.f) * 2.0f
 			+ (circleAbsDiff!(360.f)(a.pitch, b.pitch) / 180.f) * 2.0f;
+	}
+
+	char[] toString() {
+		static char[256] buf;
+		sprintf(
+			buf.ptr, "pos:%f %f %f vel: %f %f %f yaw: %f pitch: %f",
+			vec3.from(pos).tuple,
+			vel.tuple,
+			yaw,
+			pitch
+		);
+		return fromStringz(buf.ptr);
 	}
 }
 
@@ -280,6 +304,7 @@ final class PlayerController : NetObj, IPlayerController {
 
 	void storeState(PosRotState* st) {
 		st.pos = _coordSys.origin;
+		st.vel = vec3.from(_proxy.getLinearVelocity());
 		st.yaw = _rotation.yaw;
 		st.pitch = _rotation.pitch;
 	}
@@ -290,7 +315,10 @@ final class PlayerController : NetObj, IPlayerController {
 		_rotation.pitch = st.pitch;
 
 		Phys.world.markForWrite();
-		_proxy.setPosition(hkVector4(vec3.from(st.pos)));
+		final foo = hkVector4(vec3.from(st.pos));
+		_proxy.setPosition(foo);
+		_proxy.setLinearVelocity(hkVector4(st.vel));
+		assert (foo == _proxy.getPosition());
 		Phys.world.unmarkForWrite();
 	}
 

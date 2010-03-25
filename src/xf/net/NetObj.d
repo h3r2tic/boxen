@@ -47,6 +47,8 @@ struct NetStateInfo {
 				unserialize;
 	void function(void* a, void* b, float)
 				applyDiff;
+	char[] function()
+				stringize;
 
 	// Static functions of the game object
 	void function(NetObj, void*)
@@ -370,6 +372,10 @@ template DeclareNetState(T) {
 		nsi.typeInfo = typeid(T);
 		static if (canApplyDiffToObject) {
 			nsi.applyDiffToObject = &T._applyDiffToObjectImpl;
+		}
+
+		static if (is(typeof(T.toString()) == char[])) {
+			nsi.stringize = &T.toString;
 		}
 	}
 }
