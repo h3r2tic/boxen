@@ -31,7 +31,7 @@ class hkpEntity hkpWorldObject
 	func isActive
 		return hkBool
 
-	func setProcessContactCallbackDelay
+	func setContactPointCallbackDelay
 		param delay hkUint16
 
 # ----------------------------------------------------------------
@@ -169,6 +169,8 @@ class hkpWorld hkReferencedObject
 		param jobQueue hkJobQueue*
 		param threadPool hkJobThreadPool*
 		param physicsDeltaTime hkReal
+		return hkpStepResult
+			hkType hkpWorld::hkpStepResult
 
 	func addEntity
 		param entity hkpEntity*
@@ -196,8 +198,14 @@ class hkpWorld hkReferencedObject
 		return hkpAction*
 		param action hkpAction*
 
-	func addCollisionListener
-		param worldListener hkpCollisionListener*
+	func addContactListener
+		param worldListener hkpContactListener*
+
+	func reintegrateAndRecollideEntities
+		param entityBatch hkpEntity**
+		param numEntities int
+		param mode ReintegrationRecollideMode
+			hkType hkpWorld::ReintegrationRecollideMode 
 
 # ----------------------------------------------------------------
 
@@ -438,25 +446,22 @@ class hkThread
 
 # ----------------------------------------------------------------
 
-class hkpCollisionListener
+class hkpContactListener
 
-class EntityCollisionListener hkpCollisionListener
+class EntityContactListener hkpContactListener
 	func this
-		param dListener const DCollisionListener&
+		param dListener const DContactListener&
 
 
 <D
 	extern (C) {
-		alias void function(void*, hkpEntity, hkpEntity, hkUlong*) DEntityCollisionFunc;
+		alias void function(void*, hkpRigidBody, hkpRigidBody) DEntityContactFunc;
 	}
 
 
-	struct DCollisionListener {
+	struct DContactListener {
 		void* thisptr;
-		DEntityCollisionFunc added;
-		DEntityCollisionFunc confirmed;
-		DEntityCollisionFunc removed;
-		DEntityCollisionFunc process;
+		DEntityContactFunc process;
 	}
 D>
 
@@ -611,4 +616,7 @@ class hkpCharacterContext hkReferencedObject
 
 	func getState
 		return hkpCharacterStateType
+
+	func setFilterEnable
+		param status hkBool
 

@@ -40,16 +40,16 @@ float compareQuats(quat q0, quat q1) {
 
 
 struct PosRotVelState {
-	vec3fi	pos = vec3fi.zero;
+	vec3	pos = vec3.zero;
 	vec3	vel	= vec3.zero;
 	quat	rot = quat.identity;
 	vec3	angVel = vec3.zero;
 	bool	isActive = false;
 
 	void serialize(BitStreamWriter* bs) {
-		bs.write(pos.x.store);
-		bs.write(pos.y.store);
-		bs.write(pos.z.store);
+		bs.write(pos.x);
+		bs.write(pos.y);
+		bs.write(pos.z);
 		bs.write(vel.x);
 		bs.write(vel.y);
 		bs.write(vel.z);
@@ -64,9 +64,9 @@ struct PosRotVelState {
 	}
 	
 	void unserialize(BitStreamReader* bs) {
-		bs.read(&pos.x.store);
-		bs.read(&pos.y.store);
-		bs.read(&pos.z.store);
+		bs.read(&pos.x);
+		bs.read(&pos.y);
+		bs.read(&pos.z);
 		bs.read(&vel.x);
 		bs.read(&vel.y);
 		bs.read(&vel.z);
@@ -88,9 +88,30 @@ struct PosRotVelState {
 		isActive = b.isActive;
 	}
 
+	/+void applyDiff(PosRotVelState* a, PosRotVelState* b, float t) {
+		vec3 localPosChange = vec3.from(b.pos - a.pos) * t;
+		localPosChange = a.rot.inverse.xform(localPosChange);
+		localPosChange = rot.xform(localPosChange);
+		pos += vec3fi.from(localPosChange);//(b.pos - a.pos) * t;
+
+		vec3 localVelChange = vec3.from(b.vel - a.vel) * t;
+		localVelChange = a.rot.inverse.xform(localVelChange);
+		localVelChange = rot.xform(localVelChange);
+		vel += localVelChange;
+
+		vec3 angVelChange = vec3.from(b.angVel - a.angVel) * t;
+		angVelChange = a.rot.inverse.xform(angVelChange);
+		angVelChange = rot.xform(angVelChange);
+		angVel += angVelChange;
+		
+		applyQuatDiff(rot, a.rot, b.rot, t);
+		isActive = b.isActive;
+	}+/
+	
+
 	static float calcDifference(PosRotVelState* a, PosRotVelState* b) {
 		return
-			vec3.from(a.pos - b.pos).length
+			(a.pos - b.pos).length
 			+ (a.vel - b.vel).length * 0.3f
 			+ compareQuats(a.rot, b.rot)
 			+ (a.angVel - b.angVel).length * 0.2f
@@ -101,7 +122,7 @@ struct PosRotVelState {
 		static char[256] buf;
 		sprintf(
 			buf.ptr, "pos:%f %f %f vel: %f %f %f rot: %f %f %f %f angVel: %f %f %f",
-			vec3.from(pos).tuple,
+			pos.tuple,
 			vel.tuple,
 			rot.xyzw.tuple,
 			angVel.tuple
@@ -155,7 +176,7 @@ final class DebrisObject : NetObj {
 		boxInfo.m_inertiaTensor = massProperties.m_inertiaTensor;
 		boxInfo.m_solverDeactivation = SolverDeactivation.SOLVER_DEACTIVATION_MEDIUM;
 		boxInfo.m_shape = box._as_hkpShape;
-		boxInfo.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_DEBRIS;
+		boxInfo.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_CRITICAL;
 		boxInfo.m_restitution = 0.1f;
 		boxInfo.m_friction = 0.9f;
 		boxInfo.m_motionType = MotionType.MOTION_BOX_INERTIA;
@@ -163,7 +184,7 @@ final class DebrisObject : NetObj {
 
 		_rigidBody = hkpRigidBody(boxInfo);
 		//boxRigidBody.setUserData(0);
-		_rigidBody.setProcessContactCallbackDelay(Phys.contactPersistence);
+		_rigidBody.setContactPointCallbackDelay(Phys.contactPersistence);
 
 		Phys.world.addEntity(_rigidBody._as_hkpEntity);
 		box.removeReference();
@@ -218,7 +239,7 @@ final class DebrisObject : NetObj {
 
 	void storeState(PosRotVelState* st) {
 		Phys.world.markForRead();
-		st.pos = vec3fi.from(_rigidBody.getPosition());
+		st.pos = vec3.from(_rigidBody.getPosition());
 		st.vel = vec3.from(_rigidBody.getLinearVelocity());
 		st.rot = _rigidBody.getRotation();
 		st.angVel = vec3.from(_rigidBody.getAngularVelocity());
@@ -227,13 +248,13 @@ final class DebrisObject : NetObj {
 	}
 	
 	void loadState(PosRotVelState* st) {
-		_coordSys.origin = st.pos;
+		_coordSys.origin = vec3fi.from(st.pos);
 		_coordSys.rotation = st.rot;
 
 		Phys.world.markForWrite();
-		_rigidBody.setPosition(hkVector4(vec3.from(st.pos)));
-		_rigidBody.setLinearVelocity(hkVector4(st.vel));
+		_rigidBody.setPosition(hkVector4(st.pos));
 		_rigidBody.setRotation(st.rot);
+		_rigidBody.setLinearVelocity(hkVector4(st.vel));
 		_rigidBody.setAngularVelocity(hkVector4(st.angVel));
 		
 		if (st.isActive) {
@@ -243,6 +264,13 @@ final class DebrisObject : NetObj {
 			_rigidBody.deactivate();
 			_ticksAsleep = minTicksAsleep;
 		}
+
+		hkpEntity_cptr eptr = _rigidBody._as_hkpEntity._impl;
+		Phys.world.reintegrateAndRecollideEntities(
+			&eptr,
+			1,
+			ReintegrationRecollideMode.RR_MODE_ALL
+		);
 		
 		Phys.world.unmarkForWrite();
 	}

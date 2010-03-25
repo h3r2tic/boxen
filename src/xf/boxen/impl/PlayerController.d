@@ -171,6 +171,8 @@ final class PlayerController : NetObj, IPlayerController {
 			_stateMngr,
 			hkpCharacterStateType.HK_CHARACTER_ON_GROUND
 		);
+
+		_characterContext.setFilterEnable(false);
 	}
 
 	// Implement NetObj

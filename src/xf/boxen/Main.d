@@ -392,7 +392,7 @@ version (Server) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 		if (singleOwner && singleAuth && theOwner != NoAuthority) {
 			// if all objects in the group are owned by one player, check if they can be given back
 			canGiveBack = true;
-			const float maxError = 0.001f;//.5f;
+			const float maxError = .5f;//0.1f;//.5f;
 
 			foreach (t; intf) {
 				final go = _netObjects[t];

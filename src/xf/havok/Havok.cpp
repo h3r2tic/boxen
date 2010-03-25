@@ -1,10 +1,12 @@
 #include <Common/Base/hkBase.h>
 #include <Common/Base/hkBase.h>
 #include <Common/Base/System/hkBaseSystem.h>
-#include <Common/Base/Memory/hkThreadMemory.h>
-#include <Common/Base/Memory/Memory/Pool/hkPoolMemory.h>
+//#include <Common/Base/Memory/hkThreadMemory.h>
+//#include <Common/Base/Memory/Memory/Pool/hkPoolMemory.h>
 #include <Common/Base/System/Error/hkDefaultError.h>
+#include <Common/Base/Memory/System/Util/hkMemoryInitUtil.h>
 #include <Common/Base/Monitor/hkMonitorStream.h>
+#include <Common/Base/Memory/System/hkMemorySystem.h>
 
 // Dynamics includes
 #include <Physics/Collide/hkpCollide.h>										
@@ -15,7 +17,7 @@
 #include <Physics/Collide/Shape/Convex/Sphere/hkpSphereShape.h>				
 #include <Physics/Collide/Dispatch/hkpAgentRegisterUtil.h>					
 
-#include <Physics/Dynamics/Collide/hkpCollisionListener.h>
+#include <Physics/Dynamics/Collide/ContactListener/hkpContactListener.h>
 #include <Physics/Dynamics/Phantom/hkpSimpleShapePhantom.h>
 #include <Physics/ConstraintSolver/Simplex/hkpSimplexSolver.h>
 
@@ -56,7 +58,7 @@
 
 // Generate a custom list to trim memory requirements
 #define HK_COMPAT_FILE <Common/Compat/hkCompatVersions.h>
-#include <Common/Compat/hkCompat_None.cxx>
+//#include <Common/Compat/hkCompat_None.cxx>
 
 // --------------------------------------------------------------------------------------------------------------------------------
 
@@ -92,18 +94,20 @@ HavokInitData* initHavok() {
 	// Initialize the base system including our memory system
 	//
 
-	hkPoolMemory* memoryManager = new hkPoolMemory();
-	hkThreadMemory* threadMemory = new hkThreadMemory(memoryManager);
-	hkBaseSystem::init( memoryManager, threadMemory, errorReport );
-	memoryManager->removeReference();
+//	hkPoolMemory* memoryManager = new hkPoolMemory();
+//	hkThreadMemory* threadMemory = new hkThreadMemory(memoryManager);
+	hkMemoryRouter* memoryRouter = hkMemoryInitUtil::initDefault();
+//	hkBaseSystem::init( memoryManager, threadMemory, errorReport );
+	hkBaseSystem::init( memoryRouter, errorReport );
+//	memoryManager->removeReference();
 
 	// We now initialize the stack area to 100k (fast temporary memory to be used by the engine).
-	char* stackBuffer;
+	/*char* stackBuffer;
 	{
 		int stackSize = 0x100000;
 		stackBuffer = hkAllocate<char>( stackSize, HK_MEMORY_CLASS_BASE);
 		hkThreadMemory::getInstance().setStackArea( stackBuffer, stackSize);
-	}
+	}*/
 
 
 	//
@@ -162,24 +166,18 @@ HavokInitData* initHavok() {
 
 
 extern "C" {
-	typedef void (*DEntityCollisionFunc)(void*, const hkpEntity*, const hkpEntity*, hkUlong*);
+	typedef void (*DEntityContactFunc)(void*, const hkpRigidBody*, const hkpRigidBody*);
 	typedef void (*DCharCharInteractFunc)(void*, const hkpCharacterProxy*, const hkpCharacterProxy*);
 	typedef void (*DCharBodyInteractFunc)(void*, const hkpCharacterProxy*, const hkpRigidBody*);
 }
 
 
-struct DCollisionListener {
+struct DContactListener {
 	void* thisptr;
-	DEntityCollisionFunc added;
-	DEntityCollisionFunc confirmed;
-	DEntityCollisionFunc removed;
-	DEntityCollisionFunc process;
+	DEntityContactFunc process;
 
-	DCollisionListener() :
+	DContactListener() :
 		thisptr(NULL),
-		added(NULL),
-		confirmed(NULL),
-		removed(NULL),
 		process(NULL)
 	{}
 };
@@ -198,79 +196,23 @@ struct DCharacterProxyListener {
 };
 
 
-class EntityCollisionListener : public hkpCollisionListener {
+class EntityContactListener : public hkpContactListener {
 public:
-	DCollisionListener	m_dListener;
+	DContactListener	m_dListener;
 
 
-	EntityCollisionListener(const DCollisionListener& dListener) :
+	EntityContactListener(const DContactListener& dListener) :
 		m_dListener(dListener)
 	{}
 
 
-	void contactPointAddedCallback (hkpContactPointAddedEvent &event) {
-		if (m_dListener.added) {
-			const hkpEntity *const e1 = static_cast<hkpEntity*>(event.m_bodyA->getRootCollidable()->getOwner());
-			if (e1) {
-				const hkpEntity *const e2 = static_cast<hkpEntity*>(event.m_bodyB->getRootCollidable()->getOwner());
-				if (e2 && e1->getUserData() != e2->getUserData()) {
-					hkUlong userData = event.m_contactPointProperties->getUserData(); 
-					hkUlong orig = userData;
-					m_dListener.added(m_dListener.thisptr, e1, e2, &userData);
-					if (userData != orig) {
-						event.m_contactPointProperties->setUserData(userData);
-					}
-				}
-			}
-		}
-	}
-
-	void contactPointConfirmedCallback (hkpContactPointConfirmedEvent &event) {
-		if (m_dListener.confirmed) {
-			const hkpEntity *const e1 = static_cast<hkpEntity*>(event.m_collidableA->getOwner());
-			if (e1) {
-				const hkpEntity *const e2 = static_cast<hkpEntity*>(event.m_collidableB->getOwner());
-				if (e2 && e1->getUserData() != e2->getUserData()) {
-					hkUlong userData = event.m_contactPointProperties->getUserData(); 
-					hkUlong orig = userData;
-					m_dListener.confirmed(m_dListener.thisptr, e1, e2, &userData);
-					if (userData != orig) {
-						event.m_contactPointProperties->setUserData(userData);
-					}
-				}
-			}
-		}
-	}
-
-	void contactPointRemovedCallback (hkpContactPointRemovedEvent &event) {
-		if (m_dListener.removed) {
-			const hkpEntity *const e1 = event.m_entityA;
-			if (e1) {
-				const hkpEntity *const e2 = event.m_entityB;
-				if (e2 && e1->getUserData() != e2->getUserData()) {
-					hkUlong userData = event.m_contactPointProperties->getUserData(); 
-					hkUlong orig = userData;
-					m_dListener.removed(m_dListener.thisptr, e1, e2, &userData);
-					if (userData != orig) {
-						event.m_contactPointProperties->setUserData(userData);
-					}
-				}
-			}
-		}
-	}
-
-	void contactProcessCallback (hkpContactProcessEvent &event) {
+	void contactPointCallback(const hkpContactPointEvent &event)  {
 		if (m_dListener.process) {
-			const hkpEntity *const e1 = static_cast<hkpEntity*>(event.m_collidableA->getOwner());
+			const hkpRigidBody *const e1 = event.m_bodies[0];
 			if (e1) {
-				const hkpEntity *const e2 = static_cast<hkpEntity*>(event.m_collidableB->getOwner());
+				const hkpRigidBody *const e2 = event.m_bodies[1];
 				if (e2 && e1->getUserData() != e2->getUserData()) {
-					hkUlong userData;// = event.m_contactPointProperties.getUserData(); 
-					//hkUlong orig = userData;
-					m_dListener.process(m_dListener.thisptr, e1, e2, &userData);
-					/*if (userData != orig) {
-						event.m_contactPointProperties.setUserData(userData);
-					}*/
+					m_dListener.process(m_dListener.thisptr, e1, e2);
 				}
 			}
 		}

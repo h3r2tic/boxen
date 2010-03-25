@@ -5,7 +5,7 @@ private {
 }
 
 
-hkpCollisionListener		collisionListener;
+hkpContactListener			contactListener;
 hkpCharacterProxyListener	charProxyListener;
 
 
@@ -13,11 +13,11 @@ extern (C) extern void boxen_processGameObjInteraction(void*, void*);
 
 
 void initialize(hkpWorld world) {
-	DCollisionListener colListenerWrapper;
-	colListenerWrapper.thisptr = null;		// TODO not needed at all? simplify the bridge.
-	colListenerWrapper.process = &cf_process;
-	.collisionListener =
-		EntityCollisionListener(colListenerWrapper)._as_hkpCollisionListener;
+	DContactListener conListenerWrapper;
+	conListenerWrapper.thisptr = null;		// TODO not needed at all? simplify the bridge.
+	conListenerWrapper.process = &cf_process;
+	.contactListener =
+		EntityContactListener(conListenerWrapper)._as_hkpContactListener;
 
 	DCharacterProxyListener charProxyListenerWrapper;
 	charProxyListenerWrapper.thisptr = null;		// TODO not needed at all? simplify the bridge.
@@ -27,13 +27,13 @@ void initialize(hkpWorld world) {
 		CharacterProxyListener(charProxyListenerWrapper)._as_hkpCharacterProxyListener;
 
 	world.markForWrite();
-	world.addCollisionListener(collisionListener);
+	world.addContactListener(contactListener);
 	world.unmarkForWrite();
 }
 
 
 private {
-	extern (C) void cf_process(void*, hkpEntity a, hkpEntity b, hkUlong* userData) {
+	extern (C) void cf_process(void*, hkpRigidBody a, hkpRigidBody b) {
 		final o1 = cast(void*)a.getUserData();
 		final o2 = cast(void*)b.getUserData();
 		if (o1 && o2 && o1 !is o2) {

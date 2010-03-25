@@ -105,19 +105,7 @@ uint g_simTick;
 
 class MyCollisionListener {
 	extern (C) static {
-		void cf_added(void* thisptr, hkpEntity a, hkpEntity b, hkUlong* userData) {
-			(cast(MyCollisionListener)thisptr).added(a, b, userData);
-		}
-
-		void cf_confirmed(void* thisptr, hkpEntity a, hkpEntity b, hkUlong* userData) {
-			(cast(MyCollisionListener)thisptr).confirmed(a, b, userData);
-		}
-
-		void cf_removed(void* thisptr, hkpEntity a, hkpEntity b, hkUlong* userData) {
-			(cast(MyCollisionListener)thisptr).removed(a, b, userData);
-		}
-
-		void cf_process(void* thisptr, hkpEntity a, hkpEntity b, hkUlong* userData) {
+		void cf_process(void* thisptr, hkpRigidBody a, hkpRigidBody b) {
 			(cast(MyCollisionListener)thisptr).process(a, b);
 		}
 	}
@@ -136,61 +124,23 @@ class MyCollisionListener {
 		}
 	}
 	
-	void added(hkpEntity a, hkpEntity b, hkUlong* userData) {
-		/+++collisions;
-		collisionsTS.increment();
-		
-		CPData data;
-		data.thread = cast(ushort)hkThread.getMyThreadId();
-		data.tick = cast(ushort)g_simTick;
-		+/
-		assert (*userData == 0);
-		volatile *userData = 1;
-		//*userData = data.data;
-		//fprintf(tango.stdc.stdio.stderr, "(%d / %d)\n", collisions, collisionsTS.load());
-	}
 
-	void confirmed(hkpEntity a, hkpEntity b, hkUlong* userData) {
-		/+++collisions;
-		fprintf(tango.stdc.stdio.stderr, "(%d) Collision confirmed between %p and %p\n", collisions, cast(void*)a._impl, cast(void*)b._impl);
-		+/
-	}
-	
-	void removed(hkpEntity a, hkpEntity b, hkUlong* userData) {
-		/+--collisions;
-		collisionsTS.decrement();
-		auto tid = hkThread.getMyThreadId();+/
-		
-		/+CPData data;
-		data.data = *userData;+/
-		volatile assert (*userData == 1);
-
-		/+fprintf(tango.stdc.stdio.stderr, "g_simTick=%d, data.tick=%d\n", cast(ushort)g_simTick, cast(ushort)data.tick);
-		if (cast(ushort)g_simTick == data.tick) {
-			if (data.thread != cast(ushort)hkThread.getMyThreadId()) {
-				fprintf(tango.stdc.stdio.stderr, "Damn, contact destroyed in other thread than created\n");
-				assert (false);
-			}
-		}+/
-		//fprintf(tango.stdc.stdio.stderr, "(%d / %d)\n", collisions, collisionsTS.load());
-	}
-
-	void process(hkpEntity a, hkpEntity b) {
+	void process(hkpRigidBody a, hkpRigidBody b) {
 		//fprintf(tango.stdc.stdio.stderr, "process\n");
 		fprintf(tango.stdc.stdio.stderr, "Collision processed between %p and %p\n", cast(void*)a._impl, cast(void*)b._impl);
 	}
 	
 	this() {
-		DCollisionListener wrapper;
+		DContactListener wrapper;
 		wrapper.thisptr = cast(void*)this;
 		//wrapper.added = &cf_added;
 		//wrapper.confirmed = &cf_confirmed;
 		//wrapper.removed = &cf_removed;
 		wrapper.process = &cf_process;
-		this.hk = EntityCollisionListener(wrapper)._as_hkpCollisionListener;
+		this.hk = EntityContactListener(wrapper)._as_hkpContactListener;
 	}
 	
-	hkpCollisionListener hk;
+	hkpContactListener hk;
 }
 
 
@@ -393,7 +343,7 @@ class TestApp : GfxApp {
 		// must call markForRead / markForWrite before it modifies the world to enable these checks.
 		physicsWorld.markForWrite();
 
-		physicsWorld.addCollisionListener((g_colListener = new MyCollisionListener).hk);
+		physicsWorld.addContactListener((g_colListener = new MyCollisionListener).hk);
 
 		g_charProxyListener = new MyCharProxyListener;
 
@@ -840,7 +790,7 @@ hkpMotorAction createWheel(
 	info.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_MOVING;
 
 	auto sphereRigidBody = hkpRigidBody(info);
-	sphereRigidBody.setProcessContactCallbackDelay(60);
+	sphereRigidBody.setContactPointCallbackDelay(60);
 	sphereRigidBody.setUserData(cast(size_t)cast(void*)g_tank);
 	addGraphicsCylinder(vec3.from(startAxis), vec3.from(endAxis), radius, sphereRigidBody, vec3(0.3f, 1.f, 0.2f));
 
@@ -922,7 +872,7 @@ void createTank(hkpWorld physicsWorld) {
 	{
 		boxInfo.m_position = hkVector4(hullCenter);
 		auto boxRigidBody = hull = hkpRigidBody(boxInfo);
-		boxRigidBody.setProcessContactCallbackDelay(60);
+		boxRigidBody.setContactPointCallbackDelay(60);
 		boxRigidBody.setUserData(cast(size_t)cast(void*)g_tank);
 		addGraphicsBox(vec3.from(hullSize), boxRigidBody, vec3(1, .5, .2));
 		g_tankEntities ~= physicsWorld.addEntity(boxRigidBody._as_hkpEntity);
