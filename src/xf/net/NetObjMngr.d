@@ -340,15 +340,27 @@ float applyObjectState(
 
 			const hardSnapErrorThresh = 5.0f;
 
-			/+if (diff > hardSnapErrorThresh) {
+			if (diff > hardSnapErrorThresh) {
 				stateInfo.load(obj, auth);
 
 				log.info("State difference is large ({}). Hard snapping.", diff);
 
 				// store the state in case something might want to query it later
-				memcpy(localStateMem, auth, stateInfo.size);
+
+				for (
+						tick tck = stateForTick;
+						tck < _lastTickInQueue;
+						++tck
+				) {
+					void*[] tickStatePtrs = *_tickStateQueue[tck - _firstTickInQueue];
+					assert (tickStatePtrs !is null);
+					assert (tickStatePtrs[obj.id] !is null);
+					void* tickState = tickStatePtrs[obj.id] + stateInfo.offset;
+					memcpy(tickState, auth, stateInfo.size);
+				}
+
 				break;
-			}+/
+			}
 
 			//auto q = stateQueues(pid).queues[i];
 
@@ -657,7 +669,7 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 	
 	if (!localAuthority) {
 		StateOverrideMethod som = StateOverrideMethod.Replace;
-		version (Client) if (locallyOwned || obj.authRequested || ServerAuthority == objAuth) {
+		version (Client) if (locallyOwned || (obj.authRequested && NoAuthority == obj.realOwner)) {
 			som = StateOverrideMethod.ApplyDiff;
 		}
 
