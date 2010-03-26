@@ -310,6 +310,7 @@ void updateAuthority() {
 			continue;
 		}
 		obj.authValid = false;
+		obj.keepServerUpdated = false;
 	}
 
 	scope stack = new StackBuffer();
@@ -658,7 +659,14 @@ version (Client) {
 		if (auto netObj = getNetObj(e.obj)) {
 			printf("OK"\n);
 			netObj.givingUpAuth = false;
-			netObj.authRequested = false;
+
+			// There was a conflict, but we requested the auth anyway, so let's keep
+			// updating the player with our state so the conflict may be resolved
+			// and hopefully we get the object back
+			if (e.player != ServerAuthority) {
+				netObj.authRequested = false;
+			}
+			
 			netObj.setAuthOwner(e.player);
 			return;
 		}
@@ -724,6 +732,7 @@ void updateGame() {
 		debug printf(`tick: %d`\n, timeHub.currentTick);
 	} else {
 		client.receiveData();
+
 		updateAuthority();
 
 		.synchronizeNetworkTicks(client);
