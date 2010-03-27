@@ -67,10 +67,14 @@ void setWorldToView(mat4 m) {
 
 void initialize(IRenderer r, Window window) {
 	renderer = r;
+
+	EffectCompilationOptions opts;
+	opts.useGeometryProgram = false;
 	
 	effect = renderer.createEffect(
 		"basic",
-		EffectSource.filePath("basic.cgfx")
+		EffectSource.filePath("basic.cgfx"),
+		opts
 	);
 	
 	effect.useGeometryProgram = false;

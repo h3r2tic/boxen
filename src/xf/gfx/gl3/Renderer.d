@@ -237,8 +237,8 @@ class Renderer : IRenderer {
 	// Effect ----
 	
 	
-	Effect createEffect(cstring name, EffectSource source) {
-		final effect = _cgCompiler.createEffect(name, source);
+	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts) {
+		final effect = _cgCompiler.createEffect(name, source, opts);
 		effect._idxInRenderer = _effects.length;
 		effect.renderOrdinal = _effects.length;
 		// TODO: effectsSorted = false

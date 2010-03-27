@@ -15,6 +15,7 @@ private {
 }
 
 
+
 class CgCompiler {
 	this(GL gl, CGcontext context = null) {
 		this.gl[] = gl;
@@ -81,7 +82,7 @@ class CgCompiler {
 	}+/
 	
 	
-	CgEffect createEffect(cstring name, EffectSource source) {
+	CgEffect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts) {
 		CGeffect eh;
 		
 		switch (source._type) {
@@ -115,7 +116,7 @@ class CgCompiler {
 		
 		assert (eh !is null);
 
-		return new CgEffect(name, eh, gl);
+		return new CgEffect(name, eh, gl, opts);
 	}
 	
 	

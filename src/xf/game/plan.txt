@@ -45,7 +45,12 @@
 	- Perform enet servicing in a separate thread to get precise reception times
 
 
-* Revive tanks
+~ Revive tanks
+	+ Movement
+	- Proper mesh
+	- Turret
+	- Shooting
+
 * Revive projectiles
 * Revive explosions
 * Revive the physical part of terrain
