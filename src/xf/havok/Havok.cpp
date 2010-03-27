@@ -16,6 +16,7 @@
 #include <Physics/Collide/Shape/Convex/Capsule/hkpCapsuleShape.h>
 #include <Physics/Collide/Shape/Convex/Sphere/hkpSphereShape.h>				
 #include <Physics/Collide/Dispatch/hkpAgentRegisterUtil.h>					
+#include <Physics/Collide/Shape/Query/hkpRayHitCollector.h>
 
 #include <Physics/Dynamics/Collide/ContactListener/hkpContactListener.h>
 #include <Physics/Dynamics/Phantom/hkpSimpleShapePhantom.h>
@@ -171,6 +172,13 @@ extern "C" {
 	typedef void (*DEntityContactFunc)(void*, const hkpRigidBody*, const hkpRigidBody*);
 	typedef void (*DCharCharInteractFunc)(void*, const hkpCharacterProxy*, const hkpCharacterProxy*);
 	typedef void (*DCharBodyInteractFunc)(void*, const hkpCharacterProxy*, const hkpRigidBody*);
+	typedef void (*DRayHitFunc)(
+			void*,
+			const hkpWorldObject*,
+			float hitFraction,
+			const hkVector4* normal,
+			float* earlyOutFraction
+	);
 }
 
 
@@ -220,6 +228,40 @@ public:
 		}
 	}
 };
+
+
+struct DRayHitCollector {
+	void* thisptr;
+	DRayHitFunc process;
+
+	DRayHitCollector() :
+		thisptr(NULL),
+		process(NULL)
+	{}
+};
+
+
+class RayHitCollector : public hkpRayHitCollector {
+public:
+	DRayHitCollector m_dCollector;
+
+	RayHitCollector(const DRayHitCollector& d) :
+		m_dCollector(d)
+	{}
+
+	void addRayHit(const hkpCdBody &cdBody, const hkpShapeRayCastCollectorOutput &hitInfo) {
+		const hkpCollidable* col = cdBody.getRootCollidable();
+
+		m_dCollector.process(
+			m_dCollector.thisptr,
+			(hkpWorldObject*)(col ? col->getOwner() : NULL),
+			hitInfo.m_hitFraction,
+			&hitInfo.m_normal,
+			&this->m_earlyOutHitFraction
+		);
+	}
+};
+
 
 
 class CharacterProxyListener : public hkpCharacterProxyListener {

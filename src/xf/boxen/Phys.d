@@ -104,3 +104,45 @@ void initialize(cstring libPath = "HavokC.dll") {
 	
 	//jobHub.addRepeatableJob(&update, 1.0f / timeStep);
 }
+
+
+private {
+	alias void delegate(hkpWorldObject, float, hkVector4*, float*) DRayHitHandler;
+
+	__thread RayHitCollector		rayCollector;
+	__thread DRayHitHandler*		castRayHandler;
+	__thread hkpWorldRayCastInput	castRayInput;
+
+	extern (C) void castRayDRayHitFunc(
+		void* ctxPtr,
+		hkpWorldObject wo,
+		float hitFraction,
+		hkVector4* hitNormal,
+		float* earlyOutFraction
+	) {
+		final h = *cast(DRayHitHandler*)castRayHandler;
+		h(wo, hitFraction, hitNormal, earlyOutFraction);
+	}
+}
+
+void castRay(vec3 from, vec3 to, DRayHitHandler handler) {
+	assert (castRayHandler is null,
+		"castRay is multi-thread safe but not re-entrant within a single thread");
+	
+	if (rayCollector._impl is null) {
+		rayCollector = RayHitCollector(
+			DRayHitCollector(cast(void*)&castRayHandler, &castRayDRayHitFunc)
+		);
+		castRayInput = hkpWorldRayCastInput();
+	} else {
+		rayCollector.reset();
+	}
+
+	.castRayHandler = &handler;
+	scope (success) castRayHandler = null;
+
+	castRayInput.m_from = hkVector4(from);
+	castRayInput.m_to = hkVector4(to);
+
+	world.castRay(castRayInput, rayCollector._as_hkpRayHitCollector);
+}

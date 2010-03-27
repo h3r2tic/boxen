@@ -198,8 +198,7 @@ final class Tank : NetObj, IVehicle {
 		auto shape = hkpBoxShape(hkVector4(hullSize), 0);
 
 		auto boxInfo = hkpRigidBodyCinfo();
-		//boxInfo.m_mass = 3000.0f;
-		boxInfo.m_mass = 300.0f;
+		boxInfo.m_mass = 2000.0f;
 		auto massProperties = hkpMassProperties();
 		hkpInertiaTensorComputer.computeBoxVolumeMassProperties(
 				hkVector4(hullSize),
@@ -284,8 +283,7 @@ final class Tank : NetObj, IVehicle {
 			hkpRigidBody* resBody,
 			uword* resMeshIdx
 	) {
-		//const wheelMass = 80.0f;
-		const wheelMass = 8.0f;
+		const wheelMass = 120.0f;
 
 		vec3 relPos = hullCenter + offset;
 
@@ -353,7 +351,7 @@ final class Tank : NetObj, IVehicle {
 		).removeReference();
 
 		auto axis = hkVector4(1.0f, 0.0f, 0.0f);
-		hkReal gain = 50.0f;
+		hkReal gain = 8.0f;
 
 		*resAction = hkpMotorAction(wbody, axis, 0.f, gain);
 		Phys.world.addAction(resAction._as_hkpAction);
@@ -411,7 +409,7 @@ final class Tank : NetObj, IVehicle {
 		_leftVel = left;
 		_rightVel = right;
 
-		const float mult = -13.f;
+		const float mult = 0.65f;
 
 		Phys.world.markForWrite();
 
@@ -502,13 +500,15 @@ final class Tank : NetObj, IVehicle {
 	
 	void loadState(PosRotVelState* st) {
 		Phys.world.markForWrite();
+
+		_hullBody.activate();
+		
 		_hullBody.setPosition(hkVector4(st.pos));
 		_hullBody.setRotation(st.rot);
 		_hullBody.setLinearVelocity(hkVector4(st.vel));
 		//_hullBody.setAngularVelocity(hkVector4(st.angVel));
 		
 		if (st.isActive) {
-			_hullBody.activate();
 			_ticksAsleep = 0;
 		} else {
 			//_hullBody.deactivate();

@@ -16,6 +16,12 @@ class hkReferencedObject hkBaseObject
 
 # ----------------------------------------------------------------
 
+class hkpCollidable
+	func getOwner
+		return void*
+
+# ----------------------------------------------------------------
+
 class hkpWorldObject hkReferencedObject
 	func getUserData
 		return hkUlong
@@ -184,9 +190,13 @@ class hkpWorld hkReferencedObject
 		param phantom hkpPhantom*
 		return hkpPhantom*
 
+#	func castRay
+#		param input const hkpWorldRayCastInput&
+#		param output hkpWorldRayCastOutput&
+
 	func castRay
 		param input const hkpWorldRayCastInput&
-		param output hkpWorldRayCastOutput&
+		param collector hkpRayHitCollector&
 
 	func createAndAddConstraintInstance
 		return hkpConstraintInstance*
@@ -385,8 +395,13 @@ class hkpWorldRayCastInput
 
 
 class hkpWorldRayCastOutput
-	field m_hitFraction hkReal
 	func this
+	field m_hitFraction hkReal
+	field m_normal hkVector4
+	field m_rootCollidable const hkpCollidable*
+	func hasHit
+		return hkBool
+	func reset
 
 # ----------------------------------------------------------------
 
@@ -494,6 +509,34 @@ class CharacterProxyListener hkpCharacterProxyListener
 		void* thisptr;
 		DCharCharInteractFunc charChar;
 		DCharBodyInteractFunc charBody;
+	}
+D>
+
+# ----------------------------------------------------------------
+
+class hkpRayHitCollector
+	func reset
+
+class RayHitCollector hkpRayHitCollector
+	func this
+		param d const DRayHitCollector&
+
+
+<D
+	extern (C) {
+		alias void function(
+				void*,
+				hkpWorldObject,
+				float hitFraction,
+				hkVector4* normal,
+				float* earlyOutFraction
+		) DRayHitFunc;
+	}
+
+
+	struct DRayHitCollector {
+		void* thisptr;
+		DRayHitFunc process;
 	}
 D>
 
