@@ -27,8 +27,8 @@ void applyQuatDiff(ref quat q, ref quat q0, ref quat q1, float t) {
 
 
 float compareQuats(quat q0, quat q1) {
-	auto a = q0.toMatrix!()();
-	auto b = q1.toMatrix!()();
+	final a = q0.toMatrix!()();
+	final b = q1.toMatrix!()();
 	
 	float err = 0.f;
 	err += 1.f - dot(a.col[0].vec.normalized, b.col[0].vec.normalized);
@@ -133,7 +133,7 @@ struct PosRotVelState {
 
 
 final class DebrisObject : NetObj {
-	const float size = 1.0f;
+	const float size = 0.8f;
 	
 	this(vec3 off, objId id, playerId owner) {
 		_coordSys = CoordSys(vec3fi.from(off), quat.identity);
@@ -159,10 +159,10 @@ final class DebrisObject : NetObj {
 
 		final halfExtents = hkVector4(size * 0.5f, size * 0.5f, size * 0.5f);
 
-		auto boxInfo = hkpRigidBodyCinfo();
+		final boxInfo = hkpRigidBodyCinfo();
 		boxInfo.m_mass = 70.0f;
 		
-		auto massProperties = hkpMassProperties();
+		final massProperties = hkpMassProperties();
 		hkpInertiaTensorComputer.computeBoxVolumeMassProperties(
 			halfExtents,
 			boxInfo.m_mass,

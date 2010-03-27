@@ -33,8 +33,6 @@ private {
 
 	import xf.input.Input;
 	
-	version (Client) import xf.game.TickTracker;
-	
 	import GameObjMngr = xf.game.GameObjMngr;
 	import LoginMngr = xf.game.LoginMngr;
 	import GameObjRegistry = xf.game.GameObjRegistry;
@@ -45,11 +43,21 @@ private {
 	import Integer = tango.text.convert.Integer;
 
 	import xf.net.NetObj;
-	import xf.net.GameClient;
-	import xf.net.GameServer;
+	
+	version (Client) {
+		import xf.net.LowLevelClient;
+		import xf.net.GameClient;
+		alias xf.net.GameClient.g_localPlayerId g_localPlayerId;
+
+		import xf.game.TickTracker;
+	}
+	
+	version (Server) {
+		import xf.net.LowLevelServer;
+		import xf.net.GameServer;
+	}
+	
 	import xf.net.ControlEvents;
-	import xf.net.LowLevelClient;
-	import xf.net.LowLevelServer;
 	import NetObjMngr = xf.net.NetObjMngr;
 
 	import xf.utils.Meta : fn2dg;
@@ -71,7 +79,6 @@ private {
 
 version (Client) {
 	GameClient	client;
-	playerId	_localPlayerId;
 } else {
 	GameServer	server;
 }
@@ -336,7 +343,7 @@ void updateAuthority() {
 		}
 
 		version (Client) {
-			if (_localPlayerId == obj.authOwner || obj.authRequested) {
+			if (g_localPlayerId == obj.authOwner || obj.authRequested) {
 				obj.keepServerUpdated = true;
 			}
 		} else if (obj.prevAuthOwner != obj.authOwner) {
@@ -543,7 +550,7 @@ version (Client) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 	
 	bool touchesLocallyOwned = false;
 	foreach (t; intf) {
-		if (_localPlayerId == _netObjects[t].realOwner) {
+		if (g_localPlayerId == _netObjects[t].realOwner) {
 			touchesLocallyOwned = true;
 		}
 	}
@@ -554,7 +561,7 @@ version (Client) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 	} else {
 		bool groupAsleep = isGroupAsleep(intf);
 		
-		if (singleAuth && _localPlayerId == theAuth) {
+		if (singleAuth && g_localPlayerId == theAuth) {
 			// we're the only client that has any auth over objects in this group
 			
 			if (groupAsleep) {
@@ -571,7 +578,7 @@ version (Client) void findTouchingGroupAuth(NetObj obj, ref InteractionsFound in
 			
 			bool touchesLocalAuth = false;
 			foreach (t; intf) {
-				if (_localPlayerId == _netObjects[t].authOwner || _netObjects[t].authRequested) {
+				if (g_localPlayerId == _netObjects[t].authOwner || _netObjects[t].authRequested) {
 					touchesLocalAuth = true;
 					break;
 				}
@@ -799,10 +806,13 @@ version (Server) {
 	void createGameWorld() {
 		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
 		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
-		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
-		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
-		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
-		GameObjMngr.createGameObj("Tank", vec3(0, 0, -14), NoAuthority);
+
+		for (int i = 0; i < 20; ++i) {
+			GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5 + i, -6), NoAuthority);
+		}
+		
+		GameObjMngr.createGameObj("Tank", vec3(-4, 0, -14), NoAuthority);
+		GameObjMngr.createGameObj("Tank", vec3(4, 0, -14), NoAuthority);
 	}
 
 
@@ -863,6 +873,7 @@ void handleInputWish(InputWish e) {
 	} else {
 		auto ctrl = cast(IPlayerController)_playerController;
 		auto vehicle = _controlledVehicle;
+		assert (pid == g_localPlayerId);
 	}
 
 	if (vehicle is null) {
@@ -1004,7 +1015,9 @@ void handleEnterVehicleOrder(EnterVehicleOrder e) {
 	version (Server) {
 		_controlledVehicle[e.player] = v;
 	} else {
-		_controlledVehicle = v;
+		if (g_localPlayerId == e.player) {
+			_controlledVehicle = v;
+		}
 	}
 
 	if (0 == e.seat) {
@@ -1208,7 +1221,6 @@ class TestApp : GfxApp {
 			LoginAccepted.addHandler((LoginAccepted e) {
 				Stdout.formatln("Login accepted!");
 				client.setLocalPlayerId(e.pid);
-				._localPlayerId = e.pid;
 			});
 		}
 
