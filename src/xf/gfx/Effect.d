@@ -43,6 +43,11 @@ enum ParamBaseType : ushort {
 }
 
 
+struct EffectCompilationOptions {
+	bool useGeometryProgram = true;
+}
+
+
 
 
 // name data allocated using osHeap
@@ -523,7 +528,7 @@ struct EffectSource {
 
 
 interface IEffectMngr {
-	Effect createEffect(cstring name, EffectSource source);
+	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts);
 	EffectInstance instantiateEffect(Effect effect);
 	Effect getEffect(EffectInstanceHandle);
 	bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);

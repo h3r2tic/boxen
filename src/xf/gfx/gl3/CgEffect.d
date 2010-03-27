@@ -43,14 +43,18 @@ void defaultHandleCgError() {
 }
 
 
+
 class CgEffect : Effect {
-	this (cstring name, CGeffect handle, GL gl) {
+	this (cstring name, CGeffect handle, GL gl, EffectCompilationOptions opts) {
 		this._name = name;
 		this._handle = handle;
 		this.gl[] = gl;
 		
 		assert (_handle !is null);
 		assert (CG_NO_ERROR == cgGetError());
+
+		_opts = opts;
+		_useGeometryProgram = opts.useGeometryProgram;
 		
 		findCgPrograms();
 	}
@@ -178,7 +182,7 @@ class CgEffect : Effect {
 			error("Error copying Cg effect '{}': unknown reason :(", _name);
 		}
 
-		final res = new CgEffect(_name, nh, gl);
+		final res = new CgEffect(_name, nh, gl, _opts);
 		this.copyToNew(res);
 		return res;
 	}
@@ -246,7 +250,7 @@ class CgEffect : Effect {
 		
 		cgGLEnableProfile(cgGetProgramProfile(_vertexProgram));
 		cgGLBindProgram(_vertexProgram);
-		if (_useGeometryProgram) {
+		if (_opts.useGeometryProgram) {
 			cgGLEnableProfile(cgGetProgramProfile(_geometryProgram));
 			cgGLBindProgram(_geometryProgram);
 		}
@@ -384,7 +388,7 @@ class CgEffect : Effect {
 				}
 			}
 			else if (
-				_useGeometryProgram
+				_opts.useGeometryProgram
 				&& name.startsWith(fromStringz(_domainProgramNames[
 					GPUDomain.Geometry
 				]), &realName))
@@ -420,7 +424,7 @@ class CgEffect : Effect {
 				GPUDomain.Vertex
 			);
 			
-			if (_useGeometryProgram) {
+			if (_opts.useGeometryProgram) {
 				_geometryProgram = extractProgram(
 					_domainProgramNames[GPUDomain.Geometry],
 					GPUDomain.Geometry
@@ -441,7 +445,7 @@ class CgEffect : Effect {
 				d = GPUDomain.Vertex;
 				if (auto r = dg(d, _vertexProgram)) return r;
 			}
-			if (_useGeometryProgram && _geometryProgram !is null) {
+			if (_opts.useGeometryProgram && _geometryProgram !is null) {
 				d = GPUDomain.Geometry;
 				if (auto r = dg(d, _geometryProgram)) return r;
 			}
@@ -579,6 +583,8 @@ class CgEffect : Effect {
 		CGprogram	_geometryProgram;
 		CGprogram	_fragmentProgram;
 		GL			gl;
+
+		EffectCompilationOptions	_opts;
 	}
 }
 
