@@ -18,13 +18,6 @@ private {
 
 
 
-interface NetObjObserver {
-	void onNetObjCreated(NetObj o);
-	void onNetObjDestroyed(NetObj o);
-}
-
-
-
 // Managed by NetObjMngr. In GC memory. May contain null elements.
 extern (C) NetObj[] g_netObjects;
 
@@ -40,12 +33,17 @@ static:
 	ushort[maxStatesPerSnapshot][maxPlayers]	stateIdx;
 	void*[maxStatesPerSnapshot][maxPlayers]		data;
 	uword[maxPlayers]							length;
+	tick[maxPlayers]							dataTick;
 
 	void reset() {
 		length[] = 0;
 	}
 
-	bool addSnapshot(playerId pid, objId oid, ushort stateI, void* d) {
+	bool addSnapshot(playerId pid, objId oid, ushort stateI, tick t, void* d) {
+		if (dataTick[pid] != t) {
+			length[pid] = 0;
+			dataTick[pid] = t;
+		}
 		if (length[pid] >= maxStatesPerSnapshot) {
 			return false;
 		}
@@ -634,6 +632,9 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 	final objInfo = obj.getNetObjInfo();
 	final stateInfo = &objInfo.netStateInfo[stateI];
 	final stateMemSize = stateInfo.size;
+
+	// Allocate off the per-tick memory storage so the states may be used within
+	// the current tick (stored in LastPlayerSnapshotData later in this function)
 	final stateMem = _objDataMemCur.pushBack(stateMemSize);
 
 	void delegate(BitStreamReader*) dg;
@@ -641,7 +642,13 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 	dg.ptr = stateMem;
 	dg(bs);
 
-	bool stored = LastPlayerSnapshotData.addSnapshot(pid, id, stateI, stateMem);
+	version (Client) {
+		tick tickRecvd = g_lastTickRecvd;
+	} else {
+		tick tickRecvd = curTick;
+	}
+
+	bool stored = LastPlayerSnapshotData.addSnapshot(pid, id, stateI, tickRecvd, stateMem);
 	if (!stored) {
 		// TODO: kick the player
 		error("LastPlayerSnapshotData backlog overflow. Can't receive more snapshots than {}.", maxStatesPerSnapshot);
@@ -688,17 +695,10 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 			}
 		}
 
-		version (Client) {
-			tick interpFrom = g_lastTickRecvd;
-		} else {
-			assert (StateOverrideMethod.Replace == som);
-			tick interpFrom = curTick;
-		}
-
 		float objError = applyObjectState(
 			pid,
 			obj,
-			interpFrom,
+			tickRecvd,
 			stateMem,
 			stateI,
 			stateInfo,
@@ -828,6 +828,7 @@ version (Server) {
 }
 
 
+/// See the documentation of _objDataMem1, etc for more details on this function
 void swapObjDataMem() {
 	// Will be invalid after this step
 	LastPlayerSnapshotData.reset();
@@ -1072,8 +1073,60 @@ private {
 		NetObjData*				_netObjData;
 	}
 
+	/**
+	 * Memory for object states that are saved each tick is allocated off _rawStateQueue
+	 * in chunks where all states of an object are a consecutive block. To get the
+	 * memory for a particular state, add the .offset field of the NetStateInfo
+	 * of said object.
+	 * 
+	 * Arrays of pointers to net object state data are allocated off _objStatePtrQueue.
+	 * 
+	 * Finally, pointers to state data of each particular tick are stored in
+	 * _tickStateQueue, which is a fixed-size queue. The first and last ticks of
+	 * states stored within it are _firstTickInQueue and _lastTickInQueue respectively.
+	 * The maximal number of ticks that can be stored in the queue is maxTicksInQueue.
+	 *
+	 * Thus, in order to find the state ST of a NetObject OBJ at tick TCK, use the
+	 * following approach:
+	 *
+	 * assert (TCK >= _firstTickInQueue && TCK <= _lastTickInQueue);
+	 * if (!_tickStateQueue.isEmpty) {
+	 * 		void*[] tickStatePtrs = *_tickStateQueue[TCK - _firstTickInQueue];
+	 * 		final stateInfo = OBJ.getNetObjInfo().netStateInfo[ST];
+	 *		void* tickState = tickStatePtrs[OBJ.id] + stateInfo.offset;
+	 * } else {
+	 *		// not available
+	 * }
+	 */
+
 	ScratchFIFO		_rawStateQueue;
 	ScratchFIFO		_objStatePtrQueue;
+
+	FixedQueue!(void*[])	_tickStateQueue;
+	void*[]					_curTickStates;
+	tick					_firstTickInQueue;
+	tick					_lastTickInQueue;
+
+	/**
+	 * The states last received from peers, as well as NetObjData for each NetObj
+	 * and some scratch memory are stored in one of the two  FIFOs: _objDataMem1
+	 * or _objDataMem2.
+	 * 
+	 * They should be swapped each tick (or every few ticks) using the function
+	 * swapObjDataMem(). This function will remove all the last received states, since
+	 * at the end of a tick they will not be required any more. On the other hand,
+	 * NetObjData must be retained from tick to tick, thus swapObjDataMem() copies
+	 * the memory.
+	 *
+	 * While this approach requires some shuffling of data, it only uses chunked
+	 * allocation, thus keeps fragmentation and heap activity low, despite potentially
+	 * very dynamic changes to NetObj states. The copying of data at each buffer swap
+	 * also means that memory will be packed together instead of scattered around the
+	 * heap, thus improving cache efficiency.
+	 *
+	 * The buffer currently used for allocation is _objDataMemCur, while the previous
+	 * one (and thus also next) is _objDataMemPrev.
+	 */
 
 	ScratchFIFO		_objDataMem1;
 	ScratchFIFO		_objDataMem2;
@@ -1086,7 +1139,6 @@ private {
 		_objDataMemPrev = &_objDataMem2;
 	}
 
-
 	void allocObjStates(objId id, uword numStates) {
 		final memReq = NetObjData.memRequired(numStates);
 
@@ -1098,11 +1150,7 @@ private {
 			_netObjData[id] = NetObjData.alloc(_objDataMemCur.pushBack(memReq), numStates);
 		}
 	}
-	
-	FixedQueue!(void*[])	_tickStateQueue;
-	void*[]					_curTickStates;
-	tick					_firstTickInQueue;
-	tick					_lastTickInQueue;
+
 
 	static this() {
 		const maxTicksInQueue = 1024;
