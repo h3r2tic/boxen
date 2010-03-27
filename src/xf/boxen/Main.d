@@ -807,7 +807,7 @@ version (Server) {
 		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
 		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
 
-		for (int i = 0; i < 20; ++i) {
+		for (int i = 0; i < 50; ++i) {
 			GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5 + i, -6), NoAuthority);
 		}
 		
@@ -936,7 +936,11 @@ void handleInputWish(InputWish e) {
 			}
 		}
 	} else {
-		if (isVehiclePilot(vehicle, pid)) {
+		if (useAction) {
+			version (Client) {
+				LeaveVehicleRequest().immediate();
+			}
+		} else if (isVehiclePilot(vehicle, pid)) {
 			if (e.action & e.Shoot) {
 				vehicle.shoot;
 			}
@@ -978,6 +982,32 @@ bool isVehiclePilot(IVehicle v, playerId pid) {
 }
 
 
+private void leaveVehicle(playerId pid, vec3 pos) {
+	version (Server) {
+		final v = _controlledVehicle[pid];
+	} else {
+		final v = _controlledVehicle;
+	}
+	
+	if (v !is null) {
+		if (pid == v.getPlayerAtSeat(0)) {
+			setVehiclePilot(v, NoPlayer);
+		}
+		
+		v.removePlayerFromSeat(pid);
+		/+pd.controller.teleport(pos);
+		pd.currentVehicle = null;
+		pd.camera.parent = pd.controller;+/
+
+		version (Server) {
+			_controlledVehicle[pid] = null;
+		} else {
+			_controlledVehicle = null;
+		}
+	}
+}
+
+
 version (Server) void handleEnterVehicleRequest(EnterVehicleRequest e) {
 	final playerId pid = e.wishOrigin;
 
@@ -1001,6 +1031,21 @@ version (Server) void handleEnterVehicleRequest(EnterVehicleRequest e) {
 		}+/
 	} else {
 		printf("EnterVehicleRequest: invalid obj id"\n);
+	}
+}
+
+
+version (Server) void handleLeaveVehicleRequest(LeaveVehicleRequest e) {
+	printf("LeaveVehicleRequest: pid = %d"\n, cast(int)e.wishOrigin);
+	
+	final playerId pid = e.wishOrigin;
+	final v = _controlledVehicle[pid];
+	
+	if (v !is null) {
+		vec3 leavePos = void;
+		if (v.getSafeLeavePosition(&leavePos)) {
+			LeaveVehicleOrder(pid, leavePos).immediate;
+		}
 	}
 }
 
@@ -1029,6 +1074,20 @@ void handleEnterVehicleOrder(EnterVehicleOrder e) {
 	playerData.controller.destroyPhysics();
 	playerData.controller.showGraphics(false);+/
 }
+
+
+// client- and server-side
+void handleLeaveVehicleOrder(LeaveVehicleOrder e) {
+	printf("LeaveVehicleOrder: pid=%d"\n, cast(int)e.player);
+	leaveVehicle(e.player, e.pos);
+
+	/+playerData.controller.createPhysics();
+	if (serverSide || e.player != localPlayerId) {
+		playerData.controller.showGraphics(true);
+	}
+	playerData.camera.parent = playerData.controller;+/
+}
+
 
 
 
@@ -1169,6 +1228,7 @@ class TestApp : GfxApp {
 			server.receiveStateSnapshot = fn2dg(&NetObjMngr.receiveStateSnapshot);
 
 			EnterVehicleRequest.addHandler(fn2dg(&handleEnterVehicleRequest));
+			LeaveVehicleRequest.addHandler(fn2dg(&handleLeaveVehicleRequest));
 		} else {
 			timeHub.addTracker(new QueueTrimmer);
 
@@ -1189,6 +1249,7 @@ class TestApp : GfxApp {
 		}
 
 		EnterVehicleOrder.addHandler(fn2dg(&handleEnterVehicleOrder));
+		LeaveVehicleOrder.addHandler(fn2dg(&handleLeaveVehicleOrder));
 		
 		int playerNameId = 1;		// for further login requests when the name is already used
 		
