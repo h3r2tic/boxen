@@ -24,3 +24,17 @@ float invSqrt(float x) {
     x = x*(1.5f - xhalf * x * x);
     return x;
 }
+
+
+// as in Cg
+float saturate(float x) {
+    return min(1.0f, max(0.0f, x));
+}
+
+double saturate(double x) {
+    return min(1.0, max(0.0, x));
+}
+
+real saturate(real x) {
+    return min(1.0, max(0.0, x));
+}
