@@ -1001,7 +1001,7 @@ private void leaveVehicle(playerId pid, vec3 pos) {
 
 		version (Server) {
 			_controlledVehicle[pid] = null;
-		} else {
+		} else if (g_localPlayerId == pid) {
 			_controlledVehicle = null;
 		}
 	}

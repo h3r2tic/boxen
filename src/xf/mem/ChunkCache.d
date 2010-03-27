@@ -48,7 +48,7 @@ private struct ChunkCache(int _pageSize, alias _allocator) {
 		} else {
 			++_totalAllocated;
 			
-			if (Thread.getThis()) {
+			/+if (Thread.getThis()) {
 				auto tr = Trace.basicTracer(null);
 				char[] msg;
 				tr.writeOut((char[] s) { msg ~= s; });
@@ -63,7 +63,7 @@ private struct ChunkCache(int _pageSize, alias _allocator) {
 					"ChunkCache: allocating a new chunk ({}) in foreign thread.",
 					_totalAllocated
 				);
-			}
+			}+/
 			
 			auto raw = _allocator.allocRaw(_pageSize);
 
