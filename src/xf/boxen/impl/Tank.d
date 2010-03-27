@@ -11,6 +11,7 @@ private {
 	import xf.utils.BitStream;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.core.Misc : rndint, saturate;
 
 	import xf.boxen.Rendering;
 	import DebugDraw = xf.boxen.DebugDraw;
@@ -29,8 +30,8 @@ void applyQuatDiff(ref quat q, ref quat q0, ref quat q1, float t) {
 
 
 float compareQuats(quat q0, quat q1) {
-	auto a = q0.toMatrix!()();
-	auto b = q1.toMatrix!()();
+	final a = q0.toMatrix!()();
+	final b = q1.toMatrix!()();
 	
 	float err = 0.f;
 	err += 1.f - dot(a.col[0].vec.normalized, b.col[0].vec.normalized);
@@ -42,13 +43,14 @@ float compareQuats(quat q0, quat q1) {
 
 
 struct PosRotVelState {
-	vec3	pos = vec3.zero;
-	vec3	vel	= vec3.zero;
-	quat	rot = quat.identity;
-	//vec3	angVel = vec3.zero;
-	float	leftEng = 0.0f;
-	float	rightEng = 0.0f;
-	bool	isActive = false;
+	vec3		pos = vec3.zero;
+	vec3		vel	= vec3.zero;
+	quat		rot = quat.identity;
+	//vec3		angVel = vec3.zero;
+	float		leftEng = 0.0f;
+	float		rightEng = 0.0f;
+	bool		isActive = false;
+	float[10]	wheelOffsets = 0.5f;		// 0..1
 
 	void serialize(BitStreamWriter* bs) {
 		bs.write(pos.x);
@@ -67,6 +69,11 @@ struct PosRotVelState {
 		bs.write(leftEng);
 		bs.write(rightEng);
 		bs.write(isActive);
+		foreach (o; wheelOffsets) {
+			assert (o >= 0.0f && o <= 1.0f);
+			ubyte x = cast(ubyte)rndint(o * 255.0f);
+			bs.write(x);
+		}
 	}
 	
 	void unserialize(BitStreamReader* bs) {
@@ -86,6 +93,12 @@ struct PosRotVelState {
 		bs.read(&leftEng);
 		bs.read(&rightEng);
 		bs.read(&isActive);
+		foreach (ref o; wheelOffsets) {
+			ubyte x;
+			bs.read(&x);
+			o = cast(float)x / 255.0f;
+			assert (o >= 0.0f && o <= 1.0f);
+		}
 	}
 
 	void applyDiff(PosRotVelState* a, PosRotVelState* b, float t) {
@@ -96,6 +109,9 @@ struct PosRotVelState {
 		leftEng += (b.leftEng - a.leftEng) * t;
 		rightEng += (b.rightEng - a.rightEng) * t;
 		isActive = b.isActive;
+		foreach (i, ref o; wheelOffsets) {
+			o += (b.wheelOffsets[i] - a.wheelOffsets[i]) * t;
+		}
 	}
 
 	static float calcDifference(PosRotVelState* a, PosRotVelState* b) {
@@ -104,8 +120,8 @@ struct PosRotVelState {
 			+ (a.vel - b.vel).length * 0.3f
 			+ compareQuats(a.rot, b.rot)
 			//+ (a.angVel - b.angVel).length * 0.2f
-			+ (a.leftEng - b.leftEng) * 0.2f
-			+ (a.rightEng - b.rightEng) * 0.2f
+			+ (a.leftEng - b.leftEng) * 0.6f
+			+ (a.rightEng - b.rightEng) * 0.6f
 			+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
 	}
 
@@ -141,9 +157,15 @@ final class Tank : NetObj, IVehicle {
 
 		hkpRigidBody[11]	_allBodies;
 	}
-	
-	hkpMotorAction[5]	_leftWheelActions;
-	hkpMotorAction[5]	_rightWheelActions;
+
+	union {
+		struct {
+			hkpMotorAction[5]	_leftWheelActions;
+			hkpMotorAction[5]	_rightWheelActions;
+		}
+
+		hkpMotorAction[10]	_wheelActions;
+	}
 
 	union {
 		struct {
@@ -156,6 +178,34 @@ final class Tank : NetObj, IVehicle {
 
 	float	_leftVel = 0.f;
 	float	_rightVel = 0.f;
+
+	private static {
+		const float wheelRadius = 0.6f;
+		const float suspensionMin = -wheelRadius * 0.6;
+		const float suspensionMax = wheelRadius * 0.6;
+
+		vec3		hullSize;		// half
+		vec3[10]	initialWheelOffsets;
+
+		float		wheelSuspensionHeight;	// offset of the hull center from the ground
+
+		static this() {
+			hullSize = vec3(1.5f, 1.0f, 2.5f);
+			wheelSuspensionHeight = hullSize.y + wheelRadius / 2;
+
+			float[5] zOff = [-hullSize.z, -hullSize.z/2, 0.f, hullSize.z/2, hullSize.z];
+
+			for (int i = 0; i < 5; ++i) {
+				// left
+				initialWheelOffsets[i] =
+					vec3(-hullSize.x - wheelRadius * 0.8f, -wheelSuspensionHeight, zOff[i]);
+
+				// right
+				initialWheelOffsets[i+5] =
+					vec3(hullSize.x + wheelRadius * 0.8f, -wheelSuspensionHeight, zOff[i]);
+			}
+		}
+	}
 
 
 	this(vec3 off, objId id, playerId owner) {
@@ -189,17 +239,13 @@ final class Tank : NetObj, IVehicle {
 		Phys.world.markForWrite();
 		scope (success) Phys.world.unmarkForWrite();
 
+		final hullCenter = off + vec3.unitY * (wheelRadius + wheelSuspensionHeight);
 
-		final vec3 hullSize = vec3(1.5f, 1.0f, 2.5f);		// half
-		const float wheelRadius = 0.6f;
-		final float wheelSuspensionHeight = -hullSize.y - wheelRadius / 2;
-		auto hullCenter = off + vec3.unitY * (wheelRadius - wheelSuspensionHeight);
+		final shape = hkpBoxShape(hkVector4(hullSize), 0);
 
-		auto shape = hkpBoxShape(hkVector4(hullSize), 0);
-
-		auto boxInfo = hkpRigidBodyCinfo();
+		final boxInfo = hkpRigidBodyCinfo();
 		boxInfo.m_mass = 2000.0f;
-		auto massProperties = hkpMassProperties();
+		final massProperties = hkpMassProperties();
 		hkpInertiaTensorComputer.computeBoxVolumeMassProperties(
 				hkVector4(hullSize),
 				boxInfo.m_mass,
@@ -238,30 +284,12 @@ final class Tank : NetObj, IVehicle {
 		}
 
 		shape.removeReference();
-
-		float[5] zOff = [-hullSize.z, -hullSize.z/2, 0.f, hullSize.z/2, hullSize.z];
 		
-		for (int i = 0; i < 5; ++i) {
+		for (int i = 0; i < 10; ++i) {
 			createWheel(
-					_hullBody,
-					hullCenter,
-					wheelRadius,
-					vec3(hullSize.x + wheelRadius * 0.8f, wheelSuspensionHeight, zOff[i]),
-					boxInfo.m_collisionFilterInfo,
-					&_rightWheelActions[i],
-					&_rightWheels[i],
-					&_rightWheelMeshes[i]
-			);
-
-			createWheel(
-					_hullBody,
-					hullCenter,
-					wheelRadius,
-					vec3(-hullSize.x - wheelRadius * 0.8f, wheelSuspensionHeight, zOff[i]),
-					boxInfo.m_collisionFilterInfo,
-					&_leftWheelActions[i],
-					&_leftWheels[i],
-					&_leftWheelMeshes[i]
+				i,
+				hullCenter,
+				boxInfo.m_collisionFilterInfo
 			);
 		}
 
@@ -274,30 +302,33 @@ final class Tank : NetObj, IVehicle {
 
 
 	private void createWheel(
-			hkpRigidBody hull,
+			uword wheelI,
 			vec3 hullCenter,
-			hkReal radius,
-			vec3 offset,
-			hkUint32 filterInfo,
-			hkpMotorAction* resAction,
-			hkpRigidBody* resBody,
-			uword* resMeshIdx
+			hkUint32 filterInfo
 	) {
 		const wheelMass = 120.0f;
+		final offset = initialWheelOffsets[wheelI];
 
 		vec3 relPos = hullCenter + offset;
 
-		auto startAxis = hkVector4(-radius*0.7f, 0.f, 0.f);
-		auto endAxis = hkVector4(radius*0.7f, 0.f, 0.f);
+		final startAxis = hkVector4(-wheelRadius * 0.7f, 0.f, 0.f);
+		final endAxis = hkVector4(wheelRadius * 0.7f, 0.f, 0.f);
 
-		auto info = hkpRigidBodyCinfo();
-		auto massProperties = hkpMassProperties();
-		hkpInertiaTensorComputer.computeCylinderVolumeMassProperties(startAxis, endAxis, radius, wheelMass, massProperties);
+		final info = hkpRigidBodyCinfo();
+		final massProperties = hkpMassProperties();
+		
+		hkpInertiaTensorComputer.computeCylinderVolumeMassProperties(
+			startAxis,
+			endAxis,
+			wheelRadius,
+			wheelMass,
+			massProperties
+		);
 
 		info.m_mass = massProperties.m_mass;
 		info.m_centerOfMass  = massProperties.m_centerOfMass;
 		info.m_inertiaTensor = massProperties.m_inertiaTensor;
-		info.m_shape = hkpCylinderShape(startAxis, endAxis, radius)._as_hkpShape;
+		info.m_shape = hkpCylinderShape(startAxis, endAxis, wheelRadius)._as_hkpShape;
 		info.m_position = hkVector4(relPos);
 		info.m_motionType  = MotionType.MOTION_BOX_INERTIA;
 		info.m_collisionFilterInfo = filterInfo;
@@ -305,58 +336,60 @@ final class Tank : NetObj, IVehicle {
 		info.m_friction = 3.0f;
 		info.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_MOVING;
 
-		auto wbody = hkpRigidBody(info);
+		final wbody = _wheels[wheelI] = hkpRigidBody(info);
 		wbody.setContactPointCallbackDelay(Phys.contactPersistence);
 		wbody.setUserData(cast(uword)cast(void*)this);
 		
-		*resMeshIdx = addMesh(
+		_wheelMeshes[wheelI] = addMesh(
 			DebugDraw.create(DebugDraw.Prim.Cylinder),
 			CoordSys.identity,
 			_id,
-			vec3(radius * 2.0f, (vec3.from(startAxis) - vec3.from(endAxis)).length, radius * 2.0f)
+			vec3(
+				wheelRadius * 2.0f,
+				(vec3.from(startAxis) - vec3.from(endAxis)).length,
+				wheelRadius * 2.0f
+			)
 		);
 
-		//addGraphicsCylinder(vec3.from(startAxis), vec3.from(endAxis), radius, wbody, vec3(0.3f, 1.f, 0.2f));
+		//addGraphicsCylinder(vec3.from(startAxis), vec3.from(endAxis), wheelRadius, wbody, vec3(0.3f, 1.f, 0.2f));
 
 		Phys.world.addEntity(wbody._as_hkpEntity);
 
 		wbody.removeReference();
 		info.m_shape.removeReference();
 
-		auto suspension	= hkVector4(vec3.unitY.normalized);
-		auto steering	= hkVector4(vec3.unitY.normalized);
-		auto axle		= hkVector4(vec3.unitX.normalized);
+		final suspension	= hkVector4(vec3.unitY.normalized);
+		final steering	= hkVector4(vec3.unitY.normalized);
+		final axle		= hkVector4(vec3.unitX.normalized);
 
-		auto wheelConstraint = hkpWheelConstraintData();
+		final wheelConstraint = hkpWheelConstraintData();
 
 		wheelConstraint.setInWorldSpace(
 				wbody.getTransform(),
-				hull.getTransform(),
+				_hullBody.getTransform(),
 				wbody.getPosition(),
 				axle,
 				suspension,
 				steering
 		);
 		
-		wheelConstraint.setSuspensionMaxLimit(radius * 0.6); 
-		wheelConstraint.setSuspensionMinLimit(-radius * 0.6);
+		wheelConstraint.setSuspensionMaxLimit(suspensionMax); 
+		wheelConstraint.setSuspensionMinLimit(suspensionMin);
 				
 		wheelConstraint.setSuspensionStrength(0.007f);
 		wheelConstraint.setSuspensionDamping(0.07f);
 
 		Phys.world.createAndAddConstraintInstance(
 				wbody,
-				hull,
+				_hullBody,
 				wheelConstraint._as_hkpConstraintData
 		).removeReference();
 
-		auto axis = hkVector4(1.0f, 0.0f, 0.0f);
+		final axis = hkVector4(1.0f, 0.0f, 0.0f);
 		hkReal gain = 8.0f;
 
-		*resAction = hkpMotorAction(wbody, axis, 0.f, gain);
-		Phys.world.addAction(resAction._as_hkpAction);
-
-		*resBody = wbody;
+		final action = _wheelActions[wheelI] = hkpMotorAction(wbody, axis, 0.f, gain);
+		Phys.world.addAction(action._as_hkpAction);
 	}
 
 
@@ -495,6 +528,24 @@ final class Tank : NetObj, IVehicle {
 		st.isActive = isActive();
 		st.leftEng = _leftVel;
 		st.rightEng = _rightVel;
+		
+		final hullCS = CoordSys(vec3fi.from(st.pos), st.rot);
+		final hullCSInv = hullCS.inverse();
+
+		const suspensionRange = suspensionMax - suspensionMin;
+		
+		foreach (wi, w; _wheels) {
+			auto wheelCS = CoordSys(
+				vec3fi.from(w.getPosition()),
+				w.getRotation()
+			) in hullCSInv;
+
+			float yoff = cast(real)wheelCS.origin.y - initialWheelOffsets[wi].y;
+			float frac = saturate((yoff - suspensionMin) / suspensionRange);
+
+			st.wheelOffsets[wi] = frac;
+		}
+		
 		Phys.world.unmarkForRead();
 	}
 	
@@ -502,11 +553,34 @@ final class Tank : NetObj, IVehicle {
 		Phys.world.markForWrite();
 
 		_hullBody.activate();
+
+		quat initialHullRot = _hullBody.getRotation();
 		
 		_hullBody.setPosition(hkVector4(st.pos));
 		_hullBody.setRotation(st.rot);
 		_hullBody.setLinearVelocity(hkVector4(st.vel));
 		//_hullBody.setAngularVelocity(hkVector4(st.angVel));
+
+		final hullCS = CoordSys(vec3fi.from(st.pos), st.rot);
+		final hullCSInv = hullCS.inverse();
+
+		const suspensionRange = suspensionMax - suspensionMin;
+		
+		foreach (wi, w; _wheels) {
+			float yoff = suspensionRange * st.wheelOffsets[wi] + suspensionMin;
+			vec3 woff = initialWheelOffsets[wi];
+			woff.y += yoff;
+
+			quat initialWheelRot = w.getRotation();
+			
+			auto wheelCS = CoordSys(
+				vec3fi.from(woff),
+				initialHullRot.inverse * initialWheelRot
+			) in hullCS;
+
+			w.setPosition(hkVector4(vec3.from(wheelCS.origin)));
+			w.setRotation(wheelCS.rotation);
+		}
 		
 		if (st.isActive) {
 			_ticksAsleep = 0;

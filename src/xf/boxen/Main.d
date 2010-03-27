@@ -797,8 +797,8 @@ void updateGame() {
 
 version (Server) {
 	void createGameWorld() {
-		//GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
-		//GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
+		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
+		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
