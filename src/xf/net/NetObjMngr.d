@@ -574,6 +574,8 @@ float applyObjectState(
 		NetStateInfo* stateInfo,
 		StateOverrideMethod som
 ) {
+	assert (obj !is null);
+	
 	if (
 			stateForTick >= _firstTickInQueue
 		&&	stateForTick <= _lastTickInQueue
