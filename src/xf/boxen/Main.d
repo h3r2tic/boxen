@@ -800,6 +800,7 @@ version (Server) {
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
+		GameObjMngr.createGameObj("Tank", vec3(0, 0, -14), NoAuthority);
 	}
 
 
