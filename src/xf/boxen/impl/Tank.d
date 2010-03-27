@@ -45,7 +45,9 @@ struct PosRotVelState {
 	vec3	pos = vec3.zero;
 	vec3	vel	= vec3.zero;
 	quat	rot = quat.identity;
-	vec3	angVel = vec3.zero;
+	//vec3	angVel = vec3.zero;
+	float	leftEng = 0.0f;
+	float	rightEng = 0.0f;
 	bool	isActive = false;
 
 	void serialize(BitStreamWriter* bs) {
@@ -59,9 +61,11 @@ struct PosRotVelState {
 		bs.write(rot.y);
 		bs.write(rot.z);
 		bs.write(rot.w);
-		bs.write(angVel.x);
+		/+bs.write(angVel.x);
 		bs.write(angVel.y);
-		bs.write(angVel.z);
+		bs.write(angVel.z);+/
+		bs.write(leftEng);
+		bs.write(rightEng);
 		bs.write(isActive);
 	}
 	
@@ -76,58 +80,45 @@ struct PosRotVelState {
 		bs.read(&rot.y);
 		bs.read(&rot.z);
 		bs.read(&rot.w);
-		bs.read(&angVel.x);
+		/+bs.read(&angVel.x);
 		bs.read(&angVel.y);
-		bs.read(&angVel.z);
+		bs.read(&angVel.z);+/
+		bs.read(&leftEng);
+		bs.read(&rightEng);
 		bs.read(&isActive);
 	}
 
 	void applyDiff(PosRotVelState* a, PosRotVelState* b, float t) {
 		pos += (b.pos - a.pos) * t;
 		vel += (b.vel - a.vel) * t;
-		angVel += (b.angVel - a.angVel) * t;
+		//angVel += (b.angVel - a.angVel) * t;
 		applyQuatDiff(rot, a.rot, b.rot, t);
+		leftEng += (b.leftEng - a.leftEng) * t;
+		rightEng += (b.rightEng - a.rightEng) * t;
 		isActive = b.isActive;
 	}
-
-	/+void applyDiff(PosRotVelState* a, PosRotVelState* b, float t) {
-		vec3 localPosChange = vec3.from(b.pos - a.pos) * t;
-		localPosChange = a.rot.inverse.xform(localPosChange);
-		localPosChange = rot.xform(localPosChange);
-		pos += vec3fi.from(localPosChange);//(b.pos - a.pos) * t;
-
-		vec3 localVelChange = vec3.from(b.vel - a.vel) * t;
-		localVelChange = a.rot.inverse.xform(localVelChange);
-		localVelChange = rot.xform(localVelChange);
-		vel += localVelChange;
-
-		vec3 angVelChange = vec3.from(b.angVel - a.angVel) * t;
-		angVelChange = a.rot.inverse.xform(angVelChange);
-		angVelChange = rot.xform(angVelChange);
-		angVel += angVelChange;
-		
-		applyQuatDiff(rot, a.rot, b.rot, t);
-		isActive = b.isActive;
-	}+/
-	
 
 	static float calcDifference(PosRotVelState* a, PosRotVelState* b) {
 		return
 			(a.pos - b.pos).length
 			+ (a.vel - b.vel).length * 0.3f
 			+ compareQuats(a.rot, b.rot)
-			+ (a.angVel - b.angVel).length * 0.2f
+			//+ (a.angVel - b.angVel).length * 0.2f
+			+ (a.leftEng - b.leftEng) * 0.2f
+			+ (a.rightEng - b.rightEng) * 0.2f
 			+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
 	}
 
 	char[] toString() {
 		static char[256] buf;
 		sprintf(
-			buf.ptr, "pos:%f %f %f vel: %f %f %f rot: %f %f %f %f angVel: %f %f %f",
+			buf.ptr, "pos:%f %f %f vel: %f %f %f rot: %f %f %f %f l: %f r: %f",
 			pos.tuple,
 			vel.tuple,
 			rot.xyzw.tuple,
-			angVel.tuple
+			//angVel.tuple,
+			leftEng,
+			rightEng
 		);
 		return fromStringz(buf.ptr);
 	}
@@ -138,8 +129,14 @@ final class Tank : NetObj, IVehicle {
 	union {
 		struct {
 			hkpRigidBody		_hullBody;
-			hkpRigidBody[5]		_leftWheels;
-			hkpRigidBody[5]		_rightWheels;
+			union {
+				struct {
+					hkpRigidBody[5]	_leftWheels;
+					hkpRigidBody[5]	_rightWheels;
+				}
+
+				hkpRigidBody[10]	_wheels;
+			}
 		}
 
 		hkpRigidBody[11]	_allBodies;
@@ -147,6 +144,15 @@ final class Tank : NetObj, IVehicle {
 	
 	hkpMotorAction[5]	_leftWheelActions;
 	hkpMotorAction[5]	_rightWheelActions;
+
+	union {
+		struct {
+			uword[5]	_leftWheelMeshes;
+			uword[5]	_rightWheelMeshes;
+		}
+
+		uword[10]	_wheelMeshes;
+	}
 
 	float	_leftVel = 0.f;
 	float	_rightVel = 0.f;
@@ -158,6 +164,24 @@ final class Tank : NetObj, IVehicle {
 		
 		initPhys(off);
 		initializeNetObj(owner);
+	}
+
+
+	private void updateMeshes() {
+		final hcs = CoordSys(vec3fi.from(_hullBody.getPosition()), _hullBody.getRotation());
+
+		// the cylinder mesh is standing on its base
+		final cs1 = CoordSys(vec3fi.zero, quat.zRotation(90.0f));
+
+		// will need a local transform
+		final cs3 = hcs.inverse();
+
+		foreach (wi, wheel; _wheels) {
+			uword mi = _wheelMeshes[wi];
+			final cs2 = CoordSys(vec3fi.from(wheel.getPosition()), wheel.getRotation());
+			xf.boxen.Rendering.meshes.offset[mi] =
+				(cs1 in cs2) in cs3;
+		}
 	}
 
 
@@ -174,7 +198,8 @@ final class Tank : NetObj, IVehicle {
 		auto shape = hkpBoxShape(hkVector4(hullSize), 0);
 
 		auto boxInfo = hkpRigidBodyCinfo();
-		boxInfo.m_mass = 3000.0f;
+		//boxInfo.m_mass = 3000.0f;
+		boxInfo.m_mass = 300.0f;
 		auto massProperties = hkpMassProperties();
 		hkpInertiaTensorComputer.computeBoxVolumeMassProperties(
 				hkVector4(hullSize),
@@ -225,7 +250,8 @@ final class Tank : NetObj, IVehicle {
 					vec3(hullSize.x + wheelRadius * 0.8f, wheelSuspensionHeight, zOff[i]),
 					boxInfo.m_collisionFilterInfo,
 					&_rightWheelActions[i],
-					&_rightWheels[i]
+					&_rightWheels[i],
+					&_rightWheelMeshes[i]
 			);
 
 			createWheel(
@@ -235,7 +261,8 @@ final class Tank : NetObj, IVehicle {
 					vec3(-hullSize.x - wheelRadius * 0.8f, wheelSuspensionHeight, zOff[i]),
 					boxInfo.m_collisionFilterInfo,
 					&_leftWheelActions[i],
-					&_leftWheels[i]
+					&_leftWheels[i],
+					&_leftWheelMeshes[i]
 			);
 		}
 
@@ -254,9 +281,11 @@ final class Tank : NetObj, IVehicle {
 			vec3 offset,
 			hkUint32 filterInfo,
 			hkpMotorAction* resAction,
-			hkpRigidBody* resBody
+			hkpRigidBody* resBody,
+			uword* resMeshIdx
 	) {
-		const wheelMass = 80.0f;
+		//const wheelMass = 80.0f;
+		const wheelMass = 8.0f;
 
 		vec3 relPos = hullCenter + offset;
 
@@ -282,6 +311,13 @@ final class Tank : NetObj, IVehicle {
 		wbody.setContactPointCallbackDelay(Phys.contactPersistence);
 		wbody.setUserData(cast(uword)cast(void*)this);
 		
+		*resMeshIdx = addMesh(
+			DebugDraw.create(DebugDraw.Prim.Cylinder),
+			CoordSys.identity,
+			_id,
+			vec3(radius * 2.0f, (vec3.from(startAxis) - vec3.from(endAxis)).length, radius * 2.0f)
+		);
+
 		//addGraphicsCylinder(vec3.from(startAxis), vec3.from(endAxis), radius, wbody, vec3(0.3f, 1.f, 0.2f));
 
 		Phys.world.addEntity(wbody._as_hkpEntity);
@@ -317,7 +353,6 @@ final class Tank : NetObj, IVehicle {
 		).removeReference();
 
 		auto axis = hkVector4(1.0f, 0.0f, 0.0f);
-		//hkReal spinRate = -10.0f;
 		hkReal gain = 50.0f;
 
 		*resAction = hkpMotorAction(wbody, axis, 0.f, gain);
@@ -426,6 +461,7 @@ final class Tank : NetObj, IVehicle {
 		} else {
 			++_ticksAsleep;
 		}
+		updateMeshes();
 		Phys.world.unmarkForRead();
 	}
 
@@ -457,8 +493,10 @@ final class Tank : NetObj, IVehicle {
 		st.pos = vec3.from(_hullBody.getPosition());
 		st.vel = vec3.from(_hullBody.getLinearVelocity());
 		st.rot = _hullBody.getRotation();
-		st.angVel = vec3.from(_hullBody.getAngularVelocity());
+		//st.angVel = vec3.from(_hullBody.getAngularVelocity());
 		st.isActive = isActive();
+		st.leftEng = _leftVel;
+		st.rightEng = _rightVel;
 		Phys.world.unmarkForRead();
 	}
 	
@@ -467,7 +505,7 @@ final class Tank : NetObj, IVehicle {
 		_hullBody.setPosition(hkVector4(st.pos));
 		_hullBody.setRotation(st.rot);
 		_hullBody.setLinearVelocity(hkVector4(st.vel));
-		_hullBody.setAngularVelocity(hkVector4(st.angVel));
+		//_hullBody.setAngularVelocity(hkVector4(st.angVel));
 		
 		if (st.isActive) {
 			_hullBody.activate();
@@ -476,6 +514,8 @@ final class Tank : NetObj, IVehicle {
 			//_hullBody.deactivate();
 			_ticksAsleep = minTicksAsleep;
 		}
+
+		setEngineVelocity(st.leftEng, st.rightEng);
 
 		/+hkpEntity_cptr eptr = _hullBody._as_hkpEntity._impl;
 		/+Phys.world.findInitialContactPoints(
