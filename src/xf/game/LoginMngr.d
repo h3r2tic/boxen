@@ -15,8 +15,13 @@ private {
 }
 
 
-// Defined in xf.net.NetObjMngr
+// Managed by xf.net.NetObjMngr
 private extern (C) extern NetObj[] g_netObjects;
+
+version (Client) {
+	// Managed by xf.net.GameClient
+	private extern (C) extern playerId g_localPlayerId;
+}
 
 
 struct PlayerInfo {
@@ -74,11 +79,6 @@ bool nickLoggedIn(cstring nick) {
 
 bool playerLoggedIn(playerId id) {
 	return id < maxPlayers && PlayerInfo.loggedIn[id];
-}
-
-
-playerId localPlayerId() {
-	return _localPlayerId;
 }
 
 
@@ -155,12 +155,11 @@ private {
 	}
 
 
-	void handleLoginAccepted(LoginAccepted e) {
+	version (Client) void handleLoginAccepted(LoginAccepted e) {
 		log.info("It's time to kick ass and chew bubble gum!");
 		
 		// bind local wishes to the local player
-		Wish.defaultWishOrigin = e.pid;
-		_localPlayerId = e.pid;
+		g_localPlayerId = e.pid;
 
 		// TODO
 		//initInput();
@@ -192,7 +191,4 @@ private {
 			o.netObjScheduleForDeletion();
 		}
 	}
-
-
-	playerId _localPlayerId;
 }

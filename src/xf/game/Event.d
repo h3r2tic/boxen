@@ -70,6 +70,12 @@ void bsRead(T)(BitStreamReader* bs, T t) {
 }
 
 
+version (Client) {
+	// Managed by xf.net.GameClient
+	extern (C) extern playerId g_localPlayerId;
+}
+
+
 
 abstract class Event {
 	abstract void handle();
@@ -276,7 +282,9 @@ template _exposeEvent(_ThisType) {
 			this.tupleof[i] = a;
 		}
 		static if (is(typeof(this) : Wish)) {
-			wishOrigin = Wish.defaultWishOrigin;
+			version (Client) {
+				wishOrigin = g_localPlayerId;
+			}
 		}
 		return this;
 	}
@@ -378,7 +386,6 @@ class Wish : Event {
 	abstract void writeToStream(BitStreamWriter*);
 	
 	playerId		wishOrigin;
-	static playerId	defaultWishOrigin;
 	//uint			receptionTimeMillis;
 	tick			receptionTick;
 

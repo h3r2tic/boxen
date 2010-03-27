@@ -31,7 +31,7 @@ class GameClient : IGameComm {
 	const bswPrealloc		= 1024 * 1024;
 
 	// In bits per iteration   // TODO: make this per second
-	const playerWriteBudget	= 128;
+	const playerWriteBudget	= 128 * 1024 / 60;
 
 	// Can't overflow this amount
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
