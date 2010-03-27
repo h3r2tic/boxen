@@ -10,7 +10,9 @@ private {
 	import xf.boxen.Input;
 	import xf.boxen.model.IPlayerController;
 	import xf.boxen.model.ILevel;
+	import xf.boxen.Vehicle;
 	import Phys = xf.boxen.Phys;
+	import xf.havok.Havok;
 	import DebugDraw = xf.boxen.DebugDraw;
 
 	import xf.Common;
@@ -795,8 +797,8 @@ void updateGame() {
 
 version (Server) {
 	void createGameWorld() {
-		GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
-		GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
+		//GameObjMngr.createGameObj("PlayerController", vec3(2, 0, -3), 5);
+		//GameObjMngr.createGameObj("PlayerController", vec3(-2, 0, -3), 6);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 0.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 1.5, -6), NoAuthority);
 		GameObjMngr.createGameObj("DebrisObject", vec3(0, 2.5, -6), NoAuthority);
@@ -804,8 +806,9 @@ version (Server) {
 	}
 
 
-	GameObj[maxPlayers] _playerControllers;
-	playerId			_observedPlayer = playerId.max;
+	GameObj[maxPlayers] 	_playerControllers;
+	IVehicle[maxPlayers]	_controlledVehicle;
+	playerId				_observedPlayer = playerId.max;
 
 
 	void handlePlayerLogin(playerId pid) {
@@ -819,6 +822,10 @@ version (Server) {
 
 		_playerControllers[pid] = obj;
 	}
+}
+
+version (Client) {
+	IVehicle	_controlledVehicle;
 }
 
 
@@ -852,33 +859,164 @@ void handleInputWish(InputWish e) {
 
 	version (Server) {
 		auto ctrl = cast(IPlayerController)_playerControllers[pid];
+		auto vehicle = _controlledVehicle[pid];
 	} else {
 		auto ctrl = cast(IPlayerController)_playerController;
+		auto vehicle = _controlledVehicle;
 	}
 
-	float strafe = b2f(e.strafe);
-	float fwd = b2f(e.thrust);
+	if (vehicle is null) {
+		float strafe = b2f(e.strafe);
+		float fwd = b2f(e.thrust);
 
-	/+version (Client) Stdout.newline().newline();
-	Stdout.formatln(
-		"Applying input {} (lr:{}, ud:{}) to ctrl @ {} @ tick {}",
-		e.eventTargetTick,
-		strafe,
-		fwd,
-		ctrl.worldPosition,
-		timeHub.currentTick
-	);+/
+		/+version (Client) Stdout.newline().newline();
+		Stdout.formatln(
+			"Applying input {} (lr:{}, ud:{}) to ctrl @ {} @ tick {}",
+			e.eventTargetTick,
+			strafe,
+			fwd,
+			ctrl.worldPosition,
+			timeHub.currentTick
+		);+/
 
-	// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
-	float moveSpeed = 1.f;
-	ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
+		// writeln("ctrl position: ", pos.x, " ", pos.y, " ", pos.z)
+		float moveSpeed = 1.f;
+		ctrl.move(vec3(strafe * moveSpeed, 0, fwd * moveSpeed));
 
-	float rotSpeed = 10.f;
-	float yawRot = e.rot.x * timeHub.secondsPerTick();
-	float pitchRot = e.rot.y * timeHub.secondsPerTick();
-	ctrl.yawRotate(yawRot * rotSpeed);
-	ctrl.pitchRotate(pitchRot * rotSpeed);
+		float rotSpeed = 10.f;
+		float yawRot = e.rot.x * timeHub.secondsPerTick();
+		float pitchRot = e.rot.y * timeHub.secondsPerTick();
+		ctrl.yawRotate(yawRot * rotSpeed);
+		ctrl.pitchRotate(pitchRot * rotSpeed);
+
+		if (useAction) {
+			const float maxDist = 3.0f;
+
+			final rayFrom	= vec3.from(ctrl.worldPosition) + vec3.unitY * 1.5;
+			final rayTo		= rayFrom + ctrl.cameraRotation.xform(-vec3.unitZ) * maxDist;
+
+			Object hit;
+			
+			Phys.world.markForRead();
+			scope (success) Phys.world.unmarkForRead();
+
+			Phys.castRay(rayFrom, rayTo,
+				(hkpWorldObject wo, float dist, hkVector4*, float* earlyOut) {
+					void* ud;
+					if (
+							wo._impl
+						&&	(ud = cast(void*)wo.getUserData()) !is null
+						&&	ud !is cast(void*)cast(Object)ctrl
+					) {
+						*earlyOut = dist;
+						hit = cast(Object)ud;
+					}
+				}
+			);
+
+			if (hit) {
+				Stdout.formatln("\n\nHit a {}!\n", hit.classinfo.name);
+			}
+
+			version (Client) {
+				if (auto vehicle = cast(IVehicle)hit) {
+					EnterVehicleRequest((cast(GameObj)hit).id, -1).immediate();
+				}
+			}
+		}
+	} else {
+		if (isVehiclePilot(vehicle, pid)) {
+			if (e.action & e.Shoot) {
+				vehicle.shoot;
+			}
+
+			float fwd = 0.f;
+			float turn = 0.f;
+			
+			if (e.thrust > 0) {
+				fwd += 25.f;
+			} else if (e.thrust < 0) {
+				fwd -= 25.f;
+			}
+			
+			if (e.strafe > 0) {
+				turn += 25.f;
+			} else if (e.strafe < 0) {
+				turn -= 25.f;
+			}
+			
+			vehicle.move(turn, 0, fwd);
+			
+			float rotSpeed = 10.f;
+			float yawRot = e.rot.x * timeHub.secondsPerTick();
+			float pitchRot = e.rot.y * timeHub.secondsPerTick();
+			vehicle.yawRotate(yawRot * rotSpeed);
+			vehicle.pitchRotate(pitchRot * rotSpeed);
+		}
+	}
 }
+
+
+private void setVehiclePilot(IVehicle v, playerId pid) {
+	(cast(NetObj)v).setRealOwner(pid);
+}
+
+
+bool isVehiclePilot(IVehicle v, playerId pid) {
+	return v.getPlayerAtSeat(0) == pid;
+}
+
+
+version (Server) void handleEnterVehicleRequest(EnterVehicleRequest e) {
+	final playerId pid = e.wishOrigin;
+
+	printf("EnterVehicleRequest; pid=%d obj=%d seat=%d"\n, cast(int)pid, cast(int)e.obj, cast(int)e.seat);
+	
+	if (auto v = cast(IVehicle)getNetObj(e.obj)) {
+		//if (v.alive) {
+			final curV = _controlledVehicle[pid];
+			if (curV is v || curV is null) {
+				int seat = v.setPlayerAtSeat(pid, e.seat);
+				if (seat != -1) {
+					EnterVehicleOrder(pid, e.obj, cast(byte)seat).immediate;
+				} else {
+					printf("EnterVehicleRequest: seat occupied"\n);
+				}
+			} else {
+				printf("EnterVehicleRequest: invalid vehicle"\n);
+			}
+		/+} else {
+			printf("EnterVehicleRequest: the vehicle is destroyed"\n);
+		}+/
+	} else {
+		printf("EnterVehicleRequest: invalid obj id"\n);
+	}
+}
+
+
+// client- and server-side
+void handleEnterVehicleOrder(EnterVehicleOrder e) {
+	printf("EnterVehicleOrder"\n);
+	
+	final v = cast(IVehicle)getNetObj(e.obj);
+	v.setPlayerAtSeat(e.player, e.seat);
+
+	version (Server) {
+		_controlledVehicle[e.player] = v;
+	} else {
+		_controlledVehicle = v;
+	}
+
+	if (0 == e.seat) {
+		setVehiclePilot(v, e.player);
+	}
+
+	/+auto vehicle = cast(Vehicle)idToGameObj(e.obj);
+	playerData.camera.parent = vehicle.getSeatSgNode(e.seat);
+	playerData.controller.destroyPhysics();
+	playerData.controller.showGraphics(false);+/
+}
+
 
 
 class PlayerInputReader : InputReader {
@@ -1016,6 +1154,8 @@ class TestApp : GfxApp {
 			).start(netAddr, port));
 
 			server.receiveStateSnapshot = fn2dg(&NetObjMngr.receiveStateSnapshot);
+
+			EnterVehicleRequest.addHandler(fn2dg(&handleEnterVehicleRequest));
 		} else {
 			timeHub.addTracker(new QueueTrimmer);
 
@@ -1034,6 +1174,8 @@ class TestApp : GfxApp {
 
 			client.receiveStateSnapshot = fn2dg(&NetObjMngr.receiveStateSnapshot);
 		}
+
+		EnterVehicleOrder.addHandler(fn2dg(&handleEnterVehicleOrder));
 		
 		int playerNameId = 1;		// for further login requests when the name is already used
 		

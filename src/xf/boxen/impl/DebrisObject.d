@@ -259,13 +259,15 @@ final class DebrisObject : NetObj {
 	
 	void loadState(PosRotVelState* st) {
 		Phys.world.markForWrite();
+
+		_rigidBody.activate();
+		
 		_rigidBody.setPosition(hkVector4(st.pos));
 		_rigidBody.setRotation(st.rot);
 		_rigidBody.setLinearVelocity(hkVector4(st.vel));
 		_rigidBody.setAngularVelocity(hkVector4(st.angVel));
 		
 		if (st.isActive) {
-			_rigidBody.activate();
 			_ticksAsleep = 0;
 		} else {
 			//_rigidBody.deactivate();
