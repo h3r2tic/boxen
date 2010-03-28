@@ -75,15 +75,17 @@ class TestApp : GfxApp {
 		window.showCursor = false;
 		
 		// Create the effect from a cgfx file
-		
+
+		EffectCompilationOptions opts;
+		opts.useGeometryProgram = false;
 		effect = renderer.createEffect(
 			"sample",
-			EffectSource.filePath("sample.cgfx")
+			EffectSource.filePath("sample.cgfx"),
+			opts
 		);
 		
 		// Specialize the shader template
 
-		effect.useGeometryProgram = false;
 		effect.setArraySize("lights", 3);
 		effect.setUniformType("lights[0]", "PointLight");
 		effect.setUniformType("lights[1]", "PointLight");

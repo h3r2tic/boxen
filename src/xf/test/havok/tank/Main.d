@@ -219,12 +219,14 @@ class TestApp : GfxApp {
 		camera = new SimpleCamera(vec3(96, 60, 34), 0, 0, window.inputChannel);
 		camera.movementSpeed = vec3.one * 40.f;
 
+		EffectCompilationOptions opts;
+		opts.useGeometryProgram = false;
 		effect = renderer.createEffect(
 			"basic",
-			EffectSource.filePath("basic.cgfx")
+			EffectSource.filePath("basic.cgfx"),
+			opts
 		);
 		
-		effect.useGeometryProgram = false;
 		effect.compile();
 		
 		mat4 viewToClip = mat4.perspective(
@@ -690,6 +692,7 @@ void createBrickWall(hkpWorld world, int height, int length, hkVector4 position,
 		ray.m_from.y += 20.0f;
 		ray.m_to.y   -= 20.0f;
 
+		// had to remove it due to hkBind not supporting overloading, TODO
 		auto result = hkpWorldRayCastOutput();
 		world.castRay(ray, result);
 		posx.setInterpolate4(ray.m_from, ray.m_to, result.m_hitFraction);

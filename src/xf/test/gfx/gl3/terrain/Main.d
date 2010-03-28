@@ -159,13 +159,15 @@ class TestApp : GfxApp {
 			imgLoader.load(mediaDir ~ "terrain/detail.jpg"),
 			req
 		);
-		
+
+		EffectCompilationOptions opts;
+		opts.useGeometryProgram = false;
 		terrainEffect = renderer.createEffect(
 			"terrain",
-			EffectSource.filePath("terrain.cgfx")
+			EffectSource.filePath("terrain.cgfx"),
+			opts
 		);
 		
-		terrainEffect.useGeometryProgram = false;
 		terrainEffect.compile();
 		chunkData.effect = terrainEffect;
 		chunkData.renderer = renderer;

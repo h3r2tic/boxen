@@ -52,7 +52,7 @@ void main(char[][] args) {
 	
 	jobHub.addRepeatableJob({
 		if (serverSide) {
-			server.recvPacketsForTick(curTick, (playerId pid, BitStreamReader* bs, uint*) {
+			server.recvPacketsForTick(curTick, (playerId pid, tick, BitStreamReader* bs, uint*) {
 				uword a, b;
 				bool c;
 				bs.read(&a);
@@ -65,7 +65,7 @@ void main(char[][] args) {
 			});
 		} else {
 			if (client.connected) {
-				client.recvPacketsForTick(curTick, (playerId, BitStreamReader* bsr, uint*) {
+				client.recvPacketsForTick(curTick, (playerId, tick, BitStreamReader* bsr, uint*) {
 					return curTick;
 				});
 
