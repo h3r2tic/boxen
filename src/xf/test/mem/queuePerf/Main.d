@@ -16,7 +16,7 @@ void main() {
 		measure({
 			ChunkQueue!(int) q;
 			for (int x = 0; x < numTests / i; ++x) {
-				q ~= x;
+				q.pushBack(x);
 			}
 			q.clear();
 		}, 1, i, "ChunkQueue");

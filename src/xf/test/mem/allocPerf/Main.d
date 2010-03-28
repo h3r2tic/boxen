@@ -6,6 +6,7 @@ import xf.mem.ThreadChunkAllocator;
 import xf.mem.ChunkCache;
 import tango.core.Memory;
 import tango.stdc.stdlib : malloc, free;
+alias tango.util.log.Trace.Trace Trace;
 
 
 void main() {

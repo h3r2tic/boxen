@@ -5,7 +5,7 @@ private {
 	import xf.mem.Common;
 	import xf.mem.Log;
 	import tango.text.convert.Format;
-	import Trace = tango.core.tools.StackTrace;
+	//import Trace = tango.core.tools.StackTrace;
 	import tango.core.Thread;
 	static import tango.core.Exception;
 }

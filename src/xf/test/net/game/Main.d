@@ -118,9 +118,9 @@ void main(char[][] args) {
 			server.setWishMask(e.pid, null);
 		});
 		
-		JoinGame.addHandler((JoinGame e) {
+		/+JoinGame.addHandler((JoinGame e) {
 			server.setStateMask(e.wishOrigin, true);
-		});
+		});+/
 		
 		KickPlayer.addHandler((KickPlayer e) {
 			server.kickPlayer(e.pid);
@@ -142,7 +142,7 @@ void main(char[][] args) {
 		LoginAccepted.addHandler((LoginAccepted e) {
 			Stdout.formatln("Login accepted!");
 			client.setLocalPlayerId(e.pid);
-			JoinGame().immediate;		// ask the server for state snapshots
+			//JoinGame().immediate;		// ask the server for state snapshots
 		});
 	}
 	

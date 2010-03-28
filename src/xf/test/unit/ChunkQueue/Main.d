@@ -14,8 +14,8 @@ private {
 void main() {
 	(new Thread({
 		QueueRegistry.register(&queue);
-		queue ~= 1.0;
-		queue ~= 2.0;
+		queue.pushBack(1.0);
+		queue.pushBack(2.0);
 		Thread.sleep(1);
 		Stdout.formatln("exiting");
 		Stdout.flush();
@@ -23,8 +23,8 @@ void main() {
 	
 	(new Thread({
 		QueueRegistry.register(&queue);
-		queue ~= 3.0;
-		queue ~= 4.0;
+		queue.pushBack(3.0);
+		queue.pushBack(4.0);
 		Thread.sleep(1.1);
 		Stdout.formatln("exiting");
 		Stdout.flush();
@@ -36,8 +36,8 @@ void main() {
 	Stdout.flush();
 
 	QueueRegistry.register(&queue);
-	queue ~= 5.0;
-	queue ~= 6.0;
+	queue.pushBack(5.0);
+	queue.pushBack(6.0);
 	
 	foreach (thi, thq; QueueRegistry.each) {
 		Stdout.formatln("items for thread {}", thi);
