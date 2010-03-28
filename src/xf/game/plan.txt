@@ -51,6 +51,8 @@
 	- Turret
 	- Shooting
 
+* Handle objects going past the boundaries of the Havok world. Right now they cause crashes
+
 * Revive projectiles
 * Revive explosions
 * Revive the physical part of terrain

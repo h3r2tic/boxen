@@ -11,7 +11,7 @@ private {
 	import xf.utils.BitStream;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
-	import xf.omg.core.Misc : rndint, saturate;
+	import xf.omg.core.Misc : rndint, saturate, min;
 
 	import xf.boxen.Rendering;
 	import DebugDraw = xf.boxen.DebugDraw;
@@ -42,6 +42,9 @@ float compareQuats(quat q0, quat q1) {
 }
 
 
+enum : ubyte { minTicksAsleep = 2 }
+
+
 struct PosRotVelState {
 	vec3		pos = vec3.zero;
 	vec3		vel	= vec3.zero;
@@ -49,7 +52,7 @@ struct PosRotVelState {
 	//vec3		angVel = vec3.zero;
 	float		leftEng = 0.0f;
 	float		rightEng = 0.0f;
-	bool		isActive = false;
+	ubyte		ticksAsleep = 0;
 	float[10]	wheelOffsets = 0.5f;		// 0..1
 
 	void serialize(BitStreamWriter* bs) {
@@ -68,7 +71,7 @@ struct PosRotVelState {
 		bs.write(angVel.z);+/
 		bs.write(leftEng);
 		bs.write(rightEng);
-		bs.write(isActive);
+		bs.write(ticksAsleep, cast(ubyte)0, minTicksAsleep);
 		foreach (o; wheelOffsets) {
 			assert (o >= 0.0f && o <= 1.0f);
 			ubyte x = cast(ubyte)rndint(o * 255.0f);
@@ -92,7 +95,7 @@ struct PosRotVelState {
 		bs.read(&angVel.z);+/
 		bs.read(&leftEng);
 		bs.read(&rightEng);
-		bs.read(&isActive);
+		bs.read(&ticksAsleep, cast(ubyte)0, minTicksAsleep);
 		foreach (ref o; wheelOffsets) {
 			ubyte x;
 			bs.read(&x);
@@ -108,7 +111,10 @@ struct PosRotVelState {
 		applyQuatDiff(rot, a.rot, b.rot, t);
 		leftEng += (b.leftEng - a.leftEng) * t;
 		rightEng += (b.rightEng - a.rightEng) * t;
-		isActive = b.isActive;
+
+		// TODO: this good?
+		ticksAsleep = 0;
+
 		foreach (i, ref o; wheelOffsets) {
 			o += (b.wheelOffsets[i] - a.wheelOffsets[i]) * t;
 		}
@@ -121,8 +127,8 @@ struct PosRotVelState {
 			+ compareQuats(a.rot, b.rot)
 			//+ (a.angVel - b.angVel).length * 0.2f
 			+ abs(a.leftEng - b.leftEng) * 0.2f
-			+ abs(a.rightEng - b.rightEng) * 0.2f
-			+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
+			+ abs(a.rightEng - b.rightEng) * 0.2f;
+			//+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
 	}
 
 	char[] toString() {
@@ -501,9 +507,7 @@ final class Tank : NetObj, IVehicle {
 		return _ticksAsleep < minTicksAsleep;
 	}
 
-	
 
-	enum {		minTicksAsleep = 2 }
 	int			_ticksAsleep = 0;
 	CoordSys	_coordSys = CoordSys.identity;
 
@@ -521,11 +525,12 @@ final class Tank : NetObj, IVehicle {
 
 	void storeState(PosRotVelState* st) {
 		Phys.world.markForRead();
+
 		st.pos = vec3.from(_hullBody.getPosition());
 		st.vel = vec3.from(_hullBody.getLinearVelocity());
 		st.rot = _hullBody.getRotation();
 		//st.angVel = vec3.from(_hullBody.getAngularVelocity());
-		st.isActive = isActive();
+		st.ticksAsleep = cast(ubyte)min(minTicksAsleep, _ticksAsleep);
 		st.leftEng = _leftVel;
 		st.rightEng = _rightVel;
 		
@@ -582,11 +587,10 @@ final class Tank : NetObj, IVehicle {
 			w.setRotation(wheelCS.rotation);
 		}
 		
-		if (st.isActive) {
-			_ticksAsleep = 0;
-		} else {
-			//_hullBody.deactivate();
-			_ticksAsleep = minTicksAsleep;
+		_ticksAsleep = st.ticksAsleep;
+
+		if (!isActive) {
+			_hullBody.deactivate();
 		}
 
 		setEngineVelocity(st.leftEng, st.rightEng);

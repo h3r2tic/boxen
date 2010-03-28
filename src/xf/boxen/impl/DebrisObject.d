@@ -9,6 +9,7 @@ private {
 	import xf.utils.BitStream;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.core.Misc : min;
 
 	import xf.boxen.Rendering;
 	import DebugDraw = xf.boxen.DebugDraw;
@@ -39,12 +40,15 @@ float compareQuats(quat q0, quat q1) {
 }
 
 
+enum : ubyte { minTicksAsleep = 2 }
+
+
 struct PosRotVelState {
 	vec3	pos = vec3.zero;
 	vec3	vel	= vec3.zero;
 	quat	rot = quat.identity;
 	vec3	angVel = vec3.zero;
-	bool	isActive = false;
+	ubyte	ticksAsleep = 0;
 
 	void serialize(BitStreamWriter* bs) {
 		bs.write(pos.x);
@@ -60,7 +64,7 @@ struct PosRotVelState {
 		bs.write(angVel.x);
 		bs.write(angVel.y);
 		bs.write(angVel.z);
-		bs.write(isActive);
+		bs.write(ticksAsleep, cast(ubyte)0, minTicksAsleep);
 	}
 	
 	void unserialize(BitStreamReader* bs) {
@@ -77,7 +81,7 @@ struct PosRotVelState {
 		bs.read(&angVel.x);
 		bs.read(&angVel.y);
 		bs.read(&angVel.z);
-		bs.read(&isActive);
+		bs.read(&ticksAsleep, cast(ubyte)0, minTicksAsleep);
 	}
 
 	void applyDiff(PosRotVelState* a, PosRotVelState* b, float t) {
@@ -85,7 +89,9 @@ struct PosRotVelState {
 		vel += (b.vel - a.vel) * t;
 		angVel += (b.angVel - a.angVel) * t;
 		applyQuatDiff(rot, a.rot, b.rot, t);
-		isActive = b.isActive;
+
+		// TODO: this good?
+		ticksAsleep = 0;
 	}
 
 	/+void applyDiff(PosRotVelState* a, PosRotVelState* b, float t) {
@@ -114,8 +120,8 @@ struct PosRotVelState {
 			(a.pos - b.pos).length
 			+ (a.vel - b.vel).length * 0.3f
 			+ compareQuats(a.rot, b.rot)
-			+ (a.angVel - b.angVel).length * 0.2f
-			+ ((a.isActive != b.isActive) ? 0.1f : 0.0f);
+			+ (a.angVel - b.angVel).length * 0.2f;
+//			+ ((a.ticksAsleep != b.ticksAsleep) ? 0.1f : 0.0f);
 	}
 
 	char[] toString() {
@@ -231,7 +237,6 @@ final class DebrisObject : NetObj {
 
 	
 
-	enum {		minTicksAsleep = 2 }
 	int			_ticksAsleep = 0;
 	CoordSys	_coordSys = CoordSys.identity;
 
@@ -253,7 +258,7 @@ final class DebrisObject : NetObj {
 		st.vel = vec3.from(_rigidBody.getLinearVelocity());
 		st.rot = _rigidBody.getRotation();
 		st.angVel = vec3.from(_rigidBody.getAngularVelocity());
-		st.isActive = isActive();
+		st.ticksAsleep = cast(ubyte)min(minTicksAsleep, _ticksAsleep);
 		Phys.world.unmarkForRead();
 	}
 	
@@ -266,12 +271,11 @@ final class DebrisObject : NetObj {
 		_rigidBody.setRotation(st.rot);
 		_rigidBody.setLinearVelocity(hkVector4(st.vel));
 		_rigidBody.setAngularVelocity(hkVector4(st.angVel));
-		
-		if (st.isActive) {
-			_ticksAsleep = 0;
-		} else {
-			//_rigidBody.deactivate();
-			_ticksAsleep = minTicksAsleep;
+
+		_ticksAsleep = st.ticksAsleep;
+
+		if (!isActive) {
+			_rigidBody.deactivate();
 		}
 
 		/+hkpEntity_cptr eptr = _rigidBody._as_hkpEntity._impl;
