@@ -70,7 +70,7 @@ static:
 // Defined in xf.net.GameClient
 version (Client) extern (C) extern {
 	playerId	g_localPlayerId;
-	tick		g_lastTickRecvd;
+	//tick		g_lastTickRecvd;
 }
 
 
@@ -620,7 +620,7 @@ float applyObjectState(
 }
 
 
-float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
+float receiveStateSnapshot(tick curTick, tick tickRecvd, playerId pid, BitStreamReader* bs) {
 	assert (!bs.isEmpty);
 	static assert (objId.sizeof == ushort.sizeof);
 	objId id;
@@ -641,12 +641,6 @@ float receiveStateSnapshot(tick curTick, playerId pid, BitStreamReader* bs) {
 	dg.funcptr = stateInfo[stateI].unserialize;
 	dg.ptr = stateMem;
 	dg(bs);
-
-	version (Client) {
-		tick tickRecvd = g_lastTickRecvd;
-	} else {
-		tick tickRecvd = curTick;
-	}
 
 	bool stored = LastPlayerSnapshotData.addSnapshot(pid, id, stateI, tickRecvd, stateMem);
 	if (!stored) {

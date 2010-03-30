@@ -81,7 +81,7 @@ void initialize(IRenderer r, Window window) {
 	effect.compile();
 	
 	mat4 viewToClip = mat4.perspective(
-		65.0f,		// fov
+		60.0f,		// fov
 		cast(float)window.width / window.height,	// aspect
 		0.5f,		// near
 		1000.0f		// far

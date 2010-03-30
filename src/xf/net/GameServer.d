@@ -30,7 +30,7 @@ class GameServer : IGameComm {
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
 
 
-	float delegate(tick, playerId, BitStreamReader*) receiveStateSnapshot;
+	float delegate(tick, tick, playerId, BitStreamReader*) receiveStateSnapshot;
 
 
 	
@@ -185,7 +185,12 @@ class GameServer : IGameComm {
 
 		void _receiveStateSnapshot(playerId pid, BitStreamReader* bsr) {
 			assert (this.receiveStateSnapshot !is null);
-			receiveStateSnapshot(timeHub.currentTick, pid, bsr);
+			receiveStateSnapshot(
+				timeHub.currentTick,
+				_playerData.lastTickRecvd[pid],
+				pid,
+				bsr
+			);
 		}
 	}
 

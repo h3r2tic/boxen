@@ -338,7 +338,7 @@ final class Tank : NetObj, IVehicle {
 		info.m_position = hkVector4(relPos);
 		info.m_motionType  = MotionType.MOTION_BOX_INERTIA;
 		info.m_collisionFilterInfo = filterInfo;
-		info.m_restitution = 0.0f;
+		info.m_restitution = 0.1f;
 		info.m_friction = 3.0f;
 		info.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_MOVING;
 
@@ -407,8 +407,8 @@ final class Tank : NetObj, IVehicle {
 
 	// implements IVehicle
 	void move(float x, float y, float z) {
-		float left = z - x;
-		float right = z + x;
+		float left = z + x;
+		float right = z - x;
 
 		setEngineVelocity(left, right);
 	}
@@ -448,7 +448,7 @@ final class Tank : NetObj, IVehicle {
 		_leftVel = left;
 		_rightVel = right;
 
-		const float mult = 0.65f;
+		const float mult = -0.65f;
 
 		Phys.world.markForWrite();
 

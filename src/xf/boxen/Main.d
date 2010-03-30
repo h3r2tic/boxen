@@ -817,7 +817,6 @@ version (Server) {
 
 
 	GameObj[maxPlayers] 	_playerControllers;
-	IVehicle[maxPlayers]	_controlledVehicle;
 	playerId				_observedPlayer = playerId.max;
 
 
@@ -834,9 +833,8 @@ version (Server) {
 	}
 }
 
-version (Client) {
-	IVehicle	_controlledVehicle;
-}
+IVehicle[maxPlayers]	_controlledVehicle;
+
 
 
 void handleInputWish(InputWish e) {
@@ -869,12 +867,11 @@ void handleInputWish(InputWish e) {
 
 	version (Server) {
 		auto ctrl = cast(IPlayerController)_playerControllers[pid];
-		auto vehicle = _controlledVehicle[pid];
 	} else {
 		auto ctrl = cast(IPlayerController)_playerController;
-		auto vehicle = _controlledVehicle;
-		assert (pid == g_localPlayerId);
 	}
+
+	auto vehicle = _controlledVehicle[pid];
 
 	if (vehicle is null) {
 		float strafe = b2f(e.strafe);
@@ -983,11 +980,7 @@ bool isVehiclePilot(IVehicle v, playerId pid) {
 
 
 private void leaveVehicle(playerId pid, vec3 pos) {
-	version (Server) {
-		final v = _controlledVehicle[pid];
-	} else {
-		final v = _controlledVehicle;
-	}
+	final v = _controlledVehicle[pid];
 	
 	if (v !is null) {
 		if (pid == v.getPlayerAtSeat(0)) {
@@ -999,11 +992,7 @@ private void leaveVehicle(playerId pid, vec3 pos) {
 		pd.currentVehicle = null;
 		pd.camera.parent = pd.controller;+/
 
-		version (Server) {
-			_controlledVehicle[pid] = null;
-		} else if (g_localPlayerId == pid) {
-			_controlledVehicle = null;
-		}
+		_controlledVehicle[pid] = null;
 	}
 }
 
@@ -1057,13 +1046,7 @@ void handleEnterVehicleOrder(EnterVehicleOrder e) {
 	final v = cast(IVehicle)getNetObj(e.obj);
 	v.setPlayerAtSeat(e.player, e.seat);
 
-	version (Server) {
-		_controlledVehicle[e.player] = v;
-	} else {
-		if (g_localPlayerId == e.player) {
-			_controlledVehicle = v;
-		}
-	}
+	_controlledVehicle[e.player] = v;
 
 	if (0 == e.seat) {
 		setVehiclePilot(v, e.player);
@@ -1312,6 +1295,8 @@ class TestApp : GfxApp {
 
 
 	override void render() {
+		version (Client) if (!client.connectedAndReady) return;
+		
 		final renderList = renderer.createRenderList();
 		assert (renderList !is null);
 		scope (success) renderer.disposeRenderList(renderList);
@@ -1358,17 +1343,29 @@ class TestApp : GfxApp {
 				_observedPlayer != playerId.max
 					? cast(IPlayerController)_playerControllers[_observedPlayer]
 					: null;
+			final observedVehicle =
+				_observedPlayer != playerId.max
+				? cast(NetObj)_controlledVehicle[_observedPlayer]
+				: null;
 		} else {
 			final observedCtrl = cast(IPlayerController)_playerController;
+			final observedVehicle = cast(NetObj)_controlledVehicle[g_localPlayerId];
 		}
 
-		if (observedCtrl !is null) {
+		auto cameraCS = CoordSys.identity;
+
+		if (observedVehicle !is null) {
+			final vehCS = CoordSys(observedVehicle.worldPosition, observedVehicle.worldRotation);
+			vehCS.rotation.x = 0.f;
+			vehCS.rotation.z = 0.f;
+			vehCS.rotation.normalize();
+			cameraCS = CoordSys(vec3fi[0, 4, 7], quat.xRotation(-20)) in vehCS;
+		} else if (observedCtrl !is null) {
 			final ctrlCS = CoordSys(observedCtrl.worldPosition, observedCtrl.cameraRotation);
-			final offCamCS = CoordSys(vec3fi[0, 2.2, 2.2], quat.identity) in ctrlCS;
-			DebugDraw.setWorldToView(offCamCS.inverse.toMatrix);
-		} else {
-			DebugDraw.setWorldToView(mat4.identity);
+			cameraCS = CoordSys(vec3fi[0, 2.2, 2.2], quat.identity) in ctrlCS;
 		}
+
+		DebugDraw.setWorldToView(cameraCS.inverse.toMatrix);
 
 		renderList.sort();
 		renderer.framebuffer.settings.clearColorValue[0] = vec4(0.1, 0.1, 0.1, 1.0);
