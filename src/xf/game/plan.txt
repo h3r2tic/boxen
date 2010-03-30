@@ -53,6 +53,9 @@
 
 * Handle objects going past the boundaries of the Havok world. Right now they cause crashes
 
+* Seems like there's a bug in auth touch tracking as objects long not touched by a player seem to be found as touching
+* Also, there's a bug with deactivation where a peer tells another that something should deactivate, while the other peer tells it to activate and the activation/deactivation flickers, because in Havok, deactivation affects the whole island, not just an individual object
+
 * Revive projectiles
 * Revive explosions
 * Revive the physical part of terrain

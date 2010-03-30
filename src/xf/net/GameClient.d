@@ -37,7 +37,7 @@ class GameClient : IGameComm {
 	const playerWriteBudgetMax	= playerWriteBudget * 5;
 
 
-	float delegate(tick, playerId, BitStreamReader*) receiveStateSnapshot;
+	float delegate(tick, tick, playerId, BitStreamReader*) receiveStateSnapshot;
 
 	
 	this (LowLevelClient comm) {
@@ -73,7 +73,7 @@ class GameClient : IGameComm {
 
 	private void _receiveStateSnapshot(playerId pid, BitStreamReader* bsr) {
 		assert (this.receiveStateSnapshot !is null);
-		float err = receiveStateSnapshot(timeHub.currentTick, pid, bsr);
+		float err = receiveStateSnapshot(timeHub.currentTick, g_lastTickRecvd, pid, bsr);
 		// TODO: sum the error and do stuff when it's > allowed :P
 	}
 

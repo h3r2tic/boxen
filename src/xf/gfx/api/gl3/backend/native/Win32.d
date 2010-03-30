@@ -249,7 +249,7 @@ class GLWindow : GLContext {
 				case WM_KEYDOWN:
 				case WM_SYSKEYUP:
 				case WM_KEYUP: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						KeySym keysym;
 						if (Input.translateKey(wparam, lparam, keyDown, keysym)) {
 							//writefln("key hit. down = ", keyDown);
@@ -263,21 +263,21 @@ class GLWindow : GLContext {
 				case WM_ERASEBKGND: return 0;
 
 				case WM_LBUTTONDOWN: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						SetCapture(_hwnd);
 						Input.mouseButtonDown(_channel, MouseInput.Button.Left);
 					}
 				} break;
 				
 				case WM_RBUTTONDOWN: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						SetCapture(_hwnd);
 						Input.mouseButtonDown(_channel, MouseInput.Button.Right);
 					}
 				} break;
 				
 				case WM_MBUTTONDOWN: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						SetCapture(_hwnd);
 						Input.mouseButtonDown(_channel, MouseInput.Button.Middle);
 					}
@@ -285,21 +285,21 @@ class GLWindow : GLContext {
 
 
 				case WM_LBUTTONUP: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						if (!_interceptCursor) ReleaseCapture();
 						Input.mouseButtonUp(_channel, MouseInput.Button.Left);
 					}
 				} break;
 
 				case WM_RBUTTONUP: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						if (!_interceptCursor) ReleaseCapture();
 						Input.mouseButtonUp(_channel, MouseInput.Button.Right);
 					}
 				} break;
 
 				case WM_MBUTTONUP: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						if (!_interceptCursor) ReleaseCapture();
 						Input.mouseButtonUp(_channel, MouseInput.Button.Middle);
 					}
@@ -307,7 +307,7 @@ class GLWindow : GLContext {
 
 
 				case WM_MOUSEMOVE: {
-					if (_channel !is null) {
+					if (_channel !is null && _hasFocus) {
 						// signed position
 						int curX = cast(int)cast(short)LOWORD(lparam);
 						int curY = cast(int)cast(short)HIWORD(lparam);
@@ -445,12 +445,16 @@ class GLWindow : GLContext {
 					if (_channel !is null) {
 						_channel << WindowEvent(WindowEvent.Type.GainedFocus);
 					}
+					_hasFocus = true;
+					forceShowCursor(_showingCursor);
 				} break;
 				
 				case WM_KILLFOCUS: {
 					if (_channel !is null) {
 						_channel << WindowEvent(WindowEvent.Type.LostFocus);
 					}
+					_hasFocus = false;
+					forceShowCursor(true);
 				} break;
 				
 				case WM_QUIT:
@@ -475,10 +479,26 @@ class GLWindow : GLContext {
 
 	GLWindow showCursor(bool s) {
 		if (_showingCursor != s) {
-			ShowCursor(s);
+			forceShowCursor(s);
 			_showingCursor = s;
 		}
 		return this;
+	}
+
+
+	private int cursorCtr = 0;
+	private void forceShowCursor(bool b) {
+		if (b) {
+			while (cursorCtr < 0) {
+				ShowCursor(1);
+				++cursorCtr;
+			}
+		} else {
+			while (cursorCtr >= 0) {
+				ShowCursor(0);
+				--cursorCtr;
+			}
+		}
 	}
 
 	
@@ -930,6 +950,7 @@ class GLWindow : GLContext {
 		int		_ypos			= CW_USEDEFAULT;
 		bool	_showingCursor	= true;
 		uint	_swapInterval	= 1;
+		bool	_hasFocus		= false;
 	}
 }
 

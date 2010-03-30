@@ -37,6 +37,7 @@ private {
 		ci.m_position = hkVector4(0.0f, -2.0f, 0.0f);
 		ci.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_FIXED;
 		ci.m_friction = 0.9f;
+		ci.m_restitution = 0.1f;
 
 		auto rb = hkpRigidBody(ci);
 		//rb.setUserData(cast(size_t)cast(void*)g_tank);

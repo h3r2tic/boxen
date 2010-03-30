@@ -183,7 +183,7 @@ final class DebrisObject : NetObj {
 		boxInfo.m_solverDeactivation = SolverDeactivation.SOLVER_DEACTIVATION_MEDIUM;
 		boxInfo.m_shape = box._as_hkpShape;
 		boxInfo.m_qualityType = hkpCollidableQualityType.HK_COLLIDABLE_QUALITY_CRITICAL;
-		boxInfo.m_restitution = 0.1f;
+		boxInfo.m_restitution = 0.3f;
 		boxInfo.m_friction = 0.9f;
 		boxInfo.m_motionType = MotionType.MOTION_BOX_INERTIA;
 		boxInfo.m_position = hkVector4(off);
