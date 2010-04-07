@@ -39,12 +39,6 @@
 			the comparisons of the last stored states are performed against the clients'
 			states for that very tick
 			
-~ Implement the new time sync algorithm
-	+ Revive the old time sync
-	- Implement the new one
-	- Perform enet servicing in a separate thread to get precise reception times
-
-
 ~ Revive tanks
 	+ Movement
 	- Proper mesh
@@ -62,4 +56,10 @@
 * Move to programming the editor
 
 - Visualize networking memory and id usage
-	* will wait for Hybrid and graphing
+-> will wait for Hybrid and graphing
+
+- Implement the new time sync algorithm
+-> will wait for Hybrid and graphing
+	+ Revive the old time sync
+	- Perform enet servicing in a separate thread to get precise reception times
+	- Implement the new one

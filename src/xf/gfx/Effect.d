@@ -44,7 +44,7 @@ enum ParamBaseType : ushort {
 
 
 struct EffectCompilationOptions {
-	bool useGeometryProgram = true;
+	bool useGeometryProgram = false;
 }
 
 
