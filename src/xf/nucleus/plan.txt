@@ -1,0 +1,111 @@
+* remove ref counting of vertex buffers from gfx.Effect
+* have KernelParamInterface return uniform/varying param data (data from the multi arrays,
+	just packed together) plus a pointer to a pointer to the storage. so e.g. if the param
+	is a float, the param interface must expose float**, so that the user of the param
+	interface may set the pointer to the data that will be used by the effect
+* it should basically yield param indices fron names
+	-> bindings/connections of structure data to effect params, regardless of the names
+		in the effect
+	-> even if the user connects structure data directly to an input channel of some quark,
+		the kernel compiler may decide to route it through conversion quark(s) first
+	-> just one index per param - duplicates must be reduced in the compilation step
+
+
+per-object material/structure props might be needed
+undecided how to handle these; either by creating MaterialData per object or by having
+	special params that are stored in the object. former harder to update when inherited
+	material changes, latter introduce more mess
+could go via manually defining the per-object params for materials and structure,
+	specifying their defaults from within the editor, creating the default vals per object
+	and having reflection data for the object. don't allow these to be created
+	by the renderers, can then hold just one value shared between EffectInstances
+
+
+params can be sourced from the material itself or from MaterialData (material instance).
+	decided upon renderable compilation.
+
+
+MeshAsset / LoaderMesh loads the data in the form of vec3[] arrays, etc
+MeshStructureData creates and stores gfx-based VertexBuffers and attribs
+MeshStructureData connected to Renderables upon compilation, the pointers created for
+	EffectInstances connected to the internal storage in MeshStructureData
+	* for varyings - one ptr for the vb, another for the attrib def, thus vb can be shared
+
+
+----
+
+~	change the gfx EffectInstance not to locally store params but have pointers
+	to them instead
+	+ uniforms
+	- varyings
+	-> this will allow their storage in Renderables, however the old tests will be broken
+		-> can create a function to alloc and bind default storage to revive them
+	* for now, screw updating of varyings. can later do some fancy shite if it's needed
+
+-	implement MeshStructure
+	- creation of uniforms, vertex buffers and attribs
+	- binding of params to KernelDataInterface
+	- acquisition of stuff from the assets / xf.loader
+	* no meta info yet
+
+-	hardcode VSD and test the hacked up Kernel-based rendering
+
+-	fix VSD, but without any culling for now
+	* just render everything in the scene
+
+= 13
+
+-	implement kernel graphs
+	- adding, removing, substituting nodes
+	- node connections with manual and automatic data flow
+	- topological sorting with peeling/layers
+	- pluggable simplification ( node removal, flow trimming )
+
+= 15
+
+-	semantic type system
+
+-	automatic conversions
+
+= 17
+
+-	revive the kernel/quark parser
+	* only for Cg
+
+= 18
+
+-	create facades for structure, material and light kernels
+	-	also the ability to automatically connect them
+		* param names must match
+
+-	light kernel instantiation (in the Forward renderer)
+
+-	kernel graph flattening (composite kernels -> quarks)
+
+= 19
+
+-	quark graph codegen into Cg
+
+= 22
+
+-	heavy and ugly CPU quarks for post-proc and the pipeline
+	* no fancy runtime fixups
+	* no lazy execution
+	* well defined resource ref counting
+	* rich introspection
+
+= 26
+
+-	editor
+
+= 1
+
+-	examples
+	* deferred rendering
+	* recursive rendering
+
+= 21
+
+-	thesis
+
+-	party hard

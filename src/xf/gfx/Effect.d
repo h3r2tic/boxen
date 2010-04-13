@@ -72,6 +72,17 @@ template MParamGroupUtils() {
 		
 		return -1;
 	}
+
+
+	bool isUniformStorageAllocated(void** ptrs) {
+		uword num = params.length;
+		while (num--) {
+			if (null == *ptrs++) {
+				return false;
+			}
+		}
+		return true;
+	}
 }
 
 
@@ -132,7 +143,7 @@ template MUniformParamGroupInstance() {
 			}
 			
 			*cast(T*)(
-				getUniformsDataPtr() + up.params.dataSlice[i].offset
+				getUniformPtrsDataPtr()[i]
 			) = value;
 			
 			return true;
@@ -202,18 +213,23 @@ abstract class Effect {
 	abstract void bind();
 	abstract void bindUniformBuffer(int, Buffer);
 	
-	size_t	uniformDataSize;
+	size_t	uniformPtrsDataSize;
 	size_t	instanceDataSize;
 	size_t	varyingParamsOffset;
 	size_t	varyingParamsDirtyOffset;
 	u32		renderOrdinal;
+
+	struct SortingKey {
+		u16	index;
+		i16	offset;
+	}
 	
-	// Each sorting key is a uword. Offsets are from efInst.getUniformsDataPtr.
+	// Each sorting key is a uword.
 	// Allocated via mainHeap; TODO: free it somewhere
-	ptrdiff_t[]	instanceSortingKeyOffsets;
+	SortingKey[] instanceSortingKeys;
 	
 	invariant {
-		assert (uniformDataSize <= instanceDataSize);
+		assert (uniformPtrsDataSize <= instanceDataSize);
 	}
  	
 	protected {
@@ -235,18 +251,26 @@ abstract class Effect {
 					++numKeys;
 				}
 			}
+
+			final keyData = mainHeap.allocRaw(SortingKey.sizeof * numKeys);
 			
-			instanceSortingKeyOffsets = (cast(ptrdiff_t*)
-				mainHeap.allocRaw(ptrdiff_t.sizeof * numKeys))[0..numKeys];
+			instanceSortingKeys = (cast(SortingKey*)keyData)[0..numKeys];
 
 			uword keyI = 0;
 			for (uword i = 0; i < len; ++i) {
 				if (unif.typeInfo[i] is typeid(Texture)) {
-					instanceSortingKeyOffsets[keyI] =
-						unif.dataSlice[i].offset +
+					assert (i <= u16.max);
+					ptrdiff_t off = 
+						//unif.dataSlice[i].offset +
 						Texture.init._resHandle.offsetof +
 						ResourceHandle.init.id.offsetof;
-						
+					assert (off >= i16.min && off <= i16.max);
+					
+					instanceSortingKeys[keyI] =
+						SortingKey(
+							cast(u16)i,
+							cast(i16)off
+						);
 					++keyI;
 				}
 			}
@@ -318,9 +342,9 @@ abstract class Effect {
 
 	alias effectUniformParams getUniformParamGroup;
 
-	void* uniformData;
-	void* getUniformsDataPtr() {
-		return uniformData;
+	void** uniformPtrsData;
+	void** getUniformPtrsDataPtr() {
+		return uniformPtrsData;
 	}
 	
 	mixin MUniformParamGroupInstance;
@@ -349,6 +373,12 @@ abstract class Effect {
 		error("Varying named '{}' doesn't exist.", name);
 		assert(false);
 	}
+
+
+	bool isUniformStorageAllocated() {
+		return effectUniformParams.isUniformStorageAllocated(uniformPtrsData);
+	}
+	
 	
 	public {
 		// reserved for use in a Renderer
@@ -393,8 +423,12 @@ struct EffectInstanceImpl {
 		return _proto.uniformParams();
 	}
 
-	void* getUniformsDataPtr() {
-		return cast(void*)this + EffectInstanceImpl.sizeof;
+	void** getUniformPtrsDataPtr() {
+		return cast(void**)(cast(void*)this + EffectInstanceImpl.sizeof);
+	}
+
+	bool isUniformStorageAllocated() {
+		return _proto.uniformParams.isUniformStorageAllocated(getUniformPtrsDataPtr);
 	}
 	
 	mixin MUniformParamGroupInstance;
@@ -528,11 +562,11 @@ struct EffectSource {
 
 
 interface IEffectMngr {
-	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts);
+	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts = EffectCompilationOptions.init);
 	EffectInstance instantiateEffect(Effect effect);
 	Effect getEffect(EffectInstanceHandle);
 	bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);
-	void* getUniformsDataPtr(EffectInstanceHandle);
+	void** getUniformPtrsDataPtr(EffectInstanceHandle);
 	VaryingParamData* getVaryingParamDataPtr(EffectInstanceHandle);
 	size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle);
 	u32 renderOrdinal(EffectInstanceHandle);
@@ -549,10 +583,10 @@ struct EffectInstance {
 		return getEffect().uniformParams();
 	}
 
-	void* getUniformsDataPtr() {
+	void** getUniformPtrsDataPtr() {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
-		return (cast(IEffectMngr)_resMngr).getUniformsDataPtr(_resHandle);
+		return (cast(IEffectMngr)_resMngr).getUniformPtrsDataPtr(_resHandle);
 	}
 	
 	mixin MUniformParamGroupInstance;

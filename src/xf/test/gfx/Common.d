@@ -10,7 +10,7 @@ private {
 		xf.gfx.Mesh,
 		xf.gfx.Effect,
 		xf.gfx.IRenderer;
-	
+			
 	import
 		xf.omg.core.LinearAlgebra,
 		xf.omg.core.Misc,
@@ -36,6 +36,10 @@ private {
 
 	import Path = tango.io.Path;
 	import Unicode = tango.text.Unicode;
+}
+
+public {
+	import EffectHelper = xf.gfx.EffectHelper;
 }
 
 
@@ -177,7 +181,6 @@ struct TextureMatcher {
 }
 
 
-
 // FIXME: the model/asset loading functions will need to be refactored
 
 
@@ -291,6 +294,7 @@ Mesh[] loadHsfModel(
 			// Instantiate the effect and initialize its uniforms
 
 			final efInst = renderer.instantiateEffect(effect);
+			EffectHelper.allocateDefaultUniformStorage(efInst);
 			
 			efInst.setUniform("lights[0].color",
 				vec4(0.1f, 0.3f, 1.0f) * 1.0f
@@ -658,6 +662,7 @@ Mesh[] loadModel(
 			// Instantiate the effect and initialize its uniforms
 
 			final efInst = renderer.instantiateEffect(effect);
+			EffectHelper.allocateDefaultUniformStorage(efInst);
 			
 			efInst.setUniform("lights[0].color",
 				vec4(0.1f, 0.3f, 1.0f) * 1.0f

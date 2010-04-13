@@ -18,6 +18,8 @@ import xf.terrain.ChunkData;
 import xf.terrain.ChunkLoader;
 import xf.terrain.Chunk;
 
+import EffectHelper = xf.gfx.EffectHelper;
+
 
 
 void main() {
@@ -43,6 +45,8 @@ class MyChunkHandler : IChunkHandler {
 			loaded = true;
 
 			efInst = renderer.instantiateEffect(effect);
+			EffectHelper.allocateDefaultUniformStorage(efInst);
+			
 			auto vb = renderer.createVertexBuffer(
 				BufferUsage.StaticDraw,
 				cast(void[])positions
@@ -160,15 +164,13 @@ class TestApp : GfxApp {
 			req
 		);
 
-		EffectCompilationOptions opts;
-		opts.useGeometryProgram = false;
 		terrainEffect = renderer.createEffect(
 			"terrain",
-			EffectSource.filePath("terrain.cgfx"),
-			opts
+			EffectSource.filePath("terrain.cgfx")
 		);
-		
 		terrainEffect.compile();
+		EffectHelper.allocateDefaultUniformStorage(terrainEffect);
+		
 		chunkData.effect = terrainEffect;
 		chunkData.renderer = renderer;
 		
