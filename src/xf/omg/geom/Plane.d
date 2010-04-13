@@ -59,24 +59,29 @@ struct PlaneT(flt) {
 	}
 	
 	
-	flt dist(ref vec3 pt) {
+	flt distance(ref vec3 pt) {
 		assert (ok);
 		return dot(pt, normal) + d;
 	}
-	
-	
-	// TODO: remove the 'dist' version
-	alias dist distance;
 	
 
 	vec3 point() {
 		assert (ok);
 		return normal * -d;
 	}
+
+
+	void normalize() {
+		flt invNormalMag = 1.0 / normal.length;
+		a *= invNormalMag;
+		b *= invNormalMag;
+		c *= invNormalMag;
+		d *= invNormalMag;
+	}
 	
 	
 	bool intersect(ref RayT!(flt) ray, ref HitT!(flt) hit, IntersectFlags flags = IntersectFlags.Default) {
-		flt dist = this.dist(ray.origin) / -dot(ray.direction, this.normal);
+		flt dist = this.distance(ray.origin) / -dot(ray.direction, this.normal);
 		if (dist >= cscalar!(flt, 0) && dist < hit.distance) {
 			hit.distance = dist;
 			if (flags & IntersectFlags.ComputeUV) {

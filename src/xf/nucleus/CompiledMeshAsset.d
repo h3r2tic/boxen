@@ -6,6 +6,7 @@ private {
 	import xf.loader.scene.model.Mesh : LoaderMesh = Mesh;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.core.Misc;
 	static import xf.utils.Memory;
 }
 
@@ -28,6 +29,8 @@ class CompiledMeshAsset {
 	word	indexOffset	= 0;
 	uword	minIndex	= 0;
 	uword	maxIndex	= uword.max;
+
+	vec3	halfSize	= vec3.zero;
 }
 
 
@@ -110,6 +113,10 @@ CompiledMeshAsset compileMeshAsset(
 		v.pos	+= vec3.from(cs.origin);
 		v.pos	*= opts.scale;
 		assert (v.pos.ok);
+
+		cmesh.halfSize.x = max(cmesh.halfSize.x, abs(v.pos.x));
+		cmesh.halfSize.y = max(cmesh.halfSize.y, abs(v.pos.y));
+		cmesh.halfSize.z = max(cmesh.halfSize.z, abs(v.pos.z));
 		
 		v.norm	= assetMesh.normals[i];
 		v.norm	= cs.rotation.xform(v.norm);

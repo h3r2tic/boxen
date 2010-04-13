@@ -3,7 +3,8 @@ module xf.utils.SimpleCamera;
 private {
 	import xf.input.Input;
 	import xf.core.JobHub;
-	import xf.omg.core.LinearAlgebra : mat4, vec3, vec2, quat;
+	import xf.omg.core.CoordSys;
+	import xf.omg.core.LinearAlgebra : mat4, vec3, vec3fi, vec2, quat;
 	import xf.omg.core.Misc : exp;
 }
 
@@ -66,6 +67,11 @@ class SimpleCamera {
 	
 	quat orientation() {
 		return rot;
+	}
+
+
+	CoordSys coordSys() {
+		return CoordSys(vec3fi.from(pos), rot);
 	}
 	
 

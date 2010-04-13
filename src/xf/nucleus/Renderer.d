@@ -7,6 +7,7 @@ private {
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import xf.utils.BitSet;
 	import xf.mem.FreeList;
+	import xf.omg.util.ViewSettings;
 }
 
 
@@ -19,7 +20,7 @@ abstract class Renderer : IRenderableObserver {
 	}
 
 	
-	abstract void render(RenderList* rlist);
+	abstract void render(ViewSettings, RenderList*);
 
 
 	// RenderList ----

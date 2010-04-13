@@ -1,14 +1,16 @@
 module xf.omg.geom.Frustum;
 
 private {
+	import xf.Common;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.geom.Plane;
-	import xf.utils.data.ComboArray;
+	import xf.omg.geom.Sphere;
 }
 
 
 
 struct Frustum {
+	/// @mat = projection * view matrix
 	void construct(mat4 mat, vec3 origin, bool nearPlane = false, bool farPlane = false) {
 		remPlanes();
 		
@@ -23,7 +25,7 @@ struct Frustum {
 		
 		// bottom plane
 		addPlane(Plane(mat.getRC(3,0)+mat.getRC(1,0), mat.getRC(3,1)+mat.getRC(1,1), mat.getRC(3,2)+mat.getRC(1,2), mat.getRC(3,3)+mat.getRC(1,3)));
-		
+
 		// near plane
 		if (nearPlane) {
 			addPlane(Plane(mat.getRC(3,0)+mat.getRC(2,0), mat.getRC(3,1)+mat.getRC(2,1), mat.getRC(3,2)+mat.getRC(2,2), mat.getRC(3,3)+mat.getRC(2,3)));
@@ -35,33 +37,32 @@ struct Frustum {
 		}
 		
 		// camera position
-		this.origin = origin;
+		_origin = origin;
 	}
 
 
 	void setOrigin(vec3 o) {
-		origin = o;
+		_origin = o;
 	}
 	
 	
-	void addPlane(Plane p){
-		_planes ~= p;
+	void addPlane(Plane p) {
+		p.normalize();
+		_planes[_numPlanes++] = p;
 	}
 	
 	
 	void remPlanes() {
-		_planes.free();		// NOTE: (digited) was .clear, couldn't find it in ComboArray
+		_numPlanes = 0;
 	}
 	
 	
 	Plane[] planes() {
-		return _planes();
+		return _planes[0.._numPlanes];
 	}
 	
 	
-	void destroy() {
-		_planes.free();
-	}
+	void dispose() {}
 	
 	
 	void biasPlanes(float value) {
@@ -73,33 +74,33 @@ struct Frustum {
 
 	// TODO
 /+	void transform(mat4 x) {
-/*									// NOTE: (digited) no .transform() for Plane, no func with matrix as a param
+
 		foreach (ref p; planes) {
 			p.transform(x);
 		}
 		
-		origin = x * origin;		// NOTE: (digited) frustrum has origin. Maybe p.origin somewhere here?
+		origin = x * origin;
 */
 	}+/
 
 	
 	Frustum dup() {
 		Frustum res;
-		res.origin = this.origin;
-		res._planes ~= this._planes();
+		res._origin = _origin;
+		res._planes[] = _planes;
+		res._numPlanes = _numPlanes;
 		return res;
 	}
 	
 	
-	bool inside(vec3[] hull) {
-		planeIteration: foreach (ref plane; planes) {
-			foreach (ref point; hull) {
-				if (plane.dist(point) > 0.f) {
-					continue planeIteration;
-				}
+	bool contains(Sphere sphere) {
+		float sphereRadius = sphere.radius();
+		
+		foreach (ref plane; planes) {
+			float oDist = plane.distance(sphere.origin);
+			if (oDist < -sphereRadius) {
+				return false;
 			}
-			
-			return false;
 		}
 		
 		return true;
@@ -107,8 +108,10 @@ struct Frustum {
 	
 	
 	private {
-		ComboArray!(Plane, 6, true)	_planes;
-		vec3										origin = {x: 0, y: 0, z: 0};
+		// TODO: more fancy frusta (?)
+		Plane[6]	_planes;
+		uword		_numPlanes;
+		vec3		_origin = {x: 0, y: 0, z: 0};
 	}
 }
 

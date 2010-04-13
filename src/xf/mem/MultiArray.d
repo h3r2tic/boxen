@@ -14,6 +14,13 @@ pragma(ctfe) private void splitTypeNameCT(cstring line, out cstring type, out cs
 	}
 	type = line[0..i];
 	name = striplCT(line[i..$]);
+
+	// remove any //-style comments on the right of the name
+	for (i = 0; i+1 < name.length; ++i) {
+		if ('/' == name[i] && '/' == name[i+1]) {
+			name = striprCT(name[0..i]);
+		}
+	}
 }
 
 
