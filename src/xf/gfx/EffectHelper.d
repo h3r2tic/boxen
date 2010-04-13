@@ -1,7 +1,11 @@
 module xf.gfx.EffectHelper;
 
 private {
-	import xf.gfx.Effect;
+	import
+		xf.gfx.Effect,
+		xf.gfx.VertexBuffer,
+		xf.gfx.VertexArray;
+		
 	import xf.mem.MainHeap;
 	import tango.stdc.string : memset;
 }
@@ -21,6 +25,20 @@ void allocateDefaultUniformStorage(EffectInstance e) {
 		e.getUniformParamGroup(),
 		e.getUniformPtrsDataPtr()
 	);
+}
+
+
+void allocateDefaultVaryingStorage(EffectInstance e) {
+	final num = e.getEffect.varyingParams.length;
+	auto buffers = cast(VertexBuffer*)mainHeap.allocRaw(num * VertexBuffer.sizeof);
+	auto attribs = cast(VertexAttrib*)mainHeap.allocRaw(num * VertexAttrib.sizeof);
+	memset(buffers, 0, num * VertexBuffer.sizeof);
+	memset(attribs, 0, num * VertexAttrib.sizeof);
+	final ptrs = e.getVaryingParamDataPtr();
+	for (size_t i = 0; i < num; ++i) {
+		ptrs[i].buffer = &buffers[i];
+		ptrs[i].attrib = &attribs[i];
+	}
 }
 
 

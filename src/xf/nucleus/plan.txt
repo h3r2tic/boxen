@@ -34,12 +34,12 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 ----
 
-~	change the gfx EffectInstance not to locally store params but have pointers
++	change the gfx EffectInstance not to locally store params but have pointers
 	to them instead
 	+ uniforms
-	- varyings
+	+ varyings
 	-> this will allow their storage in Renderables, however the old tests will be broken
-		-> can create a function to alloc and bind default storage to revive them
+		+ create a function to alloc and bind default storage to revive them
 	* for now, screw updating of varyings. can later do some fancy shite if it's needed
 
 -	implement MeshStructure

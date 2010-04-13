@@ -876,19 +876,21 @@ struct CgEffectBuilder {
 		
 		switch (variability) {
 			case CG_VARYING: {
-				log.trace(
-					"Varying {} input param: {}",
-					share ? "Shared" : GPUDomainName(domain),
-					name
-				);
-				
-				final reg = createParam(name, param);
-				if (varyings) {
-					varyings.list ~= reg;
-				} else {
-					varyings = reg;
+				if (GPUDomain.Vertex == domain) {
+					log.trace(
+						"Varying {} input param: {}",
+						share ? "Shared" : GPUDomainName(domain),
+						name
+					);
+					
+					final reg = createParam(name, param);
+					if (varyings) {
+						varyings.list ~= reg;
+					} else {
+						varyings = reg;
+					}
+					++numVaryings;
 				}
-				++numVaryings;
 			} break;
 			
 			case CG_UNIFORM:

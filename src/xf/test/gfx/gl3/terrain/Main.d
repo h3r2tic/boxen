@@ -47,19 +47,20 @@ class MyChunkHandler : IChunkHandler {
 			efInst = renderer.instantiateEffect(effect);
 			EffectHelper.allocateDefaultUniformStorage(efInst);
 			
-			auto vb = renderer.createVertexBuffer(
+			vb = renderer.createVertexBuffer(
 				BufferUsage.StaticDraw,
 				cast(void[])positions
 			);
-			efInst.setVarying(
-				"VertexProgram.input.position",
-				vb,
-				VertexAttrib(
-					0,
-					vec3.sizeof,
-					VertexAttrib.Type.Vec3
-				)
+			va = VertexAttrib(
+				0,
+				vec3.sizeof,
+				VertexAttrib.Type.Vec3
 			);
+
+			final vdata = efInst.getVaryingParamData("VertexProgram.input.position");
+			vdata.buffer = &vb;
+			vdata.attrib = &va;
+			
 			mesh = renderer.createMeshes(1);
 			auto m = &mesh[0];
 
@@ -99,6 +100,8 @@ class MyChunkHandler : IChunkHandler {
 
 	struct UserData {
 		EffectInstance	efInst;
+		VertexBuffer	vb;
+		VertexAttrib	va;
 		Mesh[]			mesh;
 		
 		vec3[]		positions;

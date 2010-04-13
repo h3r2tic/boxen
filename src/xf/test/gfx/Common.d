@@ -295,6 +295,7 @@ Mesh[] loadHsfModel(
 
 			final efInst = renderer.instantiateEffect(effect);
 			EffectHelper.allocateDefaultUniformStorage(efInst);
+			EffectHelper.allocateDefaultVaryingStorage(efInst);
 			
 			efInst.setUniform("lights[0].color",
 				vec4(0.1f, 0.3f, 1.0f) * 1.0f
@@ -400,55 +401,50 @@ Mesh[] loadHsfModel(
 
 			// Create a vertex buffer and bind it to the shader
 
-			efInst.setVarying(
-				"VertexProgram.input.position",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.position")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.pos.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 
-			efInst.setVarying(
-				"VertexProgram.input.normal",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.normal")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.norm.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 						
-			efInst.setVarying(
-				"VertexProgram.input.tangent",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.tangent")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.tangent.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 
-			efInst.setVarying(
-				"VertexProgram.input.bitangent",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.bitangent")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.bitangent.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 
-			efInst.setVarying(
-				"VertexProgram.input.texCoord",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.texCoord")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.tc.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec2
-				)
-			);
+				);
+			}
 
 			// Create a uniform buffer for the environment and bind it to the effect
 			
@@ -663,6 +659,7 @@ Mesh[] loadModel(
 
 			final efInst = renderer.instantiateEffect(effect);
 			EffectHelper.allocateDefaultUniformStorage(efInst);
+			EffectHelper.allocateDefaultVaryingStorage(efInst);
 			
 			efInst.setUniform("lights[0].color",
 				vec4(0.1f, 0.3f, 1.0f) * 1.0f
@@ -799,55 +796,50 @@ Mesh[] loadModel(
 
 			// Create a vertex buffer and bind it to the shader
 
-			efInst.setVarying(
-				"VertexProgram.input.position",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.position")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.pos.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 
-			efInst.setVarying(
-				"VertexProgram.input.normal",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.normal")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.norm.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 						
-			efInst.setVarying(
-				"VertexProgram.input.tangent",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.tangent")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.tangent.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 
-			efInst.setVarying(
-				"VertexProgram.input.bitangent",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.bitangent")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.bitangent.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec3
-				)
-			);
+				);
+			}
 
-			efInst.setVarying(
-				"VertexProgram.input.texCoord",
-				vb,
-				VertexAttrib(
+			with (*efInst.getVaryingParamData("VertexProgram.input.texCoord")) {
+				*buffer = vb;
+				*attrib = VertexAttrib(
 					Vertex.init.tc.offsetof,
 					Vertex.sizeof,
 					VertexAttrib.Type.Vec2
-				)
-			);
+				);
+			}
 
 			// Create a uniform buffer for the environment and bind it to the effect
 			

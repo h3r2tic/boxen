@@ -357,7 +357,7 @@ class Renderer : IRenderer {
 		}
 	}
 
-	// implements IEffectMngr
+	/+// implements IEffectMngr
 	bool setVarying(EffectInstanceHandle h, cstring name, VertexBuffer buf, VertexAttrib vattr) {
 		if (auto resData = _effectInstances.find(h)) {
 			assert (resData.res !is null);
@@ -367,7 +367,7 @@ class Renderer : IRenderer {
 		} else {
 			return false;
 		}
-	}
+	}+/
 
 	// implements IEffectMngr
 	void** getUniformPtrsDataPtr(EffectInstanceHandle h) {
@@ -394,7 +394,7 @@ class Renderer : IRenderer {
 	}
 
 	// implements IEffectMngr
-	size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle h) {
+	/+size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle h) {
 		if (auto resData = _effectInstances.find(h)) {
 			assert (resData.res !is null);
 			final res = resData.res.impl;
@@ -403,8 +403,19 @@ class Renderer : IRenderer {
 		} else {
 			return null;
 		}
-	}
+	}+/
 	
+
+	// implements IEffectMngr
+	void setVaryingParamsDirty(EffectInstanceHandle h) {
+		if (auto resData = _effectInstances.find(h)) {
+			assert (resData.res !is null);
+			final res = resData.res.impl;
+			assert (res !is null);
+			return res._varyingParamsDirty = true;
+		}
+	}
+
 	
 	u32 renderOrdinal(EffectInstanceHandle h) {
 		final resData = _effectInstances.find(h);
@@ -1290,6 +1301,57 @@ class Renderer : IRenderer {
 		
 		
 		void setObjVaryings(EffectInstanceImpl* obj) {
+			if (!obj._varyingParamsDirty) {
+				return;
+			} else {
+				obj._varyingParamsDirty = false;
+			}
+			
+			final vp = &effect.varyingParams;
+			final numVaryings = vp.length;
+			
+			auto varyingData = obj.getVaryingParamDataPtr();
+			final varyingParams = obj._proto.varyingParams.param;
+			final varyingNames = obj._proto.varyingParams.name;
+
+			for (uword idx = 0; idx < numVaryings; ++idx) {
+				final data = varyingData + idx;
+				
+				final buf = data.buffer;
+				final attr = data.attrib;
+
+				assert (buf !is null, varyingNames[idx] ~ " is null.");
+				assert (attr !is null, varyingNames[idx] ~ " is null.");
+
+				GLenum glType = void;
+				switch (attr.scalarType) {
+					case attr.ScalarType.Float: {
+						glType = FLOAT;
+					} break;
+					
+					default: {
+						error("Unhandled scalar type: {}", attr.scalarType);
+					}
+				}
+				
+				final param
+					= cast(CGparameter)varyingParams[idx];
+
+				buf.bind();
+				cgGLEnableClientState(param);
+				cgGLSetParameterPointer(
+					param,
+					attr.numFields(),
+					glType,
+					attr.stride,
+					cast(void*)attr.offset
+				);
+				
+				defaultHandleCgError();
+			}
+		}
+
+		/+void setObjVaryings(EffectInstanceImpl* obj) {
 			final vp = &effect.varyingParams;
 			final numVaryings = vp.length;
 			
@@ -1374,7 +1436,7 @@ class Renderer : IRenderer {
 					}
 				}
 			}
-		}
+		}+/
 			
 		effect.bind();
 		setObjUniforms(
