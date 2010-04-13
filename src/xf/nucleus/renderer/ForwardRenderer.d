@@ -7,12 +7,14 @@ private {
 	import xf.nucleus.Renderer;
 	import xf.nucleus.RenderList;
 	import xf.nucleus.KernelParamInterface;
+	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
 	import Nucleus = xf.nucleus.Nucleus;
 	import xf.gfx.Effect;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import xf.gfx.IndexData;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.util.ViewSettings;
 	import tango.stdc.stdio : sprintf;
 
 	// TMP
@@ -38,20 +40,14 @@ class ForwardRenderer : Renderer {
 		_meshEffect.compile();
 
 		void** uniforms = _meshEffect.getUniformPtrsDataPtr();
-		
-		uniforms[_meshEffect.effectUniformParams.getUniformIndex("worldToView")]
-			= &worldToView;
-		uniforms[_meshEffect.effectUniformParams.getUniformIndex("viewToClip")]
-			= &viewToClip;
 
-		worldToView = mat4.translation(vec3(0, 0, -10));
+		void setUniform(cstring name, void* ptr) {
+			uniforms[_meshEffect.effectUniformParams.getUniformIndex(name)]
+				= ptr;
+		}
 
-		viewToClip = mat4.perspective(
-			65.0f,		// fov
-			1.33333f,//cast(float)window.width / window.height,	// aspect
-			0.1f,		// near
-			100.0f		// far
-		);
+		setUniform("worldToView", &worldToView);
+		setUniform("viewToClip", &viewToClip);
 
 		// TODO: other params
 	}
@@ -63,7 +59,9 @@ class ForwardRenderer : Renderer {
 				// compile the kernels, create an EffectInstance
 
 				final structureKernel = renderables.structureKernel[rid];
-				assert (structureKernel !is null);
+				if (structureKernel is null) {
+					error("Structure kernel is null for renderable {}.", rid);
+				}
 
 				EffectInstance efInst;
 				
@@ -111,12 +109,15 @@ class ForwardRenderer : Renderer {
 
 	override void onRenderableCreated(RenderableId id) {
 		super.onRenderableCreated(id);
-		xf.utils.Memory.alloc(_renderableEI, id+1);
-		xf.utils.Memory.alloc(_renderableIndexData, id+1);
+		xf.utils.Memory.realloc(_renderableEI, id+1);
+		xf.utils.Memory.realloc(_renderableIndexData, id+1);
 	}
 
 	
-	override void render(RenderList* rlist) {
+	override void render(ViewSettings vs, RenderList* rlist) {
+		this.viewToClip = vs.computeProjectionMatrix();
+		this.worldToView = vs.computeViewMatrix();
+
 		final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileEffectsForRenderables(rids);
 
@@ -128,7 +129,7 @@ class ForwardRenderer : Renderer {
 			final bin = blist.getBin(ei.getEffect);
 			final item = bin.add(ei);
 			
-			item.coordSys		= rlist.list.coordSys[idx]; //CoordSys.identity;
+			item.coordSys		= rlist.list.coordSys[idx];
 			item.scale			= vec3.one;
 			item.indexData		= *_renderableIndexData[rid];
 			item.numInstances	= 1;

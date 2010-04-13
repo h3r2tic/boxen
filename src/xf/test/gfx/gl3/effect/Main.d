@@ -246,7 +246,7 @@ class TestApp : GfxApp {
 			uword numMeshes = 0;
 			
 			foreach (m; meshes) {
-				numTris += /+m.numInstances * +/m.numIndices / 3;
+				numTris += /+m.numInstances * +/m.indexData.numIndices / 3;
 				numMeshes += /+m.numInstances+/1;
 			}
 			

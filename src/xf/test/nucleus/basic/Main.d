@@ -6,6 +6,7 @@ private {
 	import xf.Common;
 	import xf.core.Registry;
 	import xf.utils.GfxApp;
+	import xf.utils.SimpleCamera;
 	
 	import Nucleus = xf.nucleus.Nucleus;
 	import xf.nucleus.Defs;
@@ -30,10 +31,12 @@ private {
 
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.util.ViewSettings;
 
 	static import xf.utils.Memory;
 
 	import Path = tango.io.Path;
+	import tango.io.Stdout;
 }
 
 
@@ -132,6 +135,7 @@ class TestApp : GfxApp {
 	alias renderer rendererBackend;
 	Renderer nr;
 	VSDRoot vsd;
+	SimpleCamera camera;
 	
 	
 	override void initialize() {
@@ -139,6 +143,10 @@ class TestApp : GfxApp {
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
+
+		camera = new SimpleCamera(vec3(0, 0, 10), 0, 0, inputHub.mainChannel);
+		window.interceptCursor = true;
+		window.showCursor = false;
 
 		// Connect renderable creation to VSD object creation
 		registerRenderableObserver(new class IRenderableObserver {
@@ -189,6 +197,7 @@ class TestApp : GfxApp {
 			renderables.surfaceKernel[rid] = null;	// TODO
 			renderables.surfaceData[rid] = null;	// TODO
 			renderables.transform[rid] = CoordSys.identity;
+			renderables.localHalfSize[rid] = compiledMesh.halfSize;
 		});
 	}
 
@@ -196,11 +205,13 @@ class TestApp : GfxApp {
 	override void render() {
 		// move some objects
 
-		// The transforms array for the VSD must be updated as it may have been
-		// resized and VSD now holds the old reference
+		// The various arrays for VSD must be updated as they may have been
+		// resized externally and VSD now holds the old reference.
+		// The VSD does not have a copy of the various data associated with
+		// Renderables as to reduce allocations and unnecessary copies of dta.
 		vsd.transforms = renderables.transform[0..renderables.length];
+		vsd.localHalfSizes = renderables.localHalfSize[0..renderables.length];
 		
-		// update vsd.localHalfSizes
 		// update vsd.enabledFlags
 		// update vsd.invalidationFlags
 		//vsd.enableObject(rid);
@@ -211,7 +222,13 @@ class TestApp : GfxApp {
 		final rlist = nr.createRenderList();
 		scope (exit) nr.disposeRenderList(rlist);
 
-		final viewSettings = ViewSettings();		// TODO
+		final viewSettings = ViewSettings(
+			camera.coordSys,
+			60.0f,		// fov
+			cast(float)window.width / window.height,	// aspect
+			0.1f,		// near plane
+			1000.0f		// far plane
+		);
 
 		vsd.findVisible(viewSettings, (VisibleObject[] olist) {
 			foreach (o; olist) {
@@ -226,7 +243,7 @@ class TestApp : GfxApp {
 		rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
 		rendererBackend.clearBuffers();
 
-		nr.render(rlist);
+		nr.render(viewSettings, rlist);
 	}
 }
 

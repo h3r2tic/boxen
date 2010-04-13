@@ -10,7 +10,6 @@ struct fragInput {
 
 
 float3x4 modelToWorld;
-//float3 modelScale;
 
 float4x4 worldToView <
 	string scope = "effect";
@@ -25,7 +24,6 @@ void VertexProgram(
 	out float4 outPos : POSITION,
 	out fragInput output
 ) {
-	//input.position *= modelScale;
 	float3 worldPos = mul(modelToWorld, float4(input.position, 1));
 	output.normal = mul(modelToWorld, float4(input.normal, 0));
 	outPos = mul(viewToClip, mul(worldToView, float4(worldPos, 1.0)));

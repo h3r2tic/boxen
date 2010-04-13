@@ -51,8 +51,10 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 +	hardcode VSD and test the hacked up Kernel-based rendering
 
--	fix VSD, but without any culling for now
-	* just render everything in the scene
+~	fix VSD
+	+ dumb sphere-based frustum culling
+	- invalidation, enabling and disabling of objects
+	- proper memory management
 
 = 13
 

@@ -3,6 +3,10 @@ module xf.vsd.VSD;
 private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.core.LinearAlgebra;
+	import xf.omg.util.ViewSettings;
+	import xf.omg.geom.Frustum;
+	import xf.omg.geom.Sphere;
+	import xf.omg.core.Misc;
 	import xf.utils.BitSet;
 }
 
@@ -13,11 +17,6 @@ struct VisibleObject {
 }
 
 
-struct ViewSettings {
-	// TODO
-}
-
-
 struct VSDRoot {
 	// rebuild structures and whatnot
 	void update() {
@@ -25,14 +24,27 @@ struct VSDRoot {
 	}
 
 	// HACK
-	void findVisible(ViewSettings, void delegate(VisibleObject[]) sink) {
+	void findVisible(ViewSettings vs, void delegate(VisibleObject[]) sink) {
+		Frustum frustum = vs.computeFrustum();
+
 		// TODO: optimize
 		size_t num = enabledFlags.length;
 		for (size_t id = 0; id < num; ++id) {
 			if (enabledFlags.isSet(id)){
-				VisibleObject vo;
-				vo.id = cast(uint)id;
-				sink((&vo)[0..1]);
+				// sphere culling is TMP
+
+				vec3 hs = localHalfSizes[id];
+				
+				Sphere sph = Sphere(
+					vec3.from(transforms[id].origin),
+					sqrt(dot(hs, hs))
+				);
+
+				if (frustum.contains(sph)) {
+					VisibleObject vo;
+					vo.id = cast(uint)id;
+					sink((&vo)[0..1]);
+				}
 			}
 		}
 	}
