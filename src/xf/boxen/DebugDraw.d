@@ -9,6 +9,7 @@ private {
 		xf.gfx.Mesh,
 		xf.gfx.Window,
 		xf.gfx.Effect;
+	import EffectHelper = xf.gfx.EffectHelper;
 	import
 		xf.omg.core.LinearAlgebra;
 	import
@@ -26,25 +27,26 @@ enum Prim {
 // TODO: needs to be released somewhere
 Mesh* create(Prim pt) {
 	final efInst = renderer.instantiateEffect(effect);
-	
-	efInst.setVarying(
-		"VertexProgram.input.position",
-		vb[pt],
-		VertexAttrib(
+	EffectHelper.allocateDefaultUniformStorage(efInst);
+	EffectHelper.allocateDefaultVaryingStorage(efInst);
+
+	with (*efInst.getVaryingParamData("VertexProgram.input.position")) {
+		*buffer = vb[pt];
+		*attrib = VertexAttrib(
 			Vertex.init.p.offsetof,
 			Vertex.sizeof,
 			VertexAttrib.Type.Vec3
-		)
-	);
-	efInst.setVarying(
-		"VertexProgram.input.normal",
-		vb[pt],
-		VertexAttrib(
+		);
+	}
+	
+	with (*efInst.getVaryingParamData("VertexProgram.input.normal")) {
+		*buffer = vb[pt];
+		*attrib = VertexAttrib(
 			Vertex.init.n.offsetof,
 			Vertex.sizeof,
 			VertexAttrib.Type.Vec3
-		)
-	);
+		);
+	}
 
 	final m = renderer.createMeshes(1).ptr;
 	
@@ -68,17 +70,12 @@ void setWorldToView(mat4 m) {
 void initialize(IRenderer r, Window window) {
 	renderer = r;
 
-	EffectCompilationOptions opts;
-	opts.useGeometryProgram = false;
-	
 	effect = renderer.createEffect(
 		"basic",
-		EffectSource.filePath("basic.cgfx"),
-		opts
+		EffectSource.filePath("basic.cgfx")
 	);
-	
-	effect.useGeometryProgram = false;
 	effect.compile();
+	EffectHelper.allocateDefaultUniformStorage(effect);
 	
 	mat4 viewToClip = mat4.perspective(
 		60.0f,		// fov

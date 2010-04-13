@@ -10,8 +10,14 @@ private {
 	import xf.nucleus.Renderable;
 	import xf.nucleus.IStructureData;
 	import xf.nucleus.Kernel;
+	import xf.nucleus.CompiledMeshAsset;
+	import xf.nucleus.KernelParamInterface;
 
 	import xf.gfx.IRenderer : IRenderer;
+	import xf.gfx.Buffer;
+	import xf.gfx.VertexBuffer;
+	import xf.gfx.IndexBuffer;
+	import xf.gfx.IndexData;
 
 	import xf.vsd.VSD;
 
@@ -19,23 +25,79 @@ private {
 
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+
+	static import xf.utils.Memory;
 }
 
 
 
 
-
-
-
-
-
+// TODO: better mem
 class MeshStructure : IStructureData {
-	this (IRenderer) {
-		// TODO
+	this (CompiledMeshAsset ma, IRenderer renderer) {
+		auto vb = renderer.createVertexBuffer(
+			BufferUsage.StaticDraw,
+			ma.vertexData
+		);
+
+		xf.utils.Memory.alloc(vertexAttribs, ma.vertexAttribs.length);
+		xf.utils.Memory.alloc(vertexAttribNames, ma.vertexAttribs.length);
+
+		foreach (i, ref va; vertexAttribs) {
+			va = ma.vertexAttribs[i].attrib;
+		}
+
+		size_t totalNameLen = 0;
+		foreach (a; ma.vertexAttribs) {
+			totalNameLen += a.name.length;
+		}
+
+		char[] nameBuf;
+		xf.utils.Memory.alloc(nameBuf, totalNameLen);
+
+		foreach (i, a; ma.vertexAttribs) {
+			vertexAttribNames[i] = nameBuf[0..a.name.length];
+			vertexAttribNames[i][] = a.name;
+			nameBuf = nameBuf[a.name.length..$];
+		}
+		
+		assert (0 == nameBuf.length);
+
+		indexData.indexBuffer = renderer.createIndexBuffer(
+			BufferUsage.StaticDraw,
+			ma.indices
+		);
+		indexData.numIndices	= ma.numIndices;
+		indexData.indexOffset	= ma.indexOffset;
+		indexData.minIndex		= ma.minIndex;
+		indexData.maxIndex		= ma.maxIndex;
 	}
 
 	cstring structureTypeName() {
 		return "Mesh";
+	}
+
+	void applyToKernelParams(KernelParamInterface kdi) {
+		kdi.setIndexData(&indexData);
+		
+		foreach (i, ref attr; vertexAttribs) {
+			final name = vertexAttribNames[i];
+			final param = kdi.getVaryingParam(name);
+			param.buffer = &vertexBuffer;
+			param.attrib = &attr;
+		}
+	}
+
+	// TODO: hardcode the available data and expose meta-info
+
+	private {
+		VertexBuffer	vertexBuffer;
+
+		// allocated with xf.utils.Memory
+		VertexAttrib[]	vertexAttribs;
+		cstring[]		vertexAttribNames;
+
+		IndexData		indexData;
 	}
 }
 
@@ -52,19 +114,6 @@ Kernel* defaultStructureKernel(cstring structureTypeName) {
 		case "Mesh": return &defaultMeshStructureKernel;
 		default: assert (false, structureTypeName);
 	}
-}
-
-
-// TODO: make LoaderMesh implement IMeshAsset
-// with such a setup, any IMeshAsset will be a potential input into a MeshStructure
-// thus forming a bridge between loading mesh data from files and bindindg them to
-// shaders
-// Similarly, other content pipeline entities can be .*Asset, similarly to
-// XNA's .*Content
-
-
-MeshStructure createMeshStructure(LoaderMesh loaderMesh, IRenderer r) {
-	assert (false, "TODO");
 }
 
 
@@ -99,7 +148,8 @@ void doStuff() {
 	LoaderMesh m;// = loadSomeMesh();
 	// ----
 
-	final ms = createMeshStructure(m, rendererBackend);
+	final compiledMesh = compileMeshAsset(m);
+	final ms = new MeshStructure(compiledMesh, rendererBackend);
 
 	final rid = createRenderable();	
 	renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);

@@ -1457,7 +1457,7 @@ class Renderer : IRenderer {
 			final obj = &objects.renderable[objIdx];
 			final efInst = effectInstances[objects.eiRenderOrdinal[objIdx]];
 			
-			if (0 == obj.numIndices) {
+			if (0 == obj.indexData.numIndices) {
 				continue;
 			} else if (!minimizeStateChanges) {
 				prevUniformValues =
@@ -1477,12 +1477,12 @@ class Renderer : IRenderer {
 			setObjVaryings(efInst);
 			
 			//if (0 == obj.flags & obj.flags.IndexBufferBound) {
-				if (!obj.indexBuffer.valid) {
+				if (!obj.indexData.indexBuffer.valid) {
 					continue;
 				}
 
 				//obj.flags |= obj.flags.IndexBufferBound;
-				obj.indexBuffer.bind();
+				obj.indexData.indexBuffer.bind();
 			//}
 			
 
@@ -1513,29 +1513,31 @@ class Renderer : IRenderer {
 
 			
 			if (1 == obj.numInstances) {
-				if (obj.minIndex != 0 || obj.maxIndex != typeof(obj.maxIndex).max) {
+				if (	obj.indexData.minIndex != 0
+					||	obj.indexData.maxIndex != typeof(obj.indexData.maxIndex).max)
+				{
 					gl.DrawRangeElements(
 						enumToGL(obj.topology),
-						obj.minIndex,
-						obj.maxIndex,
-						obj.numIndices,
-						enumToGL(obj.indexBuffer.indexType),
-						cast(void*)obj.indexOffset
+						obj.indexData.minIndex,
+						obj.indexData.maxIndex,
+						obj.indexData.numIndices,
+						enumToGL(obj.indexData.indexBuffer.indexType),
+						cast(void*)obj.indexData.indexOffset
 					);
 				} else {
 					gl.DrawElements(
 						enumToGL(obj.topology),
-						obj.numIndices,
-						enumToGL(obj.indexBuffer.indexType),
-						cast(void*)obj.indexOffset
+						obj.indexData.numIndices,
+						enumToGL(obj.indexData.indexBuffer.indexType),
+						cast(void*)obj.indexData.indexOffset
 					);
 				}
 			} else if (obj.numInstances > 1) {
 				gl.DrawElementsInstanced(
 					enumToGL(obj.topology),
-					obj.numIndices,
-					enumToGL(obj.indexBuffer.indexType),
-					cast(void*)obj.indexOffset,
+					obj.indexData.numIndices,
+					enumToGL(obj.indexData.indexBuffer.indexType),
+					cast(void*)obj.indexData.indexOffset,
 					obj.numInstances
 				);
 			}

@@ -3,12 +3,11 @@
 	just packed together) plus a pointer to a pointer to the storage. so e.g. if the param
 	is a float, the param interface must expose float**, so that the user of the param
 	interface may set the pointer to the data that will be used by the effect
-* it should basically yield param indices fron names
 	-> bindings/connections of structure data to effect params, regardless of the names
 		in the effect
 	-> even if the user connects structure data directly to an input channel of some quark,
 		the kernel compiler may decide to route it through conversion quark(s) first
-	-> just one index per param - duplicates must be reduced in the compilation step
+	-> just one input per param - duplicates must be reduced in the compilation step
 
 
 per-object material/structure props might be needed
@@ -42,11 +41,13 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ create a function to alloc and bind default storage to revive them
 	* for now, screw updating of varyings. can later do some fancy shite if it's needed
 
--	implement MeshStructure
-	- creation of uniforms, vertex buffers and attribs
-	- binding of params to KernelDataInterface
-	- acquisition of stuff from the assets / xf.loader
++	implement MeshStructure
+	+ creation of uniforms, vertex buffers and attribs
+	+ binding of params to KernelDataInterface
+	+ acquisition of stuff from the assets / xf.loader
 	* no meta info yet
+
+-	implement KernelDataInterface
 
 -	hardcode VSD and test the hacked up Kernel-based rendering
 

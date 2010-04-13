@@ -2,13 +2,13 @@ module xf.nucleus.ISurfaceData;
 
 private {
 	import xf.nucleus.KernelParam;
-	import xf.nucleus.KernelDataInterface;
+	import xf.nucleus.KernelParamInterface;
 }
 
 
 
 interface ISurfaceData {
 	int		iterKernelDataInfo(int delegate(ref KernelParamInfo));
-	void	setKernelObjectData(KernelDataInterface);
-	void	setKernelStaticData(KernelDataInterface);
+	void	setKernelObjectData(KernelParamInterface);
+	void	setKernelStaticData(KernelParamInterface);
 }
