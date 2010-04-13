@@ -18,27 +18,12 @@ private {
 
 
 
-enum MeshTopology : u8 {
-	Points,
-	LineStrip,
-	LineLoop,
-	Lines,
-	TriangleStrip,
-	TriangleFan,
-	Triangles,
-	LinesAdjacency,
-	LineStripAdjacency,
-	TrianglesAdjacency,
-	TriangleStripAdjacency
-}
-
 
 struct RenderableData {
 	CoordSys		coordSys;
 	vec3			scale = vec3.one;
 	IndexData		indexData;
 	uword			numInstances = 1;
-	MeshTopology	topology = MeshTopology.Triangles;
 }
 
 

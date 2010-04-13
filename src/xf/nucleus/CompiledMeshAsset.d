@@ -161,7 +161,7 @@ CompiledMeshAsset compileMeshAsset(
 	cmesh.minIndex = minIdx;
 	cmesh.maxIndex = maxIdx;
 
-	cmesh.indices.alloc(assetMesh.indices.length);
+	xf.utils.Memory.alloc(cmesh.indices, assetMesh.indices.length);
 	cmesh.indices[] = assetMesh.indices;
 
 	return cmesh;

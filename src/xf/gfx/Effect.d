@@ -377,6 +377,20 @@ abstract class Effect {
 	}
 
 
+	bool hasVaryingParam(cstring name, size_t* idx = null) {
+		foreach (i, n; varyingParams.name[0..varyingParams.length]) {
+			if (n == name) {
+				if (idx) {
+					*idx = i;
+				}
+				
+				return true;
+			}
+		}
+		return false;
+	}
+
+
 	bool isUniformStorageAllocated() {
 		return effectUniformParams.isUniformStorageAllocated(uniformPtrsData);
 	}

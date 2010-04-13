@@ -8,6 +8,7 @@ private {
 	import
 		xf.gfx.Effect,
 		xf.gfx.IndexBuffer,
+		xf.gfx.IndexData,
 		xf.gfx.RenderList;
 }
 
@@ -23,15 +24,7 @@ interface IMeshMngr {
 struct Mesh {
 	CoordSys		coordSys = CoordSys.identity;
 	EffectInstance	effectInstance;
-	private IndexBuffer
-					_indexBuffer;
-
-	uword			numIndices	= 0;
-	word			indexOffset	= 0;
-	uword			minIndex	= 0;
-	uword			maxIndex	= uword.max;
-	
-	MeshTopology	topology = MeshTopology.Triangles;
+	IndexData		indexData;
 	
 
 	Effect effect() {
@@ -41,35 +34,30 @@ struct Mesh {
 	
 	IndexBuffer indexBuffer(IndexBuffer buf) {
 		if (buf.valid && buf.acquire) {
-			if (_indexBuffer.valid) {
-				_indexBuffer.dispose();
+			if (indexData.indexBuffer.valid) {
+				indexData.indexBuffer.dispose();
 			}
 
-			_indexBuffer = buf;
+			indexData.indexBuffer = buf;
 		} else {
-			if (_indexBuffer.valid) {
-				_indexBuffer.dispose();
+			if (indexData.indexBuffer.valid) {
+				indexData.indexBuffer.dispose();
 			}
 		}
 
-		return _indexBuffer;
+		return indexData.indexBuffer;
 	}
 	
 	
 	IndexBuffer indexBuffer() {
-		return _indexBuffer;
+		return indexData.indexBuffer;
 	}
 	
 	
 	void toRenderableData(RenderableData* rd) {
 		rd.coordSys = coordSys;
 		rd.scale = vec3.one;
-		rd.indexBuffer = indexBuffer;
+		rd.indexData = indexData;
 		rd.numInstances = 1;
-		rd.numIndices	= numIndices;
-		rd.indexOffset	= indexOffset;
-		rd.minIndex	= minIndex;
-		rd.maxIndex	= maxIndex;
-		rd.topology = topology;
 	}
 }
