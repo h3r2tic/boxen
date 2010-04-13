@@ -12,7 +12,7 @@ private {
 		xf.utils.LocalArray;
 	import
 		xf.gfx.Effect,
-		xf.gfx.IndexBuffer;
+		xf.gfx.IndexData;
 	static import tango.core.Array;
 }
 
@@ -36,12 +36,8 @@ enum MeshTopology : u8 {
 struct RenderableData {
 	CoordSys		coordSys;
 	vec3			scale = vec3.one;
-	IndexBuffer		indexBuffer;
+	IndexData		indexData;
 	uword			numInstances = 1;
-	uword			numIndices	= 0;
-	word			indexOffset	= 0;
-	uword			minIndex	= 0;
-	uword			maxIndex	= uword.max;
 	MeshTopology	topology = MeshTopology.Triangles;
 }
 
