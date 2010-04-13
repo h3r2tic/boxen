@@ -30,10 +30,12 @@ struct UniformDataSlice {
 }
 
 struct VaryingParamData {
-	VertexBuffer currentBuffer;
+/+	VertexBuffer currentBuffer;
 	VertexBuffer newBuffer;
 	VertexAttrib currentAttrib;
-	VertexAttrib newAttrib;
+	VertexAttrib newAttrib;+/
+	VertexBuffer*	buffer;
+	VertexAttrib*	attrib;
 }
 
 
@@ -415,6 +417,8 @@ struct EffectInstanceImpl {
 	 * be re-bound when they are actually reset by the user.
 	 */
 	VertexArray	_vertexArray;
+
+	bool _varyingParamsDirty = true;
 	
 	
 	// for the uniform param group instance ----
@@ -439,7 +443,7 @@ struct EffectInstanceImpl {
 	
 	
 	
-	/// Returns true if the buffer could be acquired and was successfully set
+	/+/// Returns true if the buffer could be acquired and was successfully set
 	bool setVarying(cstring name, VertexBuffer buf, VertexAttrib vattr) {
 		final i = _proto.getVaryingIndex(name);
 		final vp = &_proto.varyingParams;
@@ -521,7 +525,7 @@ struct EffectInstanceImpl {
 		// write back the flag
 		*flags = curFlag;
 		return true;
-	}
+	}+/
 	
 	
 	VaryingParamData* getVaryingParamDataPtr() {
@@ -529,8 +533,8 @@ struct EffectInstanceImpl {
 			cast(void*)this + EffectInstanceImpl.sizeof + _proto.varyingParamsOffset
 		);
 	}
-	
-	VaryingParamData* getVaryingParamData(int i) {
+
+	/+VaryingParamData* getVaryingParamData(int i) {
 		return getVaryingParamDataPtr() + i;
 	}
 	
@@ -538,7 +542,7 @@ struct EffectInstanceImpl {
 		return cast(size_t*)(
 			cast(void*)this + EffectInstanceImpl.sizeof + _proto.varyingParamsDirtyOffset
 		);
-	}
+	}+/
 }
 
 
@@ -565,10 +569,11 @@ interface IEffectMngr {
 	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts = EffectCompilationOptions.init);
 	EffectInstance instantiateEffect(Effect effect);
 	Effect getEffect(EffectInstanceHandle);
-	bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);
+	//bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);
 	void** getUniformPtrsDataPtr(EffectInstanceHandle);
 	VaryingParamData* getVaryingParamDataPtr(EffectInstanceHandle);
-	size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle);
+	void setVaryingParamsDirty(EffectInstanceHandle);
+	//size_t* getVaryingParamDirtyFlagsPtr(EffectInstanceHandle);
 	u32 renderOrdinal(EffectInstanceHandle);
 }
 
@@ -599,11 +604,11 @@ struct EffectInstance {
 		return (cast(IEffectMngr)_resMngr).getEffect(_resHandle);
 	}
 	
-	bool setVarying(cstring name, VertexBuffer buf, VertexAttrib vattr) {
+	/+bool setVarying(cstring name, VertexBuffer buf, VertexAttrib vattr) {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IEffectMngr)_resMngr).setVarying(_resHandle, name, buf, vattr);
-	}
+	}+/
 
 	// ----
 
@@ -612,12 +617,27 @@ struct EffectInstance {
 		assert (_resMngr !is null);
 		return (cast(IEffectMngr)_resMngr).getVaryingParamDataPtr(_resHandle);
 	}
+
+	VaryingParamData* getVaryingParamData(int i) {
+		return getVaryingParamDataPtr() + i;
+	}
+
+	VaryingParamData* getVaryingParamData(cstring name) {
+		final i = getEffect.getVaryingIndex(name);
+		return getVaryingParamDataPtr() + i;
+	}
+
+	void setVaryingParamsDirty() {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(IEffectMngr)_resMngr).setVaryingParamsDirty(_resHandle);
+	}
 	
-	size_t* getVaryingParamDirtyFlagsPtr() {
+	/+size_t* getVaryingParamDirtyFlagsPtr() {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(IEffectMngr)_resMngr).getVaryingParamDirtyFlagsPtr(_resHandle);
-	}
+	}+/
 	
 	u32 renderOrdinal() {
 		assert (_resHandle !is Handle.init);
