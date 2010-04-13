@@ -14,6 +14,7 @@ private {
 		xf.gfx.VertexArray,
 		xf.gfx.VertexBuffer,
 		xf.gfx.IndexBuffer,
+		xf.gfx.IndexData,
 		xf.gfx.UniformBuffer,
 		xf.gfx.Texture,
 		xf.gfx.Framebuffer,
@@ -1192,6 +1193,8 @@ class Renderer : IRenderer {
 				bool minimize,
 				EffectInstanceImpl* efInst
 		) {
+			defaultHandleCgError();
+			
 			final up = &paramGroup.params;
 			final numUniforms = up.length;
 
@@ -1208,6 +1211,10 @@ class Renderer : IRenderer {
 			}
 			
 			for (int ui = 0; ui < numUniforms; ++ui) {
+				if (base[ui] is null) {
+					error("Object uniform parameter pointer is null for '{}'.", up.name[ui]);
+				}
+				
 				//final unifDS = up.dataSlice[ui];
 				
 				/+if (minimize) {
@@ -1238,6 +1245,7 @@ class Renderer : IRenderer {
 						}
 						
 						cgGLEnableTextureParameter(cgParam);
+						defaultHandleCgError();
 					}
 				} else switch (up.baseType[ui]) {
 					case ParamBaseType.Float: {
@@ -1262,6 +1270,7 @@ class Renderer : IRenderer {
 							cast(CGparameter)up.param[ui],
 							cast(float*)(base[ui])
 						);
+						defaultHandleCgError();
 					} break;
 
 					case ParamBaseType.Int: {
@@ -1270,6 +1279,7 @@ class Renderer : IRenderer {
 							up.numFields[ui],
 							cast(int*)(base[ui])
 						);
+						defaultHandleCgError();
 					} break;
 					
 					default: assert (false);
@@ -1301,6 +1311,8 @@ class Renderer : IRenderer {
 		
 		
 		void setObjVaryings(EffectInstanceImpl* obj) {
+			defaultHandleCgError();
+
 			if (!obj._varyingParamsDirty) {
 				return;
 			} else {
@@ -1338,7 +1350,11 @@ class Renderer : IRenderer {
 					= cast(CGparameter)varyingParams[idx];
 
 				buf.bind();
+				defaultHandleCgError();
+
 				cgGLEnableClientState(param);
+				defaultHandleCgError();
+
 				cgGLSetParameterPointer(
 					param,
 					attr.numFields(),
@@ -1346,7 +1362,6 @@ class Renderer : IRenderer {
 					attr.stride,
 					cast(void*)attr.offset
 				);
-				
 				defaultHandleCgError();
 			}
 		}
@@ -1517,7 +1532,7 @@ class Renderer : IRenderer {
 					||	obj.indexData.maxIndex != typeof(obj.indexData.maxIndex).max)
 				{
 					gl.DrawRangeElements(
-						enumToGL(obj.topology),
+						enumToGL(obj.indexData.topology),
 						obj.indexData.minIndex,
 						obj.indexData.maxIndex,
 						obj.indexData.numIndices,
@@ -1526,7 +1541,7 @@ class Renderer : IRenderer {
 					);
 				} else {
 					gl.DrawElements(
-						enumToGL(obj.topology),
+						enumToGL(obj.indexData.topology),
 						obj.indexData.numIndices,
 						enumToGL(obj.indexData.indexBuffer.indexType),
 						cast(void*)obj.indexData.indexOffset
@@ -1534,7 +1549,7 @@ class Renderer : IRenderer {
 				}
 			} else if (obj.numInstances > 1) {
 				gl.DrawElementsInstanced(
-					enumToGL(obj.topology),
+					enumToGL(obj.indexData.topology),
 					obj.indexData.numIndices,
 					enumToGL(obj.indexData.indexBuffer.indexType),
 					cast(void*)obj.indexData.indexOffset,

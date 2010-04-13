@@ -15,6 +15,7 @@ abstract class Renderer : IRenderableObserver {
 	this(RendererBackend backend) {
 		registerRenderableObserver(this);
 		_backend = backend;
+		_renderLists.initialize();
 	}
 
 	
@@ -47,10 +48,12 @@ abstract class Renderer : IRenderableObserver {
 
 	
 	// Implement IRenderableObserver
-		void onRenderableCreated(RenderableId) {
+		void onRenderableCreated(RenderableId id) {
+			// HACK
+			_renderableValid.alloc(id+1);
 		}
 		
-		void onRenderableDestroyed(RenderableId id) {
+		void onRenderableDisposed(RenderableId id) {
 			_renderableValid.clear(id);
 		}
 		

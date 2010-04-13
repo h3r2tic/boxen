@@ -56,11 +56,11 @@ struct BitSet(int minBits) {
 }
 
 
-class DynamicBitSet {
+struct DynamicBitSet {
 	const bool dynamic = true;
 
 
-	~this() {
+	void dispose() {
 		Memory.free(bits);
 	}
 	

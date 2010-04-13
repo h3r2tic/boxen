@@ -21,16 +21,27 @@ struct ViewSettings {
 struct VSDRoot {
 	// rebuild structures and whatnot
 	void update() {
-		assert (false, "TODO");
+		// TODO
 	}
 
+	// HACK
 	void findVisible(ViewSettings, void delegate(VisibleObject[]) sink) {
-		assert (false, "TODO");
+		// TODO: optimize
+		size_t num = enabledFlags.length;
+		for (size_t id = 0; id < num; ++id) {
+			if (enabledFlags.isSet(id)){
+				VisibleObject vo;
+				vo.id = cast(uint)id;
+				sink((&vo)[0..1]);
+			}
+		}
 	}
 
 
 	void createObject(uint id) {
-		assert (false, "TODO");
+		// TODO
+		enabledFlags.alloc(id+1);
+		enabledFlags.set(id);
 	}
 
 	void disposeObject(uint id) {
@@ -38,16 +49,16 @@ struct VSDRoot {
 	}
 
 	void invalidateObject(uint id) {
-		assert (false, "TODO");
+		// TODO
 	}
 
 
 	void enableObject(uint id) {
-		assert (false, "TODO");
+		// TODO
 	}
 
 	void disableObject(uint id) {
-		assert (false, "TODO");
+		// TODO
 	}
 
 

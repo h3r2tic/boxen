@@ -8,7 +8,7 @@ private {
 
 
 interface IStructureData {
-	int		iterKernelDataInfo(int delegate(ref KernelParamInfo));
+	//int		iterKernelDataInfo(int delegate(ref KernelParamInfo));
 	void	setKernelObjectData(KernelParamInterface);
-	void	setKernelStaticData(KernelParamInterface);
+	//void	setKernelStaticData(KernelParamInterface);
 }

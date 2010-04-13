@@ -1,8 +1,11 @@
 module Main;
 
 private {
+	import tango.core.tools.TraceExceptions;
+	
 	import xf.Common;
 	import xf.core.Registry;
+	import xf.utils.GfxApp;
 	
 	import Nucleus = xf.nucleus.Nucleus;
 	import xf.nucleus.Defs;
@@ -18,24 +21,27 @@ private {
 	import xf.gfx.VertexBuffer;
 	import xf.gfx.IndexBuffer;
 	import xf.gfx.IndexData;
+	import xf.gfx.Log;
 
 	import xf.vsd.VSD;
 
 	import xf.loader.scene.model.Mesh : LoaderMesh = Mesh;
+	import xf.loader.scene.hsf.Hsf;
 
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 
 	static import xf.utils.Memory;
-}
 
+	import Path = tango.io.Path;
+}
 
 
 
 // TODO: better mem
 class MeshStructure : IStructureData {
 	this (CompiledMeshAsset ma, IRenderer renderer) {
-		auto vb = renderer.createVertexBuffer(
+		vertexBuffer = renderer.createVertexBuffer(
 			BufferUsage.StaticDraw,
 			ma.vertexData
 		);
@@ -77,14 +83,18 @@ class MeshStructure : IStructureData {
 		return "Mesh";
 	}
 
-	void applyToKernelParams(KernelParamInterface kdi) {
-		kdi.setIndexData(&indexData);
+	void setKernelObjectData(KernelParamInterface kpi) {
+		kpi.setIndexData(&indexData);
 		
 		foreach (i, ref attr; vertexAttribs) {
 			final name = vertexAttribNames[i];
-			final param = kdi.getVaryingParam(name);
-			param.buffer = &vertexBuffer;
-			param.attrib = &attr;
+			final param = kpi.getVaryingParam(name);
+			if (param !is null) {
+				param.buffer = &vertexBuffer;
+				param.attrib = &attr;
+			} else {
+				gfxLog.warn("No param named '{}' in the kernel.", name);
+			}
 		}
 	}
 
@@ -118,47 +128,72 @@ Kernel* defaultStructureKernel(cstring structureTypeName) {
 
 
 
-void doStuff() {
-	final rendererBackend = create!(IRenderer)();
-	final nr = Nucleus.createRenderer("Forward", rendererBackend);
+class TestApp : GfxApp {
+	alias renderer rendererBackend;
+	Renderer nr;
+	VSDRoot vsd;
+	
+	
+	override void initialize() {
+		nr = Nucleus.createRenderer("Forward", rendererBackend);
+
+		// TODO: configure the VSD spatial subdivision
+		vsd = VSDRoot();
+
+		// Connect renderable creation to VSD object creation
+		registerRenderableObserver(new class IRenderableObserver {
+			void onRenderableCreated(RenderableId id) {
+				vsd.createObject(id);
+			}
+			
+			void onRenderableDisposed(RenderableId id) {
+				vsd.disposeObject(id);
+			}
+			
+			void onRenderableInvalidated(RenderableId id) {
+				vsd.invalidateObject(id);
+			}
+		});
 
 
-	// TODO: configure the VSD spatial subdivision
-	final vsd = VSDRoot();
+		// ----
 
-	// Connect renderable creation to VSD object creation
-	registerRenderableObserver(new class IRenderableObserver {
-		void onRenderableCreated(RenderableId id) {
-			vsd.createObject(id);
+		cstring path = `C:\Users\h3r3tic\Documents\3dsMax\export\soldier.hsf`;
+		path = Path.normalize(path);
+		
+		scope loader = new HsfLoader;
+		loader.load(path);
+		
+		final scene = loader.scene;
+		assert (scene !is null);
+		assert (loader.meshes.length > 0);
+		
+		assert (1 == scene.nodes.length);
+		final root = scene.nodes[0];
+
+		void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
+			foreach (i, ref m; loader.meshes) {
+				dg(i, m);
+			}
 		}
 		
-		void onRenderableDisposed(RenderableId id) {
-			vsd.disposeObject(id);
-		}
-		
-		void onRenderableInvalidated(RenderableId id) {
-			vsd.invalidateObject(id);
-		}
-	});
+		iterAssetMeshes((int, ref LoaderMesh m) {
+			// This should be a part of the content pipeline
+
+			final compiledMesh = compileMeshAsset(m);
+			final ms = new MeshStructure(compiledMesh, rendererBackend);
+
+			final rid = createRenderable();	
+			renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
+			renderables.structureData[rid] = ms;
+			renderables.surfaceKernel[rid] = null;	// TODO
+			renderables.surfaceData[rid] = null;	// TODO
+			renderables.transform[rid] = CoordSys.identity;
+		});
+	}
 
 
-	// ----
-
-	// This should be a part of the content pipeline
-	LoaderMesh m;// = loadSomeMesh();
-	// ----
-
-	final compiledMesh = compileMeshAsset(m);
-	final ms = new MeshStructure(compiledMesh, rendererBackend);
-
-	final rid = createRenderable();	
-	renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
-	renderables.structureData[rid] = ms;
-	renderables.surfaceKernel[rid] = null;	// TODO
-	renderables.surfaceData[rid] = null;
-	renderables.transform[rid] = CoordSys.identity;
-
-	while (true) {
+	override void render() {
 		// move some objects
 
 		// The transforms array for the VSD must be updated as it may have been
@@ -168,8 +203,9 @@ void doStuff() {
 		// update vsd.localHalfSizes
 		// update vsd.enabledFlags
 		// update vsd.invalidationFlags
-		vsd.enableObject(rid);
-		vsd.invalidateObject(rid);
+		//vsd.enableObject(rid);
+		//vsd.invalidateObject(rid);
+		
 		vsd.update();
 
 		final rlist = nr.createRenderList();
@@ -195,5 +231,6 @@ void doStuff() {
 }
 
 
-void main() {
+void main(cstring[] args) {
+	(new TestApp).run;
 }

@@ -9,12 +9,9 @@ private {
 
 
 struct KernelParamInterface {
-	VaryingParamData* getVaryingParam(cstring name) {
-		assert (false, "TODO");
-	}
-
-
-	void setIndexData(IndexData*) {
-		assert (false, "TODO");
-	}
+	VaryingParamData* delegate (cstring name)
+			getVaryingParam;
+			
+	void delegate (IndexData*)
+			setIndexData;
 }
