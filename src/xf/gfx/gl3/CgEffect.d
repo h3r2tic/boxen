@@ -1106,8 +1106,10 @@ struct CgEffectBuilder {
 		if (objectScope.numUniforms > 0) {
 			final arr = effect.uniformParams();
 			copyUniforms(objectScope, arr);
-			effect.uniformDataSize = objectScope.uniformStorageNeeded;
-			effect.instanceDataSize += effect.uniformDataSize;
+			effect.uniformPtrsDataSize =
+				objectScope.numUniforms * size_t.sizeof;
+				//objectScope.uniformStorageNeeded;
+			effect.instanceDataSize += effect.uniformPtrsDataSize;
 		}
 		
 		// Create effect-scope param groups
@@ -1115,8 +1117,15 @@ struct CgEffectBuilder {
 		if (effectScope.numUniforms > 0) {
 			final arr = effect.effectUniformParams();
 			copyUniforms(effectScope, arr);
-			effect.uniformData = mainHeap.allocRaw(effectScope.uniformStorageNeeded);
-			memset(effect.uniformData, 0, effectScope.uniformStorageNeeded);
+			//effect.uniformData = mainHeap.allocRaw(effectScope.uniformStorageNeeded);
+			
+			effect.uniformPtrsData = cast(void**)
+				mainHeap.allocRaw(effectScope.numUniforms * size_t.sizeof);
+				
+			memset(effect.uniformPtrsData, 0,
+				effectScope.numUniforms * size_t.sizeof
+				//effectScope.uniformStorageNeeded
+			);
 		}
 		
 		// Create uniform buffer param groups

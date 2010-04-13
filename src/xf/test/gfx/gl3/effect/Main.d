@@ -91,6 +91,7 @@ class TestApp : GfxApp {
 		effect.setUniformType("lights[1]", "PointLight");
 		effect.setUniformType("lights[2]", "PointLight");
 		effect.compile();
+		EffectHelper.allocateDefaultUniformStorage(effect);
 		
 		// ---- Some debug info printing ----
 		{

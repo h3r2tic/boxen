@@ -370,12 +370,12 @@ class Renderer : IRenderer {
 	}
 
 	// implements IEffectMngr
-	void* getUniformsDataPtr(EffectInstanceHandle h) {
+	void** getUniformPtrsDataPtr(EffectInstanceHandle h) {
 		if (auto resData = _effectInstances.find(h)) {
 			assert (resData.res !is null);
 			final res = resData.res.impl;
 			assert (res !is null);
-			return res.getUniformsDataPtr;
+			return res.getUniformPtrsDataPtr;
 		} else {
 			return null;
 		}
@@ -1171,12 +1171,12 @@ class Renderer : IRenderer {
 			return;
 		}
 		
-		void* prevUniformValues = null;
+		void** prevUniformValues = null;
 		
 		final effectInstances = getEffectData(effect).instances.ptr;
 
 		void setObjUniforms(
-				void* base,
+				void** base,
 				RawUniformParamGroup* paramGroup,
 				bool minimize,
 				EffectInstanceImpl* efInst
@@ -1184,20 +1184,20 @@ class Renderer : IRenderer {
 			final up = &paramGroup.params;
 			final numUniforms = up.length;
 
-			void* uniformValues;
+			void** uniformValues;
 			
 			if (minimize) {
 				uniformValues =
-					efInst.getUniformsDataPtr();
+					efInst.getUniformPtrsDataPtr();
 			}
 			
 			scope (success) if (minimize) {
 				prevUniformValues =
-					efInst.getUniformsDataPtr();
+					efInst.getUniformPtrsDataPtr();
 			}
 			
 			for (int ui = 0; ui < numUniforms; ++ui) {
-				final unifDS = up.dataSlice[ui];
+				//final unifDS = up.dataSlice[ui];
 				
 				/+if (minimize) {
 					if (0 == memcmp(
@@ -1210,7 +1210,7 @@ class Renderer : IRenderer {
 				}+/
 				
 				if (typeid(Texture) is up.typeInfo[ui]) {
-					final tex = cast(Texture*)(base + unifDS.offset);
+					final tex = cast(Texture*)(base[ui]);
 					if (tex.valid) {
 						// log.trace("cgGLSetTextureParameter({})", tex.getApiHandle());
 						final cgParam = cast(CGparameter)up.param[ui];
@@ -1249,7 +1249,7 @@ class Renderer : IRenderer {
 						
 						func(
 							cast(CGparameter)up.param[ui],
-							cast(float*)(base + unifDS.offset)
+							cast(float*)(base[ui])
 						);
 					} break;
 
@@ -1257,7 +1257,7 @@ class Renderer : IRenderer {
 						cgSetParameterValueic(
 							cast(CGparameter)up.param[ui],
 							up.numFields[ui],
-							cast(int*)(base + unifDS.offset)
+							cast(int*)(base[ui])
 						);
 					} break;
 					
@@ -1268,17 +1268,17 @@ class Renderer : IRenderer {
 		
 		
 		void unsetObjUniforms(
-				void* base,
+				void** base,
 				RawUniformParamGroup* paramGroup
 		) {
 			final up = &paramGroup.params;
 			final numUniforms = up.length;
 
 			for (int ui = 0; ui < numUniforms; ++ui) {
-				final unifDS = up.dataSlice[ui];
+				//final unifDS = up.dataSlice[ui];
 				
 				if (typeid(Texture) is up.typeInfo[ui]) {
-					final tex = cast(Texture*)(base + unifDS.offset);
+					final tex = cast(Texture*)(base[ui]);
 					if (tex.valid) {
 						cgGLDisableTextureParameter(
 							cast(CGparameter)up.param[ui]
@@ -1378,7 +1378,7 @@ class Renderer : IRenderer {
 			
 		effect.bind();
 		setObjUniforms(
-			effect.getUniformsDataPtr(),
+			effect.getUniformPtrsDataPtr(),
 			effect.getUniformParamGroup(),
 			false,
 			effectInstances[objects.eiRenderOrdinal[0]]
@@ -1399,11 +1399,11 @@ class Renderer : IRenderer {
 				continue;
 			} else if (!minimizeStateChanges) {
 				prevUniformValues =
-					efInst.getUniformsDataPtr();
+					efInst.getUniformPtrsDataPtr();
 			}
 			
 			setObjUniforms(
-				efInst.getUniformsDataPtr(),
+				efInst.getUniformPtrsDataPtr(),
 				efInst.getUniformParamGroup(),
 				minimizeStateChanges,			// <-
 				efInst
@@ -1417,7 +1417,7 @@ class Renderer : IRenderer {
 			//if (0 == obj.flags & obj.flags.IndexBufferBound) {
 				if (!obj.indexBuffer.valid) {
 					continue;
-				}				
+				}
 
 				//obj.flags |= obj.flags.IndexBufferBound;
 				obj.indexBuffer.bind();
@@ -1480,7 +1480,7 @@ class Renderer : IRenderer {
 			
 			// prevent state leaking
 			unsetObjUniforms(
-				efInst.getUniformsDataPtr(),
+				efInst.getUniformPtrsDataPtr(),
 				efInst.getUniformParamGroup()
 			);
 		}
@@ -1587,25 +1587,25 @@ private struct EffectData {
 	}
 	
 	u32 countSortingKeyChanges(EffectInstanceImpl*[] instances) {
-		final keyOffsets = effect.instanceSortingKeyOffsets;
-		if (0 == keyOffsets.length) {
+		final keys = effect.instanceSortingKeys;
+		if (0 == keys.length) {
 			return 0;
 		}
 
 		scope stackBuffer = new StackBuffer();
-		auto vals = LocalArray!(size_t)(keyOffsets.length, stackBuffer);
+		auto vals = LocalArray!(size_t)(keys.length, stackBuffer);
 		scope (success) vals.dispose();
 		vals.data[] = 0;
 		
 		u32 num = 0;
 		
 		foreach (inst; instances) {
-			void* ld = inst.getUniformsDataPtr();
-			foreach (oi, o; keyOffsets) {
-				final v = *cast(size_t*)(ld+o);
-				if (v != vals.data[oi]) {
+			void** ld = inst.getUniformPtrsDataPtr();
+			foreach (ki, k; keys) {
+				final v = *cast(size_t*)(ld[k.index] + k.offset);
+				if (v != vals.data[ki]) {
 					++num;
-					vals.data[oi] = v;
+					vals.data[ki] = v;
 				}
 			}
 		}
@@ -1614,8 +1614,8 @@ private struct EffectData {
 	}
 	
 	void sortInstances() {
-		final keyOffsets = effect.instanceSortingKeyOffsets;
-		if (0 == keyOffsets.length) {
+		final keys = effect.instanceSortingKeys;
+		if (0 == keys.length) {
 			return;
 		}
 		
@@ -1631,11 +1631,11 @@ private struct EffectData {
 		}
 		
 		tango.core.Array.sort(perm.data, (u32 a, u32 b) {
-			void* ld1 = instances.ptr[a].getUniformsDataPtr();
-			void* ld2 = instances.ptr[b].getUniformsDataPtr();
-			foreach (o; keyOffsets) {
-				final v1 = *cast(size_t*)(ld1+o);
-				final v2 = *cast(size_t*)(ld2+o);
+			void** ld1 = instances.ptr[a].getUniformPtrsDataPtr();
+			void** ld2 = instances.ptr[b].getUniformPtrsDataPtr();
+			foreach (k; keys) {
+				final v1 = *cast(size_t*)(ld1[k.index] + k.offset);
+				final v2 = *cast(size_t*)(ld2[k.index] + k.offset);
 				if (v1 > v2) {
 					return true;
 				} else if (v1 < v2) {
