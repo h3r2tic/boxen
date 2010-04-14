@@ -65,9 +65,12 @@ template MSmallTempArray(T) {
 			_items[_length++] = item;
 		} else {
 			_capacity += GrowBy;
-			T* items = cast(T*)mem.pushBack(_capacity * T.sizeof);
-			items[0.._length] = _items[0.._length];
-			items[_length.._capacity] = T.init;
+			assert (_capacity > _length);
+			T* nitems = cast(T*)mem.pushBack(_capacity * T.sizeof);
+			nitems[0.._length] = _items[0.._length];
+			nitems[_length++] = item;
+			nitems[_length.._capacity] = T.init;
+			_items = nitems;
 		}
 	}
 
@@ -159,6 +162,9 @@ final class Graph {
 		_writeFlag(_presentFlags, id.id, false);
 		++_idReuseCounts[id.id];
 
+		assert (_numNodes > 0);
+		--_numNodes;
+
 		_removeExternalConnectionsToAndFrom(id);
 		
 		// so their items can be reused
@@ -174,6 +180,9 @@ final class Graph {
 				if (pred(id)) {
 					_writeFlag(_presentFlags, i, false);
 					++_idReuseCounts[i];
+
+					assert (_numNodes > 0);
+					--_numNodes;
 
 					_removeExternalConnectionsToAndFrom(id);
 
@@ -449,6 +458,12 @@ final class Graph {
 		}
 	}
 
+
+	uword			countUsedBytes() {
+		return _mem.countUsedBytes();
+	}
+	
+
 	/**
 	 * Deletes all nodes and connections.
 	 */
@@ -613,7 +628,7 @@ final class Graph {
 		uword			_numNodes;
 		uword			_capacity;
 
-		enum { wordBits = uword.sizeof * 8 }
+		enum { wordBits = word.sizeof * 8 }
 
 
 		void _alloc(T)(ref T* ptr, int num, float zero = false) {
@@ -628,13 +643,14 @@ final class Graph {
 		}
 
 		static bool _readFlag(uword* flags, uword idx) {
-			return (flags[idx / wordBits] & (1 << (wordBits % wordBits))) != 0;
+			return (flags[idx / wordBits] & (1 << (idx % wordBits))) != 0;
 		}
 
 		static void _writeFlag(uword* flags, uword idx, bool val) {
 			final i = idx / wordBits;
-			flags[i] &= ~(cast(uword)1 << (wordBits % wordBits));
-			flags[i] |= (cast(uword)val << (wordBits % wordBits));
+			final i2 = idx % wordBits;
+			flags[i] &= ~(cast(uword)1 << i2);
+			flags[i] |= (cast(uword)val << i2);
 		}
 
 		bool _readFlag(uword* flags, uword idx1, uword idx2) {

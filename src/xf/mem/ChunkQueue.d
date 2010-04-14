@@ -50,6 +50,23 @@ struct ScratchFIFO {
 	}
 
 
+	size_t countUsedBytes() {
+		size_t total = 0;
+		
+		if (_head) {
+			QueueChunk* cur = _head;
+			
+			while (cur) {
+				QueueChunk* next = cur.next;
+				total += cur.used;
+				cur = next;
+			}
+		}
+
+		return total;
+	}
+
+
 	void* pushBack(size_t bytes, size_t alignment = size_t.sizeof) {
 		assert (bytes > 0);
 		
