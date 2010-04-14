@@ -6,7 +6,7 @@ private {
 	import xf.mem.ChunkQueue;
 	import xf.mem.StackBuffer;
 	import xf.omg.core.Misc : min, max;
-	import xf.nucleus.Log : error = nucleusError;
+	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
 
 
@@ -159,17 +159,17 @@ final class Graph {
 	 */
 	void			removeNode(GraphNodeId id) {
 		_verifyNodeId(id);
-		_writeFlag(_presentFlags, id.id, false);
-		++_idReuseCounts[id.id];
-
-		assert (_numNodes > 0);
-		--_numNodes;
-
 		_removeExternalConnectionsToAndFrom(id);
 		
 		// so their items can be reused
 		_disposeConnectionList(&_incomingConnections[id.id]);
 		_disposeConnectionList(&_outgoingConnections[id.id]);
+
+		++_idReuseCounts[id.id];
+		_writeFlag(_presentFlags, id.id, false);
+
+		assert (_numNodes > 0);
+		--_numNodes;
 	}
 	
 	void			removeNodes(bool delegate(GraphNodeId) pred) {
@@ -178,17 +178,17 @@ final class Graph {
 				final id = GraphNodeId(cast(ushort)i, _idReuseCounts[i]);
 				
 				if (pred(id)) {
-					_writeFlag(_presentFlags, i, false);
-					++_idReuseCounts[i];
-
-					assert (_numNodes > 0);
-					--_numNodes;
-
 					_removeExternalConnectionsToAndFrom(id);
 
 					// so their items can be reused
 					_disposeConnectionList(&_incomingConnections[i]);
 					_disposeConnectionList(&_outgoingConnections[i]);
+
+					++_idReuseCounts[i];
+					_writeFlag(_presentFlags, i, false);
+
+					assert (_numNodes > 0);
+					--_numNodes;
 				}
 			}
 		}
@@ -447,11 +447,17 @@ final class Graph {
 			}
 		}
 
+		assert (maxUsed+1 >= numNodes);
+
 		if (uword.max == maxUsed) {
-			dispose();
+			//log.trace("Graph.minimizeMemoryUsage(): Disposing all storage.");
+			_dispose();
+			assert (0 == countUsedBytes);
 		} else {
 			ScratchFIFO oldStorage = _mem;
 			_mem = ScratchFIFO.init;
+			_mem.initialize();
+			//log.trace("Graph.minimizeMemoryUsage(): Allocating {} nodes.", maxUsed+1);
 			_reallocateNodes(maxUsed+1);
 			oldStorage.clear();
 			_connectionFreeList = null;		// In old mem now, do not want.
