@@ -46,6 +46,10 @@ struct ScratchFIFO {
 	}
 
 
+	void initialize() {
+	}
+
+
 	void* pushBack(size_t bytes, size_t alignment = size_t.sizeof) {
 		assert (bytes > 0);
 		
