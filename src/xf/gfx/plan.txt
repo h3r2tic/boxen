@@ -51,7 +51,7 @@ rendering game plan:
 	render graph
 		couple asset types with structure shaders
 	
-	culling
+	~ culling
 		could be a loose octree or an abt... or just a plain array :P
 		after doing research into Yann Lombard's ABT, it seems that they are not
 		a good fit for what I'm doing, if to anything these days at all.
