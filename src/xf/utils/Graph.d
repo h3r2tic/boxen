@@ -42,31 +42,36 @@ int findTopologicalOrder(
 	scope stack = new StackBuffer();
 	
 	int added = 0;
-	int[] numIncoming;
+	int numNodes = 0;
 
-	numIncoming = stack.allocArray!(int)(order.length);
-	
 	int maxNode = -1;
 	nodeIter((int ni) {
 		if (ni > maxNode) {
 			maxNode = ni;
 		}
-		
+		++numNodes;
+	});
+	
+	if (numNodes != order.length) {
+		error("xf.utils.Graph.findTopologicalOrder: errorneous order.length");
+	}
+
+	final numIncoming	= stack.allocArray!(int)(maxNode+1);
+	final idValid		= stack.allocArray!(bool)(maxNode+1);
+
+	nodeIter((int ni) {
+		idValid[ni] = true;
 		nodeSuccIter(ni, (int succ) {
 			++numIncoming[succ];
 		});
 	});
-	
-	if (maxNode+1 != order.length) {
-		error("xf.utils.Graph.findTopologicalOrder: errorneous order.length");
-	}
 	
 	int prevCluster = 0;
 	int clusterId = 0;
 	
 findTopologicalOrderStart:
 	foreach (ni, inc; numIncoming) {
-		if (0 == inc) {
+		if (0 == inc && idValid[ni]) {
 			order[added++] = ni;
 		}
 	}

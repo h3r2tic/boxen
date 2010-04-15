@@ -4,6 +4,7 @@ import tango.core.tools.TraceExceptions;
 
 import xf.Common;
 import xf.nucleus.Graph;
+import xf.nucleus.GraphOps;
 import xf.nucleus.GraphMisc;
 import tango.io.Stdout;
 import tango.io.device.File : File;
@@ -93,6 +94,20 @@ void main() {
 			g2.addDataFlow(n[from], "foo", n[to], "bar");
 		}
 
+		void checkOrder(int[] order ...) {
+			final output = new GraphNodeId[g2.numNodes];
+			findTopologicalOrder(g2, output);
+			foreach (i, n; output) {
+				if (n.id != order[i]) {
+					cstring err = "Invalid topological order received:\n";
+					foreach (n2; output) {
+						err ~= Format(" {}", n2.id);
+					}
+					assert (false, err);
+				}
+			}
+		}
+
 		fl(0, 1);
 		fl(0, 3);
 		fl(1, 2);
@@ -104,6 +119,8 @@ void main() {
 		fl(6, 7);
 		fl(7, 8);
 		fl(9, 3);
+
+		checkOrder(0, 9, 3, 4, 1, 5, 2, 6, 7, 8);
 
 		File.set("g2.dot", toGraphviz(g2));
 
@@ -120,6 +137,8 @@ void main() {
 		g2.removeNode(n[5]);
 		g2.removeNode(n[9]);
 
+		checkOrder(0, 3, 4, 1, 2, 6, 7, 8);
+
 		File.set("g2b.dot", toGraphviz(g2));
 
 		// ----
@@ -135,6 +154,8 @@ void main() {
 		g2.removeNode(n[3]);
 		g2.removeNode(n[4]);
 
+		checkOrder(0, 1, 2, 6, 7, 8);
+
 		File.set("g2c.dot", toGraphviz(g2));
 
 		// ----
@@ -148,6 +169,8 @@ void main() {
 		g2.removeNode(n[8]);
 		g2.removeNode(n[7]);
 		g2.removeNode(n[6]);
+
+		checkOrder(0, 1);
 
 		File.set("g2d.dot", toGraphviz(g2));
 	}

@@ -62,7 +62,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 ~	implement kernel graphs
 	+ adding, removing, substituting nodes
 	+ node connections with manual and automatic data flow
-	- topological sorting with peeling/layers
+	+ topological sorting with peeling/layers
 	- pluggable simplification ( node removal, flow trimming )
 
 = 15

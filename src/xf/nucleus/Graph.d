@@ -154,6 +154,12 @@ final class Graph {
 		return res;
 	}
 
+	GraphNodeId		_getNodeId(uword idx) {
+		assert (idx < _capacity);
+		assert (true == _readFlag(_presentFlags, idx));
+		return GraphNodeId(cast(ushort)idx, _idReuseCounts[idx]);
+	}
+
 	/**
 	 * Marks the node as unused. Does not shift node IDs around.
 	 */
