@@ -106,7 +106,7 @@ template MSmallTempArray(T) {
 			_capacity = cast(ushort)(((num + cast(ushort)(GrowBy-1)) / GrowBy) * GrowBy);
 			_items = cast(T*)mem.pushBack(_capacity * T.sizeof);
 			_length = num;
-			items[0.._capacity] = T.init;
+			_items[0.._capacity] = T.init;
 		} else {
 			_items = null;
 			_length = 0;
@@ -256,15 +256,7 @@ final class Graph {
 				return fl;
 			}
 		} else {
-			if (_connectionFreeList !is null) {
-				con = _connectionFreeList;
-				_connectionFreeList = con._freeListNext;
-				assert (0 == con._length);		// must be properly disposed
-			} else {
-				con = cast(Connection*)_mem.pushBack(Connection.sizeof);
-				*con = Connection.init;
-			}
-
+			con = _allocConnection();
 			con.from = from;
 			con.to = to;
 		}
@@ -274,6 +266,16 @@ final class Graph {
 				_allocString(fromPort),
 				_allocString(toPort)
 			),
+			_mem
+		);
+
+		outList.pushBack(
+			con,
+			_mem
+		);
+
+		incList.pushBack(
+			con,
 			_mem
 		);
 
@@ -477,6 +479,7 @@ final class Graph {
 		_dispose();
 		_mem.initialize();
 	}
+
 
 
 	private {
@@ -732,7 +735,12 @@ final class Graph {
 				void copyConnections(ref ConnectionList dst, ref ConnectionList src) {
 					dst.alloc(src.length, _mem);
 					foreach (conI, ref dstCon; dst.items) {
+						assert (dstCon is null);
+						dstCon = _allocConnection();
+						
 						final srcCon = src._items[conI];
+						assert (srcCon !is null);
+						
 						dstCon.from = srcCon.from;
 						dstCon.to = srcCon.to;
 						dstCon.alloc(srcCon.length, _mem);
@@ -775,6 +783,19 @@ final class Graph {
 				_disposeConnection(item);
 			}
 			list._length = 0;
+		}
+
+		Connection* _allocConnection() {
+			if (_connectionFreeList !is null) {
+				auto con = _connectionFreeList;
+				_connectionFreeList = con._freeListNext;
+				assert (0 == con._length);		// must be properly disposed
+				return con;
+			} else {
+				auto con = cast(Connection*)_mem.pushBack(Connection.sizeof);
+				*con = Connection.init;
+				return con;
+			}
 		}
 
 		// Warning: Doesn't remove the connection from the incoming and outgoing lists

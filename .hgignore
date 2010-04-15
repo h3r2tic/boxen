@@ -28,6 +28,9 @@ syntax: glob
 *.user
 *.sys
 *.vxd
+*.dot
+*.idb
+*.pdb
 geany_run_script.bat
 src/xf/test/media/*
 src/xf/havok/HavokC.cpp.i
@@ -38,4 +41,5 @@ src/xf/gfx/api/gl3/ExtensionGenConsts.d
 src/xf/gfx/api/gl3/ext/*.d
 src/xf/havok/vs2008/Debug
 src/xf/havok/vs2008/Release
-
+src/xf/test/unit/NucleusGraph/*.png
+src/hsfexp/Debug
