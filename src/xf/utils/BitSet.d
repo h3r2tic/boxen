@@ -59,41 +59,58 @@ struct BitSet(int minBits) {
 struct DynamicBitSet {
 	const bool dynamic = true;
 
+	enum { WordBits = size_t.sizeof * 8 }
+
 
 	void dispose() {
-		Memory.free(bits);
+		if (freeMem) {
+			Memory.free(bits);
+			freeMem = false;
+		}
+		bits = null;
 	}
 	
 
 	void alloc(size_t count) {
-		size_t size = (count+31) / 32;
+		size_t size = (count+WordBits-1) / WordBits;
 		if (bits.length != size) {
-			if (bits !is null) {
+			if (bits !is null && freeMem) {
 				Memory.realloc(bits, size);
 			} else {
+				dispose();
 				Memory.alloc(bits, size);
 			}
+			freeMem = true;
 		}
+	}
+
+
+	void alloc(size_t count, void* delegate(size_t) allocator) {
+		size_t size = (count+WordBits-1) / WordBits;
+		if (bits.length != size) {
+			dispose();
+			bits = (cast(size_t*)allocator(size*size_t.sizeof))[0..size];
+		}		
 	}
 	
 	
 	size_t length() {
-		return bits.length * 32;
+		return bits.length * WordBits;
 	}
 
 
 	void set(int i) {
-		bits[i>>5] |= (1 << (i & 31));
+		bits[i / WordBits] |= (1 << (i % WordBits));
 	}
 
 
 	bool isSet(int i) {
-		return (bits[i>>5] & (1 << (i & 31))) != 0;
+		return (bits[i / WordBits] & (1 << (i % WordBits))) != 0;
 	}
 
 
 	void clear(int i) {
-		bits[i>>5] &= ~(1 << (i & 31));
+		bits[i / WordBits] &= ~(1 << (i % WordBits));
 	}
 
 
@@ -103,7 +120,8 @@ struct DynamicBitSet {
 
 
 	private {
-		uint[] bits;
+		size_t[]	bits;
+		bool		freeMem = false;
 	}
 }
 

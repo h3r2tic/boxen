@@ -115,6 +115,11 @@ class StackBufferUnsafe {
 		return cast(T[])_mainBuffer.alloc(size, throwExc);
 	}
 
+
+	void* allocRaw(size_t bytes, bool throwExc = true) {
+		return _mainBuffer.alloc(bytes, throwExc).ptr;
+	}
+
 	
 	~this() {
 		_mainBuffer.releaseChunksDownToButExcluding(_chunkMark);

@@ -15,6 +15,7 @@ import tango.math.random.Kiss;
 
 void checkOrder(Graph g, int[] order ...) {
 	final output = new GraphNodeId[g.numNodes];
+	assert (output.length == order.length);
 	findTopologicalOrder(g, output);
 	foreach (i, n; output) {
 		if (n.id != order[i]) {
@@ -263,6 +264,52 @@ void main() {
 		g4.removeNode(n[9]);
 
 		checkOrder(g4, 0, 3, 4, 1, 2, 6, 7, 8);
+	}
+
+	{
+		auto g5 = createGraph();
+		scope (exit) disposeGraph(g5);
+
+		GraphNodeId[] n;
+		for (int i = 0; i < 10; ++i) {
+			n ~= g5.addNode();
+		}
+
+		// g5 == g2
+		/* 0       1 2
+		 * o-------o-o
+		 *  \     /   \
+		 *   >o--o---o-o--o--o
+		 *  / 3  4   5 6  7  8
+		 * o
+		 * 9
+		 */
+
+		g5.addAutoFlow(n[0], n[1]);
+		g5.addDataFlow(n[0], "foo", n[3], "bar");
+		g5.addAutoFlow(n[1], n[2]);
+		g5.addAutoFlow(n[2], n[6]);
+		g5.addDataFlow(n[3], "foo", n[4], "bar");
+		g5.addAutoFlow(n[4], n[1]);
+		g5.addDataFlow(n[4], "foo", n[5], "bar");
+		g5.addDataFlow(n[5], "foo", n[6], "bar");
+		g5.addAutoFlow(n[6], n[7]);
+		g5.addDataFlow(n[7], "foo", n[8], "bar");
+		g5.addAutoFlow(n[9], n[3]);
+
+		removeUnreachableBackwards(g5, n[5]);
+
+		// should get reduced to:
+		/* 0
+		 * o
+		 *  \
+		 *   >o--o---o
+		 *  / 3  4   5
+		 * o
+		 * 9
+		 */
+
+		checkOrder(g5, 0, 9, 3, 4, 5);
 	}
 
 	Stdout.formatln("Test passed!");

@@ -13,8 +13,7 @@ cstring toGraphviz(Graph graph) {
 	res ~= `Digraph G { graph [
 		concentrate=false, remincross=true, labeljust=l, rankdir=LR,
 		ratio=compress, nodesep=0.05,
-		fontname=Verdana, fontsize=12, pad="0.0,0.0", margin="0.0,0.0",
-		pack=20];
+		fontname=Verdana, fontsize=12];
 		style = "filled"
 
 		node [
@@ -78,7 +77,7 @@ cstring toGraphviz(Graph graph) {
 
 		res ~= Format(
 			`
-			"{0}.auto" [label="auto", fillcolor="#c0c0c0"];`\n,
+			"{0}.auto" [label="auto", fillcolor="#c0c0c0", fontname="Verdana Bold"];`\n,
 			nodeName(n)
 		);
 
@@ -116,7 +115,7 @@ cstring toGraphviz(Graph graph) {
 			}
 
 			if (graph.hasAutoFlow(n1, n2)) {
-				res ~= Format(`"{}.auto" -> "{}.auto"[ penwidth = 1.5 ];`\n, nodeName(n1), nodeName(n2));
+				res ~= Format(`"{}.auto" -> "{}.auto"[ penwidth=1.5, color=black ];`\n, nodeName(n1), nodeName(n2));
 			}
 		}
 	}
