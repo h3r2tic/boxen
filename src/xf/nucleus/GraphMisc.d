@@ -10,8 +10,31 @@ private {
 
 cstring toGraphviz(Graph graph) {
 	char[] res;
-	res ~= `Digraph G { graph [concentrate=true, remincross=true, labeljust=l, ratio=compress, nodesep=0.2, fontname=Helvetica, rankdir=LR];`\n;
-	res ~= ` node [ fontname=Verdana ];`\n;
+	res ~= `Digraph G { graph [
+		concentrate=false, remincross=true, labeljust=l, rankdir=LR,
+		ratio=compress, nodesep=0.05,
+		fontname=Verdana, fontsize=12, pad="0.0,0.0", margin="0.0,0.0",
+		pack=20];
+		style = "filled"
+
+		node [
+			shape = "box"
+			fontname = "Verdana"
+			fontsize = 8
+			style = "filled"
+			pad = "0.0, 0.0"
+			margin = "0.06, 0.03"
+			width = 0
+			height = 0
+		];
+
+		edge [
+			fontname = "Verdana"
+			fontsize = 10
+			color = gray30
+			weight = 1.5
+		];
+	`;
 	
 	cstring nodeName(GraphNodeId n) {
 		return Format("{}", n.id);
@@ -31,10 +54,12 @@ cstring toGraphviz(Graph graph) {
 //			Stdout.formatln(label);
 		
 		res ~= Format(
-				"subgraph \"cluster_{0}\" {{\n shape=\"box\"; style=\"filled\"; label=\"{2}\"; fillcolor=\"{1}\"; fontsize=8;\n",
-				nodeName(n),
-				color,
-				label
+			`
+			subgraph "cluster_{0}" {{
+				label="{2}"; fillcolor="{1}"; fontsize=8;`\n,
+			nodeName(n),
+			color,
+			label
 		);
 
 		bool[cstring] outp, inp;
@@ -51,9 +76,16 @@ cstring toGraphviz(Graph graph) {
 			}
 		}
 
+		res ~= Format(
+			`
+			"{0}.auto" [label="auto", fillcolor="#c0c0c0"];`\n,
+			nodeName(n)
+		);
+
 		foreach (inParam; inp.keys) {
 			res ~= Format(
-				`"in {0}.{2}" [shape="box",style="filled", label="{3}", fillcolor="#cceeff", fontsize=7];`\n,
+				`
+				"in {0}.{2}" [label="{3}", fillcolor="#cceeff"];`\n,
 				nodeName(n),
 				color,
 				inParam,
@@ -64,7 +96,8 @@ cstring toGraphviz(Graph graph) {
 		}
 		foreach (outParam; outp.keys) {
 			res ~= Format(
-				`"out {0}.{2}" [shape="box",style="filled", label="{3}", fillcolor="#ffeecc", fontsize=7];`\n,
+				`
+				"out {0}.{2}" [label="{3}", fillcolor="#ffeecc"];`\n,
 				nodeName(n),
 				color,
 				outParam,
@@ -79,11 +112,12 @@ cstring toGraphviz(Graph graph) {
 	foreach (n1; graph.iterNodes) {
 		foreach (n2; graph.iterOutgoingConnections(n1)) {
 			foreach (fl; graph.iterDataFlow(n1, n2)) {
-				res ~= Format(`"out {}.{}" -> "in {}.{}"[color=gray30, weight=1.5 ];`\n, nodeName(n1), fl.from, nodeName(n2), fl.to);
-			}/+ else {
-				auto n2 = con.to;
-				res ~= Format(`"cluster_{}" -> "cluster_{}"[color=gray30, weight=1.5 ];`\n, nodeName(n1), nodeName(n2));
-			}+/
+				res ~= Format(`"out {}.{}" -> "in {}.{}";`\n, nodeName(n1), fl.from, nodeName(n2), fl.to);
+			}
+
+			if (graph.hasAutoFlow(n1, n2)) {
+				res ~= Format(`"{}.auto" -> "{}.auto"[ penwidth = 1.5 ];`\n, nodeName(n1), nodeName(n2));
+			}
 		}
 	}
 	

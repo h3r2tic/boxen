@@ -546,7 +546,7 @@ final class Graph {
 					assert (tb is fl.to, "Do not touch the strings :F");
 					if (r) return r;
 				}
-			} else {
+			} else if (!hasAutoFlow(from, to)) {
 				error(
 					"Data flow from {} to {} doesn't exist:"
 					" no such connection.",
@@ -574,11 +574,26 @@ final class Graph {
 			_verifyNodeId(from);
 
 			ConnectionList* outList = &_outgoingConnections[from.id];
+
+			// data flow
 			
 			foreach (item; outList.items) {
 				auto con = item.to;
 				if (int r = sink(con)) {
 					return r;
+				}
+			}
+
+			// auto flow
+
+			for (uword to = 0; to < _capacity; ++to) {
+				if (	from.id != to
+					&&	_readFlag(_presentFlags, to)
+					&&	_readFlag(_autoFlowFlags, from.id, to)
+				) {
+					if (int r = sink(GraphNodeId(cast(ushort)to, _idReuseCounts[to]))) {
+						return r;
+					}
 				}
 			}
 
@@ -590,10 +605,25 @@ final class Graph {
 
 			ConnectionList* incList = &_incomingConnections[to.id];
 
+			// data flow
+
 			foreach (item; incList.items) {
 				auto con = item.from;
 				if (int r = sink(con)) {
 					return r;
+				}
+			}
+
+			// auto flow
+
+			for (uword from = 0; from < _capacity; ++from) {
+				if (	from != to.id
+					&&	_readFlag(_presentFlags, from)
+					&&	_readFlag(_autoFlowFlags, from, to.id)
+				) {
+					if (int r = sink(GraphNodeId(cast(ushort)from, _idReuseCounts[from]))) {
+						return r;
+					}
 				}
 			}
 

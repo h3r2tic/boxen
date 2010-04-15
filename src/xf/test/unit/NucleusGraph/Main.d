@@ -13,6 +13,21 @@ import tango.math.random.Kiss;
 
 
 
+void checkOrder(Graph g, int[] order ...) {
+	final output = new GraphNodeId[g.numNodes];
+	findTopologicalOrder(g, output);
+	foreach (i, n; output) {
+		if (n.id != order[i]) {
+			cstring err = "Invalid topological order received:\n";
+			foreach (n2; output) {
+				err ~= Format(" {}", n2.id);
+			}
+			assert (false, err);
+		}
+	}
+}
+
+
 void main() {
 	{
 		auto g1 = createGraph();
@@ -94,20 +109,6 @@ void main() {
 			g2.addDataFlow(n[from], "foo", n[to], "bar");
 		}
 
-		void checkOrder(int[] order ...) {
-			final output = new GraphNodeId[g2.numNodes];
-			findTopologicalOrder(g2, output);
-			foreach (i, n; output) {
-				if (n.id != order[i]) {
-					cstring err = "Invalid topological order received:\n";
-					foreach (n2; output) {
-						err ~= Format(" {}", n2.id);
-					}
-					assert (false, err);
-				}
-			}
-		}
-
 		fl(0, 1);
 		fl(0, 3);
 		fl(1, 2);
@@ -120,7 +121,7 @@ void main() {
 		fl(7, 8);
 		fl(9, 3);
 
-		checkOrder(0, 9, 3, 4, 1, 5, 2, 6, 7, 8);
+		checkOrder(g2, 0, 9, 3, 4, 1, 5, 2, 6, 7, 8);
 
 		File.set("g2.dot", toGraphviz(g2));
 
@@ -137,7 +138,7 @@ void main() {
 		g2.removeNode(n[5]);
 		g2.removeNode(n[9]);
 
-		checkOrder(0, 3, 4, 1, 2, 6, 7, 8);
+		checkOrder(g2, 0, 3, 4, 1, 2, 6, 7, 8);
 
 		File.set("g2b.dot", toGraphviz(g2));
 
@@ -154,7 +155,7 @@ void main() {
 		g2.removeNode(n[3]);
 		g2.removeNode(n[4]);
 
-		checkOrder(0, 1, 2, 6, 7, 8);
+		checkOrder(g2, 0, 1, 2, 6, 7, 8);
 
 		File.set("g2c.dot", toGraphviz(g2));
 
@@ -170,9 +171,98 @@ void main() {
 		g2.removeNode(n[7]);
 		g2.removeNode(n[6]);
 
-		checkOrder(0, 1);
+		checkOrder(g2, 0, 1);
 
 		File.set("g2d.dot", toGraphviz(g2));
+	}
+
+	{
+		auto g3 = createGraph();
+		scope (exit) disposeGraph(g3);
+
+		GraphNodeId[] n;
+		for (int i = 0; i < 10; ++i) {
+			n ~= g3.addNode();
+		}
+
+		// g3 == g2
+		/* 0       1 2
+		 * o-------o-o
+		 *  \     /   \
+		 *   >o--o---o-o--o--o
+		 *  / 3  4   5 6  7  8
+		 * o
+		 * 9
+		 */
+
+		void fl2(int from, int to) {
+			g3.addAutoFlow(n[from], n[to]);
+		}
+
+		fl2(0, 1);
+		fl2(0, 3);
+		fl2(1, 2);
+		fl2(2, 6);
+		fl2(3, 4);
+		fl2(4, 1);
+		fl2(4, 5);
+		fl2(5, 6);
+		fl2(6, 7);
+		fl2(7, 8);
+		fl2(9, 3);
+
+		checkOrder(g3, 0, 9, 3, 4, 1, 5, 2, 6, 7, 8);
+
+		File.set("g3.dot", toGraphviz(g3));
+
+		g3.removeNode(n[5]);
+		g3.removeNode(n[9]);
+
+		checkOrder(g3, 0, 3, 4, 1, 2, 6, 7, 8);
+	}
+
+	{
+		auto g4 = createGraph();
+		scope (exit) disposeGraph(g4);
+
+		GraphNodeId[] n;
+		for (int i = 0; i < 10; ++i) {
+			n ~= g4.addNode();
+		}
+
+		// g4 == g2
+		/* 0       1 2
+		 * o-------o-o
+		 *  \     /   \
+		 *   >o--o---o-o--o--o
+		 *  / 3  4   5 6  7  8
+		 * o
+		 * 9
+		 */
+
+		g4.addAutoFlow(n[0], n[1]);
+		g4.addDataFlow(n[0], "foo", n[3], "bar");
+		g4.addAutoFlow(n[1], n[2]);
+		g4.addAutoFlow(n[2], n[6]);
+		g4.addDataFlow(n[3], "foo", n[4], "bar");
+		g4.addAutoFlow(n[4], n[1]);
+		g4.addDataFlow(n[4], "foo", n[5], "bar");
+		g4.addDataFlow(n[5], "foo", n[6], "bar");
+		g4.addAutoFlow(n[6], n[7]);
+		g4.addDataFlow(n[7], "foo", n[8], "bar");
+		g4.addAutoFlow(n[9], n[3]);
+
+		// 1 and 5 are in different order in comparison to g2 and g3
+		// this is because internally, the flow iteration functions
+		// first yield all data and only then auto connections
+		checkOrder(g4, 0, 9, 3, 4, 5, 1, 2, 6, 7, 8);
+
+		File.set("g4.dot", toGraphviz(g4));
+
+		g4.removeNode(n[5]);
+		g4.removeNode(n[9]);
+
+		checkOrder(g4, 0, 3, 4, 1, 2, 6, 7, 8);
 	}
 
 	Stdout.formatln("Test passed!");
