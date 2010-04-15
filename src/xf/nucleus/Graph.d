@@ -230,6 +230,10 @@ final class Graph {
 	size_t			numNodes() {
 		return _numNodes;
 	}
+
+	size_t			capacity() {
+		return _capacity;
+	}
 	
 	GraphNodeFruct	iterNodes() {
 		return GraphNodeFruct(this);
