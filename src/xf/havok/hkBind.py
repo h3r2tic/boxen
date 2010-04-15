@@ -344,7 +344,7 @@ def generateCode(classes, funcs, dcode):
 # ----------------------------------------------------------------
 
 
-classes, funcs, dcode = processFile('dupa.txt')
+classes, funcs, dcode = processFile('havokBridge.lst')
 resolveInheritance(classes)
 analyzeTypes(classes, funcs)
 classSemantic(classes)
