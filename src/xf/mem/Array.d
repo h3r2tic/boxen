@@ -1,45 +1,9 @@
 module xf.mem.Array;
 
-
-
-interface ArrayExpandPolicy {
-	template FixedAmount(int count) {
-		template FixedAmount(int _count = count) {
-			void _expand(size_t num) {
-				if (num < _count) {
-					_capacity += _count;
-				} else {
-					_capacity += (num + _count - 1) / _count * _count;
-				}
-				
-				_reallocate();
-			}
-		}
-	}
-
-	template Exponential(int _mult) {
-		static assert (false, `TODO`);
-	}
+private {
+	import xf.mem.ArrayAllocator;
 }
 
-
-interface ArrayAllocator {
-	template MainHeap() {
-		private static import xf.mem.MainHeap;
-
-
-		void _reallocate() {
-			assert (_capacity != 0);
-			_ptr = cast(T*)xf.mem.MainHeap.mainHeap.reallocRaw(_ptr, _capacity * T.sizeof);
-			assert (_ptr !is null);
-		}
-		
-		void _dispose() {
-			xf.mem.MainHeap.mainHeap.freeRaw(_ptr);
-			_length = _capacity = 0;
-		}
-	}
-}
 
 
 struct Array(
@@ -56,6 +20,7 @@ struct Array(
 			_ptr[_length++] = x;
 		} else {
 			_expand(1U);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
 			_ptr[_length++] = x;
 		}
 	}
@@ -71,6 +36,7 @@ struct Array(
 	void reserve(size_t num) {
 		if (num > _capacity) {
 			_expand(num - _capacity);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
 		}
 	}
 	
@@ -115,7 +81,8 @@ struct Array(
 
 	
 	void dispose() {
-		_dispose();
+		_dispose(_ptr);
+		_length = _capacity = 0;
 	}
 	
 	

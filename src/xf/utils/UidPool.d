@@ -1,7 +1,9 @@
 module xf.utils.UidPool;
 
 private {
-	import xf.mem.Array;
+	import
+		xf.mem.Array,
+		xf.mem.ArrayAllocator;
 }
 
 

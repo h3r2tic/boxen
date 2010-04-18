@@ -9,6 +9,7 @@ private {
 	
 	import
 		xf.mem.Array,
+		xf.mem.ArrayAllocator,
 		xf.mem.FreeList;
 }
 
