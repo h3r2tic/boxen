@@ -72,13 +72,14 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 //	one day afk, another wrecked
 
-~	semantic type system
++	semantic type system
 	+ Semantic class with good mem management
-	- Trait/semantic operators - 'Commands' that add/remove/modify traits
 	+ Semantic comparison utils
 	+ Param class with an easy accessor to the type
+	+ Basic type parsing
 
--	automatic conversions
+~	automatic conversions
+	+ testing whether a semantic can be used as an argument to a particular function param
 	- path-finding in the implicit graph of semantic types
 
 = 17
