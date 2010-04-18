@@ -79,87 +79,146 @@ private pragma(ctfe) MultiArrayField[] parseMultiArrayFields(cstring def) {
 	size_t length()
 	... TODO ...
 */
-pragma(ctfe) cstring multiArray(cstring name, cstring def) {
-	return multiArray(name, 256, def);
-}
-
 
 /// ditto
-pragma(ctfe) cstring multiArray(cstring name, int _growBy, cstring def) {
-	assert (_growBy > 1);
-	
+pragma(ctfe) cstring multiArray(
+			cstring name,
+			cstring def,
+			cstring ExpandPolicy = `ArrayExpandPolicy.FixedAmount!(256)`,
+			cstring Allocator = `ArrayAllocator.MainHeap`
+) {
 	auto fields = parseMultiArrayFields(def);
-	cstring growBy = intToStringCT(_growBy);
-	cstring res;
-	res ~= `private static import xf.mem.OSHeap;`;
-	bool needsOuter = false;
+
+	cstring outerType = `_ma_`~name~`_OuterRef`;
+	cstring wrapperType = `_ma_` ~ name;
+
+	// Can't do it in the inner scope or DMD asplodes :/
+	cstring res = `private import xf.mem.ArrayAllocator;`;
+
+	// Store the outer type
+	res ~= `static if (is(typeof(this))) alias typeof(this) `~outerType~`;`;
+
+	// Create a wrapper struct for the multi-array.
+	// Its name is largely irrelevant here, the struct will be accessed via its instance.
+	res ~= `static struct ` ~ wrapperType ~ `{`;
+	res ~= `const _ma_outerValid = is(`~outerType~`);`;
+	res ~= `static if (_ma_outerValid) { alias `~outerType~` _ma_outerType; }`;
+
+	// Fuck you, DMD
+	res ~= `alias ` ~ ExpandPolicy ~ ` _ExpandPolicy; mixin _ExpandPolicy;`;
+
+	// The allocator specified as a param must be mixed into a scope. So we create one.
+	res ~= `struct _SubAllocator {
+		static if (_ma_outerValid) {
+			_ma_outerType _outer() {
+				return cast(_ma_outerType)(
+					cast(void*)this
+					- _ma_outerType.init.` ~ name ~ `.offsetof
+					- _ma_outerType.`~wrapperType~`.init._subAllocator.offsetof
+				);
+			}
+		}
+		mixin `~Allocator~`;
+	}
+	_SubAllocator _subAllocator;`;
+
+	// Create a getter for the outer pointer. It's calculated by
+	// subtracting the .offsetof of the wrapper struct instance from the thisptr.
+	res ~= `
+	static if (_ma_outerValid) {
+		_ma_outerType _ma_outer() {
+			return cast(_ma_outerType)(
+				cast(void*)this
+				- _ma_outerType.init.` ~ name ~ `.offsetof
+			);
+		}
+	}`;
+
+	// For each field in the multi-array, create a `type* name = null;` pointer.
 	foreach (field; fields) {
 		if (field.isChunk) {
-			needsOuter = true;
-			break;
-		}
-	}
-	if (needsOuter) {
-		res ~= `static if (!is(_ma__OuterRef)) alias typeof(this) _ma__OuterRef;`;
-	}
-	res ~= `static struct _ma_` ~ name ~ `{`;
-	if (needsOuter) {
-		res ~= `_ma__OuterRef _this() { return cast(_ma__OuterRef)(cast(void*)this - _ma__OuterRef.init.` ~ name ~ `.offsetof); }`;
-	}
-		foreach (field; fields) {
-			if (field.isChunk) {
-				res ~= field.type ~ `* ` ~ field.name ~ ` = null;`\n;
-				res ~= `size_t ` ~ field.name ~ `_chunkSize_() { auto _thisOuter = _this(); return `~field.chunkSizeVar~`; }`\n;
-			} else {
-				res ~= field.type ~ `* ` ~ field.name ~ ` = null;`\n;
-			}
-		}
-		res ~= `
-		void resize(size_t newLen) {
-			_length = newLen;
-			if (newLen > 0) {
-				if (newLen > _capacity) {
-					_capacity = newLen;
-				}
-				_allocCapacity();
-			}
-		}
-		
-		size_t growBy(size_t num) {
-			size_t result = _length;
-			_length += num;
-			if (_length <= _capacity) {
-				return result;
-			} else {
-				_capacity = _length + `~growBy~` - 1;
-				_capacity -= _capacity % `~growBy~`;
-				_allocCapacity();
-				return result;
-			}
-		}
-		
-		size_t length() {
-			return _length;
-		}
-		
-		private {
-			void _allocCapacity() {
-				assert (_capacity > 0, "multiArray._allocCapacity :: _capacity must be > 0");
-				alias xf.mem.OSHeap.osHeap _heap;`;
-				if (needsOuter) res ~=
-				`auto _thisOuter = _this();`;
+			res ~= field.type ~ `* ` ~ field.name ~ ` = null;`\n;
 
-				foreach (field; fields) {
-					res ~= `assert (`~field.chunkSizeVar~` > 0, "multiArray._allocCapacity :: `~field.chunkSizeVar~` must be > 0");`;
-					res ~= field.name~` = cast(`~field.type~`*)_heap.reallocRaw(`~field.name~`, _capacity * (`~field.type~`).sizeof * `~field.chunkSizeVar~`);`\n;
+			// Chunks also need a method to determine the variable size.
+			res ~= `size_t ` ~ field.name ~ `_chunkSize_() {
+				static if (_ma_outerValid) {
+					final _thisOuter = _ma_outer();
+					return `~field.chunkSizeVar~`;
+				} else {
+					return `~field.chunkSizeVar["_thisOuter.".length..$]~`;
 				}
-				res ~=
-			`}
-			
-			size_t	_length;
-			size_t	_capacity;
+			}`\n;
+		} else {
+			res ~= field.type ~ `* ` ~ field.name ~ ` = null;`\n;
+			res ~= `enum { ` ~ field.name ~ `_chunkSize_ = 1 }`\n;
 		}
-		`;
+	}
+
+	res ~= `
+	void _reallocate() {
+			assert (_capacity > 0, "multiArray._allocCapacity :: _capacity must be > 0");`;
+			
+			foreach (field; fields) {
+				res ~= `{
+				assert (`~field.name~`_chunkSize_`~` > 0, "multiArray._reallocate :: `~field.chunkSizeVar~` must be > 0");
+				const _ma_itemSize = (`~field.type~`).sizeof * `~field.name~`_chunkSize_;
+				`~field.name~` = cast(`~field.type~`*)
+					_subAllocator._reallocate(
+						`~field.name~`,
+						0,
+						_length * _ma_itemSize,
+						_capacity * _ma_itemSize
+					);
+				}`;
+			}
+			res ~= `
+	}
+
+	void _dispose() {
+	}
+	
+	void reserve(size_t num) {
+		if (num > _capacity) {
+			this._expand(num - _capacity);
+			_reallocate();
+		}
+	}	
+	
+	void resize(size_t num) {
+		if (num > 0) {
+			reserve(num);
+			/+if (num > _length) {
+				initElements(_length, num);
+			}+/
+		}
+		
+		_length = num;
+	}
+
+	size_t growBy(size_t num) {
+		size_t result = _length;
+		_length += num;
+		if (_length <= _capacity) {
+			return result;
+		} else {
+			_expand(_length - _capacity);
+			_reallocate();
+			return result;
+		}
+	}
+	
+	size_t length() {
+		return _length;
+	}
+	
+	private {
+		size_t	_length;
+		size_t	_capacity;
+	}
+	`;
+
+	// Finally, create the struct instance with the proper name
 	res ~= `} _ma_` ~ name ~ ` ` ~ name ~ `;`;
+	
 	return res;
 }
