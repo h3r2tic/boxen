@@ -7,7 +7,7 @@ private {
 
 
 
-pragma(ctfe) private void splitTypeNameCT(cstring line, out cstring type, out cstring name) {
+private pragma(ctfe) void splitTypeNameCT(cstring line, out cstring type, out cstring name) {
 	int i = 0;
 	for (; i < line.length; ++i) {
 		if (' ' == line[i] || '\t' == line[i]) break;
@@ -24,7 +24,7 @@ pragma(ctfe) private void splitTypeNameCT(cstring line, out cstring type, out cs
 }
 
 
-private struct MultiArrayField {
+private pragma(ctfe) struct MultiArrayField {
 	cstring	type;
 	cstring	name;
 	cstring	chunkSizeVar;
@@ -73,7 +73,8 @@ private pragma(ctfe) MultiArrayField[] parseMultiArrayFields(cstring def) {
 	---
 	
 	Generated public methods:
-	
+
+	void reserve(size_t num)
 	void resize(size_t)
 	size_t growBy(size_t)	- returns the index of the first newly added item
 	size_t length()
@@ -174,9 +175,6 @@ pragma(ctfe) cstring multiArray(
 			res ~= `
 	}
 
-	void _dispose() {
-	}
-	
 	void reserve(size_t num) {
 		if (num > _capacity) {
 			this._expand(num - _capacity);
