@@ -7,6 +7,8 @@ private {
 		xf.mem.ArrayAllocator;
 	import
 		xf.nucleus.Log : error = nucleusError, log = nucleusLog;
+		
+	import Ascii = tango.text.Ascii;
 }
 
 
@@ -27,50 +29,110 @@ private template ScrapDgAllocator() {
 
 
 struct Semantic {
+	// Overlaps with Param
+	private {
+		alias void* delegate(uword) Allocator;
+		Allocator _allocator;
+	}
+
+	
 	static Semantic opCall(Allocator allocator) {
 		Semantic res;
 		res._allocator = allocator;
 		return res;
 	}
 
+
+	Semantic dup(Allocator allocator = null) {
+		Semantic res;
+		res._allocator = allocator is null ? _allocator : allocator;
+		uword numTraits = _traits.length;
+		res._traits.resize(numTraits);
+		for (uword i = 0; i < numTraits; ++i) {
+			res._traits.name[i] = res._allocString(_traits.name[i]);
+			res._traits.value[i] = res._allocString(_traits.value[i]);
+		}
+		return res;
+	}
+
 	
 	void	addTrait(cstring name, cstring value) {
-		final i = _traits.growBy(1);
-		_traits.name[i] = _allocString(name);
-		_traits.value[i] = _allocString(value);
+		uword found = _lowerBoundBinarySearch(name);
+		if (found < _traits.length) {
+			if (_traits.name[found] == name) {
+				if (_traits.value[found] != value) {
+					_traits.value[found] = _allocString(value);
+				}
+				
+				return;		// short-circuit
+			} else {
+				_traits.growBy(1);
+
+				for (uword i = _traits.length-1; i > found; --i) {
+					_traits.name[i] = _traits.name[i-1];
+					_traits.value[i] = _traits.value[i-1];
+				}
+			}
+		} else {
+			_traits.growBy(1);
+		}
+
+		_traits.name[found] = _allocString(name);
+		_traits.value[found] = _allocString(value);
+
+		// TODO: wrap it in some version (DebugSemantics)
+		_verifyOrder();
 	}
 	
 	cstring	getTrait(cstring name) {
-		for (uword i = 0; i < _traits.length; ++i) {
-			if (_traits.name[i] == name) {
-				return _traits.value[i];
-			}
+		uword found = _lowerBoundBinarySearch(name);
+		
+		if (found < _traits.length && _traits.name[found] == name) {
+			return _traits.value[found];
+		} else {
+			error("No trait named '{}'", name);
+			assert (false);
 		}
-
-		error("No trait named '{}'", name);
-		assert (false);
 	}
 	
 	bool	hasTrait(cstring name) {
-		for (uword i = 0; i < _traits.length; ++i) {
-			if (_traits.name[i] == name) {
-				return true;
-			}
+		uword found = _lowerBoundBinarySearch(name);
+		
+		if (found < _traits.length && _traits.name[found] == name) {
+			return true;
+		} else {
+			return false;
 		}
-		return false;
 	}
 	
 	bool	hasTrait(cstring name, cstring value) {
-		for (uword i = 0; i < _traits.length; ++i) {
-			if (_traits.name[i] == name && _traits.value[i] == value) {
-				return true;
-			}
+		uword found = _lowerBoundBinarySearch(name);
+		
+		if (found < _traits.length && _traits.name[found] == name) {
+			return _traits.value[found] == value;
+		} else {
+			return false;
 		}
-		return false;
 	}
 	
 	void	removeTrait(cstring name) {
-		assert (false, `TODO`);
+		uword found = _lowerBoundBinarySearch(name);
+		uword numTraits = _traits.length;
+		if (found < numTraits && _traits.name[found] == name) {
+			if (found != numTraits-1) {
+				for (; found < numTraits-1; ++found) {
+					_traits.name[found] = _traits.name[found+1];
+					_traits.value[found] = _traits.value[found+1];
+				}
+			}
+
+			_traits.resize(numTraits-1);
+
+			// TODO: wrap it in some version (DebugSemantics)
+			_verifyOrder();
+		} else {
+			error("Semantic.removeTrait: trait does not exist: '{}'", name);
+		}
 	}
 	
 	TraitFruct	iterTraits() {
@@ -78,16 +140,75 @@ struct Semantic {
 	}
 
 
-	private {
-		alias void* delegate(uword) Allocator;
-		Allocator _allocator;
+	uword numTraits() {
+		return _traits.length;
+	}
 
+
+	private {
 		cstring _allocString(cstring s) {
 			char* p = cast(char*)_allocator(s.length);
 			if (p is null) {
 				error("Semantic._allocator returned null :(");
 			}
 			return p[0..s.length] = s;
+		}
+
+		// uword.max if not found
+		/+uword _findTrait(cstring name) {
+			for (uword i = 0; i < _traits.length; ++i) {
+				if (_traits.name[i] == name) {
+					return i;
+				}
+			}
+			return uword.max;
+		}+/
+
+		uword _lowerBoundBinarySearch(cstring name) {
+			final names = _traits.name;
+			uword l = 0;
+			uword r = _traits.length;
+
+			if (0 == r - l) {
+				return 0;
+			}
+
+		iter:
+			uword w = r - l;
+			assert (w > 0);
+			
+			if (1 == w) {
+				if (Ascii.compare(name, names[l]) <= 0) {
+					return l;
+				} else {
+					return r;
+				}
+			}
+
+			int mid = (l + r - 1) / 2;
+			int cmp = Ascii.compare(name, names[mid]);
+			
+			if (cmp < 0) {
+				if (2 == w) {
+					assert (mid == l);
+					return mid;
+				} else {
+					r = mid;
+					goto iter;
+				}
+			} else if (cmp > 0) {
+				l = mid+1;
+				goto iter;
+			} else {
+				return mid;
+			}
+		}
+
+		void _verifyOrder() {
+			uword num = _traits.length;
+			for (uword i = 1; i < num; ++i) {
+				assert (Ascii.compare(_traits.name[i-1], _traits.name[i]) < 0);
+			}
 		}
 
 		int _iterTraits(int delegate(ref cstring name, ref cstring value) sink) {
@@ -117,5 +238,57 @@ private struct TraitFruct {
 
 	int opApply(int delegate(ref cstring name, ref cstring value) sink) {
 		return sem._iterTraits(sink);
+	}
+}
+
+
+
+interface ISemanticComparator {
+	bool missing(cstring name, cstring value);
+	bool additional(cstring name, cstring value);
+	bool existing(cstring name, cstring val1, cstring val2);
+}
+
+
+void compareSemantics(Semantic s1, Semantic s2, ISemanticComparator comp) {
+	auto nArr1 = s1._traits.name[0..s1._traits.length];
+	auto nArr2 = s2._traits.name[0..s2._traits.length];
+	auto vArr1 = s1._traits.value[0..s1._traits.length];
+	auto vArr2 = s2._traits.value[0..s2._traits.length];
+	
+	while (nArr1.length > 0 && nArr2.length > 0) {
+		int cval = Ascii.compare(nArr1[0], nArr2[0]);
+		
+		if (cval < 0) {
+			bool res = comp.additional(nArr1[0], vArr1[0]);
+			if (!res) return;
+			nArr1 = nArr1[1..$];
+			vArr1 = vArr1[1..$];
+		} else if (cval > 0) {
+			bool res = comp.missing(nArr2[0], vArr2[0]);
+			if (!res) return;
+			nArr2 = nArr2[1..$];
+			vArr2 = vArr2[1..$];
+		} else {
+			bool res = comp.existing(nArr1[0], vArr1[0], vArr2[0]);
+			if (!res) return;
+			nArr1 = nArr1[1..$];
+			vArr1 = vArr1[1..$];
+
+			nArr2 = nArr2[1..$];
+			vArr2 = vArr2[1..$];
+		}
+	}
+	
+	//Stdout.formatln("----");
+	
+	foreach (i, n; nArr1) {
+		bool res = comp.additional(n, vArr1[i]);
+		if (!res) return;
+	}
+
+	foreach (i, n; nArr2) {
+		bool res = comp.missing(n, vArr2[i]);
+		if (!res) return;
 	}
 }
