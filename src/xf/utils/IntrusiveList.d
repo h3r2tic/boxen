@@ -4,7 +4,7 @@ module xf.utils.IntrusiveList;
 
 template IntrusiveList(char[] name, char[] junk1, int junk2) {
 	private {
-		alias typeof(this) ThisPtr;		
+		alias typeof(this) ThisPtr;
 		static if (is(ThisPtr == class)) {
 			alias ThisPtr ThisVal;
 		} else {

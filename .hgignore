@@ -1,5 +1,6 @@
 syntax: glob
 .deps
+.moduleDeps
 .c.deps
 .s.deps
 *.o
