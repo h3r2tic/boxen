@@ -64,7 +64,7 @@ class MyChunkHandler : IChunkHandler {
 			mesh = renderer.createMeshes(1);
 			auto m = &mesh[0];
 
-			m.numIndices = indices.length;
+			m.indexData.numIndices = indices.length;
 			assert (indices.length > 0 && indices.length % 3 == 0);
 			
 			uword minIdx = uword.max;
@@ -75,8 +75,8 @@ class MyChunkHandler : IChunkHandler {
 				if (i > maxIdx) maxIdx = i;
 			}
 
-			m.minIndex = minIdx;
-			m.maxIndex = maxIdx;
+			m.indexData.minIndex = minIdx;
+			m.indexData.maxIndex = maxIdx;
 			
 			(m.indexBuffer = renderer.createIndexBuffer(
 				BufferUsage.StaticDraw,
