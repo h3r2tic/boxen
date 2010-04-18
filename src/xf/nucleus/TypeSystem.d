@@ -6,6 +6,8 @@ private {
 		xf.mem.MultiArray,
 		xf.mem.ArrayAllocator;
 	import
+		xf.utils.IntrusiveHash;
+	import
 		xf.nucleus.DataTypes,
 		xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 		
@@ -230,6 +232,10 @@ struct Semantic {
 			`ArrayExpandPolicy.FixedAmount!(4)`,
 			`ScrapDgAllocator`
 		));
+
+
+		// For the type conversion implicit graph search algorighm
+		mixin MIntrusiveHash!(void*);
 	}
 }
 
