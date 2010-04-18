@@ -6,6 +6,7 @@ private {
 		xf.mem.MultiArray,
 		xf.mem.ArrayAllocator;
 	import
+		xf.nucleus.DataTypes,
 		xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 		
 	import Ascii = tango.text.Ascii;
@@ -280,8 +281,6 @@ void compareSemantics(Semantic s1, Semantic s2, ISemanticComparator comp) {
 		}
 	}
 	
-	//Stdout.formatln("----");
-	
 	foreach (i, n; nArr1) {
 		bool res = comp.additional(n, vArr1[i]);
 		if (!res) return;
@@ -291,4 +290,75 @@ void compareSemantics(Semantic s1, Semantic s2, ISemanticComparator comp) {
 		bool res = comp.missing(n, vArr2[i]);
 		if (!res) return;
 	}
+}
+
+
+bool canPassSemanticFor(
+		Semantic arg,
+		Semantic param,
+		bool acceptAdditional,
+		int* extraCost = null,
+		Semantic* modOutput = null
+) {
+	bool result = true;
+	
+	class Comparator : ISemanticComparator {
+		bool missing(cstring name, cstring value) {
+			//log.trace("sem is missing trait {}", t);
+			return result = false;
+		}
+		bool additional(cstring name, cstring value) {
+			//log.trace("sem has an additional trait {}", t);
+			if (acceptAdditional) {
+				if (extraCost !is null) {
+					++*extraCost;
+				}
+				
+				if (modOutput) {
+					modOutput.addTrait(name, value);
+				}
+				
+				return result = true;
+			} else {
+				return result = false;
+			}
+		}
+		bool existing(cstring name, cstring val1, cstring val2) {
+			if ("type" == name) {
+				void tryNormalize(cstring type, void delegate(string) sink) {
+					TypeParsingError err;
+					if (!normalizeTypeName(type, sink, &err)) {
+						sink(cast(string)type);
+					}
+				}
+
+				tryNormalize(val1, (string type1) {
+					tryNormalize(val2, (string type2) {
+						if (true == (result = (type1 == type2))) {
+							if (modOutput) {
+								// cast valid since addTrait copies the string
+								modOutput.addTrait(name, type2);
+							}
+						}
+					});
+				});
+				
+				return result;
+			} else {
+				//log.trace("t.{}  vs  t2.{}", t, t2);
+				if (true == (result = (val1 == val2))) {
+					if (modOutput) {
+						modOutput.addTrait(name, val2);
+					}
+				}
+				
+				return result;
+			}
+		}
+	}
+	
+	scope comp = new Comparator;
+	compareSemantics(arg, param, comp);
+
+	return result;
 }
