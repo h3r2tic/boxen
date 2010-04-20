@@ -140,11 +140,185 @@ struct Param {
 
 	private {
 		cstring _allocString(cstring s) {
+			assert (s.length > 0);
+			
 			char* p = cast(char*)_allocator(s.length);
 			if (p is null) {
 				error("Type._allocator returned null :(");
 			}
 			return p[0..s.length] = s;
 		}
+	}
+}
+
+
+
+interface IParamSupport {
+	Param[] params();
+	void overrideParams(Param[] p);
+	uint numParams();
+	int iterParams(int delegate(ref Param) dg);
+	bool getInputParam(cstring name, ref Param res);
+	bool getOutputParam(cstring name, ref Param res);
+	void addParam(ParamDirection dir, cstring type, cstring name, Semantic sem);
+	void addParam(cstring type, cstring name, Semantic sem);
+	void addParam(cstring type, cstring name);
+	void addParam(Param p);
+	void removeParamKeepOrder(cstring name);
+	void removeParams(bool delegate(ref Param) dg);
+	Param* getParam(cstring name);
+	int paramIndex(Param* p);
+}
+
+
+
+template MParamSupport() {
+	static assert (is(typeof(this) == class));
+
+	private import xf.nucleus.TypeSystem : Semantic;
+	
+	
+	protected Param[]	_params;
+	bool				_paramsOwner = true;
+	
+	Param[] params() {
+		return _params;
+	}
+	
+	void overrideParams(Param[] p) {
+		_params = p;
+		_paramsOwner = true;
+	}
+	
+	typeof(this) dupParamsTo(typeof(this) o) {
+		o._params = this._params.dup;
+		foreach (ref p; o._params) {
+			p = p.dup;
+		}
+		o._paramsOwner = false;
+		return o;
+	}
+	
+	uint numParams() {
+		return _params.length;
+	}
+	
+	int iterParams(int delegate(ref Param) dg) {
+		foreach (ref p; _params) {
+			if (auto r = dg(p)) {
+				return r;
+			}
+		}
+		return 0;
+	}
+	
+	bool getInputParam(cstring name, ref Param res) {
+		foreach (ref p; _params) {
+			if (p.isInput && p.name == name) {
+				res = p;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool getOutputParam(cstring name, ref Param res) {
+		foreach (ref p; _params) {
+			if (!p.isInput && p.name == name) {
+				res = p;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	void addParam(ParamDirection dir, cstring type, cstring name, Semantic sem) {
+		/+assert (name.length > 0);
+		if (!_paramsOwner) {
+			_params = _params.dup;
+			_paramsOwner = true;
+		}
+		_params ~= xf.nucleus.CommonDef.Param(dir, type, name, sem);+/
+		assert (false, "TODO");
+	}
+
+
+	void addParam(cstring type, cstring name, Semantic sem) {
+		/+assert (name.length > 0);
+		if (!_paramsOwner) {
+			_params = _params.dup;
+			_paramsOwner = true;
+		}
+		_params ~= xf.nucleus.CommonDef.Param(xf.nucleus.CommonDef.Param.Direction.In, type, name, sem);+/
+		assert (false, "TODO");
+	}
+
+
+	void addParam(cstring type, cstring name) {
+		/+assert (name.length > 0);
+		if (!_paramsOwner) {
+			_params = _params.dup;
+			_paramsOwner = true;
+		}
+		_params ~= xf.nucleus.CommonDef.Param(xf.nucleus.CommonDef.Param.Direction.In, type, name, Semantic.init);+/
+		assert (false, "TODO");
+	}
+	
+	
+	void addParam(Param p) {
+		/+assert (p.name.length > 0, p.toString);
+		if (!_paramsOwner) {
+			_params = _params.dup;
+			_paramsOwner = true;
+		}
+		_params ~= p;+/
+		assert (false, "TODO");
+	}
+	
+	
+	void removeParamKeepOrder(cstring name) {
+		foreach (i, ref p; _params) {
+			if (p.name == name) {
+				for (; i+1 < _params.length; ++i) {
+					_params[i] = _params[i+1];
+				}
+				_params = _params[0..$-1];
+				return;
+			}
+		}
+		assert (false, name);
+	}
+	
+	
+	void removeParams(bool delegate(ref Param) dg) {
+		int dst = 0;
+		foreach (i, ref p; _params) {
+			if (!dg(p)) {
+				if (i != dst) {
+					_params[dst++] = p;
+				} else {
+					++dst;
+				}
+			}
+		}
+		_params = _params[0..dst];
+	}
+
+
+	Param* getParam(cstring name) {
+		foreach (ref p; _params) {
+			if (p.name == name) {
+				return &p;
+			}
+		}
+		return null;
+	}
+
+
+	int paramIndex(Param* p)
+	out (res) {
+		assert (&_params[res] is p);
+	} body {
+		return p - _params.ptr;
 	}
 }

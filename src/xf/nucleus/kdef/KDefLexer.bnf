@@ -1,0 +1,75 @@
+.d-baseclass = "KDefLexerBase";
+.d-header = "module xf.nucleus.kdef.KDefLexer;
+private {{
+	import xf.nucleus.kdef.KDefToken;
+	import xf.nucleus.kdef.KDefLexerBase;
+}";
+.d-classname = "KDefLexer";
+.d-filename = "KDefLexer.d";
+
+
+
+Syntax
+	= KDefToken[] tokens
+	::= (
+		Whitespace |
+		SlashStarComment |
+		SlashSlashComment |
+		NestingComment |
+		StringLiteral:~tokens |
+		VerbatimStringLiteral:~tokens |
+		Number:~tokens |
+		Identifier:~tokens |
+		LeftCurly:~tokens |
+		RightCurly:~tokens |
+		LiteralToken:~tokens |
+		@err!("Unexpected char")
+	)* eoi;
+
+Whitespace
+	::= {" " | "\t" | "\r" | "\n"};
+
+SlashStarComment
+	$String err="Expected closing */"
+	::= "/*" ?!(err) any* "*/";
+
+SlashSlashComment
+	$String err="Expected terminating newline"
+	::= "//" ?!(err) any* ("\n" | eoi);
+
+NestingComment
+	$String err="Expected closing +/"
+	::= "/+" ?!(err) (NestingComment | any)* "+/";
+
+StringLiteral
+	= KDefToken StringToken(String text)
+	$String err2="Expected closing \""
+	::= "\"" ?!(err2) StringChar:~text* "\"";
+
+VerbatimStringLiteral
+	= KDefToken VerbatimStringToken(String text)
+	::= "`" any:~text* "`";
+
+StringChar
+	= String ch
+	::= "\\" ("n" @NEWLINE:ch | "r" @CARRAIGE_RETURN:ch | "t" @TAB:ch | "\"" @DOUBLE_QUOTE:ch | "\'" @SINGLE_QUOTE:ch | "\\" @SLASH:ch | @err!("Unexpected escape sequence")) | any:ch;
+
+Number
+	= KDefToken NumberToken(String text)
+	::= ("-" | #30-#39 | #2e):~text+;
+
+Identifier
+	= KDefToken IdentifierToken(String text)
+	::= ((#41-#5A | #61-#7A | "_") (#30-#39 | #41-#5A | #61-#7A | "_")*):text;
+
+LeftCurly
+	= KDefToken LeftCurly(String text)
+	::= #7B:text;
+
+RightCurly
+	= KDefToken RightCurly(String text)
+	::= #7D:text;
+
+LiteralToken
+	= KDefToken LiteralToken(String text)
+	::= (#21-#2F | #3A-#40 | #5B-#60 | #7C | #7E):text;
