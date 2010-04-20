@@ -1,13 +1,12 @@
 module xf.nucleus.kdef.model.IKDefUtilParser;
 
 private {
-	//import xf.nucleus.kdef.Common;
-	import xf.nucleus.CommonDef;
-	alias char[] string;
+	import xf.Common;
+	import xf.nucleus.Value;
 }
 
 
 
 interface IKDefUtilParser {
-	VarDef[] parse_TemplateArgList(string source);
+	VarDef[] parse_TemplateArgList(cstring source);
 }

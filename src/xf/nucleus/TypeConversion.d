@@ -19,6 +19,9 @@ struct SearchItem {
 }
 
 
+class SemanticConverter {
+}
+
 	bool findConversion(
 			Semantic from,
 			Semantic to,

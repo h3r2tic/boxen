@@ -1,12 +1,15 @@
 module xf.nucleus.kdef.KDefParserBase;
 
 private {
+	import xf.nucleus.Param;
+	import xf.nucleus.Value;
+	import xf.nucleus.Code;
+	import xf.nucleus.Function;
 	import xf.nucleus.kdef.KDefLexer;
-	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kernel.KernelDef;
-	import xf.nucleus.CommonDef;
-	import xf.nucleus.SemanticTypeSystem;
+	import xf.nucleus.kernel.KernelImplDef;
+	import xf.nucleus.TypeSystem;
 
 	import enkilib.d.Parser;
 	import enkilib.d.ParserException;
@@ -54,7 +57,7 @@ class KDefParserBase : Parser!(KDefToken){
 		}
 		
 		
-		KernelDef parseKernelDef(KernelFunction[] funcs, string[] before, string[] after, Param[] attribs) {
+		KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, Param[] attribs) {
 			auto kd = new KernelDef;
 			kd.functions = funcs;
 			kd.attribs = attribs;

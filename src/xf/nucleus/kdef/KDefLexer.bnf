@@ -1,7 +1,7 @@
 .d-baseclass = "KDefLexerBase";
 .d-header = "module xf.nucleus.kdef.KDefLexer;
 private {{
-	import xf.nucleus.kdef.KDefToken;
+	import xf.nucleus.Code;
 	import xf.nucleus.kdef.KDefLexerBase;
 }";
 .d-classname = "KDefLexer";

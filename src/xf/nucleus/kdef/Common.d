@@ -1,19 +1,19 @@
 module xf.nucleus.kdef.Common;
 
 private {
-	/+import xf.nucleus.kernel.KernelDef;
+	import xf.nucleus.Defs;
+	import xf.nucleus.Param;
+	import xf.nucleus.Value;
+	import xf.nucleus.Code;
+	import xf.nucleus.Function;
+	import xf.nucleus.TypeConversion;
+	
+	import xf.nucleus.kernel.KernelDef;
+	import xf.nucleus.kernel.KernelImplDef;
 	import xf.nucleus.quark.QuarkDef;
-	import xf.nucleus.CommonDef;
-	import xf.nucleus.kdef.KDefToken;
-	import xf.nucleus.SemanticTypeSystem : TraitDef, SemanticConverter;+/
+
 	import TextUtil = tango.text.Util;
 	alias char[] string;
-	
-//	import tango.io.Stdout;
-}
-
-public {
-	alias xf.nucleus.CommonDef.KernelFunction KernelFunction;
 }
 
 
@@ -86,14 +86,21 @@ abstract class Scope {
 }
 
 
+class TraitDef {
+	string	name;
+	string[]	values;
+	string	defaultValue;
+}
+
+
 class KDefModule : Scope {
 	string	filePath;
 	bool		processing;
 	
 	// after semantic analysis:
 	ImplementStatement[]	kernelImpls;
-	KernelDef[]					kernels;
-	TraitDef[]						traitDefs;
+	KernelDef[]				kernels;
+	TraitDef[]				traitDefs;
 	SemanticConverter[]		converters;
 	
 	
@@ -111,10 +118,10 @@ abstract class KernelImplementation : Value {
 
 
 class QuarkDefValue : KernelImplementation {
-	/+InlineCode[]		code;
-	QuarkFunction[]	functions;
+	/+Code[]		code;
+	Function[]	functions;
 	
-	this (InlineCode[] code, QuarkFunction[] functions) {
+	this (Code[] code, Function[] functions) {
 		this.code = code;
 		this.functions = functions;
 	}+/
@@ -123,7 +130,7 @@ class QuarkDefValue : KernelImplementation {
 	QuarkDef	quarkDef;
 	
 	
-	this (char[] name, InlineCode[] code, QuarkFunction[] functions) {
+	this (char[] name, Code[] code, Function[] functions) {
 		quarkDef = new QuarkDef;
 		quarkDef.name = name.dup;
 		quarkDef.code = code;
@@ -386,10 +393,10 @@ class ImportStatement : Statement {
 
 class ConverterDeclStatement : Statement {
 	Param[] params;
-	InlineCode code;
+	Code code;
 	string name;
 	
-	this (Param[] params, InlineCode code, string name) {
+	this (Param[] params, Code code, string name) {
 		this.params = params;
 		this.code = code;
 		this.name = name;
