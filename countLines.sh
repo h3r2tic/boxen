@@ -25,5 +25,7 @@ hg locate \
 	-e 'src/xf/platform'\
    	-e 'xf/input/KeySym\.d' \
    	-e 'countLines\.sh$' \
+	-e 'xf/nucleus/kdef/KDefLexer\.d$' \
+	-e 'xf/nucleus/kdef/KDefParser\.d$' \
 	\
 | xargs wc -l

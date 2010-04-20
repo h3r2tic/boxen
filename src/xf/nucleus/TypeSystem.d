@@ -60,6 +60,8 @@ struct Semantic {
 
 	
 	void	addTrait(cstring name, cstring value) {
+		assert (name.length > 0);
+		
 		uword found = _lowerBoundBinarySearch(name);
 		if (found < _traits.length) {
 			if (_traits.name[found] == name) {
@@ -150,22 +152,16 @@ struct Semantic {
 
 	private {
 		cstring _allocString(cstring s) {
-			char* p = cast(char*)_allocator(s.length);
-			if (p is null) {
-				error("Semantic._allocator returned null :(");
-			}
-			return p[0..s.length] = s;
-		}
-
-		// uword.max if not found
-		/+uword _findTrait(cstring name) {
-			for (uword i = 0; i < _traits.length; ++i) {
-				if (_traits.name[i] == name) {
-					return i;
+			if (s.length > 0) {
+				char* p = cast(char*)_allocator(s.length);
+				if (p is null) {
+					error("Semantic._allocator returned null :(");
 				}
+				return p[0..s.length] = s;
+			} else {
+				return null;
 			}
-			return uword.max;
-		}+/
+		}
 
 		uword _lowerBoundBinarySearch(cstring name) {
 			final names = _traits.name;

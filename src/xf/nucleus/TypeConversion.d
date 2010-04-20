@@ -9,14 +9,20 @@ private {
 }
 
 
+
 struct SearchItem {
+	Semantic			sem;
+	SearchItem*			prev;
+	int					cost;
+	SemanticConverter	conv;
+	bool				isFinal;
 }
 
 
 	bool findConversion(
 			Semantic from,
 			Semantic to,
-			//void delegate(SemanticConverter, Semantic afterConv) sink,
+			void delegate(SemanticConverter, Semantic afterConv) sink,
 			int* retTotalCost = null
 	) {
 		scope stack = new StackBuffer;
@@ -33,15 +39,17 @@ struct SearchItem {
 
 		// TODO: make the limits dynamic somehow... or just big enough :P
 		enum {
-			maxHeapItems = 1000,
-			minHashBuckets = 1000
+			maxHeapItems = 1024,
+			minHashBuckets = 1024
 		}
+
+		auto searchItems = stack.allocArray!(SearchItem)(maxHeapItems);
 
 		auto openSet = MinHeap!(HeapItem)(
 			stack.allocArray!(HeapItem)(maxHeapItems)
 		);
 		
-		auto closedSet = IntrusiveHashMap!(Semantic, SearchItem*).opCall(
+		auto closedSet = IntrusiveHashMap!(Semantic, SearchItem*)(
 			stack.allocArray!(Semantic*)(goodHashSize(minHashBuckets))
 		);
 

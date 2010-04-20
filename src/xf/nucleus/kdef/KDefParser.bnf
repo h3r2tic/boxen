@@ -1,0 +1,267 @@
+.d-baseclass = "KDefParserBase";
+.d-header = "module xf.nucleus.kdef.KDefParser;
+private {{
+	import xf.nucleus.kdef.Common;
+	import xf.nucleus.kdef.KDefToken;
+	import xf.nucleus.kdef.KDefParserBase;
+	import xf.nucleus.CommonDef;
+	import xf.nucleus.kernel.KernelDef;
+	
+	alias char[] string;
+}";
+.d-classname = "KDefParser";
+.d-filename = "KDefParser.d";
+
+
+// ----------------------------------------------------------------------------------------------------------------
+
+
+Syntax
+	= void parseSyntax(Statement[] statements)
+	::= Statement:~statements* eoi;
+	
+Statement
+	= Statement st
+	::= PreprocessStatement:st | ImplementStatement:st | ConnectStatement:st | AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
+
+// ----------------------------------------------------------------------------------------------------------------
+// Statements
+	
+ImplementStatement
+	= new ImplementStatement(KernelImplDef[] impls, KernelImplementation impl)
+	::= "implement" ?!("kernel impl list expected") KernelImpl:~impls*%","
+	?!("uh, wanted a kernel implementation") KernelImplementation:impl;
+	
+	KernelImpl
+	= KernelImplDef parseKernelImpl(string name, double score)
+	::= Identifier:name "(" Number:score ")";
+
+ConnectStatement
+	= new ConnectStatement(string from, string to)
+	::= "connect" Identifier:from Identifier:to ";";
+
+AssignStatement
+	= new AssignStatement(string name, Value value)
+	::= Identifier:name "=" Value:value ?!("';' expected") ";";
+	
+ImportStatement
+	= new ImportStatement(string name, string[] what)
+	::= "import" String:name [ ":" WildcardIdentifier:~what* % "," ] ";";
+	
+	WildcardIdentifier
+	= string name
+	::= (Identifier "*"):name | Identifier:name;
+	
+PreprocessStatement
+	= new PreprocessStatement(string processor, string processorFunction)
+	::= "preprocess" Identifier:processorFunction Identifier:processor ";";
+	
+ConverterDeclStatement
+	= new ConverterDeclStatement(Param[] params, InlineCode code, string name)
+	::= "converter" [Identifier:name] ParamList:params InlineCode:code;
+	
+// ----------------------------------------------------------------------------------------------------------------
+// special Values
+
+KernelImplementation
+	= KernelImplementation impl
+	::= QuarkDefValue:impl | GraphDefValue:impl;
+		
+QuarkDefValue
+	= new QuarkDefValue(char[] name, InlineCode[] inlineCode, QuarkFunction[] quarkFunctions)
+	::= "quark" Identifier:name
+	"{"
+		(InlineCode:~inlineCode | QuarkFunction:~quarkFunctions)*
+	"}";
+	
+GraphDefValue
+	= new GraphDefValue(GraphDef graphDef, string label)
+	::= "graph" [Identifier:label]
+	"{"
+		GraphDefBody:graphDef
+	"}";
+	
+GraphDefBody
+	= new GraphDef(Statement[] statements)
+	::= Statement:~statements*;
+	
+KernelDefValue
+	= new KernelDefValue(string domain="any", KernelDef kernelDef, string[] bases)
+	::= [("gpu" | "cpu"):domain] "kernel" [KernelInheritList:bases]
+	?!("'{' expected") "{"
+		KernelDefBody:kernelDef
+	?!("'}' expected") "}";
+	
+GraphDefNodeValue
+	= new GraphDefNodeValue(GraphDefNode node)
+	::= "node"
+	"{"
+		GraphDefNodeBody:node
+	"}";
+	
+GraphDefNodeBody
+	= new GraphDefNode(VarDef[] variables)
+	::= VarDef:~variables*;
+
+TraitDefValue
+	= new TraitDefValue(string[] values, string defaultValue)
+	::= "trait"
+	"{"
+		Identifier:~values % ","
+	"}"
+	[ "=" ?!("default value identifier exptected") Identifier:defaultValue ];
+
+
+// ----------------------------------------------------------------------------------------------------------------
+
+InlineCode
+	= new InlineCode(string language, Atom[] tokens)
+	::= ("D" | "Cg"):language "{" OpaqueCodeBlock:tokens "}";
+
+
+KernelInheritList
+	= string[] bases
+	::= Identifier:~bases* % ",";
+
+KernelDefBody
+	= KernelDef parseKernelDef(KernelFunction[] funcs, string[] before, string[] after, Param[] attribs)
+	$string errSemi = "';' expected"
+	$string errIdent = "kernel name expected"
+	::= (
+		KernelFunction:~funcs |
+		"before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" |
+		"after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" |
+		"attribs" "=" ParamList:params ";"
+	)*;
+	
+KernelFunction
+	= new KernelFunction(string name, Param[] params)
+	$string semicolonExpected = "';' expected"
+	$string nameExpected = "kernel function name expected"
+	::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
+
+QuarkFunction
+	= new QuarkFunction(string name, Param[] params, InlineCode code)
+	$string semicolonExpected = "';' expected"
+	$string nameExpected = "quark function name expected"
+	::=
+		"quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected)
+		InlineCode:code;
+
+// ----------------------------------------------------------------------------------------------------------------	
+				
+OpaqueCodeBlock
+	= Atom[] tokens
+	::= (
+		&TOK_LITERAL:~tokens |
+		&TOK_STRING:~tokens |
+		&TOK_VERBATIM_STRING:~tokens |
+		&TOK_NUMBER:~tokens |
+		&TOK_IDENT:~tokens |
+		"{":~tokens OpaqueCodeBlock:~tokens "}":~tokens
+	)*;
+	
+ParamList
+	= Param[] params
+	::= "(" Param:~params* % "," ")";
+	
+Param
+	= Param createParam(
+		string dir = "in",
+		string type,
+		ParamSemantic semantic,
+		string name,
+		Value defaultValue
+	)
+	::= [ParamDirection:dir]
+	ParamType:type
+	Identifier:name
+	[ "<" ParamSemantic:semantic ">" ]
+	[ "=" Value:defaultValue ];
+
+ParamDirection
+	= string dir
+	::= "in":dir | "out":dir | "inout":dir | "own":dir;
+	
+ParamType
+	= string type
+	::= (Identifier ("[" [ParamType | Number] "]")*):type;
+	
+ParamSemantic
+	= ParamSemantic createParamSemantic(VarDef[] vars)
+	::= VarDef:~vars*;
+
+// ----------------------------------------------------------------------------------------------------------------
+
+VarDef
+	= VarDef parseVarDef(string name, Value value)
+	::= (['@'] Identifier):name "=" Value:value ";";
+	
+TemplateArg
+	= VarDef parseVarDef(string name, Value value)
+	::= Identifier:name "=" Value:value;
+	
+TemplateArgList
+	= VarDef[] list
+	::= TemplateArg:~list ( "," TemplateArg:~list )*;
+
+Value
+	= Value value
+	::= StringValue:value |
+	BooleanValue:value |
+	Vector4Value:value |
+	Vector3Value:value |
+	Vector2Value:value |
+	NumberValue:value |
+	QuarkDefValue:value |
+	KernelDefValue:value |
+	GraphDefValue:value |
+	GraphDefNodeValue:value |
+	TraitDefValue:value |
+	ParamListValue:value |
+	IdentifierValue:value;
+	
+BooleanValue
+	= new BooleanValue(string value)
+	::= ("true" | "false"):value;
+
+IdentifierValue
+	= new IdentifierValue(string value)
+	::= Identifier:value;
+
+NumberValue
+	= new NumberValue(double value)
+	::= Number:value;
+	
+Vector2Value
+	= new Vector2Value(double x, double y)
+	::= Number:x Number:y;
+
+Vector3Value
+	= new Vector3Value(double x, double y, double z)
+	::= Number:x Number:y Number:z;
+
+Vector4Value
+	= new Vector4Value(double x, double y, double z, double w)
+	::= Number:x Number:y Number:z Number:w;
+
+StringValue
+	= new StringValue(char[] value)
+	::= &TOK_STRING:value;
+	
+ParamListValue
+	= new ParamListValue(Param[] params)
+	::= ParamList:params;
+
+Identifier
+	= string concatTokens(Atom[] value)
+	::= ({&TOK_IDENT} % "."):value;
+
+Number
+	= double parseDouble(char[] value)
+	::= &TOK_NUMBER:value;
+
+String
+	= string value
+	::= &TOK_STRING:value;
+	

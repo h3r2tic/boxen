@@ -7,3 +7,11 @@ private {
 
 
 typedef u32 RenderableId;
+
+
+enum Domain {
+	GPU	= 0b1,
+	CPU	= 0b10,
+	Any	= GPU | CPU,
+	Unresolved = 0b100
+}
