@@ -1,10 +1,13 @@
 module xf.nucleus.kdef.KDefParser;
 private {
+	import xf.nucleus.Param;
+	import xf.nucleus.Value;
+	import xf.nucleus.Code;
+	import xf.nucleus.Function;
 	import xf.nucleus.kdef.Common;
-	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.kdef.KDefParserBase;
-	import xf.nucleus.CommonDef;
 	import xf.nucleus.kernel.KernelDef;
+	import xf.nucleus.kernel.KernelImplDef;
 	
 	alias char[] string;
 }
@@ -513,8 +516,8 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ConverterDeclStatement
-		= new ConverterDeclStatement(Param[] params,InlineCode code,string name)
-		::= "converter" [Identifier:name] ParamList:params InlineCode:code;
+		= new ConverterDeclStatement(Param[] params,Code code,string name)
+		::= "converter" [Identifier:name] ParamList:params Code:code;
 
 	*/
 	ConverterDeclStatement value_ConverterDeclStatement;
@@ -522,7 +525,7 @@ class KDefParser:KDefParserBase{
 		debug Stdout("parse_ConverterDeclStatement").newline;
 		string var_name;
 		Param[] var_params;
-		InlineCode var_code;
+		Code var_code;
 
 		// AndGroup
 			auto position3 = pos;
@@ -545,8 +548,8 @@ class KDefParser:KDefParserBase{
 				smartAssign(var_params,value_ParamList);
 			term7:
 				// Production
-				if(parse_InlineCode()){
-					smartAssign(var_code,value_InlineCode);
+				if(parse_Code()){
+					smartAssign(var_code,value_Code);
 					goto pass0;
 				}
 			fail4:
@@ -599,16 +602,16 @@ class KDefParser:KDefParserBase{
 
 	/*
 	QuarkDefValue
-		= new QuarkDefValue(char[] name,InlineCode[] inlineCode,QuarkFunction[] quarkFunctions)
-		::= "quark" Identifier:name "{" (InlineCode:~inlineCode | QuarkFunction:~quarkFunctions)* "}";
+		= new QuarkDefValue(char[] name,Code[] inlineCode,Function[] quarkFunctions)
+		::= "quark" Identifier:name "{" (Code:~inlineCode | Function:~quarkFunctions)* "}";
 
 	*/
 	QuarkDefValue value_QuarkDefValue;
 	bool parse_QuarkDefValue(){
 		debug Stdout("parse_QuarkDefValue").newline;
 		char[] var_name;
-		QuarkFunction[] var_quarkFunctions;
-		InlineCode[] var_inlineCode;
+		Function[] var_quarkFunctions;
+		Code[] var_inlineCode;
 
 		// AndGroup
 			auto position3 = pos;
@@ -639,16 +642,16 @@ class KDefParser:KDefParserBase{
 					expr10:
 						// OrGroup start8
 							// Production
-							if(parse_InlineCode()){
-								smartAppend(var_inlineCode,value_InlineCode);
+							if(parse_Code()){
+								smartAppend(var_inlineCode,value_Code);
 								goto start8;
 							}
 						term11:
 							// Production
-							if(!parse_QuarkFunction()){
+							if(!parse_Function()){
 								goto fail4;
 							}
-							smartAppend(var_quarkFunctions,value_QuarkFunction);
+							smartAppend(var_quarkFunctions,value_Function);
 					goto start8;
 				end9:
 					goto pass0;
@@ -1008,14 +1011,14 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	InlineCode
-		= new InlineCode(string language,Atom[] tokens)
+	Code
+		= new Code(string language,Atom[] tokens)
 		::= ("D" | "Cg"):language "{" OpaqueCodeBlock:tokens "}";
 
 	*/
-	InlineCode value_InlineCode;
-	bool parse_InlineCode(){
-		debug Stdout("parse_InlineCode").newline;
+	Code value_Code;
+	bool parse_Code(){
+		debug Stdout("parse_Code").newline;
 		Atom[] var_tokens;
 		string var_language;
 
@@ -1056,12 +1059,12 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_InlineCode = new InlineCode(var_language,var_tokens);
-			debug Stdout.format("\tparse_InlineCode passed: {0}",value_InlineCode).newline;
+			value_Code = new Code(var_language,var_tokens);
+			debug Stdout.format("\tparse_Code passed: {0}",value_Code).newline;
 			return true;
 		fail1:
-			value_InlineCode = (InlineCode).init;
-			debug Stdout.format("\tparse_InlineCode failed").newline;
+			value_Code = (Code).init;
+			debug Stdout.format("\tparse_Code failed").newline;
 			return false;
 	}
 
@@ -1116,10 +1119,10 @@ class KDefParser:KDefParserBase{
 
 	/*
 	KernelDefBody
-		= KernelDef parseKernelDef(KernelFunction[] funcs,string[] before,string[] after,Param[] attribs)
+		= KernelDef parseKernelDef(AbstractFunction[] funcs,string[] before,string[] after,Param[] attribs)
 		$string errSemi="\';\' expected"
 		$string errIdent="kernel name expected"
-		::= (KernelFunction:~funcs | "before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" | "after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" | "attribs" "=" ParamList:params ";")*;
+		::= (AbstractFunction:~funcs | "before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" | "after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" | "attribs" "=" ParamList:params ";")*;
 
 	*/
 	KernelDef value_KernelDefBody;
@@ -1129,7 +1132,7 @@ class KDefParser:KDefParserBase{
 		string[] var_before;
 		Param[] var_attribs;
 		Param[] var_params;
-		KernelFunction[] var_funcs;
+		AbstractFunction[] var_funcs;
 		string[] var_after;
 		string var_errIdent = "kernel name expected";
 
@@ -1143,8 +1146,8 @@ class KDefParser:KDefParserBase{
 			expr4:
 				// OrGroup start2
 					// Production
-					if(parse_KernelFunction()){
-						smartAppend(var_funcs,value_KernelFunction);
+					if(parse_AbstractFunction()){
+						smartAppend(var_funcs,value_AbstractFunction);
 						goto start2;
 					}
 				term5:
@@ -1241,16 +1244,16 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	KernelFunction
-		= new KernelFunction(string name,Param[] params)
+	AbstractFunction
+		= new AbstractFunction(string name,Param[] params)
 		$string semicolonExpected="\';\' expected"
 		$string nameExpected="kernel function name expected"
 		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
 
 	*/
-	KernelFunction value_KernelFunction;
-	bool parse_KernelFunction(){
-		debug Stdout("parse_KernelFunction").newline;
+	AbstractFunction value_AbstractFunction;
+	bool parse_AbstractFunction(){
+		debug Stdout("parse_AbstractFunction").newline;
 		string var_name;
 		string var_nameExpected = "kernel function name expected";
 		string var_semicolonExpected = "\';\' expected";
@@ -1291,31 +1294,31 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_KernelFunction = new KernelFunction(var_name,var_params);
-			debug Stdout.format("\tparse_KernelFunction passed: {0}",value_KernelFunction).newline;
+			value_AbstractFunction = new AbstractFunction(var_name,var_params);
+			debug Stdout.format("\tparse_AbstractFunction passed: {0}",value_AbstractFunction).newline;
 			return true;
 		fail1:
-			value_KernelFunction = (KernelFunction).init;
-			debug Stdout.format("\tparse_KernelFunction failed").newline;
+			value_AbstractFunction = (AbstractFunction).init;
+			debug Stdout.format("\tparse_AbstractFunction failed").newline;
 			return false;
 	}
 
 	/*
-	QuarkFunction
-		= new QuarkFunction(string name,Param[] params,InlineCode code)
+	Function
+		= new Function(string name,Param[] params,Code code)
 		$string semicolonExpected="\';\' expected"
 		$string nameExpected="quark function name expected"
-		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) InlineCode:code;
+		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) Code:code;
 
 	*/
-	QuarkFunction value_QuarkFunction;
-	bool parse_QuarkFunction(){
-		debug Stdout("parse_QuarkFunction").newline;
+	Function value_Function;
+	bool parse_Function(){
+		debug Stdout("parse_Function").newline;
 		string var_name;
 		string var_nameExpected = "quark function name expected";
 		string var_semicolonExpected = "\';\' expected";
 		Param[] var_params;
-		InlineCode var_code;
+		Code var_code;
 
 		// AndGroup
 			auto position3 = pos;
@@ -1342,8 +1345,8 @@ class KDefParser:KDefParserBase{
 			term8:
 				// ErrorPoint
 					// Production
-					if(parse_InlineCode()){
-						smartAssign(var_code,value_InlineCode);
+					if(parse_Code()){
+						smartAssign(var_code,value_Code);
 						goto pass0;
 					}
 				fail9:
@@ -1353,12 +1356,12 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_QuarkFunction = new QuarkFunction(var_name,var_params,var_code);
-			debug Stdout.format("\tparse_QuarkFunction passed: {0}",value_QuarkFunction).newline;
+			value_Function = new Function(var_name,var_params,var_code);
+			debug Stdout.format("\tparse_Function passed: {0}",value_Function).newline;
 			return true;
 		fail1:
-			value_QuarkFunction = (QuarkFunction).init;
-			debug Stdout.format("\tparse_QuarkFunction failed").newline;
+			value_Function = (Function).init;
+			debug Stdout.format("\tparse_Function failed").newline;
 			return false;
 	}
 

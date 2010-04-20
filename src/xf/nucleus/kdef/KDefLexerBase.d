@@ -1,6 +1,6 @@
 module xf.nucleus.kdef.KDefLexerBase;
 
-import xf.nucleus.kdef.KDefToken;
+import xf.nucleus.Code;
 import enkilib.d.Parser;
 import enkilib.d.PositionalCharParser;
 import tango.util.Convert;

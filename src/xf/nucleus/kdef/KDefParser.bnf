@@ -1,11 +1,14 @@
 .d-baseclass = "KDefParserBase";
 .d-header = "module xf.nucleus.kdef.KDefParser;
 private {{
+	import xf.nucleus.Param;
+	import xf.nucleus.Value;
+	import xf.nucleus.Code;
+	import xf.nucleus.Function;
 	import xf.nucleus.kdef.Common;
-	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.kdef.KDefParserBase;
-	import xf.nucleus.CommonDef;
 	import xf.nucleus.kernel.KernelDef;
+	import xf.nucleus.kernel.KernelImplDef;
 	
 	alias char[] string;
 }";
@@ -57,8 +60,8 @@ PreprocessStatement
 	::= "preprocess" Identifier:processorFunction Identifier:processor ";";
 	
 ConverterDeclStatement
-	= new ConverterDeclStatement(Param[] params, InlineCode code, string name)
-	::= "converter" [Identifier:name] ParamList:params InlineCode:code;
+	= new ConverterDeclStatement(Param[] params, Code code, string name)
+	::= "converter" [Identifier:name] ParamList:params Code:code;
 	
 // ----------------------------------------------------------------------------------------------------------------
 // special Values
@@ -68,10 +71,10 @@ KernelImplementation
 	::= QuarkDefValue:impl | GraphDefValue:impl;
 		
 QuarkDefValue
-	= new QuarkDefValue(char[] name, InlineCode[] inlineCode, QuarkFunction[] quarkFunctions)
+	= new QuarkDefValue(char[] name, Code[] inlineCode, Function[] quarkFunctions)
 	::= "quark" Identifier:name
 	"{"
-		(InlineCode:~inlineCode | QuarkFunction:~quarkFunctions)*
+		(Code:~inlineCode | Function:~quarkFunctions)*
 	"}";
 	
 GraphDefValue
@@ -114,8 +117,8 @@ TraitDefValue
 
 // ----------------------------------------------------------------------------------------------------------------
 
-InlineCode
-	= new InlineCode(string language, Atom[] tokens)
+Code
+	= new Code(string language, Atom[] tokens)
 	::= ("D" | "Cg"):language "{" OpaqueCodeBlock:tokens "}";
 
 
@@ -124,29 +127,29 @@ KernelInheritList
 	::= Identifier:~bases* % ",";
 
 KernelDefBody
-	= KernelDef parseKernelDef(KernelFunction[] funcs, string[] before, string[] after, Param[] attribs)
+	= KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, Param[] attribs)
 	$string errSemi = "';' expected"
 	$string errIdent = "kernel name expected"
 	::= (
-		KernelFunction:~funcs |
+		AbstractFunction:~funcs |
 		"before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" |
 		"after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" |
 		"attribs" "=" ParamList:params ";"
 	)*;
 	
-KernelFunction
-	= new KernelFunction(string name, Param[] params)
+AbstractFunction
+	= new AbstractFunction(string name, Param[] params)
 	$string semicolonExpected = "';' expected"
 	$string nameExpected = "kernel function name expected"
 	::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
 
-QuarkFunction
-	= new QuarkFunction(string name, Param[] params, InlineCode code)
+Function
+	= new Function(string name, Param[] params, Code code)
 	$string semicolonExpected = "';' expected"
 	$string nameExpected = "quark function name expected"
 	::=
 		"quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected)
-		InlineCode:code;
+		Code:code;
 
 // ----------------------------------------------------------------------------------------------------------------	
 				

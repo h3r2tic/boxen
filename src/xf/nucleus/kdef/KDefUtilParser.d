@@ -3,12 +3,13 @@ module xf.nucleus.kdef.KDefUtilParser;
 private {
 	import xf.core.Registry;
 	
+	import xf.nucleus.Code;
+	import xf.nucleus.Value;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefLexer;
 	import xf.nucleus.kdef.KDefParser;
-	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.kdef.model.IKDefUtilParser;
-	import xf.nucleus.CommonDef;
+
 	alias char[] string;
 }
 
