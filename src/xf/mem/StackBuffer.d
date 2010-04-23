@@ -120,6 +120,12 @@ class StackBufferUnsafe {
 		return _mainBuffer.alloc(bytes, throwExc).ptr;
 	}
 
+
+	void forgetMemory() {
+		_chunkMark = _mainBuffer._topChunk;
+		_topMark = _mainBuffer._chunkTop;
+	}
+
 	
 	~this() {
 		_mainBuffer.releaseChunksDownToButExcluding(_chunkMark);

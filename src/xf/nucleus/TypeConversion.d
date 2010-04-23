@@ -3,190 +3,313 @@ module xf.nucleus.TypeConversion;
 private {
 	import xf.Common;
 	import xf.nucleus.TypeSystem;
+	import xf.nucleus.Function;
+	import xf.nucleus.Param;
 	import xf.utils.IntrusiveHash;
 	import xf.utils.MinMaxHeap;
 	import xf.mem.StackBuffer;
+	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
 
 
 
-struct SearchItem {
-	Semantic			sem;
-	SearchItem*			prev;
-	int					cost;
-	SemanticConverter	conv;
-	bool				isFinal;
-}
+struct SemanticConverter {
+	Function	func;
+	int			cost;
+	
 
+	// TODO: will false ever be needed?
+	const bool	acceptAdditionalTraits = true;
 
-class SemanticConverter {
-}
+	Semantic* sourceSemantic() {
+		assert (2 == func.numParams);
+		assert (func.params[0].hasPlainSemantic);
+		assert (func.params[0].isInput);
+		return func.params[0].semantic();
+	}
 
-	bool findConversion(
-			Semantic from,
-			Semantic to,
-			void delegate(SemanticConverter, Semantic afterConv) sink,
-			int* retTotalCost = null
-	) {
-		scope stack = new StackBuffer;
+	void convert(Semantic* input, Semantic* output) {
+		assert (2 == func.numParams);
 
+		final iPar = &func.params[0];
+		final oPar = &func.params[1];
+
+		assert (iPar.hasPlainSemantic);
+
+		assert (iPar.isInput);
+		assert (!oPar.isInput);
 		
-		struct HeapItem {
-			SearchItem*	item;
-			word		cost;
-			
-			int opCmp(HeapItem rhs) {
-				return this.cost - rhs.cost;
+		if (oPar.hasPlainSemantic) {
+			*output = *oPar.semantic();
+		} else {
+			findOutputSemantic(
+				oPar,
+
+				// getFormalParamSemantic
+				(cstring name) {
+					if (name != iPar.name) {
+						error(
+							"SemanticConverter.convert: output param refers to a"
+							" nonexistent formal parameter '{}'.",
+							name
+						);
+						assert (false);
+					} else {
+						return *iPar.semantic();
+					}
+				},
+
+				// getActualParamSemantic
+				(cstring name) {
+					if (name != iPar.name) {
+						error(
+							"SemanticConverter.convert: output param refers to a"
+							" nonexistent actual parameter '{}'.",
+							name
+						);
+						assert (false);
+					} else {
+						return *input;
+					}
+				},
+				
+				output
+			);
+		}
+	}
+}
+
+private alias int delegate(int delegate(ref SemanticConverter)) SemanticConverterIter;
+
+
+bool findConversion(
+		Semantic from,
+		Semantic to,
+		
+		SemanticConverterIter semanticConverters,
+
+		// Note: the Semantic yielded by this sink dg cannot be retained
+		// because it's allocated within this function's StackBuffer
+		void delegate(SemanticConverter*, Semantic* afterConv) sink = null,
+		
+		int* retTotalCost = null
+) {
+	if (from == to) {
+		if (retTotalCost !is null) {
+			*retTotalCost = 0;
+		}
+		return true;
+	}
+
+	scope stack = new StackBuffer;
+
+	struct SearchItem {
+		Semantic			sem;
+		SearchItem*			prev;
+		int					cost;
+		SemanticConverter*	conv;
+		bool				isFinal;
+	}
+	
+	struct HeapItem {
+		SearchItem*	item;
+		word		cost;
+		
+		int opCmp(HeapItem rhs) {
+			return this.cost - rhs.cost;
+		}
+	}
+
+	// TODO: make the limits dynamic somehow... or just "big enough" :P
+	enum {
+		maxHeapItems = 1024,
+		minHashBuckets = 1024
+	}
+
+	auto searchItems = stack.allocArray!(SearchItem)(maxHeapItems);
+
+	auto openSet = MinHeap!(HeapItem)(
+		stack.allocArray!(HeapItem)(maxHeapItems)
+	);
+
+	SearchItem* allocSearchItem() {
+		if (0 == searchItems.length) {
+			error("TypeConversion.findConversion: Out of search items in the freelist.");
+		}
+		
+		final res = &searchItems[0];
+		searchItems = searchItems[1..$];
+		return res;
+	}
+
+	{
+		final item = allocSearchItem();
+		item.sem = from;
+		item.prev = null;
+		item.cost = 0;
+		item.isFinal = false;
+		openSet ~= HeapItem(item, 0);
+	}
+	
+	auto closedSet = IntrusiveHashMap!(Semantic, SearchItem*)(
+		stack.allocArray!(Semantic*)(goodHashSize(minHashBuckets))
+	);
+
+	void* allocator(uword bytes) {
+		return stack.allocRaw(bytes);
+	}
+
+	// log.trace("Finding a conversion '{}' -> '{}'", from.toString, to.toString);
+
+	while (openSet.size > 0) {
+		auto item = openSet.pop();
+		//Stdout.formatln("popped cost: {}", item.cost);
+		
+		if (item.cost > item.item.cost) {
+			continue;
+		}
+		
+		//if (item.item.sem == to) {
+		if (item.item.isFinal) {
+			if (sink !is null) {
+				// reverse the list in place
+				SearchItem* next = item.item.prev;
+				SearchItem* prev = null;
+				for (SearchItem* ptr = item.item; ptr !is null; ptr = next) {
+					next = ptr.prev;
+					ptr.prev = prev;
+					prev = ptr;
+				}
+				
+				//Stdout.formatln("omfg! I've found it, I've found it!!");
+
+				auto first = prev;
+
+				for (auto it = first; it !is null; it = it.prev) {
+					if (it.conv !is null) {
+						sink(it.conv, &it.sem);
+//							Stdout.format(" -> {} ({}->{})", it.conv.name, it.conv.from, it.conv.to);
+					} else {
+//							Stdout.format("SRC");
+					}
+				}
+//					Stdout.newline;
 			}
-		}
-
-		// TODO: make the limits dynamic somehow... or just big enough :P
-		enum {
-			maxHeapItems = 1024,
-			minHashBuckets = 1024
-		}
-
-		auto searchItems = stack.allocArray!(SearchItem)(maxHeapItems);
-
-		auto openSet = MinHeap!(HeapItem)(
-			stack.allocArray!(HeapItem)(maxHeapItems)
-		);
-		
-		auto closedSet = IntrusiveHashMap!(Semantic, SearchItem*)(
-			stack.allocArray!(Semantic*)(goodHashSize(minHashBuckets))
-		);
-
-
-		assert (false);		// TODO
-		/+
-		/+Stdout("Registered converters: {").newline;
-		foreach (c; &converters) {
-			Stdout.formatln("\t{}", c.toString);
-		}
-		Stdout("}").newline;+/
-		
-		if (from == to) {
-			//Stdout.formatln("nothing to do, lol");
+			
 			if (retTotalCost !is null) {
-				*retTotalCost = 0;
+				*retTotalCost = item.cost;
 			}
 			return true;
 		}
-
-//		Stdout.formatln("Finding a conversion '{}' -> '{}'", from.toString, to.toString);
 		
-		struct HeapItem {
-			SearchItem*	item;
-			int				cost;
-			
-			int opCmp(HeapItem rhs) {
-				return this.cost - rhs.cost;
-			}
-		}
-		
-		MinHeap!(HeapItem) openSet; {
-			auto item = SearchItem.freeListAlloc();
-			item.sem = from;
-			item.prev = null;
-			item.cost = 0;
-			item.isFinal = false;
-			openSet ~= HeapItem(item, 0);
-		}
-		
-		scope closedSet = new HashMap!(Semantic, SearchItem*);
-		scope (exit) {
-			foreach (k, v; closedSet) {
-				v.freeListDispose;
-				v.sem.freeNoGC();
-			}
-		}
-		
-		while (openSet.size > 0) {
-			auto item = openSet.pop();
-			//Stdout.formatln("popped cost: {}", item.cost);
-			
-			if (item.cost > item.item.cost) {
-				continue;
-			}
-			
-			//if (item.item.sem == to) {
-			if (item.item.isFinal) {
-				if (sink !is null) {
-					// reverse the list in place
-					SearchItem* next = item.item.prev;
-					SearchItem* prev = null;
-					for (SearchItem* ptr = item.item; ptr !is null; ptr = next) {
-						next = ptr.prev;
-						ptr.prev = prev;
-						prev = ptr;
-					}
-					
-					//Stdout.formatln("omfg! I've found it, I've found it!!");
+		foreach (
+				conv,
+				extraCost;
+				applicableConverters(semanticConverters, &item.item.sem)
+		) {
+			//Stdout.formatln("trying out converter {} ({}->{})", conv.toString, conv.from, conv.to);
 
-					auto first = prev;
+			// There's a chance that the converted semantic is already in our
+			// closed set and the cost is lequal. The stack2 will dump it if it's not used.
+			scope stack2 = new StackBuffer;
 
-					for (auto it = first; it !is null; it = it.prev) {
-						if (it.conv !is null) {
-							sink(it.conv, it.sem);
-//							Stdout.format(" -> {} ({}->{})", it.conv.name, it.conv.from, it.conv.to);
-						} else {
-//							Stdout.format("SRC");
-						}
-					}
-//					Stdout.newline;
-				}
-				
-				if (retTotalCost !is null) {
-					*retTotalCost = item.cost;
-				}
-				return true;
-			}
+			auto converted = Semantic(&allocator);
+			conv.convert(&item.item.sem, &converted);
 			
-			foreach (conv, extraCost; applicableConverters(item.item.sem)) {
-				//Stdout.formatln("trying out converter {} ({}->{})", conv.toString, conv.from, conv.to);
-				
-				Semantic converted;
-				conv.convertTraits(item.item.sem, (Trait trait) {
-					converted.addTraitNoGC(trait);
-				});
+			int newCost = item.cost + conv.cost + extraCost;
 
-				int newCost = item.cost + conv.cost + extraCost;
+			bool isFinal = void; {
+				// Mark a region where the converted2 Semantic will be allocated.
+				// The case of it surviving is unlikely, so unless it's final, this
+				// StackBuffer will scrap it.
+				// Note: If stack3 is kept, stack2 must be kept as well.
+				scope stack3 = new StackBuffer;
+
+				auto converted2 = Semantic(&allocator);
 				
-				Semantic converted2;
-				bool isFinal = canPassSemanticFor(converted, to, true, &newCost, &converted2);
-				
+				isFinal = canPassSemanticFor(
+						converted,
+						to,
+						true,
+						&newCost,
+						&converted2
+				);
+
 				if (isFinal) {
 					//Stdout.formatln("adjusting semantic {} -> {} (for target {})", converted.toString, converted2.toString, to.toString);
-					converted.freeNoGC();
+					
+					// The unlikely case of converted2 being useful happened. Keep it.
+					stack3.forgetMemory();
+					stack2.forgetMemory();
 					converted = converted2;
 				} else {
-					converted2.freeNoGC();
+					// converted2 will die at the end of stack3's scope
 				}
 
-				if (auto existing = converted in closedSet) {
-					if (newCost < (*existing).cost) {
-						(*existing).cost = newCost;
-						(*existing).prev = item.item;
-						(*existing).conv = conv;
-						(*existing).isFinal = isFinal;
-						//Stdout.formatln("updating {} with cost {}", converted.toString, newCost);
-						openSet ~= HeapItem(*existing, newCost);
-					} else {
-						converted.freeNoGC();
-					}
+				// It's either in 'converted' or invalid at the end of this scope
+				converted2 = Semantic.init;
+			}
+
+
+			if (auto existing_ = &converted in closedSet) {
+				SearchItem* existing = *existing_;
+				assert (existing !is null);
+				
+				if (newCost < existing.cost) {
+					existing.cost = newCost;
+					existing.prev = item.item;
+					existing.conv = conv;
+					existing.isFinal = isFinal;
+					//Stdout.formatln("updating {} with cost {}", converted.toString, newCost);
+					openSet ~= HeapItem(existing, newCost);
+
+					// The converted Semantic is used
+					stack2.forgetMemory();
 				} else {
-					auto n = SearchItem.freeListAlloc();
-					n.sem = converted;
-					n.prev = item.item;
-					n.cost = newCost;
-					n.conv = conv;
-					n.isFinal = isFinal;
-					//Stdout.formatln("pushing {} with cost {}", converted.toString, newCost);
-					openSet ~= HeapItem(n, newCost);
-					closedSet[n.sem] = n;
+					// converted will die at the end of stack2's scope
+				}
+			} else {
+				auto n = allocSearchItem();
+				n.sem = converted;
+				n.prev = item.item;
+				n.cost = newCost;
+				n.conv = conv;
+				n.isFinal = isFinal;
+				//Stdout.formatln("pushing {} with cost {}", converted.toString, newCost);
+				openSet ~= HeapItem(n, newCost);
+				closedSet[&n.sem] = n;
+
+				// The converted Semantic is used
+				stack2.forgetMemory();
+			}
+		}
+	}
+	
+	return false;
+}
+
+
+// It's not a class! It's not a struct! It's a fruct! OMAGAWD!!12
+private struct applicableConverters {
+	SemanticConverterIter	all;
+	Semantic*				source;
+	
+	int opApply(int delegate(ref SemanticConverter*, ref int extraCost) sink) {
+		foreach (ref c; this.all) {
+			int extraCost = c.cost;
+			if (canPassSemanticFor(
+					*source,
+					*c.sourceSemantic,
+					c.acceptAdditionalTraits,
+					&extraCost
+			)) {
+				auto cp = &c;		// lame, D1, lame...
+				if (int r = sink(cp, extraCost)) {
+					return r;
 				}
 			}
 		}
 		
-		return false;+/
+		return 0;
 	}
+}

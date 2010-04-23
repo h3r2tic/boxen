@@ -78,13 +78,13 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ Param class with an easy accessor to the type
 	+ Basic type parsing
 
-~	automatic conversions
++	automatic conversions
 	+ testing whether a semantic can be used as an argument to a particular function param
-	- path-finding in the implicit graph of semantic types
+	+ path-finding in the implicit graph of semantic types
 
 = 17
 
--	revive the kernel/quark parser
+~	revive the kernel/quark parser
 	* only for Cg
 
 = 18
@@ -109,17 +109,11 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	* well defined resource ref counting
 	* rich introspection
 
-= 26
-
 -	editor
-
-= 1
 
 -	examples
 	* deferred rendering
 	* recursive rendering
-
-= 21
 
 -	thesis
 

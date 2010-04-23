@@ -2,7 +2,6 @@ module xf.nucleus.kdef.Common;
 
 private {
 	import xf.nucleus.Defs;
-	import xf.nucleus.Param;
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
@@ -335,9 +334,9 @@ class TraitDefValue : Value {
 
 
 class ParamListValue : Value {
-	Param[] value;
+	ParamDef[] value;
 	
-	this (Param[] params) {
+	this (ParamDef[] params) {
 		this.value = params;
 	}
 }
@@ -392,11 +391,11 @@ class ImportStatement : Statement {
 
 
 class ConverterDeclStatement : Statement {
-	Param[] params;
+	ParamDef[] params;
 	Code code;
 	string name;
 	
-	this (Param[] params, Code code, string name) {
+	this (ParamDef[] params, Code code, string name) {
 		this.params = params;
 		this.code = code;
 		this.name = name;
@@ -415,7 +414,51 @@ class PreprocessStatement : Statement {
 }
 
 
-class ParamSemantic {
-	VarDef[]		annotations;
-	Value[string]	traits;
+class ParamSemanticExp {
+	enum Type {
+		Sum,
+		Exclusion,
+		Trait
+	}
+
+	union {
+		struct {
+			ParamSemanticExp exp1;
+			ParamSemanticExp exp2;
+		}
+		struct {
+			string name;
+			string value;
+		}
+	}
+
+	Type type;
+
+
+	this (Type t) {
+		this.type = t;
+	}
+}
+
+
+class ParamDef {
+	string dir;
+	string type;
+	ParamSemanticExp paramSemantic;
+	string name;
+	Value defaultValue;
+
+	this (
+			string dir,
+			string type,
+			ParamSemanticExp paramSemantic,
+			string name,
+			Value defaultValue
+	) {
+		this.dir = dir;
+		this.type = type;
+		this.paramSemantic = paramSemantic;
+		this.name = name;
+		this.defaultValue = defaultValue;
+	}
 }

@@ -57,12 +57,14 @@ class KDefParserBase : Parser!(KDefToken){
 		}
 		
 		
-		KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, Param[] attribs) {
+		KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs) {
 			auto kd = new KernelDef;
 			kd.functions = funcs;
-			kd.attribs = attribs;
-			kd.overrideOrdering(before.dupStringArray(), after.dupStringArray());
-			return kd;
+			// TODO
+			assert (false);
+			//kd.attribs = attribs;
+			//kd.overrideOrdering(before.dupStringArray(), after.dupStringArray());
+			//return kd;
 		}
 		
 		
@@ -70,48 +72,49 @@ class KDefParserBase : Parser!(KDefToken){
 			return VarDef(name.dup, value);
 		}
 		
-		
-		Param createParam(string dir_, string type, ParamSemantic paramSemantic, string name, Value defaultValue) {
-			alias Param.Direction Direction;
-			auto dir = (["in"[] : Direction.In, "out" : Direction.Out, "inout" : Direction.InOut, "own" : Direction.Own])[dir_];
-			
-			Semantic		semantic;
-			Value[string]	annotations;
-			
-			if (paramSemantic !is null) {
-				foreach (traitName, traitValue; paramSemantic.traits) {
-					semantic.addTrait(Trait(traitName, traitValue.toVariant));
-				}
-				
-				foreach (ann; paramSemantic.annotations) {
-					annotations[ann.name] = ann.value;
-				}
-			}
-			
-			auto res = Param(dir, type.dup, name.dup, semantic, defaultValue, annotations);
-			res.dataProvider = new DataProviderRef;
-			
-			// TODO: create the provider
-			
+
+		ParamSemanticExp createParamSemanticSum(ParamSemanticExp a, ParamSemanticExp b) {
+			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Sum);
+			res.exp1 = a;
+			res.exp2 = b;
+			return res;
+		}
+
+		ParamSemanticExp createParamSemanticExclusion(ParamSemanticExp a, ParamSemanticExp b) {
+			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Exclusion);
+			res.exp1 = a;
+			res.exp2 = b;
 			return res;
 		}
 		
-		
-		ParamSemantic createParamSemantic(VarDef[] vars) {
-			auto r = new ParamSemantic;
-			
-			foreach (var; vars) {
-				if ('@' == var.name[0]) {
-					r.traits[var.name[1..$]] = var.value;
-				} else {
-					r.annotations ~= var;
-				}
-			}
-			
-			return r;
+		ParamSemanticExp parseParamSemanticTrait(string name, Value value) {
+			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Trait);
+			res.name = name.dup;
+			res.value = value.toString.dup;
+			return res;
+		}
+
+
+		AbstractFunction createAbstractFunction(string name, ParamDef[] params) {
+			return AbstractFunction(name, _createFunctionParams(params));
 		}
 		
-				
+		Function createFunction(string name, ParamDef[] params, Code code) {
+			return Function(name, _createFunctionParams(params), code);
+		}
+
+		private void _createFunctionParams(ParamDef[] defs) {
+			// TODO: mem
+			Param[] res = new Param[defs.length];
+			foreach (i, d; defs) {
+				auto r = &res[i];
+				r.dir = ParamDirectionFromString(d.dir);
+				r.type = d.type;
+				r.name = d.name;
+
+			}
+		}
+
 		// --------------------------------------------------------------------
 
 
