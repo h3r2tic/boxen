@@ -57,8 +57,6 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- proper memory management
 	* later - the hack works for now and has more than originally intended anyway :P
 
-= 13
-
 ~	implement kernel graphs
 	+ adding, removing, substituting nodes
 	+ node connections with manual and automatic data flow
@@ -67,10 +65,6 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- pluggable simplification
 		* delayed until it's actually required
 		* time reduction due to a consuming outside real-world event
-
-= 15
-
-//	one day afk, another wrecked
 
 +	semantic type system
 	+ Semantic class with good mem management
@@ -82,12 +76,8 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ testing whether a semantic can be used as an argument to a particular function param
 	+ path-finding in the implicit graph of semantic types
 
-= 17
-
 ~	revive the kernel/quark parser
 	* only for Cg
-
-= 18
 
 -	create facades for structure, material and light kernels
 	-	also the ability to automatically connect them
@@ -97,11 +87,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 -	kernel graph flattening (composite kernels -> quarks)
 
-= 19
-
 -	quark graph codegen into Cg
-
-= 22
 
 -	heavy and ugly CPU quarks for post-proc and the pipeline
 	* no fancy runtime fixups

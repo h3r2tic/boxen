@@ -258,7 +258,7 @@ class TestApp : GfxApp {
 		}
 		
 		mat4 viewToClip = mat4.perspective(
-			65.0f,		// fov
+			55.0f,		// fov
 			cast(float)window.width / window.height,	// aspect
 			0.1f,		// near
 			100.0f		// far
