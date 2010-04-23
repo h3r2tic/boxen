@@ -1,6 +1,5 @@
 module xf.nucleus.kdef.KDefParser;
 private {
-	import xf.nucleus.Param;
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
@@ -516,7 +515,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ConverterDeclStatement
-		= new ConverterDeclStatement(Param[] params,Code code,string name)
+		= new ConverterDeclStatement(ParamDef[] params,Code code,string name)
 		::= "converter" [Identifier:name] ParamList:params Code:code;
 
 	*/
@@ -524,7 +523,7 @@ class KDefParser:KDefParserBase{
 	bool parse_ConverterDeclStatement(){
 		debug Stdout("parse_ConverterDeclStatement").newline;
 		string var_name;
-		Param[] var_params;
+		ParamDef[] var_params;
 		Code var_code;
 
 		// AndGroup
@@ -1119,7 +1118,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	KernelDefBody
-		= KernelDef parseKernelDef(AbstractFunction[] funcs,string[] before,string[] after,Param[] attribs)
+		= KernelDef parseKernelDef(AbstractFunction[] funcs,string[] before,string[] after,ParamDef[] attribs)
 		$string errSemi="\';\' expected"
 		$string errIdent="kernel name expected"
 		::= (AbstractFunction:~funcs | "before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" | "after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" | "attribs" "=" ParamList:params ";")*;
@@ -1130,8 +1129,8 @@ class KDefParser:KDefParserBase{
 		debug Stdout("parse_KernelDefBody").newline;
 		string var_errSemi = "\';\' expected";
 		string[] var_before;
-		Param[] var_attribs;
-		Param[] var_params;
+		ParamDef[] var_attribs;
+		ParamDef[] var_params;
 		AbstractFunction[] var_funcs;
 		string[] var_after;
 		string var_errIdent = "kernel name expected";
@@ -1245,7 +1244,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	AbstractFunction
-		= new AbstractFunction(string name,Param[] params)
+		= AbstractFunction createAbstractFunction(string name,ParamDef[] params)
 		$string semicolonExpected="\';\' expected"
 		$string nameExpected="kernel function name expected"
 		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
@@ -1257,7 +1256,7 @@ class KDefParser:KDefParserBase{
 		string var_name;
 		string var_nameExpected = "kernel function name expected";
 		string var_semicolonExpected = "\';\' expected";
-		Param[] var_params;
+		ParamDef[] var_params;
 
 		// AndGroup
 			auto position3 = pos;
@@ -1294,7 +1293,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_AbstractFunction = new AbstractFunction(var_name,var_params);
+			value_AbstractFunction = createAbstractFunction(var_name,var_params);
 			debug Stdout.format("\tparse_AbstractFunction passed: {0}",value_AbstractFunction).newline;
 			return true;
 		fail1:
@@ -1305,7 +1304,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Function
-		= new Function(string name,Param[] params,Code code)
+		= Function createFunction(string name,ParamDef[] params,Code code)
 		$string semicolonExpected="\';\' expected"
 		$string nameExpected="quark function name expected"
 		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) Code:code;
@@ -1317,7 +1316,7 @@ class KDefParser:KDefParserBase{
 		string var_name;
 		string var_nameExpected = "quark function name expected";
 		string var_semicolonExpected = "\';\' expected";
-		Param[] var_params;
+		ParamDef[] var_params;
 		Code var_code;
 
 		// AndGroup
@@ -1356,7 +1355,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Function = new Function(var_name,var_params,var_code);
+			value_Function = createFunction(var_name,var_params,var_code);
 			debug Stdout.format("\tparse_Function passed: {0}",value_Function).newline;
 			return true;
 		fail1:
@@ -1452,14 +1451,14 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ParamList
-		= Param[] params
+		= ParamDef[] params
 		::= "(" Param:~params* % "," ")";
 
 	*/
-	Param[] value_ParamList;
+	ParamDef[] value_ParamList;
 	bool parse_ParamList(){
 		debug Stdout("parse_ParamList").newline;
-		Param[] var_params;
+		ParamDef[] var_params;
 
 		// AndGroup
 			auto position3 = pos;
@@ -1506,23 +1505,23 @@ class KDefParser:KDefParserBase{
 			debug Stdout.format("\tparse_ParamList passed: {0}",value_ParamList).newline;
 			return true;
 		fail1:
-			value_ParamList = (Param[]).init;
+			value_ParamList = (ParamDef[]).init;
 			debug Stdout.format("\tparse_ParamList failed").newline;
 			return false;
 	}
 
 	/*
 	Param
-		= Param createParam(string dir="in",string type,ParamSemantic semantic,string name,Value defaultValue)
+		= new ParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue)
 		::= [ParamDirection:dir] ParamType:type Identifier:name ["<" ParamSemantic:semantic ">"] ["=" Value:defaultValue];
 
 	*/
-	Param value_Param;
+	ParamDef value_Param;
 	bool parse_Param(){
 		debug Stdout("parse_Param").newline;
 		string var_name;
 		string var_dir = "in";
-		ParamSemantic var_semantic;
+		ParamSemanticExp var_semantic;
 		string var_type;
 		Value var_defaultValue;
 
@@ -1590,11 +1589,11 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Param = createParam(var_dir,var_type,var_semantic,var_name,var_defaultValue);
+			value_Param = new ParamDef(var_dir,var_type,var_semantic,var_name,var_defaultValue);
 			debug Stdout.format("\tparse_Param passed: {0}",value_Param).newline;
 			return true;
 		fail1:
-			value_Param = (Param).init;
+			value_Param = (ParamDef).init;
 			debug Stdout.format("\tparse_Param failed").newline;
 			return false;
 	}
@@ -1720,45 +1719,254 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ParamSemantic
-		= ParamSemantic createParamSemantic(VarDef[] vars)
-		::= VarDef:~vars*;
+		= ParamSemanticExp value
+		::= ParamSemanticSum:value | ParamSemanticExclusion:value | "(" ParamSemantic:value ")" | ParamSemanticTrait:value;
 
 	*/
-	ParamSemantic value_ParamSemantic;
+	ParamSemanticExp value_ParamSemantic;
 	bool parse_ParamSemantic(){
 		debug Stdout("parse_ParamSemantic").newline;
-		VarDef[] var_vars;
+		ParamSemanticExp var_value;
 
-		// Iterator
-		start2:
-			// (terminator)
-			if(!hasMore()){
-				goto end3;
+		// OrGroup pass0
+			// Production
+			if(parse_ParamSemanticSum()){
+				smartAssign(var_value,value_ParamSemanticSum);
+				goto pass0;
 			}
-			// (expression)
-			expr4:
-				// Production
-				if(!parse_VarDef()){
-					goto end3;
-				}
-				smartAppend(var_vars,value_VarDef);
-			goto start2;
-		end3:
+		term2:
+			// Production
+			if(parse_ParamSemanticExclusion()){
+				smartAssign(var_value,value_ParamSemanticExclusion);
+				goto pass0;
+			}
+		term3:
+			// AndGroup
+				auto position6 = pos;
+					// Terminal
+					if(!match("(")){
+						goto fail7;
+					}
+				term8:
+					// Production
+					if(!parse_ParamSemantic()){
+						goto fail7;
+					}
+					smartAssign(var_value,value_ParamSemantic);
+				term9:
+					// Terminal
+					if(match(")")){
+						goto pass0;
+					}
+				fail7:
+				pos = position6;
+		term4:
+			// Production
+			if(!parse_ParamSemanticTrait()){
+				goto fail1;
+			}
+			smartAssign(var_value,value_ParamSemanticTrait);
 		// Rule
 		pass0:
-			value_ParamSemantic = createParamSemantic(var_vars);
+			value_ParamSemantic = var_value;
 			debug Stdout.format("\tparse_ParamSemantic passed: {0}",value_ParamSemantic).newline;
 			return true;
 		fail1:
-			value_ParamSemantic = (ParamSemantic).init;
+			value_ParamSemantic = (ParamSemanticExp).init;
 			debug Stdout.format("\tparse_ParamSemantic failed").newline;
+			return false;
+	}
+
+	/*
+	ParamSemanticSum
+		= ParamSemanticExp createParamSemanticSum(ParamSemanticExp a,ParamSemanticExp b)
+		::= ParamSemantic:a "+" ParamSemantic:b;
+
+	*/
+	ParamSemanticExp value_ParamSemanticSum;
+	bool parse_ParamSemanticSum(){
+		debug Stdout("parse_ParamSemanticSum").newline;
+		ParamSemanticExp var_b;
+		ParamSemanticExp var_a;
+
+		// AndGroup
+			auto position3 = pos;
+				// Production
+				if(!parse_ParamSemantic()){
+					goto fail4;
+				}
+				smartAssign(var_a,value_ParamSemantic);
+			term5:
+				// Terminal
+				if(!match("+")){
+					goto fail4;
+				}
+			term6:
+				// Production
+				if(parse_ParamSemantic()){
+					smartAssign(var_b,value_ParamSemantic);
+					goto pass0;
+				}
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_ParamSemanticSum = createParamSemanticSum(var_a,var_b);
+			debug Stdout.format("\tparse_ParamSemanticSum passed: {0}",value_ParamSemanticSum).newline;
+			return true;
+		fail1:
+			value_ParamSemanticSum = (ParamSemanticExp).init;
+			debug Stdout.format("\tparse_ParamSemanticSum failed").newline;
+			return false;
+	}
+
+	/*
+	ParamSemanticExclusion
+		= ParamSemanticExp createParamSemanticExclusion(ParamSemanticExp a,ParamSemanticExp b)
+		::= ParamSemantic:a "-" ParamSemantic:b;
+
+	*/
+	ParamSemanticExp value_ParamSemanticExclusion;
+	bool parse_ParamSemanticExclusion(){
+		debug Stdout("parse_ParamSemanticExclusion").newline;
+		ParamSemanticExp var_b;
+		ParamSemanticExp var_a;
+
+		// AndGroup
+			auto position3 = pos;
+				// Production
+				if(!parse_ParamSemantic()){
+					goto fail4;
+				}
+				smartAssign(var_a,value_ParamSemantic);
+			term5:
+				// Terminal
+				if(!match("-")){
+					goto fail4;
+				}
+			term6:
+				// Production
+				if(parse_ParamSemantic()){
+					smartAssign(var_b,value_ParamSemantic);
+					goto pass0;
+				}
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_ParamSemanticExclusion = createParamSemanticExclusion(var_a,var_b);
+			debug Stdout.format("\tparse_ParamSemanticExclusion passed: {0}",value_ParamSemanticExclusion).newline;
+			return true;
+		fail1:
+			value_ParamSemanticExclusion = (ParamSemanticExp).init;
+			debug Stdout.format("\tparse_ParamSemanticExclusion failed").newline;
+			return false;
+	}
+
+	/*
+	ParamSemanticTrait
+		= ParamSemanticExp parseParamSemanticTrait(string name,Value value)
+		::= (["in" "."] Identifier | "in" "." Identifier "." "actual"):name "=" Value:value;
+
+	*/
+	ParamSemanticExp value_ParamSemanticTrait;
+	bool parse_ParamSemanticTrait(){
+		debug Stdout("parse_ParamSemanticTrait").newline;
+		Value var_value;
+		string var_name;
+
+		// AndGroup
+			auto position3 = pos;
+				// Group (w/binding)
+					auto position6 = pos;
+					// OrGroup pass7
+						// AndGroup
+							auto position10 = pos;
+								// Optional
+									// AndGroup
+										auto position14 = pos;
+											// Terminal
+											if(!match("in")){
+												goto fail15;
+											}
+										term16:
+											// Terminal
+											if(match(".")){
+												goto term12;
+											}
+										fail15:
+										pos = position14;
+										goto term12;
+							term12:
+								// Production
+								if(parse_Identifier()){
+									goto pass7;
+								}
+							fail11:
+							pos = position10;
+					term8:
+						// AndGroup
+							auto position18 = pos;
+								// Terminal
+								if(!match("in")){
+									goto fail19;
+								}
+							term20:
+								// Terminal
+								if(!match(".")){
+									goto fail19;
+								}
+							term21:
+								// Production
+								if(!parse_Identifier()){
+									goto fail19;
+								}
+							term22:
+								// Terminal
+								if(!match(".")){
+									goto fail19;
+								}
+							term23:
+								// Terminal
+								if(match("actual")){
+									goto pass7;
+								}
+							fail19:
+							pos = position18;
+							goto fail4;
+					pass7:
+					smartAssign(var_name,slice(position6,pos));
+			term5:
+				// Terminal
+				if(!match("=")){
+					goto fail4;
+				}
+			term24:
+				// Production
+				if(parse_Value()){
+					smartAssign(var_value,value_Value);
+					goto pass0;
+				}
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_ParamSemanticTrait = parseParamSemanticTrait(var_name,var_value);
+			debug Stdout.format("\tparse_ParamSemanticTrait passed: {0}",value_ParamSemanticTrait).newline;
+			return true;
+		fail1:
+			value_ParamSemanticTrait = (ParamSemanticExp).init;
+			debug Stdout.format("\tparse_ParamSemanticTrait failed").newline;
 			return false;
 	}
 
 	/*
 	VarDef
 		= VarDef parseVarDef(string name,Value value)
-		::= (["@"] Identifier):name "=" Value:value ";";
+		::= Identifier:name "=" Value:value ";";
 
 	*/
 	VarDef value_VarDef;
@@ -1769,37 +1977,23 @@ class KDefParser:KDefParserBase{
 
 		// AndGroup
 			auto position3 = pos;
-				// Group (w/binding)
-					auto position6 = pos;
-					// AndGroup
-						auto position9 = pos;
-							// Optional
-								// Terminal
-								if(!match("@")){
-									goto term11;
-								}
-						term11:
-							// Production
-							if(parse_Identifier()){
-								goto pass7;
-							}
-						fail10:
-						pos = position9;
-						goto fail4;
-					pass7:
-					smartAssign(var_name,slice(position6,pos));
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_name,value_Identifier);
 			term5:
 				// Terminal
 				if(!match("=")){
 					goto fail4;
 				}
-			term12:
+			term6:
 				// Production
 				if(!parse_Value()){
 					goto fail4;
 				}
 				smartAssign(var_value,value_Value);
-			term13:
+			term7:
 				// Terminal
 				if(match(";")){
 					goto pass0;
@@ -2278,14 +2472,14 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ParamListValue
-		= new ParamListValue(Param[] params)
+		= new ParamListValue(ParamDef[] params)
 		::= ParamList:params;
 
 	*/
 	ParamListValue value_ParamListValue;
 	bool parse_ParamListValue(){
 		debug Stdout("parse_ParamListValue").newline;
-		Param[] var_params;
+		ParamDef[] var_params;
 
 		// Production
 		if(!parse_ParamList()){

@@ -3,7 +3,7 @@ module xf.nucleus.Param;
 private {
 	import xf.Common;
 	import xf.nucleus.TypeSystem;
-	import xf.nucleus.Log : error = nucleusError;
+	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
 
 
@@ -34,14 +34,16 @@ ParamDirection ParamDirectionFromString(cstring str) {
 
 
 struct Param {
-	// Overlaps with Semantic
+	// Overlaps with Semantic and SemanticExp
 	private alias void* delegate(uword) Allocator;
 	private union {
 		Semantic	_semantic;
+		SemanticExp	_semanticExp;
 		Allocator	_allocator;
 	}
 
 	ParamDirection	dir;
+	bool			hasPlainSemantic = false;
 	private cstring	_name;
 
 
@@ -55,12 +57,27 @@ struct Param {
 
 	Param dup(Allocator allocator = null) {
 		Param res;
-		res._semantic = this._semantic.dup(allocator);
+		if (hasPlainSemantic) {
+			res._semantic = this._semantic.dup(allocator);
+		} else {
+			res._semanticExp = this._semanticExp.dup(allocator);
+		}
+		res.hasPlainSemantic = hasPlainSemantic;
 		res.dir = this.dir;
 		res._name = res._allocString(this.name);
 		return res;
 	}
 
+
+	Semantic* semantic() {
+		assert (hasPlainSemantic);
+		return &_semantic;
+	}
+
+	SemanticExp* semanticExp() {
+		assert (!hasPlainSemantic);
+		return &_semanticExp;
+	}
 
 
 	cstring name() {
@@ -73,21 +90,21 @@ struct Param {
 
 
 	bool hasTypeConstraint() {
-		return _semantic.hasTrait("type");
+		return semantic.hasTrait("type");
 	}
 
 	void removeTypeConstraint() {
 		if (hasTypeConstraint) {
-			_semantic.removeTrait("type");
+			semantic.removeTrait("type");
 		}
 	}	
 
 	cstring type() {
-		return _semantic.getTrait("type");
+		return semantic.getTrait("type");
 	}
 
 	void type(cstring t) {
-		_semantic.addTrait("type", t);
+		semantic.addTrait("type", t);
 	}
 
 
@@ -114,17 +131,17 @@ struct Param {
 		sink(" ");
 		sink(name);
 
-		if (_semantic.numTraits > 0) {
-			sink("<");
-			uword i = 0;
-			foreach (k, v; _semantic.iterTraits) {
-				if (i++ > 0) {
-					sink(" + ");
-				}
-
-				sink(k);
-				sink(":");
-				sink(v);
+		if (hasPlainSemantic) {
+			if (semantic.numTraits > 0) {
+				sink("<");
+				semantic.writeOut(sink);
+				sink(">");
+			}
+		} else {
+			if (semanticExp.numTraits > 0) {
+				sink("<");
+				semanticExp.writeOut(sink);
+				sink(">");
 			}
 		}
 	}
@@ -320,5 +337,84 @@ template MParamSupport() {
 		assert (&_params[res] is p);
 	} body {
 		return p - _params.ptr;
+	}
+}
+
+
+
+/**
+ * The result should have a valid allocator, which will be used in case
+ * the outputParam doesn't yet have a plain semantic. If it does,
+ * then the result will simply be assigned from the output param's semantic
+ */
+void findOutputSemantic(
+	Param* outputParam,
+	Semantic delegate(cstring name) getFormalParamSemantic,
+	Semantic delegate(cstring name) getActualParamSemantic,
+	Semantic* result
+) {
+	assert (!outputParam.isInput);
+	
+	if (outputParam.hasPlainSemantic) {
+		*result = *outputParam.semantic();
+	} else {
+		final exp = outputParam.semanticExp();
+		foreach (name, value, op; exp.iterTraits()) {
+			switch (op) {
+				case SemanticExp.TraitOp.Add: {
+					cstring realName;
+					
+					if (name.startsWith("in.", &realName)) {
+						Semantic parSem;
+						
+						if (realName.endsWith(".actual", &realName)) {
+							parSem = getActualParamSemantic(realName);
+						} else {
+							parSem = getFormalParamSemantic(realName);
+						}
+
+						foreach (n, v; parSem.iterTraits) {
+							result.addTrait(n, v);
+						}
+					} else {
+						result.addTrait(name, value);
+					}
+				} break;
+
+				case SemanticExp.TraitOp.Remove: {
+					void rem(cstring n, cstring v) {
+						if (v.length > 0) {
+							if (result.hasTrait(n, v)) {
+								result.removeTrait(n);
+							}
+						} else {
+							if (result.hasTrait(n)) {
+								result.removeTrait(n);
+							}
+						}
+					}
+
+					cstring realName;
+					
+					if (name.startsWith("in.", &realName)) {
+						Semantic parSem;
+						
+						if (realName.endsWith(".actual", &realName)) {
+							parSem = getActualParamSemantic(realName);
+						} else {
+							parSem = getFormalParamSemantic(realName);
+						}
+
+						foreach (n, v; parSem.iterTraits) {
+							rem(n, v);
+						}
+					} else {
+						rem(name, value);
+					}
+				} break;
+
+				default: assert (false);
+			}
+		}
 	}
 }

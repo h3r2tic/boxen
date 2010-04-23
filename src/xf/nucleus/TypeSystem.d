@@ -3,6 +3,7 @@ module xf.nucleus.TypeSystem;
 private {
 	import xf.Common;
 	import
+		xf.mem.Array,
 		xf.mem.MultiArray,
 		xf.mem.ArrayAllocator;
 	import
@@ -19,6 +20,24 @@ private {
 private template ScrapDgAllocator() {
 	void* _reallocate(void* old, size_t oldBegin, size_t oldEnd, size_t bytes) {
 		void* n = _outer._allocator(bytes);
+		if (old) {
+			assert (bytes > oldEnd);
+			assert (oldBegin <= oldEnd);
+			memcpy(n+oldBegin, old+oldBegin, oldEnd-oldBegin);
+		}
+		return n;
+	}
+	
+	void _dispose(void* ptr) {}
+}
+
+private template ScrapDgArrayAllocator() {
+	private import xf.Common;
+	
+	void* delegate(uword) _outerAllocator;
+	
+	void* _reallocate(void* old, size_t oldBegin, size_t oldEnd, size_t bytes) {
+		void* n = _outerAllocator(bytes);
 		if (old) {
 			assert (bytes > oldEnd);
 			assert (oldBegin <= oldEnd);
@@ -139,6 +158,14 @@ struct Semantic {
 			error("Semantic.removeTrait: trait does not exist: '{}'", name);
 		}
 	}
+
+	private struct TraitFruct {
+		Semantic*	sem;
+
+		int opApply(int delegate(ref cstring name, ref cstring value) sink) {
+			return sem._iterTraits(sink);
+		}
+	}
 	
 	TraitFruct	iterTraits() {
 		return TraitFruct(this);
@@ -147,6 +174,61 @@ struct Semantic {
 
 	uword numTraits() {
 		return _traits.length;
+	}
+
+
+	bool opEquals(ref Semantic s) {
+		if (_traits.length != s._traits.length) {
+			return false;
+		}
+
+		uword num = _traits.length;
+		for (uword i = 0; i < num; ++i) {
+			if (_traits.name[i] != s._traits.name[i]) {
+				return false;
+			}
+
+			if (_traits.value[i] != s._traits.value[i]) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+
+	hash_t toHash() {
+		hash_t hash = 0;
+		final strHash = &typeid(char[]).getHash;
+		
+		foreach (ref n, ref v; iterTraits) {
+			hash += strHash(&n);
+			hash += strHash(&v);
+		}
+
+		return hash;
+	}
+
+
+	void writeOut(void delegate(cstring) sink) {
+		uword i = 0;
+		foreach (k, v; iterTraits) {
+			if (i++ > 0) {
+				sink(" + ");
+			}
+
+			sink(k);
+			sink(":");
+			sink(v);
+		}
+	}
+
+
+	// don't use where performance matters
+	cstring toString() {
+		char[] str;
+		writeOut((cstring s) { str ~= s; });
+		return str;
 	}
 
 
@@ -236,13 +318,143 @@ struct Semantic {
 }
 
 
-private struct TraitFruct {
-	Semantic*	sem;
+struct SemanticExp {
+	enum TraitOp {
+		Add,
+		Remove
+	}
 
-	int opApply(int delegate(ref cstring name, ref cstring value) sink) {
-		return sem._iterTraits(sink);
+	struct Item {
+		cstring	name;
+		cstring value;
+		TraitOp	op;
+	}
+
+	// Overlaps with Param
+	private {
+		alias void* delegate(uword) Allocator;
+		union {
+			Array!(
+					Item,
+					ArrayExpandPolicy.FixedAmount!(4),
+					ScrapDgArrayAllocator
+					
+			)				_traits;
+			Allocator		_allocator;
+		}
+	}
+
+	// Check the implied overlap of the Array's mixed in allocator and the _allocator
+	static assert (SemanticExp.init._traits.offsetof == 0);
+	static assert (SemanticExp.init._traits._outerAllocator.offsetof == 0);
+	static assert (is(typeof(_traits._outerAllocator) == SemanticExp.Allocator));
+
+	
+	static SemanticExp opCall(Allocator allocator) {
+		SemanticExp res;
+		res._allocator = allocator;
+		return res;
+	}
+
+
+	SemanticExp dup(Allocator allocator = null) {
+		SemanticExp res;
+		res._allocator = allocator is null ? _allocator : allocator;
+		uword numTraits = _traits.length;
+		res._traits.resize(numTraits);
+		for (uword i = 0; i < numTraits; ++i) {
+			res._traits[i].name = res._allocString(_traits[i].name);
+			res._traits[i].value = res._allocString(_traits[i].value);
+			res._traits[i].op = _traits[i].op;
+		}
+		return res;
+	}
+
+	
+	void	addTrait(cstring name, cstring value, TraitOp op) {
+		assert (name.length > 0);
+		final i = _traits.growBy(1);
+		_traits[i].name = _allocString(name);
+		_traits[i].value = _allocString(value);
+		_traits[i].op = op;
+	}
+
+	private struct TraitFruct {
+		SemanticExp*	sem;
+
+		int opApply(int delegate(ref cstring, ref cstring, ref TraitOp) sink) {
+			return sem._iterTraits(sink);
+		}
+	}
+	
+	TraitFruct	iterTraits() {
+		return TraitFruct(this);
+	}
+
+
+	uword numTraits() {
+		return _traits.length;
+	}
+
+
+	void writeOut(void delegate(cstring) sink) {
+		uword i = 0;
+		foreach (k, v, op; iterTraits) {
+			switch (op) {
+				case TraitOp.Add: {
+					if (i++ > 0) {
+						sink(" + ");
+					}
+				} break;
+
+				case TraitOp.Remove: {
+					sink(" - ");
+					++i;
+				} break;
+
+				default: assert (false, "Added a new Semantic op? :O");
+			}
+
+			sink(k);
+			sink(":");
+			sink(v);
+		}
+	}
+
+
+	// don't use where performance matters
+	cstring toString() {
+		char[] str;
+		writeOut((cstring s) { str ~= s; });
+		return str;
+	}
+
+
+	private {
+		cstring _allocString(cstring s) {
+			if (s.length > 0) {
+				char* p = cast(char*)_allocator(s.length);
+				if (p is null) {
+					error("SemanticExp._allocator returned null :(");
+				}
+				return p[0..s.length] = s;
+			} else {
+				return null;
+			}
+		}
+
+		int _iterTraits(int delegate(ref cstring, ref cstring, ref TraitOp) sink) {
+			for (uword i = 0; i < _traits.length; ++i) {
+				// TODO: copy the name and value to the stack
+				if (int r = sink(_traits[i].name, _traits[i].value, _traits[i].op)) {
+					return r;
+				}
+			}
+			return 0;
+		}
 	}
 }
+
 
 
 

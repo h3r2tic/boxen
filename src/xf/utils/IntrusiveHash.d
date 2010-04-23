@@ -123,7 +123,7 @@ struct IntrusiveHashMap(K, V) {
 	}
 
 
-	V* opIn(KPtr k) {
+	V* opIn_r(KPtr k) {
 		hash_t hashKey = _calcHash(*k);
 		uword bucket = hashKey % _buckets.length;
 		for (auto list = _buckets[bucket]; list; list = list._intrusiveHashNext) {

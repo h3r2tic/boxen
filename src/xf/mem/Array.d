@@ -15,7 +15,8 @@ struct Array(
 	mixin ExpandPolicy;
 	
 	
-	void pushBack(T x) {
+	size_t pushBack(T x) {
+		size_t res = _length;
 		if (_length < _capacity) {
 			_ptr[_length++] = x;
 		} else {
@@ -23,8 +24,15 @@ struct Array(
 			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
 			_ptr[_length++] = x;
 		}
+		return res;
 	}
-	alias pushBack opCatAssign;
+
+
+	size_t growBy(uint num) {
+		size_t res = _length;
+		resize(res + num);
+		return res;
+	}
 	
 	
 	T popBack() {

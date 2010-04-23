@@ -1,7 +1,6 @@
 .d-baseclass = "KDefParserBase";
 .d-header = "module xf.nucleus.kdef.KDefParser;
 private {{
-	import xf.nucleus.Param;
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
@@ -60,7 +59,7 @@ PreprocessStatement
 	::= "preprocess" Identifier:processorFunction Identifier:processor ";";
 	
 ConverterDeclStatement
-	= new ConverterDeclStatement(Param[] params, Code code, string name)
+	= new ConverterDeclStatement(ParamDef[] params, Code code, string name)
 	::= "converter" [Identifier:name] ParamList:params Code:code;
 	
 // ----------------------------------------------------------------------------------------------------------------
@@ -127,7 +126,7 @@ KernelInheritList
 	::= Identifier:~bases* % ",";
 
 KernelDefBody
-	= KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, Param[] attribs)
+	= KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs)
 	$string errSemi = "';' expected"
 	$string errIdent = "kernel name expected"
 	::= (
@@ -138,13 +137,13 @@ KernelDefBody
 	)*;
 	
 AbstractFunction
-	= new AbstractFunction(string name, Param[] params)
+	= AbstractFunction createAbstractFunction(string name, ParamDef[] params)
 	$string semicolonExpected = "';' expected"
 	$string nameExpected = "kernel function name expected"
 	::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
 
 Function
-	= new Function(string name, Param[] params, Code code)
+	= Function createFunction(string name, ParamDef[] params, Code code)
 	$string semicolonExpected = "';' expected"
 	$string nameExpected = "quark function name expected"
 	::=
@@ -165,14 +164,14 @@ OpaqueCodeBlock
 	)*;
 	
 ParamList
-	= Param[] params
+	= ParamDef[] params
 	::= "(" Param:~params* % "," ")";
 	
 Param
-	= Param createParam(
+	= new ParamDef(
 		string dir = "in",
 		string type,
-		ParamSemantic semantic,
+		ParamSemanticExp semantic,
 		string name,
 		Value defaultValue
 	)
@@ -191,14 +190,32 @@ ParamType
 	::= (Identifier ("[" [ParamType | Number] "]")*):type;
 	
 ParamSemantic
-	= ParamSemantic createParamSemantic(VarDef[] vars)
-	::= VarDef:~vars*;
+	= ParamSemanticExp value
+	::=	ParamSemanticSum:value
+	|	ParamSemanticExclusion:value
+	|	"(" ParamSemantic:value ")"
+	|	ParamSemanticTrait:value;
+
+ParamSemanticSum
+	= ParamSemanticExp createParamSemanticSum(ParamSemanticExp a, ParamSemanticExp b)
+	::=	ParamSemantic:a "+" ParamSemantic:b;
+
+ParamSemanticExclusion
+	= ParamSemanticExp createParamSemanticExclusion(ParamSemanticExp a, ParamSemanticExp b)
+	::=	ParamSemantic:a "-" ParamSemantic:b;
+
+ParamSemanticTrait
+	= ParamSemanticExp parseParamSemanticTrait(string name, Value value)
+	::= (
+			["in" "."] Identifier
+		|	"in" "." Identifier "." "actual"
+		):name "=" Value:value;
 
 // ----------------------------------------------------------------------------------------------------------------
 
 VarDef
 	= VarDef parseVarDef(string name, Value value)
-	::= (['@'] Identifier):name "=" Value:value ";";
+	::= Identifier:name "=" Value:value ";";
 	
 TemplateArg
 	= VarDef parseVarDef(string name, Value value)
@@ -253,7 +270,7 @@ StringValue
 	::= &TOK_STRING:value;
 	
 ParamListValue
-	= new ParamListValue(Param[] params)
+	= new ParamListValue(ParamDef[] params)
 	::= ParamList:params;
 
 Identifier
