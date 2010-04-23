@@ -484,7 +484,7 @@ Mesh[] loadHsfModel(
 			
 			// Create and set the index buffer
 
-			mesh.numIndices = assetMesh.indices.length;
+			mesh.indexData.numIndices = assetMesh.indices.length;
 			// assert (indices.length > 0 && indices.length % 3 == 0);
 			
 			uword minIdx = uword.max;
@@ -495,8 +495,8 @@ Mesh[] loadHsfModel(
 				if (i > maxIdx) maxIdx = i;
 			}
 
-			mesh.minIndex = minIdx;
-			mesh.maxIndex = maxIdx;
+			mesh.indexData.minIndex = minIdx;
+			mesh.indexData.maxIndex = maxIdx;
 			
 			(mesh.indexBuffer = renderer.createIndexBuffer(
 				BufferUsage.StaticDraw,
@@ -886,7 +886,7 @@ Mesh[] loadModel(
 				}
 			}
 			
-			mesh.numIndices = indices.length;
+			mesh.indexData.numIndices = indices.length;
 			// assert (indices.length > 0 && indices.length % 3 == 0);
 			
 			uword minIdx = uword.max;
@@ -897,8 +897,8 @@ Mesh[] loadModel(
 				if (i > maxIdx) maxIdx = i;
 			}
 
-			mesh.minIndex = minIdx;
-			mesh.maxIndex = maxIdx;
+			mesh.indexData.minIndex = minIdx;
+			mesh.indexData.maxIndex = maxIdx;
 			
 			(mesh.indexBuffer = renderer.createIndexBuffer(
 				BufferUsage.StaticDraw,
