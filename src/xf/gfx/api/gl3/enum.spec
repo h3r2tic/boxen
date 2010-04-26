@@ -3,6 +3,8 @@
 # It is an extremely important file. Do not mess with it unless
 # you know what you're doing and have permission to do so.
 #
+# $Revision: 10971 $ on $Date: 2010-04-09 02:45:33 -0700 (Fri, 09 Apr 2010) $
+
 ###############################################################################
 #
 # Before modifying this file, read the following:
@@ -217,11 +219,15 @@ EXT_multisample enum:
 
 ###############################################################################
 
+# Note that COVERAGE_BUFFER_BIT_NV collides with AttribMask bit
+# HINT_BIT. This is OK since the extension is for OpenGL ES 2, which
+# doesn't have attribute groups.
 ClearBufferMask enum:
-	use AttribMask COLOR_BUFFER_BIT
-	use AttribMask ACCUM_BUFFER_BIT
-	use AttribMask STENCIL_BUFFER_BIT
-	use AttribMask DEPTH_BUFFER_BIT
+	use AttribMask DEPTH_BUFFER_BIT			# = 0x00000100
+	use AttribMask ACCUM_BUFFER_BIT			# = 0x00000200
+	use AttribMask STENCIL_BUFFER_BIT		# = 0x00000400
+	use AttribMask COLOR_BUFFER_BIT			# = 0x00004000
+	use NV_coverage_sample COVERAGE_BUFFER_BIT_NV	# = 0x00008000
 
 ###############################################################################
 
@@ -4108,14 +4114,11 @@ NV_vertex_array_range enum:
 	MAX_VERTEX_ARRAY_RANGE_ELEMENT_NV		= 0x8520
 	VERTEX_ARRAY_RANGE_POINTER_NV			= 0x8521
 
-# @@@ How does this interact with NV_vertex_array_range?
 APPLE_vertex_array_range enum:
 	VERTEX_ARRAY_RANGE_APPLE			= 0x851D
 	VERTEX_ARRAY_RANGE_LENGTH_APPLE			= 0x851E
 	VERTEX_ARRAY_STORAGE_HINT_APPLE			= 0x851F
 	VERTEX_ARRAY_RANGE_POINTER_APPLE		= 0x8521
-	STORAGE_CACHED_APPLE				= 0x85BE
-	STORAGE_SHARED_APPLE				= 0x85BF
 
 NV_register_combiners enum:
 	REGISTER_COMBINERS_NV				= 0x8522
@@ -4332,10 +4335,8 @@ APPLE_client_storage enum:
 APPLE_object_purgeable enum: (additional; see below)
 	BUFFER_OBJECT_APPLE				= 0x85B3
 
-# APPLE_future_use: 0x85B4
-
-## From Jeremy 2006/10/18 (Bugzilla bug 632) - unknown extension name
-#	STORAGE_CLIENT_APPLE				= 0x85B4
+APPLE_vertex_array_range enum: (additional; see above):
+	STORAGE_CLIENT_APPLE				= 0x85B4
 
 VERSION_3_0 enum:
 	use ARB_vertex_array_object	    VERTEX_ARRAY_BINDING
@@ -4347,7 +4348,7 @@ APPLE_vertex_array_object enum:
 	VERTEX_ARRAY_BINDING_APPLE			= 0x85B5
 
 # APPLE_future_use: 0x85B6
-## From Jeremy 2006/10/18 (Bugzilla bug 632) - unknown extension name
+## From Jeremy 2006/10/18 (Khronos bug 632) - unknown extension name
 #	TEXTURE_MINIMIZE_STORAGE_APPLE			= 0x85B6
 
 APPLE_texture_range enum:  (additional; see below)
@@ -4919,12 +4920,6 @@ ATI_element_array enum:
 	ELEMENT_ARRAY_ATI				= 0x8768
 	ELEMENT_ARRAY_TYPE_ATI				= 0x8769
 	ELEMENT_ARRAY_POINTER_ATI			= 0x876A
-
-# @@@ (extends ATI_element_array, I think???)
-APPLE_element_array enum:
-	ELEMENT_ARRAY_APPLE				= 0x8768
-	ELEMENT_ARRAY_TYPE_APPLE			= 0x8769
-	ELEMENT_ARRAY_POINTER_APPLE			= 0x876A
 
 ATI_vertex_streams enum:
 	MAX_VERTEX_STREAMS_ATI				= 0x876B
@@ -5879,7 +5874,8 @@ APPLE_fence enum:
 	DRAW_PIXELS_APPLE				= 0x8A0A
 	FENCE_APPLE					= 0x8A0B
 
-## From Jeremy 2006/10/18 (Bugzilla bug 632) - unknown extension name
+# Enum values updated (Khronos bugs 5311, 632)
+APPLE_element_array enum:
 	ELEMENT_ARRAY_APPLE				= 0x8A0C
 	ELEMENT_ARRAY_TYPE_APPLE			= 0x8A0D
 	ELEMENT_ARRAY_POINTER_APPLE			= 0x8A0E
@@ -5888,11 +5884,8 @@ APPLE_float_pixels enum:
 	COLOR_FLOAT_APPLE				= 0x8A0F
 
 # APPLE_future_use: 0x8A10
-## From Jeremy 2006/10/18 (Bugzilla bug 632) - unknown extension name
+## From Jeremy 2006/10/18 (Khronos bug 632) - unknown extension name
 #	MIN_PBUFFER_VIEWPORT_DIMS_APPLE			= 0x8A10
-#	ELEMENT_BUFFER_BINDING_APPLE			= 0x8A11
-# Apple says the extension that defined ELEMENT_BUFFER_BINDING_APPLE
-# never shipped and there's no actual collision with UNIFORM_BUFFER
 
 VERSION_3_1 enum:
 	use ARB_uniform_buffer_object	    UNIFORM_BUFFER
@@ -6467,13 +6460,15 @@ NV_transform_feedback enum:
 
 # ATI: 0x8C90-0x8C9F (Affie Munshi, OpenGL ES extensions)
 
-# AMD_future_use: 0x8C90-0x8C91
+# Reassigned to Qualcomm at time of mobile/desktop split (bug 5874)
+# Qualcomm__future_use: 0x8C90-0x8C91
 
 AMD_compressed_ATC_texture enum: (OpenGL ES only)
 	ATC_RGB_AMD					= 0x8C92
 	ATC_RGBA_EXPLICIT_ALPHA_AMD			= 0x8C93
 
-# AMD_future_use: 0x8C94-0x8C9F
+# Reassigned to Qualcomm at time of mobile/desktop split (bug 5874)
+# Qualcomm_future_use: 0x8C94-0x8C9F
 
 ###############################################################################
 
@@ -6745,7 +6740,7 @@ OES_framebuffer_object enum: (OpenGL ES only)
 OES_compressed_ETC1_RGB8_texture enum: (OpenGL ES only)
 	ETC1_RGB8_OES					= 0x8D64
 
-OES_EGL_image_external enum: (OpenGL ES only) (bug 4621)
+OES_EGL_image_external enum: (OpenGL ES only) (Khronos bug 4621)
 	TEXTURE_EXTERNAL_OES				= 0x8D65
 	SAMPLER_EXTERNAL_OES				= 0x8D66
 	TEXTURE_BINDING_EXTERNAL_OES			= 0x8D67
@@ -7050,7 +7045,8 @@ NV_present_video enum:
 	PRESENT_TIME_NV					= 0x8E2A
 	PRESENT_DURATION_NV				= 0x8E2B
 
-# NV_future_use: 0x8E2C
+NV_depth_nonlinear enum: (OpenGL ES only)
+	DEPTH_COMPONENT16_NONLINEAR_NV			= 0x8E2C
 
 EXT_direct_state_access enum:
 	PROGRAM_MATRIX_EXT				= 0x8E2D
@@ -7144,7 +7140,18 @@ ARB_texture_gather enum:
 # NVIDIA: 0x8ED0-0x8F4F
 # Assigned for Pat Brown (Khronos bug 3191)
 
-# NV_future_use: 0x8ED0-0x8F1C
+NV_coverage_sample enum: (OpenGL ES only)
+	COVERAGE_COMPONENT_NV				= 0x8ED0
+	COVERAGE_COMPONENT4_NV				= 0x8ED1
+	COVERAGE_ATTACHMENT_NV				= 0x8ED2
+	COVERAGE_BUFFERS_NV				= 0x8ED3
+	COVERAGE_SAMPLES_NV				= 0x8ED4
+	COVERAGE_ALL_FRAGMENTS_NV			= 0x8ED5
+	COVERAGE_EDGE_FRAGMENTS_NV			= 0x8ED6
+	COVERAGE_AUTOMATIC_NV				= 0x8ED7
+	COVERAGE_BUFFER_BIT_NV				= 0x00008000
+
+# NV_future_use: 0x8ED8-0x8F1C
 
 NV_shader_buffer_load enum:
 	BUFFER_GPU_ADDRESS_NV				= 0x8F1D
@@ -7267,6 +7274,8 @@ AMD_vertex_shader_tesselator enum:
 	DISCRETE_AMD					= 0x9006
 	CONTINUOUS_AMD					= 0x9007
 
+# AMD_future_use: 0x9008
+
 ARB_texture_cube_map_array enum:
 	TEXTURE_CUBE_MAP_ARRAY				= 0x9009
 	TEXTURE_BINDING_CUBE_MAP_ARRAY			= 0x900A
@@ -7275,8 +7284,6 @@ ARB_texture_cube_map_array enum:
 	SAMPLER_CUBE_MAP_ARRAY_SHADOW			= 0x900D
 	INT_SAMPLER_CUBE_MAP_ARRAY			= 0x900E
 	UNSIGNED_INT_SAMPLER_CUBE_MAP_ARRAY		= 0x900F
-
-# AMD_future_use: 0x9008-0x900F
 
 EXT_texture_snorm enum:
 	ALPHA_SNORM					= 0x9010
@@ -7429,12 +7436,27 @@ VERSION_3_2 enum:
 
 ###############################################################################
 
-# Imagination Tech.: 0x9130-0x913F (bug 882)
+# Imagination Tech.: 0x9130-0x913F (Khronos bug 882)
 
-IMG_program_binary: (OpenGL ES only)
+IMG_program_binary enum: (OpenGL ES only)
 	SGX_PROGRAM_BINARY_IMG				= 0x9130
 
-# IMG_future_use: 0x9131-0x913F
+# IMG_future_use: 0x9131-0x9132
+
+IMG_multisampled_render_to_texture enum: (OpenGL ES only)
+	RENDERBUFFER_SAMPLES_IMG			= 0x9133
+	FRAMEBUFFER_INCOMPLETE_MULTISAMPLE_IMG		= 0x9134
+	MAX_SAMPLES_IMG					= 0x9135
+	TEXTURE_SAMPLES_IMG				= 0x9136
+
+# IMG_future_use: 0x9137-0x913F
+
+###############################################################################
+
+# AMD: 0x9140-0x91BF (Khronos bugs 5899, 6004)
+
+# AMD_future_use: 0x9140-0x91BF
+# AMD_future_use: 0x91C0-0x923F
 
 ###############################################################################
 ### Please remember that new enumerant allocations must be obtained by request

@@ -109,7 +109,7 @@ def parseEnumEntity(enumDef, addItem):
 	for m in rematch(r"(\w+): \(OpenGL ES only\)$", enumDef):
 		return
 
-	for m in rematch(r"use (\w+) (\w+)$", enumDef):
+	for m in rematch(r"use (\w+) (\w+)(?: #.*)?$", enumDef):
 		assert 2 == len(m.groups())
 		addItem(NameAlias(m.group(1), sanitizeEnumName(m.group(2))))
 		return
