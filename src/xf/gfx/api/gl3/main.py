@@ -30,6 +30,14 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 	types = apply(parseSpecs, [parseTypes] + typeSpecs)
 	funcs = apply(parseSpecs, [parseFunctions] + funcSpecs)
 
+	# Some extension funcs aren't tagged as such - e.g. DrawRangeElements
+	for f in funcs:
+		if f.category != 'VERSION_1_1_DEPRECATED' and \
+		f.category != 'VERSION_1_1' and \
+		f.category != 'VERSION_1_0_DEPRECATED' and \
+		f.category != 'VERSION_1_0':
+			f.extension = True
+
 	coreFuncs = [f for f in funcs if re.match(coreCatRegex, f.category) and not f.deprecated]
 	coreEnums = []
 	extensions = []

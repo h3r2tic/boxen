@@ -145,6 +145,10 @@ def parseEnumEntity(enumDef, addItem):
 	for m in rematch(r"#", enumDef):
 		return
 
+	# Found inwglenumext.spec at WGL_NV_swap_group
+	for m in rematch(r"(\w+):$", enumDef):
+		return
+
 	print 'Unrecognized enum field def: ', enumDef
 	assert False
 

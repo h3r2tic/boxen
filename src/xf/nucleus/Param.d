@@ -189,6 +189,7 @@ interface IParamSupport {
 
 
 
+// TODO: mem
 template MParamSupport() {
 	static assert (is(typeof(this) == class));
 
@@ -343,6 +344,12 @@ template MParamSupport() {
 
 
 /**
+ * Given an output parameter of a kernel/quark function, possibly having a
+ * SemanticExp and not yet a plain semantic, this utility can compute the resulting
+ * static Semantic. It must have a way to query the semantics of formal and actual
+ * parameters of the function the 'outputParam' belongs to - these must be provided
+ * as delegates.
+ * 
  * The result should have a valid allocator, which will be used in case
  * the outputParam doesn't yet have a plain semantic. If it does,
  * then the result will simply be assigned from the output param's semantic

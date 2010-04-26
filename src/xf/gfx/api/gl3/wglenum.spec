@@ -1,7 +1,10 @@
-# Copyright (C) 1991-2005 Silicon Graphics, Inc. All Rights Reserved.
+# Copyright (c) 1991-2005 Silicon Graphics, Inc. All Rights Reserved.
+# Copyright (c) 2006-2010 The Khronos Group, Inc.
 #
 # This document is licensed under the SGI Free Software B License Version
 # 2.0. For details, see http://oss.sgi.com/projects/FreeB/ .
+#
+# $Revision: 10796 $ on $Date: 2010-03-19 17:31:10 -0700 (Fri, 19 Mar 2010) $
 
 # This is the master WGL enumerant registry.
 #
@@ -301,17 +304,20 @@ WGL_ARB_render_texture enum:
 	WGL_AUX8_ARB					= 0x208F
 	WGL_AUX9_ARB					= 0x2090
 
+# Shared with GLX - synchronize create_context_* enums with glxenum.spec!
+
 # Also includes a bitmask - see CotnextFlags above
 WGL_ARB_create_context enum:
 	WGL_CONTEXT_MAJOR_VERSION_ARB			= 0x2091
 	WGL_CONTEXT_MINOR_VERSION_ARB			= 0x2092
 	WGL_CONTEXT_LAYER_PLANE_ARB			= 0x2093
 	WGL_CONTEXT_FLAGS_ARB				= 0x2094
+# 0x2096 collides with GLX_CONTEXT_ALLOW_BUFFER_BYTE_ORDER_MISMATCH!
 	ERROR_INVALID_VERSION_ARB			= 0x2095
 
 # Also includes a bitmask - see ContextProfileMask above
-# WGL_ARB_create_context_profile enum: (additional; see above and below)
-#	ERROR_INVALID_PROFILE_ARB			= 0x2096
+WGL_ARB_create_context_profile enum: (additional; see above and below)
+	ERROR_INVALID_PROFILE_ARB			= 0x2096
 
 # ARB_future_use: 0x2097-0x209F
 
@@ -372,7 +378,7 @@ NV_video_capture enum:
 	WGL_UNIQUE_ID_NV				= 0x20CE
 	WGL_NUM_VIDEO_CAPTURE_SLOTS_NV			= 0x20CF
 
-WGL_NV_gpu_affinity enum:
+WGL_NV_gpu_affinity:
 	WGL_ERROR_INCOMPATIBLE_AFFINITY_MASKS_NV	= 0x20D0
 	WGL_ERROR_MISSING_AFFINITY_MASK_NV		= 0x20D1
 

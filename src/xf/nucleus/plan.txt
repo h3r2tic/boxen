@@ -76,10 +76,13 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ testing whether a semantic can be used as an argument to a particular function param
 	+ path-finding in the implicit graph of semantic types
 
-~	revive the kernel/quark parser
++	revive the kernel/quark parser
 	* only for Cg
 
+-	do a semantic pass on parsed data and pack stuff into runtime structs
+
 -	create facades for structure, material and light kernels
+	-	figure out wtf I exactly had in mind when writing that
 	-	also the ability to automatically connect them
 		* param names must match
 
