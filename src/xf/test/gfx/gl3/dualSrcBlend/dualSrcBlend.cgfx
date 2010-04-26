@@ -1,0 +1,78 @@
+struct vertInput {
+	float2 position : POSITION;
+};
+
+struct fragInput {
+	float2 position : TEXCOORD0;
+};
+
+
+float2 winFraction <string scope="effect";>;
+int mode <string scope = "effect";>;
+float2 subpixelAlignment <string scope="effect";>;
+
+
+void VertexProgram(
+	in vertInput input,
+	out float4 outPos : POSITION,
+	out fragInput output
+) {
+	outPos = float4(input.position * winFraction, 0, 1);
+	output.position = input.position;
+}
+
+
+void FragmentProgram(
+	in fragInput input,
+	uniform sampler2D tex,
+	uniform float2 winSize,
+	uniform float2 texSize,
+	uniform float2 offset,
+	out float4 col0 : COLOR0,
+	out float4 col1 : COLOR1
+) {
+	float2 pixelSize = subpixelAlignment / (winSize * winFraction);
+	float2 base = (input.position + 1) / 2;
+	base += offset;
+
+	float4 tm3 = tex2D(tex, base + pixelSize);
+	float4 tm2 = tex2D(tex, base + 2 * pixelSize / 3);
+	float4 tm1 = tex2D(tex, base + pixelSize / 3);
+	float4 t0 = tex2D(tex, base);
+	float4 tp1 = tex2D(tex, base - pixelSize / 3);
+	float4 tp2 = tex2D(tex, base - 2 * pixelSize / 3);
+	float4 tp3 = tex2D(tex, base - pixelSize);
+
+	//const float4 wb = float4(0, 0, 1, 0);
+	//const float4 wb = float4(0.07, 0.23, 0.40, 0.23);
+	//const float4 wb = float4(0.06, 0.20, 0.48, 0.20);
+	const float4 wb = float4(0.04, 0.125, 0.69, 0.125);
+	const float jagRatio = 0.0f;
+
+	float4 colb = wb.x * tm2 + wb.y * tm1 + wb.z * t0 + wb.w * tp1 + wb.x * tp2;
+
+	if (1 == mode) {
+		col0 = t0;
+		col1 = float4(1, 1, 1, 1);
+	} else if (2 == mode) {
+		col0 = colb;
+		col1 = float4(1, 1, 1, 1);
+	} else {
+		col0 = float4(
+			dot(wb, float4(tm3.x, tm2.x, tm1.x, t0.x)).x + wb.x * tp1.x,
+			dot(wb, float4(tm2.y, tm1.y, t0.y, tp1.y)).x + wb.x * tp2.y,
+			dot(wb, float4(tm1.z, t0.z, tp1.z, tp2.z)).x + wb.x * tp3.z,
+			1
+		);
+		col0 = col0 * (1.0f - jagRatio) + colb * jagRatio;
+
+		col1 = float4(
+			dot(wb, float4(tm3.w, tm2.w, tm1.w, t0.w)).x + wb.x * tp1.w,
+			dot(wb, float4(tm2.w, tm1.w, t0.w, tp1.w)).x + wb.x * tp2.w,
+			dot(wb, float4(tm1.w, t0.w, tp1.w, tp2.w)).x + wb.x * tp3.w,
+			1
+		);
+
+		col1 = col1 * (1.0f - jagRatio) + float4(1, 1, 1, 1) * colb.w * jagRatio;
+	}
+}
