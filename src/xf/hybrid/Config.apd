@@ -1,0 +1,470 @@
+APDGlobal {
+	module xf.hybrid.Config;
+	
+	import xf.hybrid.WidgetConfig;
+	import tango.io.device.File;
+	import tango.core.Exception;
+	import tango.util.Convert;
+	import tango.io.model.IConduit;
+	
+	alias char[] string;
+	
+	
+    /+void main(string[] args) {
+        if (args.length < 2) {
+            throw new Exception("Usage: filename");
+		}
+		
+        SyntaxTree root;
+        if (parse("", cast(string)File(args[1]).read(), root, true)) {
+        	Config cfg;
+        	root.Document(cfg);
+        	assert (cfg !is null);
+        	Stdout.formatln("Parsed successfully");
+        } else {
+			Stdout.formatln("Invalid expression: {}", args[1]);
+		}
+    }+/
+    
+    Config parseWidgetConfig(InputStream stream, char[] path) {
+        SyntaxTree root;
+        
+        if (stream !is null && parse(path, cast(string)stream.load(), root, true)) {
+        	Config cfg;
+        	root.Document(cfg);
+        	assert (cfg !is null);
+        	return cfg;
+        } else {
+			return null;
+		}
+    }
+
+
+    void parseWidgetBody(char[] data, ref PropAssign[] props, ref WidgetSpec[] children) {
+        SyntaxTree root;
+        if (parse("", "x{" ~ data ~ "}", root, true)) {
+        	Config cfg;
+        	root.Document(cfg);
+        	assert (cfg !is null);
+        	props = cfg.widgetSpecs[0].props;
+        	children = cfg.widgetSpecs[0].children;
+        	//Stdout.formatln("props: {}; children: {}", props.length, children.length);
+        } else {
+        	throw new Exception("Can't parse: '" ~ data ~ "'");
+        }
+    }
+}
+
+
+Whitespace {
+	Whitespace WhitespaceFlat;
+	WhitespaceFlat;
+}
+
+WhitespaceFlat {
+	regexp("[\\n\\r\\t ]+");
+	regexp("//[^\\n]*");
+	regexp("/\\*([^\\*]|\\*>/)*\\*/");
+	"/+" WhitespaceNesteds "+/";
+}
+
+WhitespaceNesteds {
+	WhitespaceNesteds WhitespaceNested;
+	WhitespaceNested;
+}
+
+WhitespaceNested {
+	WhitespaceFlat;
+	regexp("[^#/\\+\\*\\n\\r\\t ]+");
+	"+";
+	"*";
+	"/";
+}
+
+
+Document(ref Config cfg) {
+	"import" StringSpec Document {
+		if (cfg is null) {
+			cfg = new Config;
+		}
+
+		char[] file;
+		StringSpec(file);
+		cfg.imports ~= file.dup;
+		Document(cfg);
+	}
+
+
+	SubWidget Document {
+		if (cfg is null) {
+			cfg = new Config;
+		}
+		
+		WidgetSpec tmp;
+		SubWidget(tmp);
+		cfg.widgetSpecs ~= tmp;
+		
+		Document(cfg);
+	}
+	
+	
+	WidgetTypeSpecification Document {
+		if (cfg is null) {
+			cfg = new Config;
+		}
+
+		WidgetTypeSpec tmp;
+		WidgetTypeSpecification(tmp);
+		cfg.widgetTypeSpecs ~= tmp;
+
+		Document(cfg);
+	}
+	
+	
+	epsilon;
+}
+
+
+WidgetTypeSpecification(out WidgetTypeSpec spec) {
+	"widget" Identifier "{" WidgetTypeSpecBody "}" WidgetTypeExtraSpecification {
+		//Stdout.formatln("parsing a widget type spec");
+		spec = new WidgetTypeSpec;
+		Identifier(spec.name);
+		WidgetTypeSpecBody(spec.items);
+	}
+}
+
+
+WidgetTypeExtraSpecification(ref WidgetTypeSpec spec) {
+	"@" PropertyName "{" WidgetTypeSpecBody "}" WidgetTypeExtraSpecification {
+		assert (false, "TODO?");
+		string extraName;
+		PropertyName(extraName);
+		spec.extraParts[extraName.dup] = (WidgetTypeSpec.Item[]).init;
+		WidgetTypeSpecBody(spec.extraParts[extraName]);
+		WidgetTypeExtraSpecification(spec);
+	}
+	
+	epsilon;
+}
+
+
+WidgetTypeSpecBody(ref WidgetTypeSpec.Item[] items) {
+	SubWidget WidgetTypeSpecBody {
+		WidgetSpec tmp;
+		SubWidget(tmp);
+		items ~= WidgetTypeSpec.Item(tmp);
+		WidgetTypeSpecBody(items);
+	}
+	
+	PropertyAssignment WidgetTypeSpecBody {
+		PropAssign tmp;
+		PropertyAssignment(tmp);
+		items ~= WidgetTypeSpec.Item(tmp);
+		WidgetTypeSpecBody(items);
+	}
+	
+	epsilon;
+}
+
+
+SubWidget(out WidgetSpec spec) {
+	LayoutAttribs "new" Identifier=Type SubWidgetName WidgetSpecification {
+		spec = new WidgetSpec;
+		
+		LayoutAttribs(spec.layoutAttr);
+		Type(spec.type);
+		SubWidgetName(spec.name);
+		spec.createNew = true;
+		//Stdout.formatln("1parsing a nested widget: '{}'", spec.name);
+		WidgetSpecification(spec);
+		//Stdout.formatln("1parsED a nested widget: '{}'", spec.name);
+	}
+
+	LayoutAttribs NonEmptySubWidgetName=Name WidgetSpecification {
+		spec = new WidgetSpec;
+		
+		LayoutAttribs(spec.layoutAttr);
+		Name(spec.name);
+		spec.createNew = false;
+		//Stdout.formatln("2parsing a nested widget: '{}'", spec.name);
+		WidgetSpecification(spec);
+		//Stdout.formatln("2parsED a nested widget: '{}'", spec.name);
+	}
+}
+
+
+SubWidgetName(out string name) {
+	Identifier {
+		Identifier(name);
+	}
+	
+	"." Identifier {
+		char[] i;
+		Identifier(i);
+		name = "." ~ i;
+	}
+
+	epsilon;
+}
+
+
+NonEmptySubWidgetName(out string name) {
+	Identifier {
+		Identifier(name);
+	}
+	
+	"." Identifier {
+		char[] i;
+		Identifier(i);
+		name = "." ~ i;
+	}
+}
+
+
+WidgetSpecification(ref WidgetSpec spec) {
+	"{" WidgetBody "}" WidgetExtraSpecification {
+		WidgetBody(spec.props, spec.children);
+		WidgetExtraSpecification(spec);
+	}
+	
+	"@" PropertyName "{" WidgetBody "}" WidgetExtraSpecification {
+		string extraName;
+		PropertyName(extraName);
+		spec.extraParts[extraName.dup] = WidgetSpec.ExtraPart.init;
+		WidgetBody(spec.extraParts[extraName].props, spec.extraParts[extraName].children);
+		WidgetExtraSpecification(spec);
+	}
+	
+	";";
+}
+
+
+WidgetExtraSpecification(ref WidgetSpec spec) {
+	"@" PropertyName "{" WidgetBody "}" WidgetExtraSpecification {
+		string extraName;
+		PropertyName(extraName);
+		spec.extraParts[extraName.dup] = WidgetSpec.ExtraPart.init;
+		WidgetBody(spec.extraParts[extraName].props, spec.extraParts[extraName].children);
+		WidgetExtraSpecification(spec);
+	}
+	
+	epsilon;
+}
+
+
+WidgetBody(ref PropAssign[] props, ref WidgetSpec[] children) {
+	SubWidget WidgetBody {
+		//Stdout.formatln("sub");
+		WidgetSpec sub;
+		SubWidget(sub);
+		children ~= sub;
+		WidgetBody(props, children);
+	}
+	
+	PropertyAssignment WidgetBody {
+		//Stdout.formatln("prop");
+		PropAssign pa;
+		PropertyAssignment(pa);
+		props ~= pa;
+		WidgetBody(props, children);
+	}
+	
+	epsilon;
+}
+
+
+LayoutAttribs(out char[] res) {
+	regexp("\\[[^\\]]+\\]") {
+		res = _ST_match[1..$-1].dup;
+	}
+	
+	epsilon;
+}
+
+
+PropertyAssignment(out PropAssign val) {
+	PropertyName "=" PropertyValue {
+		PropertyName(val.name);
+		PropertyValue(val.value);
+	}
+}
+
+
+PropertyValue(out Value val) {
+	SimpleValue ";" {
+		SimpleValue(val);
+	}
+	
+	"{" PropertyBlock "}" {
+		val.type = Value.Type.Block;
+		PropertyBlock(val);
+	}
+	
+	"graphic" Identifier "{" PropertyBlock "}" {
+	}
+	
+	ComplexValueSpec {
+		ComplexValue tmp = new ComplexValue;
+		ComplexValueSpec(tmp);
+		val = Value(tmp);
+	}
+}
+
+
+ComplexValueSpec(ref ComplexValue val) {
+	SimpleValue ";" {
+		Value tmp;
+		SimpleValue(tmp);
+		val.items ~= tmp;
+	}
+	
+	SimpleValue ComplexValueSpec {
+		Value tmp;
+		SimpleValue(tmp);
+		val.items ~= tmp;
+		ComplexValueSpec(val);
+	}
+	
+	/*"{" PropertyBlock "}" {
+		Value tmp;
+		PropertyBlock(tmp);
+		val.items ~= tmp;
+	}*/
+}
+
+
+FuncArg(out Value val) {
+	SimpleValue {
+		Value tmp;
+		SimpleValue(tmp);
+		val = tmp;
+	}
+	
+	SimpleValue "(" FuncArgList ")" {
+		ComplexValue cmplx = new ComplexValue;
+		
+		Value tmp;
+		SimpleValue(tmp);
+		cmplx.items ~= tmp;
+		
+		ComplexValue tmp2 = new ComplexValue;
+		FuncArgList(tmp2.items);
+		cmplx.items ~= Value(tmp2);
+		
+		val = Value(cmplx);
+	}
+}
+
+
+FuncArgList(ref Value[] val) {
+	FuncArg {
+		Value tmp;
+		FuncArg(tmp);
+		val ~= tmp;
+	}
+	
+	FuncArg "," FuncArgList {
+		Value tmp;
+		FuncArg(tmp);
+		val ~= tmp;
+		FuncArgList(val);
+	}
+}
+
+
+PropertyBlock(ref Value val) {
+	PropertyAssignment PropertyBlock {
+		PropAssign tmp;
+		PropertyAssignment(tmp);
+		val.Block ~= tmp;
+		PropertyBlock(val);
+	}
+	
+	epsilon;
+}
+
+
+SimpleValue(out Value val) {
+	"true" {
+		val = Value(true);
+	}
+	
+	"false" {
+		val = Value(false);
+	}
+
+	PropertyName {
+		string str;
+		PropertyName(str);
+		val = Value(str);
+	}
+	
+	Number {
+		int i;
+		Number(i);
+		val = Value(i);
+	}
+	
+	FloatingPointNumber {
+		float f;
+		FloatingPointNumber(f);
+		val = Value(f);
+	}
+
+	Identifier "(" FuncArgList ")" {
+		FuncCallValue tmp;
+		Identifier(tmp.name);
+		FuncArgList(tmp.args);
+		val = Value(tmp);
+	}
+	
+	StringSpec {
+		string str;
+		StringSpec(str);
+		val = Value(str);
+	}
+}
+
+
+PropertyName(out string str) {
+	Identifier "." PropertyName {
+		Identifier(str);
+		str ~= ".";
+		string tmp;
+		PropertyName(tmp);
+		str ~= tmp;
+	}
+	
+	Identifier {
+		Identifier(str);
+	}
+}
+
+
+Identifier(out string str) {
+	regexp("[a-zA-Z_][0-9a-zA-Z_]*") {
+		str = _ST_match;
+	}
+}
+
+
+Number(out int val) {
+	regexp("-?[0-9][0-9_]*") {
+		val = to!(int)(_ST_match);
+	}
+}
+
+
+FloatingPointNumber(out float val) {
+	regexp("(-?[0-9][0-9_]*\\.[0-9][0-9_]*)|(-?\\.[0-9][0-9_]*)") {
+		val = to!(float)(_ST_match);
+	}
+}
+
+
+StringSpec(out string val) {
+	regexp("\"([^\"]|(\\\\\"))*\"") {
+		val = _ST_match[1..$-1];
+	}
+}
