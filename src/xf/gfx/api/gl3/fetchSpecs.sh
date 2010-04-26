@@ -1,6 +1,7 @@
 files=(\
 	gl.spec \
 	gl.tm \
+	enum.spec \
 	wgl.spec \
 	wgl.tm \
 	wglenum.spec \
