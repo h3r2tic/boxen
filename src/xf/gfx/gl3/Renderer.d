@@ -32,8 +32,14 @@ private {
 		xf.gfx.api.gl3.ext.ARB_half_float_pixel,
 		xf.gfx.api.gl3.ext.ARB_framebuffer_object,
 		xf.gfx.api.gl3.ext.EXT_framebuffer_object,
-		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
-
+		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB;
+	import
+		GLTextureMagFilter = xf.gfx.api.gl3.ext.TextureMagFilter;
+	import
+		GLTextureMinFilter = xf.gfx.api.gl3.ext.TextureMinFilter;
+	import
+		GLTextureWrapMode = xf.gfx.api.gl3.ext.TextureWrapMode;
+	import
 		xf.img.Image,
 		xf.omg.core.LinearAlgebra,
 
@@ -1884,12 +1890,12 @@ private GLenum enumToGL(TextureInternalFormat e) {
 
 private GLenum enumToGL(TextureMinFilter e) {
 	const GLenum[] map = [
-		LINEAR,
-		NEAREST,
-		NEAREST_MIPMAP_NEAREST,
-		NEAREST_MIPMAP_LINEAR,
-		LINEAR_MIPMAP_NEAREST,
-		LINEAR_MIPMAP_LINEAR
+		GLTextureMinFilter.LINEAR,
+		GLTextureMinFilter.NEAREST,
+		GLTextureMinFilter.NEAREST_MIPMAP_NEAREST,
+		GLTextureMinFilter.NEAREST_MIPMAP_LINEAR,
+		GLTextureMinFilter.LINEAR_MIPMAP_NEAREST,
+		GLTextureMinFilter.LINEAR_MIPMAP_LINEAR
 	];
 
 	return map[e];
@@ -1898,8 +1904,8 @@ private GLenum enumToGL(TextureMinFilter e) {
 
 private GLenum enumToGL(TextureMagFilter e) {
 	const GLenum[] map = [
-		LINEAR,
-		NEAREST
+		GLTextureMagFilter.LINEAR,
+		GLTextureMagFilter.NEAREST
 	];
 
 	return map[e];
@@ -1909,7 +1915,7 @@ private GLenum enumToGL(TextureMagFilter e) {
 private GLenum enumToGL(TextureWrap e) {
 	const GLenum[] map = [
 		0,
-		CLAMP,
+		GLTextureWrapMode.CLAMP,
 		CLAMP_TO_EDGE,
 		CLAMP_TO_BORDER
 	];

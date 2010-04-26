@@ -54,6 +54,7 @@ void main() {
 		}
 
 		Stdout.formatln("Used mem: {} B", mem.countUsedBytes);
+		mem.clear();
 	}
 
 	{
@@ -82,6 +83,7 @@ void main() {
 		assert (!canPassSemanticFor(argSem2, paramSem, true));
 		assert (!canPassSemanticFor(argSem3, paramSem, true));
 		assert (canPassSemanticFor(argSem4, paramSem, true));
+		mem.clear();
 	}
 
 	{
@@ -101,6 +103,7 @@ void main() {
 		assert (canPassSemanticFor(argSem2, paramSem, true));
 		assert (!canPassSemanticFor(argSem3, paramSem, true));
 		assert (!canPassSemanticFor(argSem4, paramSem, true));
+		mem.clear();
 	}
 
 	{
@@ -299,6 +302,8 @@ void main() {
 				&convPrint
 			));
 		}
+		
+		mem.clear();
 	}
 
 	Stdout.formatln("Test passed!");

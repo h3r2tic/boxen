@@ -1,3 +1,6 @@
+/**
+ * To be included in pretty much all xf modules.
+ */
 module xf.Common;
 
 public {

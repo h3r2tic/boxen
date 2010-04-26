@@ -218,38 +218,12 @@ bool findConversion(
 			
 			int newCost = item.cost + conv.cost + extraCost;
 
-			bool isFinal = void; {
-				// Mark a region where the converted2 Semantic will be allocated.
-				// The case of it surviving is unlikely, so unless it's final, this
-				// StackBuffer will scrap it.
-				// Note: If stack3 is kept, stack2 must be kept as well.
-				scope stack3 = new StackBuffer;
-
-				auto converted2 = Semantic(&allocator);
-				
-				isFinal = canPassSemanticFor(
-						converted,
-						to,
-						true,
-						&newCost,
-						&converted2
-				);
-
-				if (isFinal) {
-					//Stdout.formatln("adjusting semantic {} -> {} (for target {})", converted.toString, converted2.toString, to.toString);
-					
-					// The unlikely case of converted2 being useful happened. Keep it.
-					stack3.forgetMemory();
-					stack2.forgetMemory();
-					converted = converted2;
-				} else {
-					// converted2 will die at the end of stack3's scope
-				}
-
-				// It's either in 'converted' or invalid at the end of this scope
-				converted2 = Semantic.init;
-			}
-
+			bool isFinal = canPassSemanticFor(
+				converted,
+				to,
+				true,
+				&newCost
+			);
 
 			if (auto existing_ = &converted in closedSet) {
 				SearchItem* existing = *existing_;

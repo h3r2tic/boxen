@@ -245,6 +245,7 @@ struct Semantic {
 			}
 		}
 
+		// Written with the assumption that items don't repeat
 		uword _lowerBoundBinarySearch(cstring name) {
 			final names = _traits.name;
 			uword l = 0;
@@ -511,12 +512,14 @@ bool canPassSemanticFor(
 		Semantic arg,
 		Semantic param,
 		bool acceptAdditional,
-		int* extraCost = null,
-		Semantic* modOutput = null
+		int* extraCost = null
 ) {
-	bool result = true;
-	
-	class Comparator : ISemanticComparator {
+	static class Comparator : ISemanticComparator {
+		int* extraCost;
+		bool acceptAdditional;
+
+		bool result = true;
+		
 		bool missing(cstring name, cstring value) {
 			//log.trace("sem is missing trait {}", t);
 			return result = false;
@@ -526,10 +529,6 @@ bool canPassSemanticFor(
 			if (acceptAdditional) {
 				if (extraCost !is null) {
 					++*extraCost;
-				}
-				
-				if (modOutput) {
-					modOutput.addTrait(name, value);
 				}
 				
 				return result = true;
@@ -548,31 +547,23 @@ bool canPassSemanticFor(
 
 				tryNormalize(val1, (string type1) {
 					tryNormalize(val2, (string type2) {
-						if (true == (result = (type1 == type2))) {
-							if (modOutput) {
-								// cast valid since addTrait copies the string
-								modOutput.addTrait(name, type2);
-							}
-						}
+						result = type1 == type2;
 					});
 				});
 				
 				return result;
 			} else {
 				//log.trace("t.{}  vs  t2.{}", t, t2);
-				if (true == (result = (val1 == val2))) {
-					if (modOutput) {
-						modOutput.addTrait(name, val2);
-					}
-				}
-				
-				return result;
+				return result = (val1 == val2);
 			}
 		}
 	}
 	
 	scope comp = new Comparator;
+	comp.extraCost = extraCost;
+	comp.acceptAdditional = acceptAdditional;
+	
 	compareSemantics(arg, param, comp);
 
-	return result;
+	return comp.result;
 }
