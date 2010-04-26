@@ -36,5 +36,3 @@ done
 
 rmdir specFiles
 
-
-./fixSpecs.sh
