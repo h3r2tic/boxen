@@ -34,6 +34,8 @@ private {
 		xf.gfx.api.gl3.ext.EXT_framebuffer_object,
 		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB;
 	import
+		ARB_blend_func_extended = xf.gfx.api.gl3.ext.ARB_blend_func_extended;
+	import
 		GLTextureMagFilter = xf.gfx.api.gl3.ext.TextureMagFilter;
 	import
 		GLTextureMinFilter = xf.gfx.api.gl3.ext.TextureMinFilter;
@@ -1172,6 +1174,7 @@ class Renderer : IRenderer {
 		
 		if (s.blend.enabled) {
 			gl.Enable(BLEND);
+			gl.BlendFunc(enumToGL(s.blend.src), enumToGL(s.blend.dst));
 		} else {
 			gl.Disable(BLEND);
 		}
@@ -1921,4 +1924,26 @@ private GLenum enumToGL(TextureWrap e) {
 	];
 
 	return map[e];
+}
+
+
+private GLenum enumToGL(RenderState.Blend.Factor e) {
+	alias RenderState.Blend.Factor F;
+	switch (e) {
+		case F.Src0Color: return SRC_COLOR;
+		case F.Src1Color: return ARB_blend_func_extended.SRC1_COLOR;
+		case F.Src0Alpha: return SRC_ALPHA;
+		case F.Src1Alpha: return ARB_blend_func_extended.SRC1_ALPHA;
+		case F.DstColor: return DST_COLOR;
+		case F.DstAlpha: return DST_ALPHA;
+		case F.OneMinusSrc0Color: return ONE_MINUS_SRC_COLOR;
+		case F.OneMinusSrc1Color: return ARB_blend_func_extended.ONE_MINUS_SRC1_COLOR;
+		case F.OneMinusSrc0Alpha: return ONE_MINUS_SRC_ALPHA;
+		case F.OneMinusSrc1Alpha: return ARB_blend_func_extended.ONE_MINUS_SRC1_ALPHA;
+		case F.OneMinusDstColor: return ONE_MINUS_DST_COLOR;
+		case F.OneMinusDstAlpha: return ONE_MINUS_DST_ALPHA;
+		case F.Zero: return ZERO;
+		case F.One: return ONE;
+		default: assert (false);
+	}
 }
