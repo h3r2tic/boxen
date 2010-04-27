@@ -7,7 +7,6 @@ private {
 	import xf.hybrid.Style;
 	import xf.hybrid.Shape;
 	import xf.hybrid.Math;
-	import xf.utils.StructClass : MSimpleStructCtor;
 	import tango.stdc.stdlib : alloca;
 }
 

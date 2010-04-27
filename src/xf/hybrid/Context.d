@@ -15,7 +15,8 @@ private {
 	import xf.hybrid.Math;
 	import xf.input.Input;
 	import xf.utils.Memory : preallocatedAppend;
-	import xf.utils.data.ComboArray;
+	import xf.utils.LocalArray;
+	import xf.mem.StackBuffer;
 	
 	import tango.text.convert.Format;
 	import tango.time.StopWatch : StopWatch;
@@ -722,16 +723,18 @@ class GuiContext {
 		
 		
 		void handleMouseMove(vec2 pos, vec2 delta, vec2 global) {
-			ComboArray!(IWidget, 32, true) widgets_;
-			scope (exit) widgets_.free();
-			widgets_ ~= prevChains.mouseOver.widgets;
-			widgets_ ~= curChains.mouseOver.widgets;
+			scope stack = new StackBuffer;
+			final widgets_ = LocalDynArray!(IWidget)(stack);
+			scope (exit) widgets_.dispose();
+
+			widgets_.append(prevChains.mouseOver.widgets);
+			widgets_.append(curChains.mouseOver.widgets);
 			for (int i = 0; i < numMouseButtons; ++i) {
-				widgets_ ~= prevChains.mouseButton[i].widgets;
-				widgets_ ~= curChains.mouseButton[i].widgets;
+				widgets_.append(prevChains.mouseButton[i].widgets);
+				widgets_.append(curChains.mouseButton[i].widgets);
 			}
 
-			IWidget[] widgets = widgets_();
+			IWidget[] widgets = widgets_.data();
 			
 			auto cmp = function bool(IWidget a, IWidget b) {
 				return cast(size_t)cast(void*)a < cast(size_t)cast(void*)b;
@@ -1008,6 +1011,8 @@ class GuiContext {
 						doButtonReset(buttonFromIdx(b), b);
 					}
 				} break;
+
+				default: assert (false);
 			}
 		}
 		

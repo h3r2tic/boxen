@@ -23,9 +23,9 @@ interface ArrayExpandPolicy {
 
 /**
  * Allocators must implement a function of the following signature:
- * void* function(void* old, size_t oldStart, size_t oldEnd, size_t size);
+ * void* function(void* old, size_t oldBegin, size_t oldEnd, size_t size);
  * @old is the pointer that was previously allocated by this allocator, or null
- * @oldStart and @oldEnd mark the range of data that must be copied from the previously
+ * @oldBegin and @oldEnd mark the range of data that must be copied from the previously
  *  allocated memory block if reallocation in place fails
  * @size is the size requested for the new allocation.
  *

@@ -31,7 +31,6 @@ public {
 	import xf.hybrid.widgets.Workspace : Workspace;
 	import xf.hybrid.widgets.Draggable : Draggable;
 	import xf.hybrid.widgets.SciEditor : SciEditor;
-	import xf.hybrid.widgets.Angle;
 	import xf.hybrid.widgets.SceneView : SceneView, SceneProxy;
 	import xf.hybrid.widgets.TreeView : TreeView, TreeContext;
 	import xf.hybrid.widgets.ColorWheel : ColorWheel;

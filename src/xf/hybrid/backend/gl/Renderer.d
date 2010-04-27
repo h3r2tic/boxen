@@ -1,6 +1,6 @@
 module xf.hybrid.backend.gl.Renderer;
 
-private {
+/+private {
 	import xf.hybrid.GuiRenderer : BaseRenderer = GuiRenderer;
 	import xf.hybrid.FontRenderer;
 	import xf.hybrid.Font;
@@ -795,3 +795,4 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		static vec2			lineOffset = {x: .5f, y: .5f};
 	}
 }
++/

@@ -1,6 +1,6 @@
 module xf.hybrid.backend.gl.Widgets;
 
-private {
+/+private {
 	import xf.hybrid.backend.gl.Renderer : Renderer;
 	import xf.hybrid.GuiRenderer : BaseRenderer = GuiRenderer;
 	import xf.hybrid.Common;
@@ -374,3 +374,4 @@ class GLViewport : Widget {
 
 	mixin MWidget;
 }
++/

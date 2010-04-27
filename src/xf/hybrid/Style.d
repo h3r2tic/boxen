@@ -6,7 +6,7 @@ private {
 	import xf.hybrid.Texture;
 	import xf.hybrid.HybridException;
 
-	import xf.utils.StructClass;
+	import xf.utils.Union;
 	import xf.utils.Optional : Opt = Optional;
 	import xf.hybrid.Math;
 	
@@ -117,13 +117,15 @@ BackgroundStyle combineStyle(BackgroundStyle src, BackgroundStyle *dst, float we
 				res.Gradient.color0.a *= weight;
 				res.Gradient.color1.a *= weight;
 				return res;
-			} break;
+			}
 
 			case BackgroundStyle.Type.Solid: {
 				auto res = src;
 				res.Solid.a *= weight;
 				return res;
-			} break;
+			}
+
+			default: assert (false);
 		}
 	} else {
 		if (src.type == dst.type) {
@@ -133,24 +135,24 @@ BackgroundStyle combineStyle(BackgroundStyle src, BackgroundStyle *dst, float we
 					res.Gradient.color0 = src.Gradient.color0 * weight + dst.Gradient.color0 * (1.f - weight);
 					res.Gradient.color1 = src.Gradient.color1 * weight + dst.Gradient.color1 * (1.f - weight);
 					return res;
-				} break;
+				}
 
 				case BackgroundStyle.Type.Solid: {
 					auto res = src;
 					res.Solid = src.Solid * weight + dst.Solid * (1.f - weight);
 					return res;
-				} break;
+				}
+
+				default: assert (false);
 			}
 		} else {
 			assert (false, "TODO");
 			
-			if (weight <= .5f) {
+			/+if (weight <= .5f) {
 			} else {
-			}
+			}+/
 		}
 	}
-	
-	return BackgroundStyle.init;
 }
 
 
@@ -172,17 +174,16 @@ class Style {
 
 vec4 parseColor(Value val) {
 	switch (val.type) {
-		case Value.Type.String: {
+		case Value.Type.String:
 			switch (val.String) {
-				case "black":		return vec4(0, 0, 0, 1);
+				case "black":	return vec4(0, 0, 0, 1);
 				case "red":		return vec4(1, 0, 0, 1);
 				case "green":	return vec4(0, 1, 0, 1);
-				case "blue":		return vec4(0, 0, 1, 1);
-				case "white":		return vec4.one;
+				case "blue":	return vec4(0, 0, 1, 1);
+				case "white":	return vec4.one;
 				
 				default: assert (false, val.String);
 			}
-		} break;
 		
 		case Value.Type.FuncCall: {
 			char[]	fname = val.FuncCall.name;
@@ -192,25 +193,25 @@ vec4 parseColor(Value val) {
 				switch (v.type) {
 					case (Value.Type.Int): return v.Int;
 					case (Value.Type.Float): return v.Float;
+					default: assert (false);
 				}
 			}
 			
 			switch (fname) {
 				case "rgb": {
 					return vec4(num(fargs[0]), num(fargs[1]), num(fargs[2]), 1);
-				} break;
+				}
 				
 				case "rgba": {
 					return vec4(num(fargs[0]), num(fargs[1]), num(fargs[2]), num(fargs[3]));
-				} break;
+				}
 
 				default: {
 					hybridThrow("Unknown color function: '{}'.  Valid functions: rgb, rgba", fname);
+					assert (false);
 					//assert (false, fname);
 				}
 			}
-			
-			break;
 		}
 		
 		default: {
@@ -250,6 +251,8 @@ Style parseStyle(PropAssign[] cfg) {
 						case Value.Type.FuncCall: {
 							b.color = parseColor(item);
 						} break;
+
+						default: assert (false);
 					}
 				}
 			} break;
@@ -314,6 +317,8 @@ Style parseStyle(PropAssign[] cfg) {
 						case "selectionFgColor": {
 							tis.selectionFgColor = parseColor(propAssign.value);
 						} break;
+
+						default: assert (false);
 					}
 				}
 				
@@ -345,29 +350,35 @@ Style parseStyle(PropAssign[] cfg) {
 								char[]	fafname = fa.FuncCall.name;
 								auto		fafargs = fa.FuncCall.args;
 								
+								assert (2 == fafargs.length);
+
+								// TODO: runtime exceptions
+								assert (Value.Type.Int == fafargs[0].type);
+								assert (Value.Type.Int == fafargs[1].type);
+								assert (fafargs[0].Int >= 0);
+								assert (fafargs[0].Int <= ushort.max);
+								assert (fafargs[1].Int >= 0);
+								assert (fafargs[1].Int <= ushort.max);
+
 								switch (fafname) {
 									case "hline": {
-										assert (2 == fafargs.length);
-										assert (Value.Type.Int == fafargs[0].type);
-										assert (Value.Type.Int == fafargs[1].type);
-										img.hlines[0] = fafargs[0].Int;
-										img.hlines[1] = fafargs[1].Int;
+										img.hlines[0] = cast(ushort)fafargs[0].Int;
+										img.hlines[1] = cast(ushort)fafargs[1].Int;
 									} break;
 
 									case "vline": {
-										assert (2 == fafargs.length);
-										assert (Value.Type.Int == fafargs[0].type);
-										assert (Value.Type.Int == fafargs[1].type);
-										img.vlines[0] = fafargs[0].Int;
-										img.vlines[1] = fafargs[1].Int;
+										img.vlines[0] = cast(ushort)fafargs[0].Int;
+										img.vlines[1] = cast(ushort)fafargs[1].Int;
 									} break;
 									
 									default: {
 										assert (false, fafname);
-									} break;
+									}
 								}
 							}
 						} break;
+
+						default: assert (false);
 					}
 				}
 			} break;

@@ -3,8 +3,8 @@ module xf.hybrid.widgets.SceneView;
 private {
 	import xf.hybrid.Common;
 	import xf.hybrid.CustomWidget;
-	import xf.hybrid.backend.gl.Widgets : GLViewport;
-	import xf.dog.Dog;
+	//import xf.hybrid.backend.gl.Widgets : GLViewport;
+	//import xf.dog.Dog;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.omg.rt.Common;
@@ -50,7 +50,9 @@ struct SceneProxy {
 	CoordSys		delegate(SceneObject)									getTransform;		// local transform
 	void				delegate(SceneObject, CoordSys, CoordSys)	setTransform;		// local transform, world transform
 	void				delegate(Ray, void delegate(SceneObject))		intersect;
-	void				delegate(vec2i, GL, DisplayMode)					draw;
+
+	// TODO
+	//void				delegate(vec2i, GL, DisplayMode)					draw;
 	
 	bool isValid() {
 		return
@@ -170,10 +172,11 @@ class SceneView : CustomWidget {
 
 	
 	this() {
-		this.glview = cast(GLViewport)getSub("glview");
+		// TODO
+		/+this.glview = cast(GLViewport)getSub("glview");
 		assert (this.glview !is null);
 		
-		glview.renderingHandler = &this.draw;
+		glview.renderingHandler = &this.draw;+/
 		
 		addHandler(&this.mouseHandler);
 		addHandler(&this.keyboardHandler);
@@ -513,7 +516,7 @@ class SceneView : CustomWidget {
 	}
 
 	
-	void draw(vec2i size, GL gl) {
+	/+void draw(vec2i size, GL gl) {
 		this.windowSize = vec2.from(size);
 		
 		gl.MatrixMode(GL_PROJECTION);
@@ -548,7 +551,7 @@ class SceneView : CustomWidget {
 	
 	private {
 		GLViewport glview;
-	}
+	}+/
 	
 	
 	mixin MWidget;

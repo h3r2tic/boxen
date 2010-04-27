@@ -12,8 +12,7 @@ private {
 	import xf.hybrid.Config : parseWidgetBody;
 	import xf.hybrid.WidgetTree;
 	import xf.hybrid.Math;
-	
-	import xf.utils.Meta;
+	import xf.hybrid.AutoOverride;
 	
 	import tango.core.Traits : ParameterTupleOf, ReturnTypeOf;
 	import tango.util.log.Trace;

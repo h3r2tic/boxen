@@ -3,8 +3,8 @@ module xf.hybrid.Test1;
 private {
 	import xf.hybrid.Hybrid;
 	import xf.hybrid.backend.GL;
-	import xf.dog.Dog;
-	import xf.rt.BunnyData;
+	//import xf.dog.Dog;
+	//import xf.rt.BunnyData;
 	
 	import tango.io.Stdout;
 	import tango.time.StopWatch;
@@ -26,8 +26,9 @@ void main() {
 	}
 	
 	scope cfg = loadHybridConfig(`Test1.cfg`);
-	
-	scope renderer = new Renderer;
+
+	// TODO
+	//scope renderer = new Renderer;
 	WindowFrame frame;
 
 	gui.begin(cfg).retained;
@@ -38,9 +39,9 @@ void main() {
 			Label().text("right").fontSize(10);
 		gui.close();
 
-		auto glStuff1 = new GLStuff(.5f);
+		/+auto glStuff1 = new GLStuff(.5f);
 		GLViewport(`foo.glview1`).renderingHandler = &glStuff1.draw;
-		GLViewport(`foo.tabView.glview2`).renderingHandler = &(new GLStuff(-1.f)).draw;
+		GLViewport(`foo.tabView.glview2`).renderingHandler = &(new GLStuff(-1.f)).draw;+/
 	gui.immediate;
 		with (Combo(`.comboBox`)) {
 			for (int i = 0; i < 20; ++i) {
@@ -67,9 +68,9 @@ void main() {
 				HBox(`foo.glview1Control`) [{
 					auto slider = HSlider().minValue(-3.f).maxValue(3.f).snapIncrement(0.25);
 					slider.layoutAttribs("hexpand hfill");
-					auto label = Label().text(to!(char[])(glStuff1.rotSpeed = slider.position));
-					label.halign(2).fontSize(10).userSize = vec2(35.f, 0.f);
-					gui().setProperty!(char[])("foo.glview1Rot.label.text", to!(char[])(glStuff1.angle = gui().getProperty!(float)("foo.glview1Rot.angle.angle")) ~ "\u00b0");
+					// TODO
+					//auto label = Label().text(to!(char[])(glStuff1.rotSpeed = slider.position));
+					//label.halign(2).fontSize(10).userSize = vec2(35.f, 0.f);
 				}];
 			}
 			
@@ -254,6 +255,8 @@ void main() {
 								Check(i).text("tab 2 contents");
 							}
 						} break;
+
+						default: assert (false);
 					}
 					gui.close;
 				}
@@ -270,7 +273,12 @@ void main() {
 				
 			gui.pop();
 		gui.end();
-		gui.render(renderer);
+
+		// TODO
+		//gui.render(renderer);
+
+
+
 		//Thread.yield();
 	}
 }
@@ -281,7 +289,7 @@ void main() {
 
 
 
-class GLStuff {
+/+class GLStuff {
 	static class Light {
 		this (vec3 from, vec3 col, int lightId) {
 			this.lightId = lightId;
@@ -354,3 +362,4 @@ class GLStuff {
 		};
 	}
 }
++/
