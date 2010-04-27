@@ -2,7 +2,7 @@ module xf.hybrid.WidgetConfig;
 
 private {
 	//import hybrid.Style;
-	import xf.utils.StructClass;
+	import xf.utils.Union;
 	import xf.hybrid.Math;
 	
 	alias char[] string;
@@ -115,5 +115,4 @@ float parseFloat(Value val) {
 		case Value.Type.Float: return val.Float;
 		default: assert (false);
 	}
-	return float.init;
 }

@@ -3,6 +3,7 @@ module xf.hybrid.widgets.Spinner;
 private {
 	import tango.core.Traits;
 
+	import xf.Common;
 	import xf.hybrid.Common;
 	import xf.hybrid.CustomWidget;
 	import xf.hybrid.widgets.Button : GenericButton;
@@ -45,7 +46,8 @@ class SpinnerButton : GenericButton {
 	---
 */
 class Spinner(T) : CustomWidget {
-	const static char[] nameForWidgetRegistry = toUpper(T.stringof[0]) ~ T.stringof[1..$] ~ "Spinner";
+	const static char[] nameForWidgetRegistry
+		= cast(char)toUpperASCII(T.stringof[0]) ~ T.stringof[1..$] ~ "Spinner";
 
 
 	protected override char[] configCustomWidgetName() {
@@ -233,7 +235,8 @@ alias Spinner!(double)	DoubleSpinner;	/// ditto
 	---
 */
 class InputSpinner(T) : CustomWidget {
-	const static char[] nameForWidgetRegistry = toUpper(T.stringof[0]) ~ T.stringof[1..$] ~ "InputSpinner";
+	const static char[] nameForWidgetRegistry
+		= cast(char)toUpperASCII(T.stringof[0]) ~ T.stringof[1..$] ~ "InputSpinner";
 
 
 	protected override char[] configCustomWidgetName() {
@@ -243,7 +246,7 @@ class InputSpinner(T) : CustomWidget {
 
 	override char[] getTypeForAlias(char[] name) {
 		if ("Spinner" == name) {
-			return toUpper(T.stringof[0]) ~ T.stringof[1..$] ~ "Spinner";
+			return cast(char)toUpperASCII(T.stringof[0]) ~ T.stringof[1..$] ~ "Spinner";
 		}
 		return super.getTypeForAlias(name);
 	}

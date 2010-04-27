@@ -28,6 +28,22 @@ struct Array(
 	}
 
 
+	size_t append(T[] x) {
+		size_t res = _length;
+		size_t xlen = x.length;
+		if (_length + xlen <= _capacity) {
+			_ptr[_length .. _length+xlen] = x;
+			_length += xlen;
+		} else {
+			_expand(xlen);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
+			_ptr[_length .. _length+xlen] = x;
+			_length += xlen;
+		}
+		return res;
+	}
+
+
 	size_t growBy(uint num) {
 		size_t res = _length;
 		resize(res + num);
@@ -134,6 +150,11 @@ struct Array(
 	
 	T* ptr() {
 		return _ptr;
+	}
+
+
+	T[] data() {
+		return _ptr[0.._length];
 	}
 
 

@@ -71,3 +71,21 @@ bool endsWith(cstring s, cstring suffix, cstring* rest = null) {
 		return false;
 	}
 }
+
+
+char toUpperASCII(char c) {
+	if (c >= 'a' && c <= 'z') {
+		return c + ('A' - 'a');
+	} else {
+		return c;
+	}
+}
+
+
+char toLowerASCII(char c) {
+	if (c >= 'A' && c <= 'Z') {
+		return c + ('a' - 'A');
+	} else {
+		return c;
+	}
+}

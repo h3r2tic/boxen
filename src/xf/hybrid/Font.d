@@ -8,7 +8,7 @@ private {
 	import xf.hybrid.Rect;
 
 	import xf.utils.Memory;
-	import xf.utils.data.Array;
+	import xf.mem.Array;
 	
 	import tango.stdc.stdlib : cFree = free;
 	import xf.hybrid.Math;
@@ -45,7 +45,7 @@ struct Glyph {
 	vec2i		size;			// size inside the texture, in pixels
 	vec2i		offset;		// offset from the top-left corner of the pen to the glyph image
 	vec2i		advance;	// tells us how much we should advance the pen after drawing this glyph
-	uint			ftIndex;	// freetype's index of this glyph
+	uint		ftIndex;	// freetype's index of this glyph
 	ubyte*		buffer;
 }
 
@@ -149,12 +149,12 @@ struct FontPrintCache {
 	private {
 		struct Data {
 			dchar	chr;
-			uint		ftIndex;
+			uint	ftIndex;
 			ushort	delta;
 		}
 		
 		Array!(Data)	data;
-		bool				valid = false;
+		bool			valid = false;
 	}
 }
 
@@ -311,6 +311,8 @@ final class Font {
 				case LCDFilter.None:
 					FT_Library_SetLcdFilter(FontMngr.ftLib, FT_LcdFilter.FT_LCD_FILTER_NONE);
 					break;
+
+				default: assert (false);
 			}
 			
 			lcdFilter_ = f;
@@ -552,8 +554,9 @@ final class Font {
 			switch (antialiasing) {
 				case FontAntialiasing.None:			return FT_Render_Mode.FT_RENDER_MODE_MONO;
 				case FontAntialiasing.Grayscale:	return FT_Render_Mode.FT_RENDER_MODE_NORMAL;
-				case FontAntialiasing.LCD_RGB:
+				case FontAntialiasing.LCD_RGB:	// fall through
 				case FontAntialiasing.LCD_BGR:	return FT_Render_Mode.FT_RENDER_MODE_LCD;
+				default: assert (false);
 			}
 		}
 		
@@ -582,12 +585,14 @@ final class Font {
 				
 				int glyphWidth = bitmap.width;
 				switch (antialiasing) {
-					case FontAntialiasing.None:			// fall thru
+					case FontAntialiasing.None:			// fall through
 					case FontAntialiasing.Grayscale:	break;
 					
 					// FreeType gives three times wider bitmaps for subpixel renderings
-					case FontAntialiasing.LCD_RGB:	// fall thru
+					case FontAntialiasing.LCD_RGB:	// fall through
 					case FontAntialiasing.LCD_BGR:	glyphWidth /= 3; break;
+
+					default: assert (false);
 				}
 				
 				// we need to expand the bitmap horizontally to do our own filtering
@@ -604,7 +609,11 @@ final class Font {
 				
 				// return 255 if the bit at (x,y) position is set. 0 otherwise.
 				ubyte indexBinaryBitmap(FT_Bitmap bitmap, int x, int y) {
-					return (bitmap.buffer[y * bitmap.pitch + (x >> 3)] & (0b10000000 >> (x & 7))) ? 255 : 0;
+					ubyte buf = bitmap.buffer[y * bitmap.pitch + (x >> 3)];
+					ubyte mask = cast(ubyte)(0b10000000 >> (x & 7));
+
+					// DMD, you're a tard.
+					return (buf & mask) != 0 ? cast(ubyte)255 : cast(ubyte)0;
 				}
 				
 				for (int y = 0; y < size.y; ++y) {
@@ -653,6 +662,7 @@ final class Font {
 									buffer[bufferIdx+2] = r;
 								}
 								break;
+							default: assert (false);
 						}
 					}
 				}
@@ -670,7 +680,10 @@ final class Font {
 								for (int x = 0; x < size.x; ++x) {
 									uint bufferIdx = (y * size.x + x) * 4;
 									
-									ubyte monoColor = x > 0 && x+1 < size.x ? indexBinaryBitmap(slot.bitmap, x-1, y) : 0;
+									ubyte monoColor =
+										(x > 0 && x+1 < size.x)
+										? indexBinaryBitmap(slot.bitmap, x-1, y)
+										: cast(ubyte)0;		// DMDTARD
 									
 									foreach (ref c; buffer[bufferIdx..bufferIdx+3]) {
 										c += monoColor / 4;
@@ -869,5 +882,5 @@ private ubyte crispFilter(ubyte[] data ...) {
 	
 	if (total <= 0.f) return 0;
 	if (total >= 255.f) return 255;
-	return rndint(total);
+	return cast(ubyte)rndint(total);
 }
