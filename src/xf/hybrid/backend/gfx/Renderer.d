@@ -18,7 +18,7 @@ private {
 
 	// TODO: use xf.Registry
 	import xf.img.FreeImageLoader;
-		
+
 	import xf.hybrid.Math;
 	import xf.utils.Memory;
 	import xf.mem.MainHeap;
@@ -29,6 +29,11 @@ private {
 		import xf.gfx.Effect;
 		import xf.gfx.Buffer;
 		import xf.gfx.VertexBuffer;
+		import xf.gfx.IndexData;
+		
+		interface EffectHelper {
+			import xf.gfx.EffectHelper;
+		}
 	}
 }
 
@@ -37,6 +42,17 @@ private {
 // version = StubHybridRenderer;
 
 class Renderer : BaseRenderer, FontRenderer, TextureMngr {
+	this (Gfx.IRenderer backend) {
+		assert (backend !is null);
+		_r = backend;
+		_loadEffect();
+		_iconCache = new IconCache;
+		_iconCache.texMngr = this;
+		FontMngr.fontRenderer = this;
+		_imageLoader = new CachedLoader(new FreeImageLoader);
+	}
+
+	
 	struct Vertex {
 		vec2 position;
 		vec4 color;
@@ -47,10 +63,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	struct Batch {
 		enum Type {
 			Triangles = 0,
-			Quads = 1,
-			Lines = 2,
-			Points = 3,
-			Direct = 4
+			Lines = 1,
+			Points = 2,
+			Direct = 3
 		}
 		
 		Type type;
@@ -61,6 +76,10 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				size_t	numVerts;
 				
 				VertexCache*	_vcache;
+
+				GfxTexture			tex;
+				Gfx.VertexBuffer	vb;
+				Gfx.EffectInstance	efInst;
 				
 				BlendingMode	blending;
 				float			weight;
@@ -150,41 +169,41 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 
 	override void	point(vec2 p, float size = 1.f) {
-		/+version (StubHybridRenderer) return;
+		version (StubHybridRenderer) return;
 		_weight = size;
 		
 		auto b = prepareBatch(Batch.Type.Points, 1);
 		size_t vn = b.numVerts;
-		b.points[vn] = p + _offset;
-		b.colors[vn] = _color;
-		b.texCoords[vn] = _texCoord;
+		b.verts[vn].position = p + _offset;
+		b.verts[vn].color = _color;
+		b.verts[vn].texCoord = _texCoord;
 		++vn;
-		b.numVerts = vn;+/
+		b.numVerts = vn;
 	}
 	
 	
 	override void	line(vec2 p0, vec2 p1, float width = 1.f) {
-		/+version (StubHybridRenderer) return;
+		version (StubHybridRenderer) return;
 		_weight = width;
 
 		auto b = prepareBatch(Batch.Type.Lines, 2);
 		size_t vn = b.numVerts;
-		b.points[vn] = p0 + _offset + _lineOffset;
-		b.colors[vn] = _color;
-		b.texCoords[vn] = _texCoord;
+		b.verts[vn].position = p0 + _offset + _lineOffset;
+		b.verts[vn].color = _color;
+		b.verts[vn].texCoord = _texCoord;
 		++vn;
 
-		b.points[vn] = p1 + _offset + _lineOffset;
-		b.colors[vn] = _color;
-		b.texCoords[vn] = _texCoord;
+		b.verts[vn].position = p1 + _offset + _lineOffset;
+		b.verts[vn].color = _color;
+		b.verts[vn].texCoord = _texCoord;
 		++vn;
 		
-		b.numVerts = vn;+/
+		b.numVerts = vn;
 	}
 	
 	
 	override void	rect(Rect r) {
-		/+version (StubHybridRenderer) return;
+		version (StubHybridRenderer) return;
 
 		vec2[4] p = void;
 		p[0] = vec2(r.min.x, r.min.y) + _offset;
@@ -198,9 +217,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			
 			size_t vn = b.numVerts;
 			void add(int i) {
-				b.points[vn] = p[i];
-				b.colors[vn] = _color;
-				b.texCoords[vn] = _texCoord;
+				b.verts[vn].position = p[i];
+				b.verts[vn].color = _color;
+				b.verts[vn].texCoord = _texCoord;
 				++vn;
 			}
 			
@@ -233,6 +252,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 							c[0] = c[3] = g.color0;
 							c[1] = c[2] = g.color1;
 						} break;
+
+						default: assert (false);
 					}
 				} break;
 				
@@ -247,7 +268,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				auto img = _style.image.value();
 				assert (img !is null);
 
-				_texture = img.texture;
+				_texture = cast(GfxTexture)img.texture;
 				
 				vec2 tbl = img.texCoords[0];
 				vec2 ttr = img.texCoords[1];
@@ -263,9 +284,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 				size_t vn = b.numVerts;
 				void add2(int i) {
-					b.points[vn] = p[i];
-					b.colors[vn] = c[i];
-					b.texCoords[vn] = tc[i];
+					b.verts[vn].position = p[i];
+					b.verts[vn].color = c[i];
+					b.verts[vn].texCoord = tc[i];
 					++vn;
 				}
 				
@@ -278,9 +299,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 				size_t vn = b.numVerts;
 				void addInterp(float u, float v, float tu, float tv) {
-					b.points[vn] = (p[0] * (1.f - v) + p[1] * v) * (1.f - u) + (p[2] * v + p[3] * (1.f - v)) * u;
-					b.colors[vn] = (c[0] * (1.f - v) + c[1] * v) * (1.f - u) + (c[2] * v + c[3] * (1.f - v)) * u;
-					b.texCoords[vn] = (tc[0] * (1.f - tv) + tc[1] * tv) * (1.f - tu) + (tc[2] * tv + tc[3] * (1.f - tv)) * tu;
+					b.verts[vn].position = (p[0] * (1.f - v) + p[1] * v) * (1.f - u) + (p[2] * v + p[3] * (1.f - v)) * u;
+					b.verts[vn].color = (c[0] * (1.f - v) + c[1] * v) * (1.f - u) + (c[2] * v + c[3] * (1.f - v)) * u;
+					b.verts[vn].texCoord = (tc[0] * (1.f - tv) + tc[1] * tv) * (1.f - tu) + (tc[2] * tv + tc[3] * (1.f - tv)) * tu;
 					++vn;
 				}
 				
@@ -341,9 +362,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			
 			size_t vn = b.numVerts;
 			void add3(int i) {
-				b.points[vn] = bp[i] + _lineOffset;
-				b.colors[vn] = border.color;
-				b.texCoords[vn] = _texCoord;
+				b.verts[vn].position = bp[i] + _lineOffset;
+				b.verts[vn].color = border.color;
+				b.verts[vn].texCoord = _texCoord;
 				++vn;
 			}
 			
@@ -353,7 +374,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			add3(3); add3(0);
 			
 			b.numVerts = vn;
-		}+/
+		}
 	}
 	
 	
@@ -401,14 +422,15 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		assert (renderList !is null);
 		scope (success) _r.disposeRenderList(renderList);
 
-		// TODO: set textures and whatnot for effect instances
-		// TODO: vertex attribs for effect instances
+		// TODO: set whatnot for effect instances
 
 		final state = _r.state();
 		state.blend.enabled = true;
 		state.blend.src = Gfx.RenderState.Blend.Factor.Src1Color;
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
 		
+		final bin = renderList.getBin(_effect);
+
 		for (int i = 0; i < _numBatches; ++i) {
 			auto b = &_batches[i];
 
@@ -421,22 +443,50 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				continue;
 			}
 
-			// TODO
-			/+switch (b.type) {
+			switch (b.type) {
 				case Batch.Type.Lines: {
-					gl.LineWidth(b.weight);
+					state.line.width = b.weight;
 				} break;
 
 				case Batch.Type.Points: {
-					gl.PointSize(b.weight);
+					state.point.size = b.weight;
 				} break;
 				
 				default: break;
-			}+/
+			}
 
-			// TODO: add to the render list
-//			gl.DrawArrays(batchToGlType[b.type], 0, b.numVerts);
+			final rdata = bin.add(b.efInst);
+			rdata.coordSys = rdata.coordSys.identity;
+			rdata.scale = vec3.one;
+			rdata.indexData.numIndices = b.numVerts;
+			rdata.indexData.indexOffset =
+					cast(Vertex*)b.verts - cast(Vertex*)b._vcache.ptr;
+			
+			switch (b.type) {
+				case Batch.Type.Triangles: {
+					rdata.indexData.topology = Gfx.MeshTopology.Triangles;
+				} break;
+					
+				case Batch.Type.Lines: {
+					rdata.indexData.topology = Gfx.MeshTopology.Lines;
+				} break;
+				
+				case Batch.Type.Points: {
+					rdata.indexData.topology = Gfx.MeshTopology.Points;
+				} break;
+				
+				case Batch.Type.Direct: {
+					assert (false, "Direct rendering should be handled elsewhere");
+				}
+				
+				default: assert (false);
+			}
+
+			rdata.numInstances = 1;
+			rdata.flags = rdata.flags.NoIndices;
 		}
+
+		_r.render(renderList);
 	}
 	
 	
@@ -469,18 +519,34 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		
 		if (_batches.length > _numBatches) {
 			res = &_batches[_numBatches++];
+			b.efInst = res.efInst;
 			*res = b;
 		} else {
 			_batches ~= b;
 			res = &_batches[$-1];
 			++_numBatches;
+			res.efInst = _r.instantiateEffect(_effect);
 		}
 		
-		res.numVerts = 0;
 		res._vcache = vcache;
 		
 		if (vcache) {
 			res.verts = cast(Vertex*)vcache.ptr + vcache.length;
+
+			with (*res.efInst.getVaryingParamData("VertexProgram.input.position")) {
+				buffer = &vcache.vb;
+				attrib = &_posVAttr;
+			}
+
+			with (*res.efInst.getVaryingParamData("VertexProgram.input.color")) {
+				buffer = &vcache.vb;
+				attrib = &_colorVAttr;
+			}
+
+			with (*res.efInst.getVaryingParamData("VertexProgram.input.texCoord")) {
+				buffer = &vcache.vb;
+				attrib = &_tcVAttr;
+			}
 		}
 		
 		return res;
@@ -491,14 +557,16 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		version (StubHybridRenderer) {
 			assert (false);		// should not be called in this version
 		} else {
-			auto vcache = Batch.Type.Direct == type ? null : getVertexCache(numVerts);
+			auto vcache = Batch.Type.Direct == type
+				? null
+				: getVertexCache(numVerts);
 			
 			if (0 == _numBatches || Batch.Type.Direct == type) {
 				addBatch(Batch(type), vcache);
 			} else {
 				auto b = &_batches[_numBatches-1];
 				if (	b.type == type &&
-						b._vcache.tex is _texture &&
+						b.tex is _texture &&
 						b.blending == _blending &&
 						b.weight == _weight &&
 						b.clipRect == _clipRect &&
@@ -515,7 +583,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 			if (Batch.Type.Direct != type) {
 				vcache.length += numVerts;
-				b._vcache.tex = _texture;
+				b.tex = _texture;
 				b.blending = _blending;
 				b.weight = _weight;
 			}
@@ -531,70 +599,24 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	// TextureMngr
 
 	Texture createTexture(vec2i size, vec4 defColor) {
-		assert (false, "TODO");
-		
-		/+Trace.formatln("Creating a texture of size: {}", size);
-		
-		ubyte[] data;
-		data.alloc(size.x * size.y * 4);
-
-		uint bitspp = 32;
-		uint bytespp = bitspp / 8;
-		
-		ubyte f2ub(float f) {
-			if (f < 0) return 0;
-			if (f > 1) return 255;
-			return cast(ubyte)rndint(f * 255);
-		}
-
-		for (uint i = 0; i < size.x; ++i) {
-			for (uint j = 0; j < size.y; ++j) {			
-				for (uint c = 0; c < bytespp; ++c) {
-					data[(size.x * j + i) * bytespp + c] = f2ub(defColor.cell[c]);
-				}
-			}
-		}
-		
-		GlTexture tex = new GlTexture;
-		gl.GenTextures(1, cast(uint*)&tex.id);
-		
-		gl.Enable(GL_TEXTURE_2D);
-		gl.BindTexture(GL_TEXTURE_2D, tex.id);
-				
-		const uint level = 0;
-		const uint border = 0;
-		GLenum format	= GL_RGBA;
-		
-		gl.TexImage2D(GL_TEXTURE_2D, level, bytespp, size.x, size.y, border, format, GL_UNSIGNED_BYTE, data.ptr);
-		gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,	GL_LINEAR);
-		gl.TexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,	GL_LINEAR);
-
-		gl.Disable(GL_TEXTURE_2D);
-		data.free();
-
-		Trace.formatln("Texture created");
-		
-		return tex;+/
+		final res = new GfxTexture;
+		Gfx.TextureRequest req;
+		req.internalFormat = Gfx.TextureInternalFormat.SRGB8_ALPHA8;
+		req.minFilter = Gfx.TextureMinFilter.Linear;
+		req.magFilter = Gfx.TextureMagFilter.Linear;
+		res.tex = _r.createTexture(size, req, (vec3) { return defColor; });
+		return res;
 	}
 	
 	
 	void updateTexture(Texture tex_, vec2i origin, vec2i size, ubyte* data) {
-		assert (false, "TODO");
-		
-		/+assert (size.x > 0 && size.y > 0);
-		
-		GlTexture tex = cast(GlTexture)(tex_);
-		assert (tex !is null);
-		
-		gl.Enable(GL_TEXTURE_2D);
-		gl.BindTexture(GL_TEXTURE_2D, tex.id);
-		
-		const int level = 0;
-		gl.TexSubImage2D(GL_TEXTURE_2D, level, origin.x, origin.y, size.x, size.y, GL_RGBA, GL_UNSIGNED_BYTE, data);
-		
-		gl.Disable(GL_TEXTURE_2D);+/
-	}
+		assert (size.x > 0 && size.y > 0);
 
+		final tex = cast(GfxTexture)(tex_);
+		assert (tex !is null);
+
+		_r.updateTexture(tex.tex, origin,size, data);
+	}
 
 	// ----------------------------------------------------------------------------------------------------
 	// FontRenderer
@@ -616,20 +638,24 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	
 	
 	void absoluteQuad(vec2[] points, vec2[] texCoords) {
-		assert (false, "TODO");
-		/+version (StubHybridRenderer) return;
-		auto b = prepareBatch(Batch.Type.Quads, 4);
+		version (StubHybridRenderer) return;
+		auto b = prepareBatch(Batch.Type.Triangles, 6);
 		size_t vn = b.numVerts;
-		b.points[vn..vn+4] = points;
-		b.colors[vn..vn+4] = _color;
-		b.texCoords[vn..vn+4] = texCoords;
+		const tris = [
+			[ 0, 1, 2 ],
+			[ 0, 2, 3 ]
+		];
 
-		if (BlendingMode.Subpixel == _blending) {
-			b.alphaColors[vn..vn+4] = vec3.one * _color.a;
+		foreach (tri; tris) {
+			foreach (i; tri) {
+				b.verts[vn].position = points[i];
+				b.verts[vn].color = _color;
+				b.verts[vn].texCoord = texCoords[i];
+				++vn;
+			}
 		}
-
-		vn += 4;
-		b.numVerts = vn;+/
+		
+		b.numVerts = vn;
 	}
 	
 	
@@ -641,7 +667,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 
 	private bool setupClipping(Rect r, bool setupProjection = true) {
-		/+if (_glClipRect == r) {
+		if (_glClipRect == r) {
 			return _clipRectOk;
 		} else {
 			_glClipRect = r;
@@ -668,40 +694,42 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		} else {
 			_clipRectOk = true;
 		}
-		
-		gl.Viewport(cast(int)c.min.x, cast(int)(_viewportSize.y - c.min.y - h), w, h);
-		gl.Scissor(cast(int)c.min.x, cast(int)(_viewportSize.y - c.min.y - h), w, h);
-		gl.Enable(GL_SCISSOR_TEST);
 
+		final state = _r.state();
 		
+		with (state.scissor) {
+			enabled = true;
+			x = cast(int)c.min.x;
+			y = cast(int)(_viewportSize.y - c.min.y - h);
+			width = w;
+			height = h;
+		}
+
+		with (state.viewport) {
+			x = cast(int)c.min.x;
+			y = cast(int)(_viewportSize.y - c.min.y - h);
+			width = w;
+			height = h;
+		}
+
 		if (setupProjection) {
-			gl.MatrixMode(GL_PROJECTION);
-			gl.LoadIdentity();
-			gl.gluOrtho2D(c.min.x, c.max.x, c.max.y, c.min.y);
-			gl.MatrixMode(GL_MODELVIEW);
-			gl.LoadIdentity();
+			mat4 worldToClip = mat4.ortho(
+				c.min.x, c.max.x, c.max.y, c.min.y, 0, 1
+			);
+			
+			_effect.setUniform("worldToClip", worldToClip);
 		}
 		
-		return true;+/
-		assert (false, "TODO");
+		return true;
 	}
 
 	
-	this() {
-		_iconCache = new IconCache;
-		_iconCache.texMngr = this;
-		FontMngr.fontRenderer = this;
-		_imageLoader = new CachedLoader(new FreeImageLoader);
-	}
-
 
 	struct VertexCache {
 		// 64k vertices should be enough for anyone :P
 		const capacity = 64 * 1024;
 		
 		Gfx.VertexBuffer	vb;
-		Gfx.EffectInstance	efInst;
-		GfxTexture			tex;
 		ubyte*				ptr;
 		uword				length;
 	}
@@ -709,6 +737,10 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	VertexCache[]	_vertexCaches;
 	uword			_numVertexCaches;
 
+	Gfx.VertexAttrib	_posVAttr;
+	Gfx.VertexAttrib	_colorVAttr;
+	Gfx.VertexAttrib	_tcVAttr;
+	
 
 	VertexCache* getVertexCache(uword verts) {
 		// TODO: err
@@ -745,8 +777,6 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			vc.ptr[0..bytes]
 		);
 		vc.length = 0;
-
-		// TODO: effect instance, texture
 	}
 
 
@@ -754,6 +784,43 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		foreach (ref b; _vertexCaches[0.._numVertexCaches]) {
 			b.vb.setSubData(0, (cast(Vertex*)b.ptr)[0..b.length]);
 		}
+
+		// Data could have been re-assigned
+		foreach (b; _batches[0.._numBatches]) {
+			b.efInst.getUniformPtrsDataPtr()[
+				b.efInst.getUniformParamGroup().getUniformIndex("foo.bar.baz.meh")
+			] = &b.tex.tex;
+
+			b.vb = b._vcache.vb;
+		}
+	}
+
+
+	private void _loadEffect() {
+		// TODO: configuration
+		_effect = _r.createEffect(
+			"HybridGUI",
+			Gfx.EffectSource.filePath("HybridGUI.cgfx")
+		);
+		Gfx.EffectHelper.allocateDefaultUniformStorage(_effect);
+
+		_posVAttr = Gfx.VertexAttrib(
+			Vertex.init.position.offsetof,
+			Vertex.sizeof,
+			Gfx.VertexAttrib.Type.Vec2
+		);
+
+		_colorVAttr = Gfx.VertexAttrib(
+			Vertex.init.color.offsetof,
+			Vertex.sizeof,
+			Gfx.VertexAttrib.Type.Vec4
+		);
+
+		_tcVAttr = Gfx.VertexAttrib(
+			Vertex.init.texCoord.offsetof,
+			Vertex.sizeof,
+			Gfx.VertexAttrib.Type.Vec2
+		);
 	}
 	
 	
