@@ -72,6 +72,8 @@ struct TextureRequest {
 
 interface ITextureMngr {
 	Texture createTexture(Image img, TextureRequest req = TextureRequest.init);
+	Texture createTexture(vec2i size, TextureRequest req, vec4 delegate(vec3) = null);
+	void	updateTexture(Texture, vec2i origin, vec2i size, ubyte* data);
 	vec3i	getSize(TextureHandle handle);
 	size_t	getApiHandle(TextureHandle handle);
 }

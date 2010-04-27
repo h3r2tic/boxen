@@ -24,6 +24,11 @@ struct RendererStats {
 }
 
 
+struct RenderCallbacks {
+	void delegate(Effect ef, uword idx) beforeRenderObject;
+}
+
+
 
 interface IRenderer :
 	IBufferMngr,
@@ -43,7 +48,7 @@ interface IRenderer :
 	void	swapBuffers();
 	void	minimizeStateChanges();
 	
-	void	render(RenderList*);
+	void	render(RenderList*, RenderCallbacks rcb = RenderCallbacks.init);
 	
 	RenderList*	createRenderList();
 	void		disposeRenderList(RenderList*);

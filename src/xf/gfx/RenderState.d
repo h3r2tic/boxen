@@ -35,9 +35,32 @@ struct RenderState {
 	struct CullFace {
 		bool	enabled = false;
 	}
+
+	struct Viewport {
+		int		x, y;
+		uint	width, height;
+	}
+
+	struct Scissor {
+		int		x, y;
+		uint	width, height;
+		bool	enabled = false;
+	}
+
+	struct Line {
+		float	width = 1.0f;
+	}
+
+	struct Point {
+		float	size = 1.0f;
+	}
 	
 	
 	Depth		depth;
 	Blend		blend;
 	CullFace	cullFace;
+	Viewport	viewport;
+	Scissor		scissor;
+	Line		line;
+	Point		point;
 }

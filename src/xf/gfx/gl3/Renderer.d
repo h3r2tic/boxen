@@ -105,6 +105,10 @@ class Renderer : IRenderer {
 
 	this() {
 		_window = new GLWindow;
+		final view = &_nextState.viewport;
+		view.x = view.y = 0;
+		view.width = _window.width;
+		view.height = _window.height;
 	}
 	
 	
@@ -807,11 +811,190 @@ class Renderer : IRenderer {
 				}
 				
 				gl.GenerateMipmap(n.target);
-				gl.Disable(n.target);
 			})
 		);
 	}
 	
+	pragma (ctfe) static char[] _genCubeXform(char[] sc, char[] tc, char[] ma) {
+		return "(vec2 tc) { vec3 res = void;"
+		" res." ~ ma ~ ";"
+		" res." ~ sc[1] ~ "=" ~ sc[0] ~ "(tc.x*2.f-1.f);"
+		" res." ~ tc[1] ~ "=" ~ tc[0] ~ "(tc.y*2.f-1.f);"
+		" return res; }";
+	}
+
+
+	Texture createTexture(
+			vec2i size,
+			TextureRequest req,
+			vec4 delegate(vec3) colorGen = null
+	) {
+		return toResourceHandle(
+			_textures.alloc((TextureImpl* n) {
+				log.info("Creating a procedural texture.");
+				
+				n.refCount = 1;
+				n.parent = null;
+				n.request = req;
+				n.size = vec3i(size.x, size.y, 1);
+
+				switch (req.type) {
+					case TextureType.Texture2D: {
+						n.target = TEXTURE_2D;
+					} break;
+					case TextureType.TextureCube: {
+						n.target = TEXTURE_CUBE_MAP;
+					} break;
+					default: assert (false, "TODO");
+				}
+
+
+				gl.GenTextures(1, &n.handle);
+				_bindTexture(n.target, n.handle);
+				
+				gl.PixelStorei(UNPACK_ALIGNMENT, 4);
+
+				// ----
+
+				int width = size.x;
+				int height = size.y;
+
+				scope stack = new StackBuffer;
+				final _dataArr = LocalArray!(vec4)(width * height, stack);
+				scope (exit) {
+					_dataArr.dispose();
+				}
+				
+				vec4[] data = _dataArr.data;
+
+				void initTextureData(vec3 delegate(vec2) transform) {
+					for (uint i = 0; i < width; ++i) {
+						float u = (cast(float)i + 0.5f) / width;
+						for (uint j = 0; j < height; ++j) {
+							float v = (cast(float)j + 0.5f) / height;
+							
+							data[(width * j + i)] = colorGen(transform(vec2(u, v)));
+						}
+					}
+				}
+		
+				/+if (TextureType.TextureCube == request.type) {
+					auto cube = new TextureCube;
+					tex = cube;
+					foreach (fi, ref f; cube.faces) {
+						auto ft = new TextureImpl;
+						ft.target = GL_TEXTURE_CUBE_MAP_POSITIVE_X+fi;
+						ft.size = size;
+						ft.request = request;
+						ft.id = texId;
+						f = mkImpl(ft);
+					}
+				} else {
+					tex = new TextureImpl;
+				}+/
+				
+				//tex.type = request.type;
+				const uint level	= 0;
+				
+				void initSingleFace(GLenum target, vec3 delegate(vec2) transform = null) {
+					if (colorGen !is null) {
+						if (transform is null) {
+							initTextureData((vec2 uv) { return vec3(uv.x, uv.y, 0); });
+						} else {
+							initTextureData(transform);
+						}
+					}
+					
+					gl.TexImage2D(
+						target,
+						level,
+						enumToGL(req.internalFormat),
+						width,
+						height,
+						0,		// TODO: border
+						RGBA,
+						FLOAT,
+						data.ptr
+					);
+				}
+				
+				if (TextureType.TextureCube == req.type) {
+					/** http://developer.nvidia.com/object/cube_map_ogl_tutorial.html
+						major axis 
+						direction     target                              sc     tc    ma 
+						----------    ---------------------------------   ---    ---   --- 
+						 +rx          GL_TEXTURE_CUBE_MAP_POSITIVE_X_EXT   -rz    -ry   rx 
+						 -rx          GL_TEXTURE_CUBE_MAP_NEGATIVE_X_EXT   +rz    -ry   rx 
+						 +ry          GL_TEXTURE_CUBE_MAP_POSITIVE_Y_EXT   +rx    +rz   ry 
+						 -ry          GL_TEXTURE_CUBE_MAP_NEGATIVE_Y_EXT   +rx    -rz   ry 
+						 +rz          GL_TEXTURE_CUBE_MAP_POSITIVE_Z_EXT   +rx    -ry   rz 
+						 -rz          GL_TEXTURE_CUBE_MAP_NEGATIVE_Z_EXT   -rx    -ry   rz
+						Using the sc, tc, and ma determined by the major axis direction as specified in the table above, an updated (s,t) is calculated as follows
+						s   =   ( sc/|ma| + 1 ) / 2 
+						t   =   ( tc/|ma| + 1 ) / 2
+					*/
+					
+					initSingleFace(TEXTURE_CUBE_MAP_POSITIVE_X, mixin(_genCubeXform(`-z`, `-y`, `x=1`)));
+					initSingleFace(TEXTURE_CUBE_MAP_NEGATIVE_X, mixin(_genCubeXform(`+z`, `-y`, `x=-1`)));
+					initSingleFace(TEXTURE_CUBE_MAP_POSITIVE_Y, mixin(_genCubeXform(`+x`, `+z`, `y=1`)));
+					initSingleFace(TEXTURE_CUBE_MAP_NEGATIVE_Y, mixin(_genCubeXform(`+x`, `-z`, `y=-1`)));
+					initSingleFace(TEXTURE_CUBE_MAP_POSITIVE_Z, mixin(_genCubeXform(`+x`, `-y`, `z=1`)));
+					initSingleFace(TEXTURE_CUBE_MAP_NEGATIVE_Z, mixin(_genCubeXform(`-x`, `-y`, `z=-1`)));
+				} else {
+					initSingleFace(n.target);
+				}
+
+				gl.TexParameteri(n.target, TEXTURE_MIN_FILTER, enumToGL(req.minFilter));
+				gl.TexParameteri(n.target, TEXTURE_MAG_FILTER, enumToGL(req.magFilter));
+
+				if (TextureWrap.NoWrap != req.wrapS) {
+					gl.TexParameteri(n.target, TEXTURE_WRAP_S, enumToGL(req.wrapS));
+				}
+				
+				if (TextureWrap.NoWrap != req.wrapT) {
+					gl.TexParameteri(n.target, TEXTURE_WRAP_T, enumToGL(req.wrapT));
+				}
+				
+				if (TextureWrap.NoWrap != req.wrapR) {
+					gl.TexParameteri(n.target, TEXTURE_WRAP_R, enumToGL(req.wrapR));
+				}
+				
+				if (req.border != 0) {
+					gl.TexParameterfv(
+						n.target,
+						TEXTURE_BORDER_COLOR,
+						req.borderColor.ptr
+					);
+				}
+				
+				gl.GenerateMipmap(n.target);
+			})
+		);
+	}
+
+
+	// HACK
+	void updateTexture(Texture h, vec2i origin, vec2i size, ubyte* data) {
+		final tex = _getTexture(h._resHandle);
+		assert (tex !is null);
+
+		_bindTexture(tex.target, tex.handle);
+
+		const int level = 0;
+
+		gl.TexSubImage2D(
+			TEXTURE_2D,
+			level,
+			origin.x,
+			origin.y,
+			size.x,
+			size.y,
+			SRGB8_ALPHA8,
+			UNSIGNED_BYTE,
+			data
+		);
+	}
+
 	
 	void _bindTexture(GLenum target, GLuint id) {
 		gl.BindTexture(target, id);
@@ -1144,7 +1327,7 @@ class Renderer : IRenderer {
 	
 	
 	// implements IRenderer
-	void render(RenderList* renderList) {
+	void render(RenderList* renderList, RenderCallbacks rcb) {
 		renderList.computeMatrices();
 		bindCurrentFramebuffer();
 		setupRenderStates(_nextState);
@@ -1159,7 +1342,7 @@ class Renderer : IRenderer {
 				);
 			}
 			
-			render(_effects[eidx].effect, &renderBin.objects);
+			render(_effects[eidx].effect, &renderBin.objects, &rcb);
 		}
 	}
 	
@@ -1184,10 +1367,30 @@ class Renderer : IRenderer {
 		} else {
 			gl.Disable(CULL_FACE);
 		}
+
+		if (s.scissor.enabled) {
+			final sc = &s.scissor;
+			gl.Scissor(sc.x, sc.y, sc.width, sc.height);
+			gl.Enable(SCISSOR_TEST);
+		} else {
+			gl.Disable(SCISSOR_TEST);
+		}
+
+		{
+			final v = &s.viewport;
+			gl.Viewport(v.x, v.y, v.width, v.height);
+		}
+
+		gl.LineWidth(s.line.width);
+		gl.PointSize(s.point.size);
 	}
 	
 	
-	void render(Effect effect, typeof(RenderBin.objects)* objects) {
+	void render(
+			Effect effect,
+			typeof(RenderBin.objects)* objects,
+			RenderCallbacks* rcb
+	) {
 		if (0 == objects.length) {
 			return;
 		}
@@ -1375,92 +1578,6 @@ class Renderer : IRenderer {
 			}
 		}
 
-		/+void setObjVaryings(EffectInstanceImpl* obj) {
-			final vp = &effect.varyingParams;
-			final numVaryings = vp.length;
-			
-			auto flags = obj.getVaryingParamDirtyFlagsPtr();
-			auto varyingData = obj.getVaryingParamDataPtr();
-			
-			alias typeof(*flags) flagFieldType;
-			const buffersPerFlag = flagFieldType.sizeof * 8;
-			
-			final varyingParams = obj._proto.varyingParams.param;
-			
-			for (
-				int varyingBase = 0;
-				
-				varyingBase < numVaryings;
-				
-				varyingBase += buffersPerFlag,
-				++flags,
-				varyingData += buffersPerFlag
-			) {
-				if (*flags != 0) {
-					// one of the buffers in varyingBase .. varyingBase + buffersPerFlag
-					// needs to be updated
-					
-					static if (
-						ParameterTupleOf!(intrinsic.bsf)[0].sizeof
-						==
-						flagFieldType.sizeof
-					) {
-						auto flag = *flags;
-
-					updateSingle:
-						final idx = intrinsic.bsf(flag);
-						final data = varyingData + idx;
-						
-						if (data.currentBuffer.valid) {
-							data.currentBuffer.dispose();
-						}
-						
-						final buf = &data.currentBuffer;
-						final attr = &data.currentAttrib;
-
-						*buf = data.newBuffer;
-						*attr = data.newAttrib;
-						
-						GLenum glType = void;
-						switch (attr.scalarType) {
-							case attr.ScalarType.Float: {
-								glType = FLOAT;
-							} break;
-							
-							default: {
-								error("Unhandled scalar type: {}", attr.scalarType);
-							}
-						}
-						
-						final param
-							= cast(CGparameter)varyingParams[varyingBase+idx];
-
-						buf.bind();
-						cgGLEnableClientState(param);
-						cgGLSetParameterPointer(
-							param,
-							attr.numFields(),
-							glType,
-							attr.stride,
-							cast(void*)attr.offset
-						);
-						
-						defaultHandleCgError();
-						
-						// should be a SUB instruction followed by JZ
-						flag -= cast(flagFieldType)1 << idx;
-						if (flag != 0) {
-							goto updateSingle;
-						}
-						
-						// write back the flag
-						*flags = flag;
-					} else {
-						static assert (false, "TODO");
-					}
-				}
-			}
-		}+/
 			
 		effect.bind();
 		setObjUniforms(
@@ -1537,6 +1654,12 @@ class Renderer : IRenderer {
 				);
 			}
 			
+			// ----
+
+			if (rcb.beforeRenderObject !is null) {
+				rcb.beforeRenderObject(effect, objIdx);
+			}
+
 			// ----
 
 
