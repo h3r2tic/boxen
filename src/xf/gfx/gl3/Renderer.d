@@ -1481,7 +1481,9 @@ class Renderer : IRenderer {
 			final obj = &objects.renderable[objIdx];
 			final efInst = effectInstances[objects.eiRenderOrdinal[objIdx]];
 			
-			if (0 == obj.indexData.numIndices) {
+			if (	0 == obj.indexData.numIndices
+				&&	0 == (obj.flags & RenderableData.Flags.NoIndices)
+			) {
 				continue;
 			} else if (!minimizeStateChanges) {
 				prevUniformValues =
@@ -1499,7 +1501,8 @@ class Renderer : IRenderer {
 			
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
-			
+
+			if (0 == (obj.flags & RenderableData.Flags.NoIndices)) {
 			//if (0 == obj.flags & obj.flags.IndexBufferBound) {
 				if (!obj.indexData.indexBuffer.valid) {
 					continue;
@@ -1508,6 +1511,7 @@ class Renderer : IRenderer {
 				//obj.flags |= obj.flags.IndexBufferBound;
 				obj.indexData.indexBuffer.bind();
 			//}
+			}
 			
 
 			// model <-> world matrices are special and always set for every object
@@ -1535,35 +1539,52 @@ class Renderer : IRenderer {
 			
 			// ----
 
-			
-			if (1 == obj.numInstances) {
-				if (	obj.indexData.minIndex != 0
-					||	obj.indexData.maxIndex != typeof(obj.indexData.maxIndex).max)
-				{
-					gl.DrawRangeElements(
+
+			if ((obj.flags & RenderableData.Flags.NoIndices) != 0) {
+				if (1 == obj.numInstances) {
+					gl.DrawArrays(
 						enumToGL(obj.indexData.topology),
-						obj.indexData.minIndex,
-						obj.indexData.maxIndex,
-						obj.indexData.numIndices,
-						enumToGL(obj.indexData.indexBuffer.indexType),
-						cast(void*)obj.indexData.indexOffset
+						obj.indexData.indexOffset,
+						obj.indexData.numIndices
 					);
 				} else {
-					gl.DrawElements(
+					gl.DrawArraysInstanced(
+						enumToGL(obj.indexData.topology),
+						obj.indexData.indexOffset,
+						obj.indexData.numIndices,
+						obj.numInstances
+					);
+				}
+			} else {
+				if (1 == obj.numInstances) {
+					if (	obj.indexData.minIndex != 0
+						||	obj.indexData.maxIndex != typeof(obj.indexData.maxIndex).max)
+					{
+						gl.DrawRangeElements(
+							enumToGL(obj.indexData.topology),
+							obj.indexData.minIndex,
+							obj.indexData.maxIndex,
+							obj.indexData.numIndices,
+							enumToGL(obj.indexData.indexBuffer.indexType),
+							cast(void*)obj.indexData.indexOffset
+						);
+					} else {
+						gl.DrawElements(
+							enumToGL(obj.indexData.topology),
+							obj.indexData.numIndices,
+							enumToGL(obj.indexData.indexBuffer.indexType),
+							cast(void*)obj.indexData.indexOffset
+						);
+					}
+				} else if (obj.numInstances > 1) {
+					gl.DrawElementsInstanced(
 						enumToGL(obj.indexData.topology),
 						obj.indexData.numIndices,
 						enumToGL(obj.indexData.indexBuffer.indexType),
-						cast(void*)obj.indexData.indexOffset
+						cast(void*)obj.indexData.indexOffset,
+						obj.numInstances
 					);
 				}
-			} else if (obj.numInstances > 1) {
-				gl.DrawElementsInstanced(
-					enumToGL(obj.indexData.topology),
-					obj.indexData.numIndices,
-					enumToGL(obj.indexData.indexBuffer.indexType),
-					cast(void*)obj.indexData.indexOffset,
-					obj.numInstances
-				);
 			}
 			
 			// prevent state leaking
