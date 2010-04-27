@@ -20,10 +20,16 @@ private {
 
 
 struct RenderableData {
+	enum Flags {
+		None,
+		NoIndices
+	}
+
 	CoordSys		coordSys;
 	vec3			scale = vec3.one;
 	IndexData		indexData;
 	uword			numInstances = 1;
+	Flags			flags;
 }
 
 

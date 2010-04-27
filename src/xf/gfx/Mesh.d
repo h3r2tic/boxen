@@ -59,5 +59,6 @@ struct Mesh {
 		rd.scale = vec3.one;
 		rd.indexData = indexData;
 		rd.numInstances = 1;
+		rd.flags = RenderableData.Flags.None;
 	}
 }

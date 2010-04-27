@@ -24,9 +24,9 @@ enum MeshTopology : u8 {
 
 struct IndexData {
 	IndexBuffer		indexBuffer;
-	uword			numIndices	= 0;
-	word			indexOffset	= 0;
+	uword			numIndices	= 0;	// used even for renderable items flagged with NoIndices
+	word			indexOffset	= 0;	// ditto
 	uword			minIndex	= 0;
 	uword			maxIndex	= uword.max;
-	MeshTopology	topology	= MeshTopology.Triangles;
+	MeshTopology	topology	= MeshTopology.Triangles;	// ditto
 }

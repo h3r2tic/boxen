@@ -2,7 +2,7 @@ module xf.hybrid.Test1;
 
 private {
 	import xf.hybrid.Hybrid;
-	import xf.hybrid.backend.GL;
+	import xf.hybrid.backend.Gfx;
 	//import xf.dog.Dog;
 	//import xf.rt.BunnyData;
 	
