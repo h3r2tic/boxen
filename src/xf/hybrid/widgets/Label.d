@@ -129,7 +129,7 @@ class Label : Widget {
 		int		_fontSize;
 		char[]	_text;
 		
-		int					_width = -1;
+		int				_width = -1;
 		FontPrintCache	_fpCache;
 	}
 

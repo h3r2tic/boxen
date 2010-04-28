@@ -12,8 +12,8 @@ private {
 ///
 class IconCache {
 	/// get some texture space of the requested size. return the offsets and a Texture object.
-	Texture get(vec2i size, out vec2i bl, out vec2i tr, out vec2 blCoords, out vec2 trCoords) {
-		auto block = packer.getBlock(size);
+	Texture get(vec2i size, out vec2i bl, out vec2i tr, out vec2 blCoords, out vec2 trCoords, vec2i pad = vec2i.zero) {
+		auto block = packer.getBlock(size + pad * 2);
 		if (block.page >= textures.length) {
 			assert (texMngr !is null);
 			textures ~= texMngr.createTexture(
@@ -22,8 +22,8 @@ class IconCache {
 			);
 		}
 		
-		bl = block.origin;
-		tr = block.origin + block.size;
+		bl = block.origin + pad;
+		tr = block.origin + block.size - pad;
 		
 		blCoords = vec2(cast(float)bl.x / texSize.x, cast(float)bl.y / texSize.y);
 		trCoords = vec2(cast(float)tr.x / texSize.x, cast(float)tr.y / texSize.y);
