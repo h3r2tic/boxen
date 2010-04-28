@@ -64,19 +64,51 @@ class FreeImageLoader : Loader {
 			}
 			
 			bool flipRB = false;
-			
+			bool triedConverting = false;
+
+		detectType:
 			final itype = FreeImage_GetImageType(dib);
 			switch (itype) {
 				case FIT_BITMAP: {
 					result.dataType = Image.DataType.U8;
-
 					word bits = FreeImage_GetBPP(dib);
+					
+					if (!triedConverting && req !is null && req.colorLayout != Image.ColorLayout.Unknown) {
+						uword reqBits = 32;
+						auto convFunc = FreeImage_ConvertTo32Bits;
+						
+						switch (req.colorLayout) {
+							case Image.ColorLayout.R: {
+								reqBits = 8;
+								convFunc = FreeImage_ConvertToGreyscale;
+							} break;
+
+							case Image.ColorLayout.RG:
+							case Image.ColorLayout.RGB: {
+								reqBits = 24;
+								convFunc = FreeImage_ConvertTo24Bits;
+							} break;
+
+							default: break;
+						}
+
+						if (reqBits != bits) {
+							final dib2 = convFunc(dib);
+							if (dib2 is null) {
+								error("Conversion failed");
+							}
+							dib = dib2;
+							triedConverting = true;
+							goto detectType;
+						}
+					}
+					
 					switch (bits) {
 						case 1:
 						case 4: {
 							final dib2 = FreeImage_ConvertToGreyscale(dib);
 							if (dib2 is null) {
-								error("FreeImage_ConvertTo8Bits failed");
+								error("FreeImage_ConvertToGreyscale failed");
 							}
 							FreeImage_Unload(dib);
 							dib = dib2;

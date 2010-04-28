@@ -2,12 +2,14 @@ struct vertInput {
 	float2 position : POSITION;
 	float4 color : TEXCOORD0;
 	float2 texCoord : TEXCOORD1;
+	float2 subpixelSamplingVector : TEXCOORD2;
 };
 
 struct fragInput {
 	float2 position : TEXCOORD0;
 	float4 color : TEXCOORD1;
 	float2 texCoord : TEXCOORD2;
+	float2 subpixelSamplingVector : TEXCOORD3;
 };
 
 
@@ -23,6 +25,7 @@ void VertexProgram(
 	output.position = input.position;
 	output.color = input.color;
 	output.texCoord = input.texCoord;
+	output.subpixelSamplingVector = input.subpixelSamplingVector;
 }
 
 
@@ -32,7 +35,35 @@ void FragmentProgram(
 	out float4 col0 : COLOR0,
 	out float4 col1 : COLOR1
 ) {
-	float4 t0 = tex2D(tex, input.texCoord);
-	col0 = float4(t0.xyz, 1.0f);
-	col1 = t0.wwww;
+	float2 spsv = input.subpixelSamplingVector;
+	float2 base = input.texCoord;
+
+	float4 tm3 = tex2D(tex, base - spsv);
+	float4 tm2 = tex2D(tex, base - 2 * spsv / 3);
+	float4 tm1 = tex2D(tex, base - spsv / 3);
+	float4 t0 = tex2D(tex, base);
+	float4 tp1 = tex2D(tex, base + spsv / 3);
+	float4 tp2 = tex2D(tex, base + 2 * spsv / 3);
+	float4 tp3 = tex2D(tex, base + spsv);
+
+	//const float4 wb = float4(0, 0, 1, 0);
+	//const float4 wb = float4(0.07, 0.23, 0.40, 0.23);
+	//const float4 wb = float4(0.06, 0.20, 0.48, 0.20);
+	const float4 wb = float4(0.04, 0.125, 0.69, 0.125);
+
+	float4 colb = wb.x * tm2 + wb.y * tm1 + wb.z * t0 + wb.w * tp1 + wb.x * tp2;
+
+	col0 = float4(
+		dot(wb, float4(tm3.x, tm2.x, tm1.x, t0.x)).x + wb.x * tp1.x,
+		dot(wb, float4(tm2.y, tm1.y, t0.y, tp1.y)).x + wb.x * tp2.y,
+		dot(wb, float4(tm1.z, t0.z, tp1.z, tp2.z)).x + wb.x * tp3.z,
+		1
+	) * float4(input.color.xyz, 1.0);
+
+	col1 = float4(
+		dot(wb, float4(tm3.w, tm2.w, tm1.w, t0.w)).x + wb.x * tp1.w,
+		dot(wb, float4(tm2.w, tm1.w, t0.w, tp1.w)).x + wb.x * tp2.w,
+		dot(wb, float4(tm1.w, t0.w, tp1.w, tp2.w)).x + wb.x * tp3.w,
+		1
+	) * input.color.wwww;
 }

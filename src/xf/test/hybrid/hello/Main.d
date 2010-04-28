@@ -53,7 +53,7 @@ class TestApp : GfxApp {
 		Hybrid.gui.begin(guiConfig);
 		
 		Hybrid.TopLevel("main") [{
-		}];
+		}].userSize = vec2(window.width, window.height);
 		
 		Hybrid.gui.end();
 		Hybrid.gui.render(guiRenderer);

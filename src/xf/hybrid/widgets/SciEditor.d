@@ -11,6 +11,7 @@ private {
 	import tango.stdc.stdlib : malloc, free;
 	import tango.stdc.stdio : printf;
 	import tango.stdc.stringz;
+	import xf.omg.core.Misc : ceil, rndint;
 	import tango.text.convert.Format;
 	
 	import tango.core.Memory;
@@ -255,7 +256,7 @@ SCI_GETSELALPHA
 			pt.x = cast(int)e.pos.x;
 			pt.y = cast(int)e.pos.y;
 			
-			uint time = stopWatch.microsec / 1000;
+			uint time = cast(uint)(stopWatch.microsec / 1000);
 			
 			if (e.down) {
 				sci.ButtonDown(pt, time, false, false, false);
@@ -491,9 +492,9 @@ class HybridSurface : DeeSurface {
 	}
 	
 	vec3 toColor(uint co) {
-		ubyte r = (co >> 16) & 0xff;
-		ubyte g = (co >> 8) & 0xff;
-		ubyte b = co & 0xff;
+		ubyte r = cast(ubyte)((co >> 16) & 0xff);
+		ubyte g = cast(ubyte)((co >> 8) & 0xff);
+		ubyte b = cast(ubyte)(co & 0xff);
 		const float mul = 1.f / 255.f;
 		return vec3(mul * r, mul * g, mul * b);
 	}
@@ -637,8 +638,8 @@ class HybridSurface : DeeSurface {
 	override void MeasureWidths(void* font_, char *s, int len, int *positions) {
 		debug printf("HybridSurface.MeasureWidths called"\n);
 
-		getFont(font_).layoutText(s[0..len], (int charIndex, dchar c, vec2i pen, ref Glyph g) {
-			positions[charIndex] = pen.x + g.advance.x;
+		getFont(font_).layoutText(s[0..len], (int charIndex, dchar c, vec2 pen, ref Glyph g) {
+			positions[charIndex] = rndint(pen.x + g.advance.x);
 		});
 	}
 	
