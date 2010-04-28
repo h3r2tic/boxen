@@ -1353,6 +1353,17 @@ class Renderer : IRenderer {
 			render(_effects[eidx].effect, &renderBin.objects, &rcb);
 		}
 	}
+
+
+	// implements IRenderer
+	void resetState() {
+		_nextState = RenderState.init;
+		final view = &_nextState.viewport;
+		view.x = view.y = 0;
+		view.width = _window.width;
+		view.height = _window.height;
+		setupRenderStates(_nextState);
+	}
 	
 	
 	void setupRenderStates(RenderState s) {
