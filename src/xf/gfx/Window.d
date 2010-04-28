@@ -56,6 +56,8 @@ abstract:
 	
 	bool	visible();
 	Window	update();
+
+	void	reshape(void delegate(uint width, uint height));
 	
 	InputChannel	inputChannel();
 	Window			inputChannel(InputChannel);

@@ -1,7 +1,7 @@
-module xf.hybrid.backend.gl.Widgets;
+module xf.hybrid.backend.gfx.Widgets;
 
-/+private {
-	import xf.hybrid.backend.gl.Renderer : Renderer;
+private {
+	import xf.hybrid.backend.gfx.Renderer : Renderer;
 	import xf.hybrid.GuiRenderer : BaseRenderer = GuiRenderer;
 	import xf.hybrid.Common;
 	import xf.hybrid.widgets.Group;
@@ -13,11 +13,90 @@ module xf.hybrid.backend.gl.Widgets;
 	import xf.input.Input;
 	import xf.input.Writer;
 
-	import xf.dog.Dog;
-	
 	import tango.util.log.Trace;
 }
 
+
+
+class TopLevel : Group {
+	this() {
+		overrideSizeForFrame(minSize);
+		layout = new BinLayout;
+		
+		//context.reshape = &this.reshapeHandler;
+	}
+	
+
+	override vec2 minSize() {
+		return vec2(80, 60);
+	}
+	
+
+	/+override vec2 desiredSize() {
+		return vec2(context.width, context.height);
+	}+/
+	
+	
+	protected void reshapeHandler(size_t w, size_t h) {
+		Trace.formatln("reshape [{} {}]", w, h);
+		//this.userSize = vec2(w, h);
+	}
+
+	
+	override EventHandling handleExpandLayout(ExpandLayoutEvent e) {
+		auto res = super.handleExpandLayout(e);
+		
+		if (e.bubbling) {
+			vec2i si = vec2i.from(this.size);
+			
+			/+if (context.width != si.x) {
+				Trace.formatln("Width changed");
+				context.width = si.x;
+			}
+			
+			if (context.height != si.y) {
+				Trace.formatln("Height changed");
+				context.height = si.y;
+			}+/
+		}
+		
+		return res;
+	}
+	
+	
+	protected EventHandling handleRender(RenderEvent e) {
+		auto r = cast(Renderer)e.renderer;
+		
+		if (e.sinking) {
+			//Trace.formatln("r.viewportSize = {}", vec2i.from(this.size));
+			r.viewportSize = vec2i.from(this.size);
+			r.setClipRect(Rect(vec2.zero, this.size));
+		}
+		
+		super.handleRender(e);
+
+		if (e.bubbling) {
+			r.flush();
+		}
+
+		if (e.sinking) {
+			return EventHandling.Continue;
+		} else {
+			return EventHandling.Stop;
+		}
+	}
+
+
+	mixin MWidget;
+}
+
+
+
+
+
+
+
+/+
 
 
 /**

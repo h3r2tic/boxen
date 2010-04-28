@@ -56,20 +56,14 @@ private template MParentChildManagement() {
 	}
 
 
-	final void attachChild(Node n)
-	in {
+	final void attachChild(Node n) {
 		assert (n !is null);
-	}
-	body {
 		n.parent = this;
 	}
 
 	
-	final void detachChild(Node n, bool setChildParent = true)
-	in {
+	final void detachChild(Node n, bool setChildParent = true) {
 		assert (n !is null);
-	}
-	body {
 		n.parent = null;
 	}
 	

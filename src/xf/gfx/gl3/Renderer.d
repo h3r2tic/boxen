@@ -109,6 +109,14 @@ class Renderer : IRenderer {
 		view.x = view.y = 0;
 		view.width = _window.width;
 		view.height = _window.height;
+		_window.reshape = &reshapeCallback;
+	}
+
+
+	private void reshapeCallback(uint w, uint h) {
+		final view = &_nextState.viewport;
+		view.width = w;
+		view.height = h;
 	}
 	
 	
@@ -983,13 +991,13 @@ class Renderer : IRenderer {
 		const int level = 0;
 
 		gl.TexSubImage2D(
-			TEXTURE_2D,
+			tex.target,
 			level,
 			origin.x,
 			origin.y,
 			size.x,
 			size.y,
-			SRGB8_ALPHA8,
+			RGBA,
 			UNSIGNED_BYTE,
 			data
 		);

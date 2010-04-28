@@ -10,7 +10,6 @@ private {
 	import xf.utils.Memory;
 	import xf.mem.Array;
 	
-	import tango.stdc.stdlib : cFree = free;
 	import xf.hybrid.Math;
 	
 	import derelict.freetype.ft;
@@ -46,7 +45,7 @@ struct Glyph {
 	vec2i		offset;		// offset from the top-left corner of the pen to the glyph image
 	vec2i		advance;	// tells us how much we should advance the pen after drawing this glyph
 	uint		ftIndex;	// freetype's index of this glyph
-	ubyte*		buffer;
+	ubyte[]		buffer;
 }
 
 
@@ -474,7 +473,7 @@ final class Font {
 			g.texCoords[1] = ttr;
 			g.texture = tex;
 			
-			cFree(g.buffer);
+			.free(g.buffer);
 			g.buffer = null;
 		}
 		
@@ -800,7 +799,7 @@ final class Font {
 					}
 				}
 				
-				g.buffer = buffer.ptr;
+				g.buffer = buffer;
 				glyphs ~= g;
 				
 				index = glyphs.length - 1;

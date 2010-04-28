@@ -63,18 +63,18 @@ private template MOneButtonState() {
 	}
 	
 	/// ditto
-	void button(MouseButton btn)
-	in {
-		bool found = false;
-		for (int i = 0; (1 << i) <= MouseButton.max; ++i) {
-			if ((1 << i) & btn) {
-				assert (!found, "multiple MouseButton values not allowed here");
-				found = true;
+	void button(MouseButton btn) {
+		{
+			bool found = false;
+			for (int i = 0; (1 << i) <= MouseButton.max; ++i) {
+				if ((1 << i) & btn) {
+					assert (!found, "multiple MouseButton values not allowed here");
+					found = true;
+				}
 			}
+			assert (found, "empty MouseButton not allowed here");
 		}
-		assert (found, "empty MouseButton not allowed here");
-	}
-	body {
+
 		_button = btn;
 	}
 

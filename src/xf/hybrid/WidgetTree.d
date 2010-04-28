@@ -55,9 +55,9 @@ class WidgetTree {
 	protected IWidget _widget;
 
 	
-	this (char[] name, WidgetTree parent) in {
+	this (char[] name, WidgetTree parent) {
 		assert (name is null || name.length > 0);
-	} body {
+
 		this.parent = parent;
 		this.name = name;
 		

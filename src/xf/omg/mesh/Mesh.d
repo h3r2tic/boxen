@@ -132,10 +132,10 @@ class Mesh {
 	}
 	
 	
-	static Mesh fromTriList(int[] indices) in {
+	static Mesh fromTriList(int[] indices) {
 		assert (indices.length > 0);
 		assert (indices.length % 3 == 0);
-	} body {
+
 		auto m = new Mesh;
 		
 		for (int i = 0; i < indices.length; i += 3) {

@@ -45,11 +45,11 @@ struct SceneProxy {
 		}
 	}
 	
-	SceneObject	delegate()														getRoot;
-	ChildrenFruct	delegate(SceneObject, CoordSys)					iterChildren;
-	CoordSys		delegate(SceneObject)									getTransform;		// local transform
-	void				delegate(SceneObject, CoordSys, CoordSys)	setTransform;		// local transform, world transform
-	void				delegate(Ray, void delegate(SceneObject))		intersect;
+	SceneObject		delegate()									getRoot;
+	ChildrenFruct	delegate(SceneObject, CoordSys)				iterChildren;
+	CoordSys		delegate(SceneObject)						getTransform;		// local transform
+	void			delegate(SceneObject, CoordSys, CoordSys)	setTransform;		// local transform, world transform
+	void			delegate(Ray, void delegate(SceneObject))	intersect;
 
 	// TODO
 	//void				delegate(vec2i, GL, DisplayMode)					draw;
@@ -60,8 +60,8 @@ struct SceneProxy {
 			iterChildren !is null &&
 			getTransform !is null &&
 			setTransform !is null &&
-			intersect !is null &&
-			draw !is null;
+			intersect !is null/+ &&
+			draw !is null+/;
 	}
 }
 
@@ -119,6 +119,7 @@ class SceneView : CustomWidget {
 			case CameraMode.Distant: {
 				viewOffset += v;
 			} break;
+			default: assert (false, "TODO");
 		}
 
 		deriveCoordSys;
@@ -145,6 +146,7 @@ class SceneView : CustomWidget {
 				coordSys.rotation = quat.yRotation(yaw) * quat.xRotation(pitch) * quat.zRotation(roll);
 				coordSys.origin = vec3fi.from(coordSys.rotation.xform(this.viewOffset));
 			} break;
+			default: assert (false, "TODO");
 		}
 	}
 	
@@ -488,7 +490,7 @@ class SceneView : CustomWidget {
 				
 				version (HybridSceneViewSpam) Trace.formatln("Result: {} -> {}", res.origin, res.direction);
 				return res;
-			} break;
+			}
 				
 			case ViewType.Perspective: {
 				auto mat = this.viewMatrix;
@@ -511,7 +513,9 @@ class SceneView : CustomWidget {
 				
 				version (HybridSceneViewSpam) Trace.formatln("Result: {} -> {}", res.origin, res.direction);
 				return res;
-			} break;
+			}
+
+			default: assert (false);
 		}
 	}
 

@@ -333,11 +333,10 @@ template MParamSupport() {
 	}
 
 
-	int paramIndex(Param* p)
-	out (res) {
+	int paramIndex(Param* p) {
+		final res = p - _params.ptr;
 		assert (&_params[res] is p);
-	} body {
-		return p - _params.ptr;
+		return res;
 	}
 }
 
