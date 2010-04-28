@@ -86,7 +86,7 @@ struct OSHeap {
 	void* reallocRaw(void* ptr, size_t size) {
 		if (ptr !is null) {
 			assert (initialized);
-			return .winapi.HeapReAlloc (_heapId, 0, ptr, size);
+			return .winapi.HeapReAlloc(_heapId, 0, ptr, size);
 		} else {
 			return allocRaw(size);
 		}

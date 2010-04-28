@@ -1,4 +1,4 @@
-module xf.hybrid.backend.gl.Renderer;
+module xf.hybrid.backend.gfx.Renderer;
 
 private {
 	import xf.Common;
@@ -50,6 +50,24 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		_iconCache.texMngr = this;
 		FontMngr.fontRenderer = this;
 		_imageLoader = new CachedLoader(new FreeImageLoader);
+
+		{
+			const whiteW = 3;
+			const whiteH = 3;
+			
+			vec2i bl, tr;
+			vec2 tbl, ttr;
+			_whiteTex = cast(GfxTexture)_iconCache.get(
+					vec2i(whiteW, whiteH), bl, tr, tbl, ttr
+			);
+			
+			assert (_whiteTex !is null);
+			_whiteTexCoord = (tbl + ttr) * 0.5f;
+
+			ubyte[whiteW*whiteH*4] whiteData = 0xff;
+
+			updateTexture(_whiteTex, bl, vec2i(whiteW, whiteH), whiteData.ptr);
+		}
 	}
 
 	
@@ -99,7 +117,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	}
 
 
-	private Rect getClipRect() {
+	// implements FontRenderer
+	Rect getClipRect() {
 		return super.getClipRect();
 	}
 	
@@ -430,7 +449,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
 		
 		final bin = renderList.getBin(_effect);
-
+		
 		for (int i = 0; i < _numBatches; ++i) {
 			auto b = &_batches[i];
 
@@ -509,8 +528,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 
 	override void disableTexturing() {
-		assert (false, "use a white texture instead");
-		//_texture = null;
+		_texture = _whiteTex;
+		_texCoord = _whiteTexCoord;
 	}
 	
 	
@@ -615,7 +634,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		final tex = cast(GfxTexture)(tex_);
 		assert (tex !is null);
 
-		_r.updateTexture(tex.tex, origin,size, data);
+		_r.updateTexture(tex.tex, origin, size, data);
 	}
 
 	// ----------------------------------------------------------------------------------------------------
@@ -787,9 +806,12 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 		// Data could have been re-assigned
 		foreach (b; _batches[0.._numBatches]) {
-			b.efInst.getUniformPtrsDataPtr()[
-				b.efInst.getUniformParamGroup().getUniformIndex("foo.bar.baz.meh")
-			] = &b.tex.tex;
+			final texIdx = b.efInst.getUniformParamGroup().getUniformIndex(
+				"FragmentProgram.tex"
+			);
+
+			assert (texIdx != -1);
+			b.efInst.getUniformPtrsDataPtr()[texIdx] = &b.tex.tex;
 
 			b.vb = b._vcache.vb;
 		}
@@ -802,6 +824,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			"HybridGUI",
 			Gfx.EffectSource.filePath("HybridGUI.cgfx")
 		);
+		_effect.compile();
 		Gfx.EffectHelper.allocateDefaultUniformStorage(_effect);
 
 		_posVAttr = Gfx.VertexAttrib(
@@ -822,6 +845,15 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			Gfx.VertexAttrib.Type.Vec2
 		);
 	}
+
+
+	vec2i viewportSize() {
+		return _viewportSize;
+	}
+
+	void viewportSize(vec2i s) {
+		_viewportSize = s;
+	}	
 	
 	
 	private {
@@ -841,6 +873,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		Gfx.Effect		_effect;
 
 		IconCache		_iconCache;
+		GfxTexture		_whiteTex;
+		vec2			_whiteTexCoord;
 		
 		Style			_style;
 		Rect			_glClipRect;

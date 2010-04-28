@@ -97,7 +97,7 @@ abstract class GLContext : Window {
 	}
 	
 
-	void reshape(void delegate(uint width, uint height) dg) {
+	override void reshape(void delegate(uint width, uint height) dg) {
 		_reshapeCallback = dg;
 	}
 	

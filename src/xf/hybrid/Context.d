@@ -1034,6 +1034,12 @@ class GuiContext {
 		}
 		return _inputChannel;
 	}
+
+
+	void overrideInputChannel(InputChannel ch) {
+		_inputChannel = ch;
+		_inputChannel.addReader(_inputReader = new GuiInputReader);
+	}
 	
 	
 	vec2 mousePos() {
@@ -1046,17 +1052,17 @@ class GuiContext {
 
 		struct Chains {
 			WidgetChain[numMouseButtons]	mouseButton;
-			WidgetChain								mouseOver;
-			WidgetChain								keyboardFocus;
+			WidgetChain						mouseOver;
+			WidgetChain						keyboardFocus;
 		}
 		
 		Chains	prevChains;
 		Chains	curChains;
 		
-		GuiInputReader							_inputReader;
-		InputChannel								_inputChannel;
+		GuiInputReader		_inputReader;
+		InputChannel		_inputChannel;
 		
-		vec2											_mousePos;
+		vec2				_mousePos;
 	}
 	
 
