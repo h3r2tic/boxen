@@ -11,6 +11,7 @@ private {
 	import xf.hybrid.Shape;
 	import xf.hybrid.Style;
 	import xf.hybrid.Context;		// for the vfs
+	import xf.hybrid.Log : log = hybridLog;
 	
 	import xf.img.Image;
 	import xf.img.Loader : ImageLoader = Loader;
@@ -22,6 +23,7 @@ private {
 	import xf.hybrid.Math;
 	import xf.utils.Memory;
 	import xf.mem.MainHeap;
+	import xf.mem.StackBuffer;
 
 	interface Gfx {
 		import xf.gfx.IRenderer;
@@ -83,7 +85,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		enum Type {
 			Triangles = 0,
 			Lines = 1,
-			Points = 2,
+//			Points = 2,
 			Direct = 3
 		}
 		
@@ -100,7 +102,6 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				Gfx.VertexBuffer	vb;
 				Gfx.EffectInstance	efInst;
 				
-				BlendingMode	blending;
 				float			weight;
 			}
 			
@@ -115,6 +116,14 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 	static class GfxTexture : Texture {
 		Gfx.Texture tex;
+	}
+
+	struct LineBrush {
+		GfxTexture	tex;
+		int			width;
+		vec2		tc0;
+		vec2		tc1;
+		float		texelSize;
 	}
 
 
@@ -188,7 +197,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	}
 
 
-	override void	point(vec2 p, float size = 1.f) {
+	/+override void	point(vec2 p, float size = 1.f) {
 		version (StubHybridRenderer) return;
 		_weight = size;
 		
@@ -200,27 +209,119 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 		++vn;
 		b.numVerts = vn;
+	}+/
+
+
+	private LineBrush* _getLineBrush(int w) {
+		foreach (ref br; _lineBrushes) {
+			if (br.width == w) {
+				return &br;
+			}
+		}
+
+		final br = &(_lineBrushes ~= LineBrush())[$-1];
+		br.width = w;
+
+		enum { borderWidth = 2 }
+		static assert (borderWidth >= 1);
+		
+		uword texWidth = w + borderWidth * 2;
+
+		scope stack = new StackBuffer;
+		vec4ub[] tex = stack.allocArray!(vec4ub)(texWidth);
+		tex[] = vec4ub.zero;
+		tex[borderWidth .. borderWidth+w] = vec4ub(255, 255, 255, 255);
+
+		vec2i bl, tr;
+		vec2 tbl, ttr;
+		br.tex = cast(GfxTexture)_iconCache.get(vec2i(texWidth, 1), bl, tr, tbl, ttr, vec2i.zero);
+		
+		// copy our bitmap into the texture
+		_iconCache.updateTexture(br.tex, bl, vec2i(texWidth, 1), cast(ubyte*)tex.ptr);
+
+		final float texel = (ttr.x - tbl.x) / (tr.x - bl.x);
+		final float ctexel = texel * (borderWidth + 0.5f * w) + tbl.x;
+		final float numSkip = (1.f + (w - 1.f) / 2);
+
+		float y = (ttr.y + tbl.y) * 0.5f;
+		
+		br.tc0 = vec2(ctexel - texel * numSkip, y);
+		br.tc1 = vec2(ctexel + texel * numSkip, y);
+
+		br.texelSize = texel;
+
+		return br;
 	}
 	
 	
-	override void	line(vec2 p0, vec2 p1, float width = 1.f) {
+	override void	lines(vec2 pts[], float width = 1.f) {
+		assert (0 == pts.length % 2);
+
 		version (StubHybridRenderer) return;
 		_weight = width;
 
-		auto b = prepareBatch(Batch.Type.Lines, 2);
-		size_t vn = b.numVerts;
-		b.verts[vn].position = p0 + _offset + _lineOffset;
-		b.verts[vn].color = _color;
-		b.verts[vn].texCoord = _texCoord;
-		b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
-		++vn;
+		int lwidth = max(0, rndint(width));
+		final brush = _getLineBrush(lwidth);
+		enableTexturing(brush.tex);
 
-		b.verts[vn].position = p1 + _offset + _lineOffset;
-		b.verts[vn].color = _color;
-		b.verts[vn].texCoord = _texCoord;
-		b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
-		++vn;
-		
+		auto b = prepareBatch(Batch.Type.Triangles, pts.length * 3);	// 2 tris per segment
+		size_t vn = b.numVerts;
+
+		final tc0 = brush.tc0;
+		final tc1 = brush.tc1;
+
+		for (int i = 0; i < pts.length; i += 2) {
+			vec2 from = pts[i];
+			vec2 to = pts[i+1];
+
+			vec2 fwd = (to - from).normalized;
+			vec2 sideUnit = fwd.rotatedHalfPi;
+			vec2 side = sideUnit * (lwidth * 0.5f + 0.5f);
+
+			vec2 p0 = from - side;
+			vec2 p1 = to - side;
+			vec2 p2 = to + side;
+			vec2 p3 = from + side;
+
+			// Our lines are different than the ones in OpenGL.
+			// The ones in GL have their endpoints in the top-left corners of pixels,
+			// which causes odd-width lines to look blurry. We'd like to have sharp
+			// 1-width lines, thus we reverse this behavior and have blurry even-width lines.
+			// Additionally, our lines are expanded by a pixel in each end to be endpoint-inclusive.
+			{
+				p0.x += 0.5f;
+				p0.y += 0.5f;
+				p1.x += 0.5f;
+				p1.y += 0.5f;
+				p2.x += 0.5f;
+				p2.y += 0.5f;
+				p3.x += 0.5f;
+				p3.y += 0.5f;
+
+				vec2 fwdNudge = fwd * .5f;
+				p0 -= fwdNudge;
+				p1 += fwdNudge;
+				p2 += fwdNudge;
+				p3 -= fwdNudge;
+			}
+
+			void add(vec2 p, vec2 t) {
+				b.verts[vn].position = p;
+				b.verts[vn].color = _color;
+				b.verts[vn].texCoord = t;
+				b.verts[vn].subpixelSamplingVector = vec2(side.x * brush.texelSize * (1.0f / 3.0f), 0);
+				++vn;
+			}
+
+			add(p0, tc1);
+			add(p1, tc1);
+			add(p2, tc0);
+
+			add(p0, tc1);
+			add(p2, tc0);
+			add(p3, tc0);
+		}
+
 		b.numVerts = vn;
 	}
 	
@@ -383,8 +484,24 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			auto border = _style.border.value();
 			
 			_weight = border.width;
-			disableTexturing();
-			auto b = prepareBatch(Batch.Type.Lines, 8);
+			//disableTexturing();
+
+			vec2[8] pts = void;
+			pts[0] = bp[0];
+			pts[1] = bp[1];
+			pts[2] = bp[1];
+			pts[3] = bp[2];
+			pts[4] = bp[2];
+			pts[5] = bp[3];
+			pts[6] = bp[3];
+			pts[7] = bp[0];
+
+			final colBK = _color;
+			_color = border.color;
+			lines(pts[], border.width);
+			_color = colBK;
+
+			/+auto b = prepareBatch(Batch.Type.Lines, 8);
 			
 			size_t vn = b.numVerts;
 			void add3(int i) {
@@ -400,7 +517,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			add3(2); add3(3);
 			add3(3); add3(0);
 			
-			b.numVerts = vn;
+			b.numVerts = vn;+/
 		}
 	}
 	
@@ -412,7 +529,6 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		} else {
 			color = vec4.one;
 		}
-		blendingMode = BlendingMode.None;
 	}
 	
 	
@@ -452,6 +568,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		state.blend.src = Gfx.RenderState.Blend.Factor.Src1Color;
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
 		state.depth.enabled = false;
+
+		log.trace("Renderer: numBatches: {}", _numBatches);
 		
 		for (int i = 0; i < _numBatches; ++i) {
 			final renderList = _r.createRenderList();
@@ -471,13 +589,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			}
 
 			switch (b.type) {
-				case Batch.Type.Lines: {
-					state.line.width = b.weight;
-				} break;
-
-				case Batch.Type.Points: {
+				/+case Batch.Type.Points: {
 					state.point.size = b.weight;
-				} break;
+				} break;+/
 				
 				default: break;
 			}
@@ -499,9 +613,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 					rdata.indexData.topology = Gfx.MeshTopology.Lines;
 				} break;
 				
-				case Batch.Type.Points: {
+				/+case Batch.Type.Points: {
 					rdata.indexData.topology = Gfx.MeshTopology.Points;
-				} break;
+				} break;+/
 				
 				case Batch.Type.Direct: {
 					assert (false, "Direct rendering should be handled elsewhere");
@@ -600,8 +714,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				auto b = &_batches[_numBatches-1];
 				if (	b.type == type &&
 						b.tex is _texture &&
-						b.blending == _blending &&
-						b.weight == _weight &&
+						//b.blending == _blending &&
+						//b.weight == _weight &&
 						b.clipRect == _clipRect &&
 						b._vcache == cast(void*)vcache
 				) {
@@ -617,7 +731,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			if (Batch.Type.Direct != type) {
 				vcache.length += numVerts;
 				b.tex = _texture;
-				b.blending = _blending;
+				//b.blending = _blending;
 				b.weight = _weight;
 			}
 			
@@ -657,11 +771,6 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	void enableTexturing(Texture tex) {
 		assert (cast(GfxTexture)tex !is null);
 		_texture = cast(GfxTexture)tex;
-	}
-	
-	
-	void blendingMode(BlendingMode mode) {
-		_blending = mode;
 	}
 	
 	
@@ -889,7 +998,6 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		vec4			_color = vec4.one;
 		vec2			_texCoord = vec2.zero;
 		GfxTexture		_texture;
-		BlendingMode	_blending;
 		float			_weight = 1.0;
 		vec2			_subpixelSamplingVector = vec2.zero;
 
@@ -909,6 +1017,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		Style			_style;
 		Rect			_glClipRect;
 		bool			_clipRectOk = true;
+
+		LineBrush[]		_lineBrushes;
 
 		static vec2		_lineOffset = {x: .5f, y: .5f};
 	}

@@ -368,9 +368,9 @@ class ColorWheel : Widget {
 		assert (e.renderer !is null);
 		auto r = e.renderer;
 		
-		if (auto fr = cast(FontRenderer)e) {
+		/+if (auto fr = cast(FontRenderer)e) {
 			fr.blendingMode = BlendingMode.Alpha;
-		}
+		}+/
 		
 		if (hotspotTexture.tex is null) {
 			hotspotTexture.tex = r.iconCache.get(vec2i.from(hotspotSize), hotspotTexture.bl, hotspotTexture.tr, hotspotTexture.blCoords, hotspotTexture.trCoords);

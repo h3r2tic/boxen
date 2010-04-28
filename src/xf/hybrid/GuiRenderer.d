@@ -125,11 +125,11 @@ abstract class GuiRenderer {
 	/// Renders a shape with the given size
 	abstract void shape(Shape shape, vec2 size);
 
-	/// Renders a point with the given size
-	abstract void	point(vec2, float size = 1.f);
+	/+/// Renders a point with the given size
+	abstract void	point(vec2, float size = 1.f);+/
 	
 	/// Renders a line with the given thickness / width
-	abstract void	line(vec2, vec2, float width = 1.f);
+	abstract void	lines(vec2[], float width = 1.f);
 	
 	/// Renders a rectangle
 	abstract void	rect(Rect);

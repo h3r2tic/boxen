@@ -9,6 +9,7 @@ private {
 	import xf.utils.Union;
 	import xf.utils.Optional : Opt = Optional;
 	import xf.hybrid.Math;
+	import xf.omg.color.RGB;
 	
 	import tango.util.log.Trace;
 }
@@ -187,7 +188,7 @@ vec4 parseColor(Value val) {
 		
 		case Value.Type.FuncCall: {
 			char[]	fname = val.FuncCall.name;
-			auto		fargs = val.FuncCall.args;
+			auto	fargs = val.FuncCall.args;
 				
 			float num(Value v) {
 				switch (v.type) {
@@ -199,11 +200,15 @@ vec4 parseColor(Value val) {
 			
 			switch (fname) {
 				case "rgb": {
-					return vec4(num(fargs[0]), num(fargs[1]), num(fargs[2]), 1);
+					vec4 col = vec4(num(fargs[0]), num(fargs[1]), num(fargs[2]), 1);
+					convertRGB!(RGBSpace.sRGB, RGBSpace.Linear_sRGB)(col, &col);
+					return col;
 				}
 				
 				case "rgba": {
-					return vec4(num(fargs[0]), num(fargs[1]), num(fargs[2]), num(fargs[3]));
+					vec4 col = vec4(num(fargs[0]), num(fargs[1]), num(fargs[2]), num(fargs[3]));
+					convertRGB!(RGBSpace.sRGB, RGBSpace.Linear_sRGB)(col, &col);
+					return col;
 				}
 
 				default: {
