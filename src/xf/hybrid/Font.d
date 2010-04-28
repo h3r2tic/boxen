@@ -41,9 +41,9 @@ version (X86_64) {
 struct Glyph {
 	vec2[2]		texCoords;
 	Texture		texture;
-	vec2i		size;			// size inside the texture, in pixels
+	vec2i		size;		// size inside the texture, in pixels
 	vec2i		offset;		// offset from the top-left corner of the pen to the glyph image
-	vec2i		advance;	// tells us how much we should advance the pen after drawing this glyph
+	vec2		advance;	// tells us how much we should advance the pen after drawing this glyph
 	uint		ftIndex;	// freetype's index of this glyph
 	ubyte[]		buffer;
 }
@@ -76,17 +76,9 @@ struct FontKey {
 enum FontAntialiasing {
 	None,			/// glyphs will be aliased
 	Grayscale,		/// should be best for CRTs
-	LCD_RGB,		/// optimal for most LCDs
-	LCD_BGR		/// some LCDs may have BGR subpixel layouts
+	Subpixel,		/// subpixel
 }
 
-
-///
-enum LCDFilter {
-	Standard,		// this is standard FreeType's subpixel filter. Basically, a triangular kernel
-	Crisp,			// this one is a compromise between the default lcd filter, no filter and non-lcd aliased renderings
-	None				// doesn't do any subpixel filtering, will result in massive color fringes
-}
 
 
 /**
@@ -223,13 +215,13 @@ final class Font {
 		Yields the width of a string in pixels
 	*/
 	int width(stringT)(stringT str, FontPrintCache* fcache = null) {
-		uint max;
+		float max;
 		
-		layoutText(str, (int charIndex, dchar c, vec2i pen, ref Glyph g) {
+		layoutText(str, (int charIndex, dchar c, vec2 pen, ref Glyph g) {
 			max = pen.x + g.advance.x;
 		}, fcache);
 		
-		return max;
+		return cast(int)ceil(max);
 	}
 	
 	
@@ -296,50 +288,23 @@ final class Font {
 	}
 	
 	
-	/**
-		Sets the subpixel filter
-	*/
-	bool lcdFilter(LCDFilter f) {
-		if (FT_Library_SetLcdFilter !is null) {
-			switch (f) {
-				case LCDFilter.Standard:
-					FT_Library_SetLcdFilter(FontMngr.ftLib, FT_LcdFilter.FT_LCD_FILTER_DEFAULT);
-					break;
-
-				case LCDFilter.Crisp:
-				case LCDFilter.None:
-					FT_Library_SetLcdFilter(FontMngr.ftLib, FT_LcdFilter.FT_LCD_FILTER_NONE);
-					break;
-
-				default: assert (false);
-			}
-			
-			lcdFilter_ = f;
-			return true;
-		} else {
-			lcdFilter_ = LCDFilter.Standard;
-			return false;
-		}
-	}
-	
-
 	private {
 		/**
 			Calls the supplied delegate over the provided text with a tuple of parameters: (int, dchar, vec2i, inout Glyph), meaning respectively:
 			character index (i-th call gets the i-th index), the unicode character, pen position, glyph info
 		*/
-		void layoutText(stringT)(stringT text, void delegate(int, dchar, vec2i, ref Glyph) dg, FontPrintCache* fcache = null) {
-			int	useKerning = FT_HAS_KERNING(fontFace);
+		void layoutText(stringT)(stringT text, void delegate(int, dchar, vec2, ref Glyph) dg, FontPrintCache* fcache = null) {
+			int		useKerning = FT_HAS_KERNING(fontFace);
 			uint	previous = 0;	// the previous glyph index is needed for kerning
-			int	penX = 0;
-			int	cur = 0;			// the index for the first arg of 'dg'
+			float	penX = 0;
+			int		cur = 0;			// the index for the first arg of 'dg'
 			
 			if (fcache) {
 				if (fcache.valid) {
 					foreach (i, c; fcache.data) {
 						dchar chr = c.chr;
 						uint glyphIndex = c.ftIndex;
-						penX += c.delta >> 6;
+						penX += cast(float)c.delta / 64.0;
 						
 						uint index = getGlyph(chr, glyphIndex);	// TODO: cache this?
 						
@@ -348,7 +313,7 @@ final class Font {
 						}
 						
 						auto glyph = &glyphs[index];
-						dg(i, chr, vec2i(penX, 0), *glyph);
+						dg(i, chr, vec2(penX, 0), *glyph);
 						++cur;
 						
 						// move the pen and remember the previous glyph index for kerning
@@ -374,8 +339,8 @@ final class Font {
 							// adjust the pen for kerning
 							FT_Vector delta;
 							FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
-							c.delta = delta.x;
-							penX += delta.x >> 6;
+							c.delta = cast(ushort)delta.x;
+							penX += cast(float)delta.x / 64.0f;
 						} else {
 							fcache.data[i].delta = 0;
 						}
@@ -387,7 +352,7 @@ final class Font {
 						}
 						
 						auto glyph = &glyphs[index];
-						dg(i, chr, vec2i(penX, 0), *glyph);
+						dg(i, chr, vec2(penX, 0), *glyph);
 						++cur;
 						
 						// move the pen and remember the previous glyph index for kerning
@@ -405,7 +370,7 @@ final class Font {
 						// adjust the pen for kerning
 						FT_Vector delta;
 						FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
-						penX += delta.x >> 6;
+						penX += cast(float)delta.x / 64.0f;
 					}
 					
 					uint index = getGlyph(chr, glyphIndex);
@@ -415,7 +380,7 @@ final class Font {
 					}
 					
 					auto glyph = &glyphs[index];
-					dg(i, chr, vec2i(penX, 0), *glyph);
+					dg(i, chr, vec2(penX, 0), *glyph);
 					++cur;
 					
 					// move the pen and remember the previous glyph index for kerning
@@ -463,10 +428,13 @@ final class Font {
 			
 			assert (FontMngr.fontRenderer !is null);
 			assert (FontMngr.fontRenderer.iconCache !is null);
-			Texture tex = FontMngr.fontRenderer.iconCache.get(g.size, bl, tr, tbl, ttr);
+
+			vec2i texSize = vec2i(g.size.x * 3, g.size.y);
+			
+			Texture tex = FontMngr.fontRenderer.iconCache.get(texSize, bl, tr, tbl, ttr);
 			
 			// copy our bitmap into the texture
-			FontMngr.fontRenderer.iconCache.updateTexture(tex, bl, g.size, g.buffer);
+			FontMngr.fontRenderer.iconCache.updateTexture(tex, bl, texSize, g.buffer.ptr);
 
 			// finish off the glyph struct
 			g.texCoords[0] = tbl;
@@ -487,11 +455,11 @@ final class Font {
 			
 			auto r = FontMngr.fontRenderer;
 			r.blendingMode = BlendingMode.Subpixel;		// might be optimized for grayscale antialiasing or no antialiasing at all
-			
+
 			Rect clipRect = r.getClipRect();
 			assert (clipRect != Rect.init, "Renderer.getClipRect returned Rect.init; make sure to call renderer.setClipRect() before rendering the GUI");
 			
-			layoutText(str, (int charIndex, dchar c, vec2i pen, ref Glyph g) {
+			layoutText(str, (int charIndex, dchar c, vec2 pen, ref Glyph g) {
 				if (g.texture is null) {
 					uploadGlyph(g);
 				}
@@ -504,6 +472,11 @@ final class Font {
 					Texture curTex = g.texture;
 					FontMngr.fontRenderer.enableTexturing(curTex);
 					
+					r.subpixelSamplingVector = vec2(
+						(g.texCoords[1].x - g.texCoords[0].x) / g.size.x,
+						0
+					);
+
 					// adding 4 vertices will push a quad down the renderer
 					
 					vec2[4] points = void;
@@ -528,6 +501,7 @@ final class Font {
 			// this is a cheap operation it doesn't really change any GL state or whanot, just restores the 'normal' blending mode for
 			// quads added next. remember that the *gui* renderer doesn't only deal with text.
 			r.blendingMode = BlendingMode.Alpha;
+			r.subpixelSamplingVector = vec2.zero;
 			
 			return PrintResult.Ok;
 		}
@@ -553,8 +527,7 @@ final class Font {
 			switch (antialiasing) {
 				case FontAntialiasing.None:			return FT_Render_Mode.FT_RENDER_MODE_MONO;
 				case FontAntialiasing.Grayscale:	return FT_Render_Mode.FT_RENDER_MODE_NORMAL;
-				case FontAntialiasing.LCD_RGB:	// fall through
-				case FontAntialiasing.LCD_BGR:	return FT_Render_Mode.FT_RENDER_MODE_LCD;
+				case FontAntialiasing.Subpixel:		return FT_Render_Mode.FT_RENDER_MODE_LCD;
 				default: assert (false);
 			}
 		}
@@ -564,8 +537,7 @@ final class Font {
 			Renders a glyph into the provided buffer
 		*/
 		vec2i renderGlyph(ref ubyte[] buffer, ref Glyph glyph, uint ftIndex) {
-			lcdFilter = lcdFilter_;		// other fonts may use different filtering modes. tell FreeType we want our specified mode.
-												// lcdFilter is a property that sets FreeType state.
+			FT_Library_SetLcdFilter(FontMngr.ftLib, FT_LcdFilter.FT_LCD_FILTER_NONE);
 			
 			FT_GlyphSlot slot = fontFace.glyph;
 			
@@ -573,8 +545,8 @@ final class Font {
 			buffer[] = 0;
 			
 			// convert from FreeType's fixed point to int
-			glyph.advance.x = fontFace.glyph.advance.x >> 6;
-			glyph.advance.y = fontFace.glyph.advance.y >> 6;
+			glyph.advance.x = cast(float)fontFace.glyph.advance.x / 64.0f;
+			glyph.advance.y = cast(float)fontFace.glyph.advance.y / 64.0f;
 			
 			if (0 == FT_Render_Glyph(slot, renderMode)) {		// this gives us a bitmap
 				auto bitmap = slot.bitmap;
@@ -588,23 +560,25 @@ final class Font {
 					case FontAntialiasing.Grayscale:	break;
 					
 					// FreeType gives three times wider bitmaps for subpixel renderings
-					case FontAntialiasing.LCD_RGB:	// fall through
-					case FontAntialiasing.LCD_BGR:	glyphWidth /= 3; break;
+					case FontAntialiasing.Subpixel:		glyphWidth /= 3; break;
 
 					default: assert (false);
 				}
+
+				const int borderWidth = 2;
 				
 				// we need to expand the bitmap horizontally to do our own filtering
-				if (crispLCDFilter) {
-					glyphWidth += 2;
-					--glyph.offset.x;
-				}
+				glyphWidth += borderWidth * 2;
+				glyph.offset.x -= borderWidth;
+				
 				
 				glyph.size = size = vec2i(glyphWidth, bitmap.rows);
 				
 				// only realloc if the provided buffer can't hold the data
-				int bytes = size.x * size.y * 4;
+				int bytes = size.x * size.y * 4 * 3;
 				if (buffer.length < bytes) buffer.realloc(bytes);
+				
+				buffer[] = 0;
 				
 				// return 255 if the bit at (x,y) position is set. 0 otherwise.
 				ubyte indexBinaryBitmap(FT_Bitmap bitmap, int x, int y) {
@@ -616,11 +590,13 @@ final class Font {
 				}
 				
 				for (int y = 0; y < size.y; ++y) {
-					for (int x = 0; x < size.x; ++x) {
-						uint bufferIdx = (y * size.x + x) * 4;
-						
-						// set the alpha channel of the img to white. We're using RGB as subpixel alpha anyway.
-						buffer[bufferIdx+3] = 255;
+					for (int x = borderWidth; x < size.x-borderWidth; ++x) {
+						uint bufferIdx = (y * size.x + x) * 4 * 3;
+
+						// we'll only use alpha
+						buffer[bufferIdx+0 .. bufferIdx+3+0] = 255;
+						buffer[bufferIdx+4 .. bufferIdx+3+4] = 255;
+						buffer[bufferIdx+8 .. bufferIdx+3+8] = 255;
 
 						// index the bitmap given by freetype at (x*3+xoffset-3, y). 0 when out of bounds. useful for filtering
 						ubyte ftBuffer(int xoffset) {
@@ -632,68 +608,36 @@ final class Font {
 						}
 
 						switch (antialiasing) {
-							case FontAntialiasing.None:
-								buffer[bufferIdx..bufferIdx+3] = indexBinaryBitmap(bitmap, x, y);
-								break;
-							case FontAntialiasing.Grayscale:
-								buffer[bufferIdx..bufferIdx+3] = bitmap.buffer[y * bitmap.pitch + x];
-								
-								// antialiasing makes the glyph appear darker...
-								gammaCorrect(buffer[bufferIdx..bufferIdx+3], 1.2);
-								break;
-							case FontAntialiasing.LCD_RGB:
-							case FontAntialiasing.LCD_BGR:
-								if (crispLCDFilter) {
-									foreach (i, ref c; buffer[bufferIdx..bufferIdx+3]) {
-										c = crispFilter(ftBuffer(i-2), ftBuffer(i-1), ftBuffer(i), ftBuffer(i+1), ftBuffer(i+2));
-									}
-								} else {
-									buffer[bufferIdx..bufferIdx+3] = bitmap.buffer[y * bitmap.pitch + x*3 .. y * bitmap.pitch + x*3 + 3];
-									
-									// antialiasing makes the glyph appear darker...
-									gammaCorrect(buffer[bufferIdx..bufferIdx+3], 1.2);
-								}
-								
-								// swap byte order for bgr subpixel layout
-								if (FontAntialiasing.LCD_BGR == antialiasing) {
-									ubyte r = buffer[bufferIdx];
-									buffer[bufferIdx] = buffer[bufferIdx+2];
-									buffer[bufferIdx+2] = r;
-								}
-								break;
+							case FontAntialiasing.None: {
+								assert (false, "TODO");
+								/+ubyte a = indexBinaryBitmap(bitmap, x, y);
+								buffer[bufferIdx+3+0] = a;
+								buffer[bufferIdx+3+4] = a;
+								buffer[bufferIdx+3+8] = a;+/
+							}// break;
+							case FontAntialiasing.Grayscale: {
+								assert (false, "TODO");
+								/+ubyte a = bitmap.buffer[y * bitmap.pitch + x];
+								buffer[bufferIdx+3+0] = a;
+								buffer[bufferIdx+3+4] = a;
+								buffer[bufferIdx+3+8] = a;+/
+							}// break;
+							case FontAntialiasing.Subpixel: {
+								ubyte[3] a;
+
+								a[] = bitmap.buffer[
+									y * bitmap.pitch + x*3 - 3 * borderWidth
+									..
+									y * bitmap.pitch + x*3 - 3 * (borderWidth-1)
+								];
+
+								buffer[bufferIdx+3+0] = a[0];
+								buffer[bufferIdx+3+4] = a[1];
+								buffer[bufferIdx+3+8] = a[2];
+							} break;
+							
 							default: assert (false);
 						}
-					}
-				}
-				
-				// the crisp filter requires a component of the mono-rendered glyph
-				if (crispLCDFilter) {
-					uint loadFlags = FT_LOAD_TARGET_(FT_Render_Mode.FT_RENDER_MODE_MONO);
-					version (UnpatentedHinting) loadFlags |= FT_LOAD_FORCE_AUTOHINT;
-					
-					if (0 == FT_Load_Glyph(fontFace, ftIndex, loadFlags)) {
-						FT_Glyph tmpGlyph;
-						
-						if (0 == FT_Get_Glyph(fontFace.glyph, &tmpGlyph) && 0 == FT_Render_Glyph(slot, FT_Render_Mode.FT_RENDER_MODE_MONO)) {
-							for (int y = 0; y < size.y; ++y) {
-								for (int x = 0; x < size.x; ++x) {
-									uint bufferIdx = (y * size.x + x) * 4;
-									
-									ubyte monoColor =
-										(x > 0 && x+1 < size.x)
-										? indexBinaryBitmap(slot.bitmap, x-1, y)
-										: cast(ubyte)0;		// DMDTARD
-									
-									foreach (ref c; buffer[bufferIdx..bufferIdx+3]) {
-										c += monoColor / 4;
-									}
-									
-									gammaCorrect(buffer[bufferIdx..bufferIdx+3], 1.1);
-								}
-							}
-						}
-
-						FT_Done_Glyph(tmpGlyph);
 					}
 				}
 			}
@@ -724,8 +668,8 @@ final class Font {
 				if (0 == ftIndex) {
 					g.size = vec2i(height, height);
 					g.offset = vec2i(0, height);
-					g.advance = vec2i(height, 0);
-					int bytes = g.size.x * g.size.y * 4;
+					g.advance = vec2(height, 0);
+					int bytes = g.size.x * g.size.y * 4 * 3;
 					buffer.alloc(bytes);
 
 					for (int y = 1; y+1 < g.size.y; ++y) {
@@ -733,7 +677,7 @@ final class Font {
 							if (y != 1 && y+2 != g.size.y && x != 1 && x+2 != g.size.x &&
 							(x < g.size.x / 3 || x > 2 * g.size.x / 3 || y < g.size.y / 3 || y > 2 * g.size.y / 3)) continue;
 							int off = (y * g.size.x + x) * 4;
-							buffer[off .. off+4] = 255;
+							buffer[off*3 .. (off+4)*3] = 255;
 						}
 					}
 				} else {
@@ -751,9 +695,10 @@ final class Font {
 					
 					renderGlyph(buffer, g, ftIndex);
 					FT_Done_Glyph(glyph);
-					
+
+					// TODO: this with the 3x extended buffer taken into account
 					// Let's try to cut on a few pixels. Sometimes FreeType reports a bit larger bitmap than what is really needed.
-					{
+					/+{
 						// is any of the subpixels at (x,y) non-zero ?
 						bool any(int x, int y) {
 							int off = (y * g.size.x + x) * 4;
@@ -796,7 +741,7 @@ final class Font {
 								g.offset.y -= ymin;
 							}
 						}
-					}
+					}+/
 				}
 				
 				g.buffer = buffer;
@@ -816,28 +761,21 @@ final class Font {
 			return index;
 		}
 		
-		
-		// are we using any lcd filter ?
-		bool crispLCDFilter() {
-	 		return lcdFilter_ == LCDFilter.Crisp && (FontAntialiasing.LCD_RGB == antialiasing || FontAntialiasing.LCD_BGR == antialiasing);
-		}
-		
 				
-		uint				height_;
-		uint				lineSkip_;
-		uint				lineGap_;
+		uint			height_;
+		uint			lineSkip_;
+		uint			lineGap_;
 		int				ascent_;
 		int				descent_;
-		LCDFilter		lcdFilter_ = LCDFilter.Crisp;
 		
-		FT_Face		fontFace;
+		FT_Face			fontFace;
 		ubyte[]			fontData;
 		
-		uint[dchar]	glyphMap;
+		uint[dchar]		glyphMap;
 		uint[128]		asciiGlyphMap = uint.max;
 		Glyph[]			glyphs;
 
-		public FontAntialiasing antialiasing = FontAntialiasing.LCD_RGB;
+		public FontAntialiasing antialiasing = FontAntialiasing.Subpixel;
 
 
 		// Don't construct this object manually. Use the static opCall.

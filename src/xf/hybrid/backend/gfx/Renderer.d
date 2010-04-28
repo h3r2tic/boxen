@@ -75,6 +75,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		vec2 position;
 		vec4 color;
 		vec2 texCoord;
+		vec2 subpixelSamplingVector;
 	}
 
 
@@ -156,7 +157,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				auto raw = _imageLoader.load(img.path, &request);
 
 				assert (raw.valid);	// TODO: error handling
-				assert (Image.ColorLayout.RGBA == raw.colorLayout);
+				assert (Image.ColorLayout.RGBA == raw.colorLayout, img.path);
 				img.size = vec2i(raw.width, raw.height);
 				assert (iconCache !is null);
 				
@@ -196,6 +197,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		b.verts[vn].position = p + _offset;
 		b.verts[vn].color = _color;
 		b.verts[vn].texCoord = _texCoord;
+		b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 		++vn;
 		b.numVerts = vn;
 	}
@@ -210,11 +212,13 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		b.verts[vn].position = p0 + _offset + _lineOffset;
 		b.verts[vn].color = _color;
 		b.verts[vn].texCoord = _texCoord;
+		b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 		++vn;
 
 		b.verts[vn].position = p1 + _offset + _lineOffset;
 		b.verts[vn].color = _color;
 		b.verts[vn].texCoord = _texCoord;
+		b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 		++vn;
 		
 		b.numVerts = vn;
@@ -239,6 +243,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				b.verts[vn].position = p[i];
 				b.verts[vn].color = _color;
 				b.verts[vn].texCoord = _texCoord;
+				b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 				++vn;
 			}
 			
@@ -306,6 +311,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 					b.verts[vn].position = p[i];
 					b.verts[vn].color = c[i];
 					b.verts[vn].texCoord = tc[i];
+					b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 					++vn;
 				}
 				
@@ -321,6 +327,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 					b.verts[vn].position = (p[0] * (1.f - v) + p[1] * v) * (1.f - u) + (p[2] * v + p[3] * (1.f - v)) * u;
 					b.verts[vn].color = (c[0] * (1.f - v) + c[1] * v) * (1.f - u) + (c[2] * v + c[3] * (1.f - v)) * u;
 					b.verts[vn].texCoord = (tc[0] * (1.f - tv) + tc[1] * tv) * (1.f - tu) + (tc[2] * tv + tc[3] * (1.f - tv)) * tu;
+					b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 					++vn;
 				}
 				
@@ -384,6 +391,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				b.verts[vn].position = bp[i] + _lineOffset;
 				b.verts[vn].color = border.color;
 				b.verts[vn].texCoord = _texCoord;
+				b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 				++vn;
 			}
 			
@@ -447,6 +455,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		state.blend.enabled = true;
 		state.blend.src = Gfx.RenderState.Blend.Factor.Src1Color;
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
+		state.depth.enabled = false;
 		
 		final bin = renderList.getBin(_effect);
 		
@@ -566,6 +575,11 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				buffer = &vcache.vb;
 				attrib = &_tcVAttr;
 			}
+
+			with (*res.efInst.getVaryingParamData("VertexProgram.input.subpixelSamplingVector")) {
+				buffer = &vcache.vb;
+				attrib = &_spsvVAttr;
+			}
 		}
 		
 		return res;
@@ -670,6 +684,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				b.verts[vn].position = points[i];
 				b.verts[vn].color = _color;
 				b.verts[vn].texCoord = texCoords[i];
+				b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
 				++vn;
 			}
 		}
@@ -759,6 +774,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	Gfx.VertexAttrib	_posVAttr;
 	Gfx.VertexAttrib	_colorVAttr;
 	Gfx.VertexAttrib	_tcVAttr;
+	Gfx.VertexAttrib	_spsvVAttr;
 	
 
 	VertexCache* getVertexCache(uword verts) {
@@ -844,6 +860,12 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			Vertex.sizeof,
 			Gfx.VertexAttrib.Type.Vec2
 		);
+
+		_spsvVAttr = Gfx.VertexAttrib(
+			Vertex.init.subpixelSamplingVector.offsetof,
+			Vertex.sizeof,
+			Gfx.VertexAttrib.Type.Vec2
+		);
 	}
 
 
@@ -853,7 +875,14 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 	void viewportSize(vec2i s) {
 		_viewportSize = s;
-	}	
+	}
+
+
+	// implements FontRenderer
+	void subpixelSamplingVector(vec2 v) {
+		_subpixelSamplingVector = v;
+	}
+
 	
 	
 	private {
@@ -862,6 +891,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		GfxTexture		_texture;
 		BlendingMode	_blending;
 		float			_weight = 1.0;
+		vec2			_subpixelSamplingVector = vec2.zero;
 
 		vec2i			_viewportSize;
 		

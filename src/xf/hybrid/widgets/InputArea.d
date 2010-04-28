@@ -151,8 +151,8 @@ class InputArea : Widget {
 				int newPos = _visibleFrom;
 				
 				assert (font !is null);
-				font.layoutText(_text[_visibleFrom .. _visibleTo], (int charIndex, dchar c, vec2i pen, inout Glyph g) {
-					if (e.pos.x > pen.x + g.advance.x / 2) {
+				font.layoutText(_text[_visibleFrom .. _visibleTo], (int charIndex, dchar c, vec2 pen, inout Glyph g) {
+					if (e.pos.x > rndint(pen.x + g.advance.x / 2)) {
 						newPos = _visibleFrom + charIndex + 1;
 					}
 				});			
@@ -240,8 +240,8 @@ class InputArea : Widget {
 		_visibleTo = _caretPos;
 		
 		assert (font !is null);
-		font.layoutText(_text[_caretPos .. $], (int charIndex, dchar c, vec2i pen, inout Glyph g) {
-			if (pen.x + g.advance.x + spaceForCaret <= maxWidth) {
+		font.layoutText(_text[_caretPos .. $], (int charIndex, dchar c, vec2 pen, inout Glyph g) {
+			if (rndint(pen.x + g.advance.x) + spaceForCaret <= maxWidth) {
 				_visibleTo = _caretPos + charIndex + 1;
 			}
 		});
@@ -258,8 +258,8 @@ class InputArea : Widget {
 		if (leftStrWidth + _caretWidth <= maxWidth) {
 			_visibleFrom = 0;
 		} else {
-			font.layoutText(_text[0 .. _caretPos], (int charIndex, dchar c, vec2i pen, inout Glyph g) {
-				if (leftStrWidth - pen.x + spaceForCaret > maxWidth) {
+			font.layoutText(_text[0 .. _caretPos], (int charIndex, dchar c, vec2 pen, inout Glyph g) {
+				if (leftStrWidth - rndint(pen.x) + spaceForCaret > maxWidth) {
 					_visibleFrom = charIndex + 1;
 				}
 			});
@@ -348,8 +348,8 @@ class InputArea : Widget {
 			assert (font !is null);
 			int leftStrWidth = font.width(_text[0 .. _visibleTo]);
 			if (leftStrWidth > size.x) {
-				font.layoutText(_text[0 .. _visibleTo], (int charIndex, dchar c, vec2i pen, inout Glyph g) {
-					if (leftStrWidth - pen.x + spaceForCaret > size.x) {
+				font.layoutText(_text[0 .. _visibleTo], (int charIndex, dchar c, vec2 pen, inout Glyph g) {
+					if (leftStrWidth - rndint(pen.x) + spaceForCaret > size.x) {
 						_visibleFrom = charIndex + 1;
 					}
 				});
@@ -360,8 +360,8 @@ class InputArea : Widget {
 			_visibleTo = _visibleFrom;
 			
 			assert (font !is null);
-			font.layoutText(_text[_visibleFrom .. $], (int charIndex, dchar c, vec2i pen, inout Glyph g) {
-				int maxW = pen.x + g.advance.x;
+			font.layoutText(_text[_visibleFrom .. $], (int charIndex, dchar c, vec2 pen, inout Glyph g) {
+				int maxW = rndint(pen.x + g.advance.x);
 				if (maxW + spaceForCaret <= this.size.x) {
 					_visibleTo = _visibleFrom+charIndex+1;
 				}
@@ -525,6 +525,7 @@ class InputArea : Widget {
 			switch (dir) {
 				case 1: return _caretPos >= _text.length ? dchar.init : _text[_caretPos];
 				case -1: return _caretPos == 0 ? dchar.init : _text[_caretPos-1];
+				default: assert (false);
 			}
 		}
 		
@@ -532,6 +533,7 @@ class InputArea : Widget {
 			switch (dir) {
 				case 1: return moveCaretRight();
 				case -1: return moveCaretLeft();
+				default: assert (false);
 			}
 		}
 		

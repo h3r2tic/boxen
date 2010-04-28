@@ -24,6 +24,9 @@ interface FontRenderer {
 	
 	///
 	void blendingMode(BlendingMode);
+
+	///
+	void subpixelSamplingVector(vec2);
 	
 	///
 	void absoluteQuad(vec2[] points, vec2[] texCoords);
