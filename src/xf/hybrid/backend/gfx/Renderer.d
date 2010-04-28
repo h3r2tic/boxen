@@ -569,7 +569,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
 		state.depth.enabled = false;
 
-		log.trace("Renderer: numBatches: {}", _numBatches);
+		//log.trace("Renderer: numBatches: {}", _numBatches);
 		
 		for (int i = 0; i < _numBatches; ++i) {
 			final renderList = _r.createRenderList();
