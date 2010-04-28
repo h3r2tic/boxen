@@ -57,4 +57,5 @@ interface IRenderer :
 	RendererStats	getStats();
 	
 	RenderState*	state();
+	void			resetState();
 }

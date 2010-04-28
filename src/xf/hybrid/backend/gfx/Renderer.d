@@ -445,10 +445,6 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		
 		_glClipRect = Rect(vec2.zero, vec2.zero);
 
-		final renderList = _r.createRenderList();
-		assert (renderList !is null);
-		scope (success) _r.disposeRenderList(renderList);
-
 		// TODO: set whatnot for effect instances
 
 		final state = _r.state();
@@ -457,9 +453,12 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
 		state.depth.enabled = false;
 		
-		final bin = renderList.getBin(_effect);
-		
 		for (int i = 0; i < _numBatches; ++i) {
+			final renderList = _r.createRenderList();
+			assert (renderList !is null);
+			scope (success) _r.disposeRenderList(renderList);
+			final bin = renderList.getBin(_effect);
+
 			auto b = &_batches[i];
 
 			if (Batch.Type.Direct == b.type) {
@@ -487,8 +486,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 			rdata.coordSys = rdata.coordSys.identity;
 			rdata.scale = vec3.one;
 			rdata.indexData.numIndices = b.numVerts;
-			rdata.indexData.indexOffset =
-					cast(Vertex*)b.verts - cast(Vertex*)b._vcache.ptr;
+			
+			rdata.indexData.indexOffset
+				= cast(Vertex*)b.verts - cast(Vertex*)b._vcache.ptr;
 			
 			switch (b.type) {
 				case Batch.Type.Triangles: {
@@ -512,9 +512,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 			rdata.numInstances = 1;
 			rdata.flags = rdata.flags.NoIndices;
-		}
 
-		_r.render(renderList);
+			_r.render(renderList);
+		}
 	}
 	
 	

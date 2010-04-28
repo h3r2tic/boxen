@@ -48,6 +48,7 @@ class TestApp : GfxApp {
 
 
 	override void render() {
+		renderer.resetState();
 		renderer.clearBuffers();
 
 		Hybrid.gui.begin(guiConfig);
