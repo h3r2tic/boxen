@@ -46,7 +46,7 @@ void FragmentProgram(
 	float4 tp2 = tex2D(tex, base + 2 * spsv / 3);
 	float4 tp3 = tex2D(tex, base + spsv);
 
-	//const float4 wb = float4(0, 0, 1, 0);
+	//const float4 wb = float4(0.08, 0.24, 0.36, 0.24);
 	//const float4 wb = float4(0.07, 0.23, 0.40, 0.23);
 	//const float4 wb = float4(0.06, 0.20, 0.48, 0.20);
 	const float4 wb = float4(0.04, 0.125, 0.69, 0.125);

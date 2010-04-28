@@ -11,6 +11,7 @@ private {
 	import xf.mem.Array;
 	
 	import xf.hybrid.Math;
+	import xf.omg.core.LinearAlgebra : vec4ub;
 	
 	import derelict.freetype.ft;
 	import derelict.util.loader;
@@ -431,7 +432,7 @@ final class Font {
 
 			vec2i texSize = vec2i(g.size.x * 3, g.size.y);
 			
-			Texture tex = FontMngr.fontRenderer.iconCache.get(texSize, bl, tr, tbl, ttr);
+			Texture tex = FontMngr.fontRenderer.iconCache.get(texSize, bl, tr, tbl, ttr, vec2i(1, 0));
 			
 			// copy our bitmap into the texture
 			FontMngr.fontRenderer.iconCache.updateTexture(tex, bl, texSize, g.buffer.ptr);
@@ -565,7 +566,7 @@ final class Font {
 					default: assert (false);
 				}
 
-				const int borderWidth = 2;
+				const int borderWidth = 1;
 				
 				// we need to expand the bitmap horizontally to do our own filtering
 				glyphWidth += borderWidth * 2;
@@ -578,7 +579,7 @@ final class Font {
 				int bytes = size.x * size.y * 4 * 3;
 				if (buffer.length < bytes) buffer.realloc(bytes);
 				
-				buffer[] = 0;
+				(cast(vec4ub[])buffer)[] = vec4ub(255, 255, 255, 0);
 				
 				// return 255 if the bit at (x,y) position is set. 0 otherwise.
 				ubyte indexBinaryBitmap(FT_Bitmap bitmap, int x, int y) {
