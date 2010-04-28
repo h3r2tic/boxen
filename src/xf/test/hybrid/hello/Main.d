@@ -31,6 +31,8 @@ class TestApp : GfxApp {
 	
 	override void configureWindow(Window wnd) {
 		super.configureWindow(wnd);
+		wnd.width = 800;
+		wnd.height = 500;
 		wnd.title = "Hybrid hello world";
 	}
 	

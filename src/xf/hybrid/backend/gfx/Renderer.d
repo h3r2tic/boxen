@@ -309,7 +309,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				b.verts[vn].position = p;
 				b.verts[vn].color = _color;
 				b.verts[vn].texCoord = t;
-				b.verts[vn].subpixelSamplingVector = vec2(side.x * brush.texelSize * (1.0f / 3.0f), 0);
+				b.verts[vn].subpixelSamplingVector = vec2(side.x * brush.texelSize * (-1.0f / 3.0f), 0);
 				++vn;
 			}
 
