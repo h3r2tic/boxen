@@ -10,21 +10,10 @@ private {
 
 
 ///
-enum BlendingMode {
-	Alpha,
-	Subpixel,
-	None
-}
-
-
-///
 interface FontRenderer {
 	///
 	void enableTexturing(Texture tex);
 	
-	///
-	void blendingMode(BlendingMode);
-
 	///
 	void subpixelSamplingVector(vec2);
 	

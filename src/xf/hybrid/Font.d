@@ -280,7 +280,7 @@ final class Font {
 	*/
 	void flush() {
 		auto r = FontMngr.fontRenderer;
-		r.blendingMode = BlendingMode.None;
+		//r.blendingMode = BlendingMode.None;
 
 		vec2[4] points = vec2.zero;
 		vec2[4] texCoords = vec2.zero;
@@ -455,7 +455,7 @@ final class Font {
 			assert (FontMngr.fontRenderer !is null);
 			
 			auto r = FontMngr.fontRenderer;
-			r.blendingMode = BlendingMode.Subpixel;		// might be optimized for grayscale antialiasing or no antialiasing at all
+			//r.blendingMode = BlendingMode.Subpixel;		// might be optimized for grayscale antialiasing or no antialiasing at all
 
 			Rect clipRect = r.getClipRect();
 			assert (clipRect != Rect.init, "Renderer.getClipRect returned Rect.init; make sure to call renderer.setClipRect() before rendering the GUI");
@@ -501,7 +501,7 @@ final class Font {
 			
 			// this is a cheap operation it doesn't really change any GL state or whanot, just restores the 'normal' blending mode for
 			// quads added next. remember that the *gui* renderer doesn't only deal with text.
-			r.blendingMode = BlendingMode.Alpha;
+			//r.blendingMode = BlendingMode.Alpha;
 			r.subpixelSamplingVector = vec2.zero;
 			
 			return PrintResult.Ok;
