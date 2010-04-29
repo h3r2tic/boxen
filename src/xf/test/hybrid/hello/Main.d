@@ -33,6 +33,9 @@ class TestApp : GfxApp {
 		super.configureWindow(wnd);
 		wnd.width = 800;
 		wnd.height = 500;
+		/+wnd.width = 1050;
+		wnd.height = 1680;
+		wnd.fullscreen = true;+/
 		wnd.title = "Hybrid hello world";
 	}
 	
