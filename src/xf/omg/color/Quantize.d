@@ -31,6 +31,7 @@ vec3ub linearQuantizeColor(vec3 c) {
 // Basically, for each component, the conversion func checks whether
 // rounding down or up yields the least error in the original linear function
 // then chooses this round-off mode.
+// Note: this could likely be optimized by finding a cutoff function for a Gamma
 vec3ub quantizeColor(Gamma)(vec3 c) {
 	vec3ub res = void;
 

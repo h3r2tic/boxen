@@ -116,15 +116,15 @@ class MeshStructure : IStructureData {
 
 
 
-Kernel defaultMeshStructureKernel;
+KernelRef defaultMeshStructureKernel;
 static this() {
 	defaultMeshStructureKernel.name = "DefaultMeshStructure";
 }
 
 
-Kernel* defaultStructureKernel(cstring structureTypeName) {
+KernelRef defaultStructureKernel(cstring structureTypeName) {
 	switch (structureTypeName) {
-		case "Mesh": return &defaultMeshStructureKernel;
+		case "Mesh": return defaultMeshStructureKernel;
 		default: assert (false, structureTypeName);
 	}
 }
@@ -194,7 +194,7 @@ class TestApp : GfxApp {
 			final rid = createRenderable();	
 			renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 			renderables.structureData[rid] = ms;
-			renderables.surfaceKernel[rid] = null;	// TODO
+			renderables.surfaceKernel[rid] = KernelRef.init;	// TODO
 			renderables.surfaceData[rid] = null;	// TODO
 			renderables.transform[rid] = CoordSys.identity;
 			renderables.localHalfSize[rid] = compiledMesh.halfSize;

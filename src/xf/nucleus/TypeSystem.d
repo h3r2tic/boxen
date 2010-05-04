@@ -31,7 +31,7 @@ private template ScrapDgAllocator() {
 	void _dispose(void* ptr) {}
 }
 
-private template ScrapDgArrayAllocator() {
+/+private+/ template ScrapDgArrayAllocator() {
 	private import xf.Common;
 	
 	void* delegate(uword) _outerAllocator;

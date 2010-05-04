@@ -30,6 +30,10 @@ public {
 
 class KDefParserBase : Parser!(KDefToken){
 	public {
+		alias void* delegate(size_t) Allocator;
+		Allocator	allocator;
+
+		
 		abstract bool	parse_Syntax();
 		Statement[]	statements;
 	}
@@ -60,8 +64,9 @@ class KDefParserBase : Parser!(KDefToken){
 		KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs) {
 			auto kd = new KernelDef;
 			kd.functions = funcs;
+			pragma (msg, "TODO: parseKernelDef");
+			return kd;
 			// TODO
-			assert (false);
 			//kd.attribs = attribs;
 			//kd.overrideOrdering(before.dupStringArray(), after.dupStringArray());
 			//return kd;
@@ -96,22 +101,92 @@ class KDefParserBase : Parser!(KDefToken){
 
 
 		AbstractFunction createAbstractFunction(string name, ParamDef[] params) {
-			return AbstractFunction(name, _createFunctionParams(params));
+			auto res = new AbstractFunction(name, allocator);
+			_createFunctionParams(params, res);
+			return res;
 		}
 		
 		Function createFunction(string name, ParamDef[] params, Code code) {
-			return Function(name, _createFunctionParams(params), code);
+			auto res = new Function(name, code, allocator);
+			_createFunctionParams(params, res);
+			return res;
 		}
 
-		private void _createFunctionParams(ParamDef[] defs) {
-			// TODO: mem
-			Param[] res = new Param[defs.length];
-			foreach (i, d; defs) {
-				auto r = &res[i];
-				r.dir = ParamDirectionFromString(d.dir);
-				r.type = d.type;
-				r.name = d.name;
+		private void _createFunctionParams(
+				ParamDef[] defs,
+				AbstractFunction func
+		) {
+			foreach (d; defs) {
+				final dir = ParamDirectionFromString(d.dir);
 
+				auto p = func.params.add(
+					dir,
+					d.name
+				);
+
+				if (ParamDirection.In == dir) {
+					p.hasPlainSemantic = true;
+					final psem = p.semantic();
+
+					if (d.type.length > 0) {
+						p.type = d.type;
+					}
+
+					void buildSemantic(ParamSemanticExp sem) {
+						if (sem is null) {
+							return;
+						}
+						
+						if (sem) {
+							if (ParamSemanticExp.Type.Sum == sem.type) {
+								buildSemantic(sem.exp1);
+								buildSemantic(sem.exp2);
+							} else if (ParamSemanticExp.Type.Trait == sem.type) {
+								psem.addTrait(sem.name, sem.value);
+								// TODO: check the type?
+							} else {
+								// TODO: err
+								assert (false, "meh");
+							}
+						}
+					}
+					
+					buildSemantic(d.paramSemantic);
+				} else {
+					p.hasPlainSemantic = false;
+					final psem = p.semanticExp();
+
+					if (d.type.length > 0) {
+						psem.addTrait("type", d.type, SemanticExp.TraitOp.Add);
+					}
+
+					void buildSemanticExp(ParamSemanticExp sem, bool add) {
+						if (sem is null) {
+							return;
+						}
+						
+						if (sem) {
+							if (ParamSemanticExp.Type.Sum == sem.type) {
+								buildSemanticExp(sem.exp1, add);
+								buildSemanticExp(sem.exp2, add);
+							} else if (ParamSemanticExp.Type.Exclusion == sem.type) {
+								buildSemanticExp(sem.exp1, add);
+								buildSemanticExp(sem.exp2, !add);
+							} else if (ParamSemanticExp.Type.Trait == sem.type) {
+								auto opType = SemanticExp.TraitOp.Add;
+								if (!add) {
+									opType = SemanticExp.TraitOp.Remove;
+								}
+								psem.addTrait(sem.name,	sem.value, opType);
+							} else {
+								// TODO: err
+								assert (false, "meh");
+							}
+						}
+					}
+					
+					buildSemanticExp(d.paramSemantic, true);
+				}
 			}
 		}
 

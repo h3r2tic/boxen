@@ -1780,7 +1780,7 @@ class KDefParser:KDefParserBase{
 	/*
 	ParamSemanticSum
 		= ParamSemanticExp createParamSemanticSum(ParamSemanticExp a,ParamSemanticExp b)
-		::= ParamSemantic:a "+" ParamSemantic:b;
+		::= (ParamSemanticTrait:a | "(" ParamSemantic:a ")") "+" ParamSemantic:b;
 
 	*/
 	ParamSemanticExp value_ParamSemanticSum;
@@ -1791,17 +1791,39 @@ class KDefParser:KDefParserBase{
 
 		// AndGroup
 			auto position3 = pos;
-				// Production
-				if(!parse_ParamSemantic()){
-					goto fail4;
-				}
-				smartAssign(var_a,value_ParamSemantic);
+				// OrGroup term5
+					// Production
+					if(parse_ParamSemanticTrait()){
+						smartAssign(var_a,value_ParamSemanticTrait);
+						goto term5;
+					}
+				term6:
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("(")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_ParamSemantic()){
+								goto fail9;
+							}
+							smartAssign(var_a,value_ParamSemantic);
+						term11:
+							// Terminal
+							if(match(")")){
+								goto term5;
+							}
+						fail9:
+						pos = position8;
+						goto fail4;
 			term5:
 				// Terminal
 				if(!match("+")){
 					goto fail4;
 				}
-			term6:
+			term12:
 				// Production
 				if(parse_ParamSemantic()){
 					smartAssign(var_b,value_ParamSemantic);
@@ -1824,7 +1846,7 @@ class KDefParser:KDefParserBase{
 	/*
 	ParamSemanticExclusion
 		= ParamSemanticExp createParamSemanticExclusion(ParamSemanticExp a,ParamSemanticExp b)
-		::= ParamSemantic:a "-" ParamSemantic:b;
+		::= (ParamSemanticTrait:a | "(" ParamSemantic:a ")") "-" ParamSemantic:b;
 
 	*/
 	ParamSemanticExp value_ParamSemanticExclusion;
@@ -1835,17 +1857,39 @@ class KDefParser:KDefParserBase{
 
 		// AndGroup
 			auto position3 = pos;
-				// Production
-				if(!parse_ParamSemantic()){
-					goto fail4;
-				}
-				smartAssign(var_a,value_ParamSemantic);
+				// OrGroup term5
+					// Production
+					if(parse_ParamSemanticTrait()){
+						smartAssign(var_a,value_ParamSemanticTrait);
+						goto term5;
+					}
+				term6:
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("(")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_ParamSemantic()){
+								goto fail9;
+							}
+							smartAssign(var_a,value_ParamSemantic);
+						term11:
+							// Terminal
+							if(match(")")){
+								goto term5;
+							}
+						fail9:
+						pos = position8;
+						goto fail4;
 			term5:
 				// Terminal
 				if(!match("-")){
 					goto fail4;
 				}
-			term6:
+			term12:
 				// Production
 				if(parse_ParamSemantic()){
 					smartAssign(var_b,value_ParamSemantic);
@@ -1868,7 +1912,7 @@ class KDefParser:KDefParserBase{
 	/*
 	ParamSemanticTrait
 		= ParamSemanticExp parseParamSemanticTrait(string name,Value value)
-		::= (["in" "."] Identifier | "in" "." Identifier "." "actual"):name "=" Value:value;
+		::= (["in" "."] Identifier | "in" "." Identifier "." "actual"):name Value:value;
 
 	*/
 	ParamSemanticExp value_ParamSemanticTrait;
@@ -1939,11 +1983,6 @@ class KDefParser:KDefParserBase{
 					pass7:
 					smartAssign(var_name,slice(position6,pos));
 			term5:
-				// Terminal
-				if(!match("=")){
-					goto fail4;
-				}
-			term24:
 				// Production
 				if(parse_Value()){
 					smartAssign(var_value,value_Value);
