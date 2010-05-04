@@ -160,6 +160,12 @@ final class Graph {
 		return GraphNodeId(cast(ushort)idx, _idReuseCounts[idx]);
 	}
 
+
+	bool isValidNodeIndex(uword idx) {
+		return idx < _capacity && _readFlag(_presentFlags, idx);
+	}
+	
+
 	/**
 	 * Marks the node as unused. Does not shift node IDs around.
 	 */

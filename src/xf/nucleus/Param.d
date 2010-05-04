@@ -4,6 +4,8 @@ private {
 	import xf.Common;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
+	import xf.mem.Array;
+	import xf.mem.ArrayAllocator;
 }
 
 
@@ -170,7 +172,7 @@ struct Param {
 
 
 
-interface IParamSupport {
+/+interface IParamSupport {
 	Param[] params();
 	void overrideParams(Param[] p);
 	uint numParams();
@@ -185,15 +187,125 @@ interface IParamSupport {
 	void removeParams(bool delegate(ref Param) dg);
 	Param* getParam(cstring name);
 	int paramIndex(Param* p);
+}+/
+
+
+struct ParamList {
+	private {
+		alias void* delegate(uword) Allocator;
+		union {
+			Array!(
+					Param,
+					ArrayExpandPolicy.FixedAmount!(4),
+					ScrapDgArrayAllocator
+					
+			)				_params;
+			Allocator		_allocator;
+		}
+	}
+
+	
+	uword length() {
+		return _params.length;
+	}
+
+
+	Param* opIndex(uword i) {
+		assert (i < _params.length);
+		return _params.ptr + i;
+	}
+
+	
+	int opApply(int delegate(ref Param) dg) {
+		foreach (ref p; _params) {
+			if (auto r = dg(p)) {
+				return r;
+			}
+		}
+		return 0;
+	}
+	
+
+	int opApply(int delegate(ref int, ref Param) dg) {
+		foreach (ref i, ref p; _params) {
+			if (auto r = dg(i, p)) {
+				return r;
+			}
+		}
+		return 0;
+	}
+
+	bool getInput(cstring name, ref Param res) {
+		foreach (ref p; _params) {
+			if (p.isInput && p.name == name) {
+				res = p;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	bool getOutput(cstring name, ref Param res) {
+		foreach (ref p; _params) {
+			if (!p.isInput && p.name == name) {
+				res = p;
+				return true;
+			}
+		}
+		return false;
+	}
+
+
+	Param* add(ParamDirection dir, cstring name) {
+		final pidx = _params.pushBack(Param(_allocator));
+		final p = _params.ptr + pidx;
+		p.dir = dir;
+		p.name = name;
+		return p;
+	}
+
+	
+	void add(Param p) {
+		_params.pushBack(p.dup(_allocator));
+	}
+	
+	
+	void remove(cstring name) {
+		foreach (i, ref p; _params) {
+			if (p.name == name) {
+				_params.removeKeepOrder(i);
+				return;
+			}
+		}
+		assert (false, name);
+	}
+	
+	
+	void remove(bool delegate(ref Param) dg) {
+		_params.removeKeepOrder(dg);
+	}
+
+
+	Param* get(cstring name) {
+		foreach (ref p; _params) {
+			if (p.name == name) {
+				return &p;
+			}
+		}
+		return null;
+	}
 }
 
 
-
 // TODO: mem
-template MParamSupport() {
-	static assert (is(typeof(this) == class));
+/+template MParamSupport() {
+	static assert (
+		is(typeof(this) == class)
+		|| is(typeof(this.ThisStructHasReferenceSemantics))
+	);
 
 	private import xf.nucleus.TypeSystem : Semantic;
+	private import xf.Common;
 	
 	
 	protected Param[]	_params;
@@ -201,20 +313,6 @@ template MParamSupport() {
 	
 	Param[] params() {
 		return _params;
-	}
-	
-	void overrideParams(Param[] p) {
-		_params = p;
-		_paramsOwner = true;
-	}
-	
-	typeof(this) dupParamsTo(typeof(this) o) {
-		o._params = this._params.dup;
-		foreach (ref p; o._params) {
-			p = p.dup;
-		}
-		o._paramsOwner = false;
-		return o;
 	}
 	
 	uint numParams() {
@@ -250,7 +348,8 @@ template MParamSupport() {
 		return false;
 	}
 
-	void addParam(ParamDirection dir, cstring type, cstring name, Semantic sem) {
+
+	Param* addParam(ParamDirection dir, cstring type, cstring name) {
 		/+assert (name.length > 0);
 		if (!_paramsOwner) {
 			_params = _params.dup;
@@ -260,28 +359,6 @@ template MParamSupport() {
 		assert (false, "TODO");
 	}
 
-
-	void addParam(cstring type, cstring name, Semantic sem) {
-		/+assert (name.length > 0);
-		if (!_paramsOwner) {
-			_params = _params.dup;
-			_paramsOwner = true;
-		}
-		_params ~= xf.nucleus.CommonDef.Param(xf.nucleus.CommonDef.Param.Direction.In, type, name, sem);+/
-		assert (false, "TODO");
-	}
-
-
-	void addParam(cstring type, cstring name) {
-		/+assert (name.length > 0);
-		if (!_paramsOwner) {
-			_params = _params.dup;
-			_paramsOwner = true;
-		}
-		_params ~= xf.nucleus.CommonDef.Param(xf.nucleus.CommonDef.Param.Direction.In, type, name, Semantic.init);+/
-		assert (false, "TODO");
-	}
-	
 	
 	void addParam(Param p) {
 		/+assert (p.name.length > 0, p.toString);
@@ -338,7 +415,7 @@ template MParamSupport() {
 		assert (&_params[res] is p);
 		return res;
 	}
-}
+}+/
 
 
 

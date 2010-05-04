@@ -141,6 +141,39 @@ struct Array(
 		
 		return 0;
 	}
+
+
+	void removeKeepOrder(uword i) {
+		assert (i < _length);
+		for (; i+1 < _length; ++i) {
+			_ptr[i] = _ptr[i+1];
+		}
+		--_length;
+	}
+
+
+	void removeKeepOrder(bool delegate(ref T) filter) {
+		uword dst = 0;
+		for (uword src = 0; src < _length; ++src) {
+			if (!filter(_ptr[src])) {
+				if (src != dst) {
+					_ptr[dst++] = _ptr[src];
+				} else {
+					++dst;
+				}
+			}
+		}
+		_length = dst;
+	}
+
+
+	void removeNoOrder(uword idx) {
+		assert (idx < _length);
+		if (idx != _length-1) {
+			_ptr[idx] = _ptr[_length-1];
+		}
+		--_length;
+	}
 	
 	
 	size_t length() {

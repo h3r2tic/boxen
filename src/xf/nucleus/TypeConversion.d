@@ -22,17 +22,17 @@ struct SemanticConverter {
 	const bool	acceptAdditionalTraits = true;
 
 	Semantic* sourceSemantic() {
-		assert (2 == func.numParams);
+		assert (2 == func.params.length);
 		assert (func.params[0].hasPlainSemantic);
 		assert (func.params[0].isInput);
 		return func.params[0].semantic();
 	}
 
 	void convert(Semantic* input, Semantic* output) {
-		assert (2 == func.numParams);
+		assert (2 == func.params.length);
 
-		final iPar = &func.params[0];
-		final oPar = &func.params[1];
+		final iPar = func.params[0];
+		final oPar = func.params[1];
 
 		assert (iPar.hasPlainSemantic);
 

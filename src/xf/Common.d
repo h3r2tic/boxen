@@ -16,6 +16,18 @@ typedef char[] string;
 alias size_t	uword;
 alias ptrdiff_t	word;
 
+static if (8 == uword.sizeof) {
+	alias uint	uhword;
+	alias int	hword;
+} else {
+	static assert (4 == uword.sizeof);
+	alias ushort	uhword;
+	alias short		hword;
+}
+
+static assert (uhword.sizeof * 2 == uword.sizeof);
+static assert (hword.sizeof * 2 == word.sizeof);
+
 alias byte		i8;
 alias short		i16;
 alias int		i32;

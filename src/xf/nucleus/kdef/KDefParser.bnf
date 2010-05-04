@@ -198,18 +198,18 @@ ParamSemantic
 
 ParamSemanticSum
 	= ParamSemanticExp createParamSemanticSum(ParamSemanticExp a, ParamSemanticExp b)
-	::=	ParamSemantic:a "+" ParamSemantic:b;
+	::=	(ParamSemanticTrait:a | "(" ParamSemantic:a ")") "+" ParamSemantic:b;
 
 ParamSemanticExclusion
 	= ParamSemanticExp createParamSemanticExclusion(ParamSemanticExp a, ParamSemanticExp b)
-	::=	ParamSemantic:a "-" ParamSemantic:b;
+	::=	(ParamSemanticTrait:a | "(" ParamSemantic:a ")") "-" ParamSemantic:b;
 
 ParamSemanticTrait
 	= ParamSemanticExp parseParamSemanticTrait(string name, Value value)
 	::= (
 			["in" "."] Identifier
 		|	"in" "." Identifier "." "actual"
-		):name "=" Value:value;
+		):name Value:value;
 
 // ----------------------------------------------------------------------------------------------------------------
 

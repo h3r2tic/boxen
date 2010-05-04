@@ -1,0 +1,128 @@
+implement Transparent(50), Lul(10)
+quark TransparentLul {
+	D {
+		void somefunc() {
+			++i;
+			--j;
+			case poop:
+				break;
+		}
+	}
+	
+	quark zomg(in int foo, out char[] bar, out vec3 baz)
+	D {
+		int x;
+		++x;
+		throw new Exception("lololol");
+		`omg heh`
+	}
+}
+
+
+implement Poop(10)
+quark ConcretePoop {
+	Cg {
+		...
+	}
+}
+
+
+BasicExtrudedParticleSystem = kernel Something, SomethingElse {
+	after Poop;
+	before Omg;
+	
+	quark zomg(
+		in int foo <
+			heh "lol"
+		+	blah 123
+		+	maxValue 10
+		>,
+		out char[] bar <
+			meh 1.23
+		+	blah 1 2 3
+		> = 123.456,
+		out vec3 baz
+	);
+};
+
+
+Poop = kernel {
+	attribs = (
+		kernel heh <super blah>,
+		kernel zomg <super lol>
+	);
+};
+
+
+Omg = kernel {
+};
+
+
+Something = kernel {
+};
+
+
+SomethingElse = kernel {
+};
+
+
+converter normalizer(in vec3 a, out vec3 b <unit true>)
+D {
+	b = a.normalized;
+}
+
+
+converter(
+	in vec3 a <basis object>,
+	out vec3 b <basis world>
+) Cg {
+	b = mul(context.someMat, a);
+}
+
+
+implement BasicExtrudedParticleSystem(100)
+graph {
+	/+import "foo/bar.baz" : SomeGraph.Blah;
+	//import "zomg" : *;
+	import "zomg" : poop.*;+/
+
+	SomeNode = graph {
+		foo = node {
+			type = "lol";
+		};
+	};
+
+	SomeNode.foo.zomg = 3.14159;
+
+	dupa = node {
+		type = "gpuWrap";
+		kernelName = "BasicExtrudedParticleSystemGPUWrap";
+		funcName = "main";
+		center = 579.50 520.50;
+		size = 343.00 72.00;
+		primLevel = "cpu";
+		params = (
+			int foobar = 0,
+			float4x4 blah,
+			float3 omg <unit true>
+		);
+	};
+	
+	jasia = node {
+	};
+
+	connect dupa.a jasia.b;
+}
+
+
+zomg = trait {
+	Foo,
+	Bar,
+	Baz
+};
+
+blehlol = trait {
+	One,
+	Two,
+	Three
+} = One;
