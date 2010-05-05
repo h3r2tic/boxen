@@ -59,8 +59,8 @@ PreprocessStatement
 	::= "preprocess" Identifier:processorFunction Identifier:processor ";";
 	
 ConverterDeclStatement
-	= new ConverterDeclStatement(ParamDef[] params, Code code, string name)
-	::= "converter" [Identifier:name] ParamList:params Code:code;
+	= ConverterDeclStatement createConverter(string name, ParamDef[] params, Code code, double cost)
+	::= "converter" "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
 	
 // ----------------------------------------------------------------------------------------------------------------
 // special Values
@@ -178,7 +178,7 @@ Param
 	::= [ParamDirection:dir]
 	ParamType:type
 	Identifier:name
-	[ "<" ParamSemantic:semantic ">" ]
+	[ "<" [ParamSemantic:semantic] ">" ]
 	[ "=" Value:defaultValue ];
 
 ParamDirection

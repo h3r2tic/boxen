@@ -7,8 +7,8 @@ private {
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.kdef.Common : GraphDef, KDefModule;
-	import xf.nucleus.util.AbstractRegistry;
-	import xf.nucleus.SemanticTypeSystem;
+	//import xf.nucleus.util.AbstractRegistry;
+	import xf.nucleus.TypeConversion;
 
 	alias char[] string;
 }
@@ -16,9 +16,10 @@ private {
 
 
 
-abstract class IKDefRegistry : AbstractRegistry {
+abstract class IKDefRegistry /+: AbstractRegistry +/{
 	this (string fnmatch) {
-		super(fnmatch);
+		// TODO
+		//super(fnmatch);
 	}
 	
 	abstract void dumpInfo();

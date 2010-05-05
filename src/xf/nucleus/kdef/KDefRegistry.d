@@ -8,8 +8,9 @@ private {
 	import xf.nucleus.kdef.KDefProcessor;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.quark.QuarkDef;
-	import xf.nucleus.util.AbstractRegistry;
+	//import xf.nucleus.util.AbstractRegistry;
 	import xf.nucleus.kdef.model.IKDefFileParser;
+	import xf.nucleus.TypeConversion;
 	
 	import tango.text.convert.Format;
 	import tango.io.Stdout;
@@ -27,7 +28,9 @@ class KDefRegistry : IKDefRegistry {
 
 
 	this() {
-		kdefProcessor = new KDefProcessor(_fileParser = create!(IKDefFileParser)());
+		// TODO
+		pragma (msg, "TODO: KDefRegistry and its base.");
+		//kdefProcessor = new KDefProcessor(_fileParser = create!(IKDefFileParser)());
 		super("*.kdef");
 	}
 	
@@ -57,10 +60,11 @@ class KDefRegistry : IKDefRegistry {
 	}
 	
 
-	override void processFile(string path) {
+	// TODO
+	/+override void processFile(string path) {
 		_fileParser.setVFS(_vfs);
 		kdefProcessor.processFile(path);
-	}
+	}+/
 	
 	
 	int kernels(int delegate(ref KernelDef) dg) {

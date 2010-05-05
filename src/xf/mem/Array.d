@@ -143,7 +143,7 @@ struct Array(
 	}
 
 
-	void removeKeepOrder(uword i) {
+	void removeKeepOrder(size_t i) {
 		assert (i < _length);
 		for (; i+1 < _length; ++i) {
 			_ptr[i] = _ptr[i+1];
@@ -153,8 +153,8 @@ struct Array(
 
 
 	void removeKeepOrder(bool delegate(ref T) filter) {
-		uword dst = 0;
-		for (uword src = 0; src < _length; ++src) {
+		size_t dst = 0;
+		for (size_t src = 0; src < _length; ++src) {
 			if (!filter(_ptr[src])) {
 				if (src != dst) {
 					_ptr[dst++] = _ptr[src];
@@ -167,7 +167,7 @@ struct Array(
 	}
 
 
-	void removeNoOrder(uword idx) {
+	void removeNoOrder(size_t idx) {
 		assert (idx < _length);
 		if (idx != _length-1) {
 			_ptr[idx] = _ptr[_length-1];

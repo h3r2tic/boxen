@@ -9,6 +9,6 @@ private {
 
 
 interface IKDefFileParser {
-	KDefModule parseFile(string sourcePath);
+	KDefModule parseFile(string sourcePath, void* delegate(size_t) allocator);
 	void setVFS(VfsFolder);
 }

@@ -28,5 +28,5 @@ abstract class KernelRegistry {
 	
 	
 	abstract KernelDef	opIndex(char[] name);
-	abstract int			kernels(int delegate(ref KernelDef) dg);
+	abstract int		kernels(int delegate(ref KernelDef) dg);
 }

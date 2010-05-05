@@ -66,13 +66,13 @@ SomethingElse = kernel {
 };
 
 
-converter normalizer(in vec3 a, out vec3 b <unit true>)
+converter(20) normalizer(in vec3 a, out vec3 b <unit true>)
 D {
 	b = a.normalized;
 }
 
 
-converter(
+converter(10) (
 	in vec3 a <basis object>,
 	out vec3 b <basis world>
 ) Cg {
@@ -126,3 +126,68 @@ blehlol = trait {
 	Two,
 	Three
 } = One;
+
+
+implement RenderViewport(100)
+graph default {
+node_0 = node {
+	type = "calc";
+	kernelName = "ClearBuffer";
+	funcName = "main";
+	center = 251.00 266.00;
+	size = 130.00 78.00;
+	primLevel = "cpu";
+};
+node_1 = node {
+	type = "input";
+	params = (
+		out vec3 pos<>,
+		out quat rot<>
+	);
+	center = 133.00 116.00;
+	size = 105.00 80.00;
+	primLevel = "cpu";
+};
+node_2 = node {
+	type = "calc";
+	kernelName = "DeferredDrawScene";
+	funcName = "main";
+	center = 512.50 159.00;
+	size = 173.00 102.00;
+	primLevel = "cpu";
+};
+node_3 = node {
+	type = "calc";
+	kernelName = "Bloom";
+	funcName = "main";
+	center = 1099.00 366.00;
+	size = 105.00 78.00;
+	primLevel = "cpu";
+};
+node_4 = node {
+	type = "calc";
+	kernelName = "GetBuffer";
+	funcName = "main";
+	center = 15.00 268.00;
+	size = 121.00 78.00;
+	primLevel = "cpu";
+};
+node_5 = node {
+	type = "calc";
+	kernelName = "DisplayBuffer";
+	funcName = "main";
+	center = 1335.00 266.00;
+	size = 141.00 78.00;
+	primLevel = "cpu";
+};
+connect node_0 node_2;
+
+connect node_1 node_2;
+
+connect node_2.outfb node_3.infb;
+
+connect node_3.outfb node_5.infb;
+
+connect node_4 node_0;
+
+}
