@@ -27,7 +27,7 @@ abstract class QuarkRegistry {
 	
 
 	abstract QuarkDef	opIndex(char[] name);
-	abstract int			quarks(int delegate(ref QuarkDef) dg);
+	abstract int		quarks(int delegate(ref QuarkDef) dg);
 	
 	alias quarks opApply;
 	

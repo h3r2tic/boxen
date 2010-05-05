@@ -19,7 +19,9 @@ class AbstractFunction {
 	
 	this (cstring name, void* delegate(uword) allocator) {
 		_allocator = allocator;
-		this.name = ((cast(char*)allocator(name.length))[0..name.length] = name);
+		if (name) {
+			this.name = ((cast(char*)allocator(name.length))[0..name.length] = name);
+		}
 	}
 }
 

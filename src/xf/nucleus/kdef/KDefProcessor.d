@@ -8,8 +8,11 @@ private {
 	import xf.nucleus.kdef.model.IKDefFileParser;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.quark.QuarkDef;
-	import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
-	import xf.nucleus.CommonDef;
+
+	import xf.nucleus.TypeConversion;
+	import xf.nucleus.Function;
+	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
+	//import xf.nucleus.CommonDef;
 
 	import xf.utils.Graph : findTopologicalOrder, CycleHandlingMode;
 	import xf.utils.Memory : alloc, free, append;
@@ -25,7 +28,8 @@ private {
 
 
 class KDefProcessor {
-	this (IKDefFileParser fileParser) {
+	this (IKDefFileParser fileParser, void* delegate(size_t) allocator) {
+		this._allocator = allocator;
 		this.fileParser = fileParser;
 	}
 	
@@ -37,7 +41,7 @@ class KDefProcessor {
 			}
 		} else {
 			Stdout.formatln("KDefProcessor.parseFile({})", path);
-			auto mod = fileParser.parseFile(path);
+			auto mod = fileParser.parseFile(path, _allocator);
 			modules[path] = mod;
 			mod.processing = true;
 			mod.filePath = path;
@@ -341,21 +345,16 @@ class KDefProcessor {
 		}
 		
 		
-		void dumpInfo(KernelFunction func) {
+		void dumpInfo(AbstractFunction func) {
 			Stdout.formatln("\tfunc: {} {{", func.name);
 			foreach (param; func.params) {
-				Stdout.format("\t\t{} {} {} <{}>",
-					param.dirStr,
-					param.type,
-					param.name,
-					param.semantic
-				);
-				if (param.defaultValue) {
+				Stdout.format("\t\t{}", param);
+				/+if (param.defaultValue) {
 					Stdout.formatln(" = {}", param.defaultValue);
-				}
+				}+/
 				Stdout.newline;
 			}
-			if (auto qf = cast(QuarkFunction)func) {
+			if (auto qf = cast(Function)func) {
 				Stdout.formatln("{} code:", qf.code.language);
 				Stdout("----").newline;
 				Stdout(qf.code.toString).newline;
@@ -453,27 +452,27 @@ class KDefProcessor {
 					}
 				} else if (auto stmt = cast(ConverterDeclStatement)stmt_) {
 					if (auto mod = cast(KDefModule)sc) {
-						assert (2 == stmt.params.length);		// there's also hidden context
+						assert (2 == stmt.func.params.length);		// there's also hidden context
 						
-						Param from = stmt.params[0];
-						Param to = stmt.params[1];
+						auto from = stmt.func.params[0];
+						auto to = stmt.func.params[1];
 						
-						if ("Cg" == stmt.code.language) {
-							if (!from.semantic.hasTrait!(string)("domain")) {
-								from.semantic.addTrait(Trait("domain", Variant("gpu"[])));
+						/+if ("Cg" == stmt.func.code.language) {
+							if (!from.semantic.hasTrait("domain")) {
+								from.semantic.addTrait("domain", "gpu");
 							}
 
-							if (!to.semantic.hasTrait!(string)("domain")) {
-								to.semantic.addTrait(Trait("domain", Variant("gpu"[])));
+							if (!to.semantic.hasTrait("domain")) {
+								to.semantic.addTrait("domain", "gpu");
 							}
-						}
+						}+/
 						
-						string name = stmt.name;
+						string name = stmt.func.name;
 						if (name is null) {
 							name = "TODO: some mangled name omglol";
 						}
 						
-						mod.converters ~= new SemanticConverter(name, from, to, stmt.code);
+						mod.converters ~= SemanticConverter(stmt.func, stmt.cost);
 					} else {
 						throw new Exception("only can has converters at module scope ktnx");
 					}
@@ -490,9 +489,11 @@ class KDefProcessor {
 		}
 
 
-		IKDefFileParser			fileParser;
+		IKDefFileParser		fileParser;
 		
 		// indexed by path
 		KDefModule[string]	modules;
+
+		void* delegate(size_t) _allocator;
 	}
 }

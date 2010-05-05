@@ -72,12 +72,12 @@ struct Param {
 
 
 	Semantic* semantic() {
-		assert (hasPlainSemantic);
+		assert (hasPlainSemantic, "Trying to access a plain semantic while it's an expression");
 		return &_semantic;
 	}
 
 	SemanticExp* semanticExp() {
-		assert (!hasPlainSemantic);
+		assert (!hasPlainSemantic, "Trying to access a semantic expression while it's plain.");
 		return &_semanticExp;
 	}
 

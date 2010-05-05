@@ -22,13 +22,17 @@ class KDefFileParser : IKDefFileParser {
 	}
 	
 	
-	KDefModule parseFile(string sourcePath) {
+	KDefModule parseFile(
+		string sourcePath,
+		void* delegate(size_t) allocator
+	) {
 		auto input = _vfs.file(sourcePath).input();
 		scope(exit) input.close;
 		string data = cast(string)input.load();
 
 		scope lexer = new KDefLexer;
 		scope parser = new KDefParser;
+		parser.allocator = allocator;
 
 		lexer.initialize(data, sourcePath);
 		

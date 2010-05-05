@@ -515,14 +515,15 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ConverterDeclStatement
-		= new ConverterDeclStatement(ParamDef[] params,Code code,string name)
-		::= "converter" [Identifier:name] ParamList:params Code:code;
+		= ConverterDeclStatement createConverter(string name,ParamDef[] params,Code code,double cost)
+		::= "converter" "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
 
 	*/
 	ConverterDeclStatement value_ConverterDeclStatement;
 	bool parse_ConverterDeclStatement(){
 		debug Stdout("parse_ConverterDeclStatement").newline;
 		string var_name;
+		double var_cost;
 		ParamDef[] var_params;
 		Code var_code;
 
@@ -533,19 +534,35 @@ class KDefParser:KDefParserBase{
 					goto fail4;
 				}
 			term5:
+				// Terminal
+				if(!match("(")){
+					goto fail4;
+				}
+			term6:
+				// Production
+				if(!parse_Number()){
+					goto fail4;
+				}
+				smartAssign(var_cost,value_Number);
+			term7:
+				// Terminal
+				if(!match(")")){
+					goto fail4;
+				}
+			term8:
 				// Optional
 					// Production
 					if(!parse_Identifier()){
-						goto term6;
+						goto term9;
 					}
 					smartAssign(var_name,value_Identifier);
-			term6:
+			term9:
 				// Production
 				if(!parse_ParamList()){
 					goto fail4;
 				}
 				smartAssign(var_params,value_ParamList);
-			term7:
+			term10:
 				// Production
 				if(parse_Code()){
 					smartAssign(var_code,value_Code);
@@ -556,7 +573,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_ConverterDeclStatement = new ConverterDeclStatement(var_params,var_code,var_name);
+			value_ConverterDeclStatement = createConverter(var_name,var_params,var_code,var_cost);
 			debug Stdout.format("\tparse_ConverterDeclStatement passed: {0}",value_ConverterDeclStatement).newline;
 			return true;
 		fail1:
@@ -1513,7 +1530,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Param
 		= new ParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue)
-		::= [ParamDirection:dir] ParamType:type Identifier:name ["<" ParamSemantic:semantic ">"] ["=" Value:defaultValue];
+		::= [ParamDirection:dir] ParamType:type Identifier:name ["<" [ParamSemantic:semantic] ">"] ["=" Value:defaultValue];
 
 	*/
 	ParamDef value_Param;
@@ -1554,11 +1571,12 @@ class KDefParser:KDefParserBase{
 								goto fail11;
 							}
 						term12:
-							// Production
-							if(!parse_ParamSemantic()){
-								goto fail11;
-							}
-							smartAssign(var_semantic,value_ParamSemantic);
+							// Optional
+								// Production
+								if(!parse_ParamSemantic()){
+									goto term13;
+								}
+								smartAssign(var_semantic,value_ParamSemantic);
 						term13:
 							// Terminal
 							if(match(">")){

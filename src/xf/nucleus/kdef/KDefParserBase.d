@@ -64,7 +64,6 @@ class KDefParserBase : Parser!(KDefToken){
 		KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs) {
 			auto kd = new KernelDef;
 			kd.functions = funcs;
-			pragma (msg, "TODO: parseKernelDef");
 			return kd;
 			// TODO
 			//kd.attribs = attribs;
@@ -112,6 +111,15 @@ class KDefParserBase : Parser!(KDefToken){
 			return res;
 		}
 
+		ConverterDeclStatement createConverter(string name, ParamDef[] params, Code code, double cost) {
+			auto func = new Function(name, code, allocator);
+			_createFunctionParams(params, func);
+			auto res = new ConverterDeclStatement;
+			res.func = func;
+			res.cost = cast(int)cost;		// HACK
+			return res;
+		}
+
 		private void _createFunctionParams(
 				ParamDef[] defs,
 				AbstractFunction func
@@ -146,7 +154,7 @@ class KDefParserBase : Parser!(KDefToken){
 								// TODO: check the type?
 							} else {
 								// TODO: err
-								assert (false, "meh");
+								assert (false, "Subtractive trait used in an input param.");
 							}
 						}
 					}
@@ -179,8 +187,7 @@ class KDefParserBase : Parser!(KDefToken){
 								}
 								psem.addTrait(sem.name,	sem.value, opType);
 							} else {
-								// TODO: err
-								assert (false, "meh");
+								assert (false, "WAT");
 							}
 						}
 					}

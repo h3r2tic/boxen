@@ -391,15 +391,8 @@ class ImportStatement : Statement {
 
 
 class ConverterDeclStatement : Statement {
-	ParamDef[] params;
-	Code code;
-	string name;
-	
-	this (ParamDef[] params, Code code, string name) {
-		this.params = params;
-		this.code = code;
-		this.name = name;
-	}
+	Function	func;
+	int			cost;
 }
 
 
