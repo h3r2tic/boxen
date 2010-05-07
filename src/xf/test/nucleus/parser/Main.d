@@ -9,6 +9,9 @@ private {
 	import xf.nucleus.kdef.KDefFileParser;
 	import xf.nucleus.kdef.KDefProcessor;
 
+	import xf.nucleus.graph.KernelGraph;
+	import xf.nucleus.kdef.KDefGraphBuilder;
+
 	import tango.text.convert.Format;
 	import tango.io.Stdout;
 	import tango.io.device.File;
@@ -35,6 +38,17 @@ void main() {
 		processor.processFile("sample.kdef");
 		processor.doSemantics();
 		processor.dumpInfo();
+
+		foreach (g; &processor.graphs) {
+			auto kg = createKernelGraph();
+			
+			buildKernelGraph(
+				g,
+				kg
+			);
+
+			disposeKernelGraph(kg);
+		}
 	}
 
 	Stdout.formatln("Test passed!");

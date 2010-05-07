@@ -67,8 +67,15 @@ struct ScratchFIFO {
 	}
 
 
-	void* pushBack(size_t bytes, size_t alignment = size_t.sizeof) {
-		assert (bytes > 0);
+	void* pushBack(size_t bytes) {
+		return pushBack(bytes, 4);
+	}
+
+
+	void* pushBack(size_t bytes, size_t alignment) {
+		if (0 == bytes) {
+			return null;
+		}
 		
 		QueueChunk*	chunk = void;
 		void*		ptr = void;

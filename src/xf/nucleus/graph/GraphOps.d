@@ -1,8 +1,8 @@
-module xf.nucleus.GraphOps;
+module xf.nucleus.graph.GraphOps;
 
 private {
 	import xf.Common;
-	import xf.nucleus.Graph;
+	import xf.nucleus.graph.Graph;
 	import GraphUtils = xf.utils.Graph;
 	import xf.mem.StackBuffer;
 	import xf.utils.BitSet : DynamicBitSet;

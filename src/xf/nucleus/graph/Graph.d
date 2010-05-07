@@ -1,4 +1,4 @@
-module xf.nucleus.Graph;
+module xf.nucleus.graph.Graph;
 
 private {
 	import xf.Common;
@@ -17,27 +17,9 @@ struct GraphNodeId {
 }
 
 
-enum GraphNodeType {
-	Calc,
-	Data,
-	Input,
-	Output
-}
-
-
-enum GraphNodeDomain {
-	Auto,
-	Vertex,
-	Geometry,
-	Fragment
-}
-
-
 struct GraphNodeInfo {
-	size_t			userData;
-	void*			nodeData;
-	GraphNodeType	type;
-	GraphNodeDomain	domain;
+	size_t	userData;
+	void*	nodeData;
 }
 
 
@@ -121,7 +103,34 @@ template MSmallTempArray(T) {
 }
 
 
-final class Graph {
+interface IGraphFlow {
+	size_t			numNodes();
+	size_t			capacity();
+	GraphNodeFruct	iterNodes();
+	DataFlow*		addDataFlow(
+			GraphNodeId from, cstring fromPort,
+			GraphNodeId to, cstring toPort
+	);
+	void			removeDataFlow(
+			GraphNodeId from, cstring fromPort,
+			GraphNodeId to, cstring toPort
+	);
+	void			removeDataFlow(
+			GraphNodeId from, GraphNodeId to,
+			bool delegate(cstring, cstring) pred
+	);
+	FlowFruct		iterDataFlow(GraphNodeId from, GraphNodeId to);
+	OutgoingConnectionFruct	iterOutgoingConnections(GraphNodeId id);
+	IncomingConnectionFruct	iterIncomingConnections(GraphNodeId id);
+	void			addAutoFlow(GraphNodeId from, GraphNodeId to);
+	void			removeAutoFlow(GraphNodeId from, GraphNodeId to);
+	bool			hasAutoFlow(GraphNodeId from, GraphNodeId to);
+	void			removeAllFlow(GraphNodeId from, GraphNodeId to);
+}
+
+
+// A class, but not to be used with GC memory
+final class Graph : IGraphFlow {
 	/**
 	 * Prepares storage for a new node and returns a handle to it.
 	 */
