@@ -1,8 +1,8 @@
-module xf.nucleus.GraphMisc;
+module xf.nucleus.graph.GraphMisc;
 
 private {
 	import xf.Common;
-	import xf.nucleus.Graph;
+	import xf.nucleus.graph.Graph;
 	import tango.text.convert.Format;
 }
 

@@ -9,12 +9,12 @@ alias uhword KernelVersion;
 
 
 struct KernelRef {
-	static KernelRef opCall(cstring name) {
-		// TODO: provider
+	static KernelRef opCall(cstring name, KernelProvider prov) {
 		KernelRef res;
 		assert (name.length <= uhword.max);
 		res._namePtr = name.ptr;
 		res._nameLen = cast(uhword)name.length;
+		res._provider = prov;
 		return res;
 	}
 

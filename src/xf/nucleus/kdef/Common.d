@@ -169,10 +169,10 @@ class GraphDef : Scope {
 	
 	// after semantic analysis:
 	
-	KernelImplDef[]				implList;
+	KernelImplDef[]			implList;
 	GraphDefNode[string]	nodes;
-	GraphDef[string]			graphs;
-	NodeConnection[]			nodeConnections;
+	GraphDef[string]		graphs;
+	NodeConnection[]		nodeConnections;
 	NodeFieldConnection[]	nodeFieldConnections;
 	PreprocessCmd[]			preprocessCmds;
 	

@@ -193,6 +193,8 @@ struct Param {
 struct ParamList {
 	private {
 		alias void* delegate(uword) Allocator;
+		
+		// Several pieces of code assume this layout. Don't touch :P
 		union {
 			Array!(
 					Param,

@@ -95,7 +95,7 @@ graph {
 	SomeNode.foo.zomg = 3.14159;
 
 	dupa = node {
-		type = "gpuWrap";
+		type = "kernel";
 		kernelName = "BasicExtrudedParticleSystemGPUWrap";
 		funcName = "main";
 		center = 579.50 520.50;
@@ -109,6 +109,9 @@ graph {
 	};
 	
 	jasia = node {
+		type = "kernel";
+		kernelName = "BasicExtrudedParticleSystemGPUWrap";
+		funcName = "main";
 	};
 
 	connect dupa.a jasia.b;
@@ -131,7 +134,7 @@ blehlol = trait {
 implement RenderViewport(100)
 graph default {
 node_0 = node {
-	type = "calc";
+	type = "kernel";
 	kernelName = "ClearBuffer";
 	funcName = "main";
 	center = 251.00 266.00;
@@ -149,7 +152,7 @@ node_1 = node {
 	primLevel = "cpu";
 };
 node_2 = node {
-	type = "calc";
+	type = "kernel";
 	kernelName = "DeferredDrawScene";
 	funcName = "main";
 	center = 512.50 159.00;
@@ -157,7 +160,7 @@ node_2 = node {
 	primLevel = "cpu";
 };
 node_3 = node {
-	type = "calc";
+	type = "kernel";
 	kernelName = "Bloom";
 	funcName = "main";
 	center = 1099.00 366.00;
@@ -165,7 +168,7 @@ node_3 = node {
 	primLevel = "cpu";
 };
 node_4 = node {
-	type = "calc";
+	type = "kernel";
 	kernelName = "GetBuffer";
 	funcName = "main";
 	center = 15.00 268.00;
@@ -173,7 +176,7 @@ node_4 = node {
 	primLevel = "cpu";
 };
 node_5 = node {
-	type = "calc";
+	type = "kernel";
 	kernelName = "DisplayBuffer";
 	funcName = "main";
 	center = 1335.00 266.00;
