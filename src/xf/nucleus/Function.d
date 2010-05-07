@@ -16,11 +16,28 @@ class AbstractFunction {
 		private void* delegate(uword) _allocator;
 		ParamList		params;
 	}
+
+	private {
+		cstring[] _tags;
+	}
+
+	cstring[] tags() {
+		return _tags;
+	}
 	
-	this (cstring name, void* delegate(uword) allocator) {
+	this (cstring name, cstring[] tags, void* delegate(uword) allocator) {
 		_allocator = allocator;
-		if (name) {
+		if (name.length > 0) {
 			this.name = ((cast(char*)allocator(name.length))[0..name.length] = name);
+		}
+		if (tags.length > 0) {
+			_tags = (cast(cstring*)allocator(tags.length * cstring.sizeof))[0..tags.length];
+			foreach (i, ref dt; _tags) {
+				final st = tags[i];
+				assert (st.length > 0);
+				dt = (cast(char*)allocator(st.length))[0..st.length];
+				dt[] = st;
+			}
 		}
 	}
 }
@@ -29,8 +46,8 @@ class AbstractFunction {
 class Function : AbstractFunction {
 	Code code;
 	
-	this (cstring name, Code code, void* delegate(uword) allocator) {
-		super (name, allocator);
+	this (cstring name, cstring[] tags, Code code, void* delegate(uword) allocator) {
+		super (name, tags, allocator);
 		this.code = code;
 	}
 }

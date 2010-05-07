@@ -515,8 +515,8 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ConverterDeclStatement
-		= ConverterDeclStatement createConverter(string name,ParamDef[] params,Code code,double cost)
-		::= "converter" "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
+		= ConverterDeclStatement createConverter(string name,string[] tags,ParamDef[] params,Code code,double cost)
+		::= "converter" ["<" FuncTagList:tags ">"] "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
 
 	*/
 	ConverterDeclStatement value_ConverterDeclStatement;
@@ -524,6 +524,7 @@ class KDefParser:KDefParserBase{
 		debug Stdout("parse_ConverterDeclStatement").newline;
 		string var_name;
 		double var_cost;
+		string[] var_tags;
 		ParamDef[] var_params;
 		Code var_code;
 
@@ -534,35 +535,57 @@ class KDefParser:KDefParserBase{
 					goto fail4;
 				}
 			term5:
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("<")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_FuncTagList()){
+								goto fail9;
+							}
+							smartAssign(var_tags,value_FuncTagList);
+						term11:
+							// Terminal
+							if(match(">")){
+								goto term6;
+							}
+						fail9:
+						pos = position8;
+						goto term6;
+			term6:
 				// Terminal
 				if(!match("(")){
 					goto fail4;
 				}
-			term6:
+			term12:
 				// Production
 				if(!parse_Number()){
 					goto fail4;
 				}
 				smartAssign(var_cost,value_Number);
-			term7:
+			term13:
 				// Terminal
 				if(!match(")")){
 					goto fail4;
 				}
-			term8:
+			term14:
 				// Optional
 					// Production
 					if(!parse_Identifier()){
-						goto term9;
+						goto term15;
 					}
 					smartAssign(var_name,value_Identifier);
-			term9:
+			term15:
 				// Production
 				if(!parse_ParamList()){
 					goto fail4;
 				}
 				smartAssign(var_params,value_ParamList);
-			term10:
+			term16:
 				// Production
 				if(parse_Code()){
 					smartAssign(var_code,value_Code);
@@ -573,7 +596,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_ConverterDeclStatement = createConverter(var_name,var_params,var_code,var_cost);
+			value_ConverterDeclStatement = createConverter(var_name,var_tags,var_params,var_code,var_cost);
 			debug Stdout.format("\tparse_ConverterDeclStatement passed: {0}",value_ConverterDeclStatement).newline;
 			return true;
 		fail1:
@@ -1261,10 +1284,10 @@ class KDefParser:KDefParserBase{
 
 	/*
 	AbstractFunction
-		= AbstractFunction createAbstractFunction(string name,ParamDef[] params)
+		= AbstractFunction createAbstractFunction(string name,string[] tags,ParamDef[] params)
 		$string semicolonExpected="\';\' expected"
 		$string nameExpected="kernel function name expected"
-		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
+		::= "quark" ["<" FuncTagList:tags ">"] ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
 
 	*/
 	AbstractFunction value_AbstractFunction;
@@ -1272,6 +1295,7 @@ class KDefParser:KDefParserBase{
 		debug Stdout("parse_AbstractFunction").newline;
 		string var_name;
 		string var_nameExpected = "kernel function name expected";
+		string[] var_tags;
 		string var_semicolonExpected = "\';\' expected";
 		ParamDef[] var_params;
 
@@ -1282,35 +1306,57 @@ class KDefParser:KDefParserBase{
 					goto fail4;
 				}
 			term5:
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("<")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_FuncTagList()){
+								goto fail9;
+							}
+							smartAssign(var_tags,value_FuncTagList);
+						term11:
+							// Terminal
+							if(match(">")){
+								goto term6;
+							}
+						fail9:
+						pos = position8;
+						goto term6;
+			term6:
 				// ErrorPoint
 					// Production
 					if(parse_Identifier()){
 						smartAssign(var_name,value_Identifier);
-						goto term6;
+						goto term12;
 					}
-				fail7:
+				fail13:
 					error(var_nameExpected);
 					goto fail4;
-			term6:
+			term12:
 				// Production
 				if(!parse_ParamList()){
 					goto fail4;
 				}
 				smartAssign(var_params,value_ParamList);
-			term8:
+			term14:
 				// ErrorPoint
 					// Terminal
 					if(match(";")){
 						goto pass0;
 					}
-				fail9:
+				fail15:
 					error(var_semicolonExpected);
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_AbstractFunction = createAbstractFunction(var_name,var_params);
+			value_AbstractFunction = createAbstractFunction(var_name,var_tags,var_params);
 			debug Stdout.format("\tparse_AbstractFunction passed: {0}",value_AbstractFunction).newline;
 			return true;
 		fail1:
@@ -1321,10 +1367,10 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Function
-		= Function createFunction(string name,ParamDef[] params,Code code)
+		= Function createFunction(string name,string[] tags,ParamDef[] params,Code code)
 		$string semicolonExpected="\';\' expected"
 		$string nameExpected="quark function name expected"
-		::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) Code:code;
+		::= "quark" ["<" FuncTagList:tags ">"] ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) Code:code;
 
 	*/
 	Function value_Function;
@@ -1332,6 +1378,7 @@ class KDefParser:KDefParserBase{
 		debug Stdout("parse_Function").newline;
 		string var_name;
 		string var_nameExpected = "quark function name expected";
+		string[] var_tags;
 		string var_semicolonExpected = "\';\' expected";
 		ParamDef[] var_params;
 		Code var_code;
@@ -1343,41 +1390,100 @@ class KDefParser:KDefParserBase{
 					goto fail4;
 				}
 			term5:
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("<")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_FuncTagList()){
+								goto fail9;
+							}
+							smartAssign(var_tags,value_FuncTagList);
+						term11:
+							// Terminal
+							if(match(">")){
+								goto term6;
+							}
+						fail9:
+						pos = position8;
+						goto term6;
+			term6:
 				// ErrorPoint
 					// Production
 					if(parse_Identifier()){
 						smartAssign(var_name,value_Identifier);
-						goto term6;
+						goto term12;
 					}
-				fail7:
+				fail13:
 					error(var_nameExpected);
 					goto fail4;
-			term6:
+			term12:
 				// Production
 				if(!parse_ParamList()){
 					goto fail4;
 				}
 				smartAssign(var_params,value_ParamList);
-			term8:
+			term14:
 				// ErrorPoint
 					// Production
 					if(parse_Code()){
 						smartAssign(var_code,value_Code);
 						goto pass0;
 					}
-				fail9:
+				fail15:
 					error(var_semicolonExpected);
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_Function = createFunction(var_name,var_params,var_code);
+			value_Function = createFunction(var_name,var_tags,var_params,var_code);
 			debug Stdout.format("\tparse_Function passed: {0}",value_Function).newline;
 			return true;
 		fail1:
 			value_Function = (Function).init;
 			debug Stdout.format("\tparse_Function failed").newline;
+			return false;
+	}
+
+	/*
+	FuncTagList
+		= string[] tags
+		::= Identifier:~tags*;
+
+	*/
+	string[] value_FuncTagList;
+	bool parse_FuncTagList(){
+		debug Stdout("parse_FuncTagList").newline;
+		string[] var_tags;
+
+		// Iterator
+		start2:
+			// (terminator)
+			if(!hasMore()){
+				goto end3;
+			}
+			// (expression)
+			expr4:
+				// Production
+				if(!parse_Identifier()){
+					goto end3;
+				}
+				smartAppend(var_tags,value_Identifier);
+			goto start2;
+		end3:
+		// Rule
+		pass0:
+			value_FuncTagList = var_tags;
+			debug Stdout.format("\tparse_FuncTagList passed: {0}",value_FuncTagList).newline;
+			return true;
+		fail1:
+			value_FuncTagList = (string[]).init;
+			debug Stdout.format("\tparse_FuncTagList failed").newline;
 			return false;
 	}
 

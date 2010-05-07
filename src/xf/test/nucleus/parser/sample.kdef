@@ -9,7 +9,7 @@ quark TransparentLul {
 		}
 	}
 	
-	quark zomg(in int foo, out char[] bar, out vec3 baz)
+	quark<stuff> zomg(in int foo, out char[] bar, out vec3 baz)
 	D {
 		int x;
 		++x;
@@ -72,7 +72,7 @@ D {
 }
 
 
-converter(10) (
+converter<linear>(10) (
 	in vec3 a <basis object>,
 	out vec3 b <basis world>
 ) Cg {

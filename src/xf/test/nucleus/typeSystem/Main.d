@@ -109,76 +109,55 @@ void main() {
 	{
 		SemanticConverter[] conv;
 		{
-			Param[] pars;
-			with ((pars ~= Param(allocator))[$-1]) {
-				name = "input";
-				dir = ParamDirection.In;
+			final f = new Function("normalize", null, null, allocator);
+
+			with (*f.params.add(ParamDirection.In, "input")) {
 				hasPlainSemantic = true;
 			}
-			with ((pars ~= Param(allocator))[$-1]) {
-				name = "output";
-				dir = ParamDirection.Out;
+			with (*f.params.add(ParamDirection.Out, "output")) {
 				hasPlainSemantic = false;
 				semanticExp.addTrait("in.input.actual", null, SemanticExp.TraitOp.Add);
 				semanticExp.addTrait("unit", "true", SemanticExp.TraitOp.Add);
 			}
 			conv ~= SemanticConverter(
-				new Function(
-					"normalize",
-					pars,
-					null
-				),
+				f,
 				1
 			);
 		}
 
 		{
-			Param[] pars;
-			with ((pars ~= Param(allocator))[$-1]) {
-				name = "input";
-				dir = ParamDirection.In;
+			final f = new Function("local2world", null, null, allocator);
+
+			with (*f.params.add(ParamDirection.In, "input")) {
 				hasPlainSemantic = true;
 				semantic.addTrait("basis", "local");
 			}
-			with ((pars ~= Param(allocator))[$-1]) {
-				name = "output";
-				dir = ParamDirection.Out;
+			with (*f.params.add(ParamDirection.Out, "output")) {
 				hasPlainSemantic = false;
 				semanticExp.addTrait("in.input.actual", null, SemanticExp.TraitOp.Add);
 				semanticExp.addTrait("basis", "world", SemanticExp.TraitOp.Add);
 			}
 			conv ~= SemanticConverter(
-				new Function(
-					"local2world",
-					pars,
-					null
-				),
+				f,
 				1
 			);
 		}
 
 		{
-			Param[] pars;
-			with ((pars ~= Param(allocator))[$-1]) {
-				name = "input";
-				dir = ParamDirection.In;
+			final f = new Function("world2clip", null, null, allocator);
+
+			with (*f.params.add(ParamDirection.In, "input")) {
 				hasPlainSemantic = true;
 				semantic.addTrait("basis", "world");
 			}
-			with ((pars ~= Param(allocator))[$-1]) {
-				name = "output";
-				dir = ParamDirection.Out;
+			with (*f.params.add(ParamDirection.Out, "output")) {
 				hasPlainSemantic = false;
 				semanticExp.addTrait("in.input.actual", null, SemanticExp.TraitOp.Add);
 				semanticExp.addTrait("basis", "clip", SemanticExp.TraitOp.Add);
 				semanticExp.addTrait("unit", null, SemanticExp.TraitOp.Remove);
 			}
 			conv ~= SemanticConverter(
-				new Function(
-					"world2clip",
-					pars,
-					null
-				),
+				f,
 				1
 			);
 		}

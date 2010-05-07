@@ -118,7 +118,7 @@ class MeshStructure : IStructureData {
 
 KernelRef defaultMeshStructureKernel;
 static this() {
-	defaultMeshStructureKernel = KernelRef("DefaultMeshStructure");
+	defaultMeshStructureKernel = KernelRef("DefaultMeshStructure", null);
 }
 
 

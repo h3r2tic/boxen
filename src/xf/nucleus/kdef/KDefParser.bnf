@@ -59,8 +59,11 @@ PreprocessStatement
 	::= "preprocess" Identifier:processorFunction Identifier:processor ";";
 	
 ConverterDeclStatement
-	= ConverterDeclStatement createConverter(string name, ParamDef[] params, Code code, double cost)
-	::= "converter" "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
+	= ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost)
+	::= "converter"
+	[ "<" FuncTagList:tags ">" ]
+	"(" Number:cost ")"
+	[Identifier:name] ParamList:params Code:code;
 	
 // ----------------------------------------------------------------------------------------------------------------
 // special Values
@@ -137,18 +140,25 @@ KernelDefBody
 	)*;
 	
 AbstractFunction
-	= AbstractFunction createAbstractFunction(string name, ParamDef[] params)
+	= AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params)
 	$string semicolonExpected = "';' expected"
 	$string nameExpected = "kernel function name expected"
-	::= "quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
+	::=
+		"quark" [ "<" FuncTagList:tags ">" ]
+		?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
 
 Function
-	= Function createFunction(string name, ParamDef[] params, Code code)
+	= Function createFunction(string name, string[] tags, ParamDef[] params, Code code)
 	$string semicolonExpected = "';' expected"
 	$string nameExpected = "quark function name expected"
 	::=
-		"quark" ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected)
+		"quark" [ "<" FuncTagList:tags ">" ]
+		?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected)
 		Code:code;
+
+FuncTagList
+	= string[] tags
+	::= Identifier:~tags*;
 
 // ----------------------------------------------------------------------------------------------------------------	
 				
