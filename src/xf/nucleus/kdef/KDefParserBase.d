@@ -99,20 +99,20 @@ class KDefParserBase : Parser!(KDefToken){
 		}
 
 
-		AbstractFunction createAbstractFunction(string name, ParamDef[] params) {
-			auto res = new AbstractFunction(name, allocator);
+		AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params) {
+			auto res = new AbstractFunction(name, tags, allocator);
 			_createFunctionParams(params, res);
 			return res;
 		}
 		
-		Function createFunction(string name, ParamDef[] params, Code code) {
-			auto res = new Function(name, code, allocator);
+		Function createFunction(string name, string[] tags, ParamDef[] params, Code code) {
+			auto res = new Function(name, tags, code, allocator);
 			_createFunctionParams(params, res);
 			return res;
 		}
 
-		ConverterDeclStatement createConverter(string name, ParamDef[] params, Code code, double cost) {
-			auto func = new Function(name, code, allocator);
+		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
+			auto func = new Function(name, tags, code, allocator);
 			_createFunctionParams(params, func);
 			auto res = new ConverterDeclStatement;
 			res.func = func;

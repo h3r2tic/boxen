@@ -59,9 +59,11 @@ class ForwardRenderer : Renderer {
 				// compile the kernels, create an EffectInstance
 
 				final structureKernel = renderables.structureKernel[rid];
-				if (structureKernel is null) {
+
+				// TODO
+				/+if (structureKernel() is null) {
 					error("Structure kernel is null for renderable {}.", rid);
-				}
+				}+/
 
 				EffectInstance efInst;
 				
