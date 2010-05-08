@@ -79,7 +79,13 @@ struct SemanticConverter {
 	}
 }
 
-private alias int delegate(int delegate(ref SemanticConverter)) SemanticConverterIter;
+alias int delegate(int delegate(ref SemanticConverter)) SemanticConverterIter;
+
+
+struct ConvSinkItem {
+	SemanticConverter*	converter;
+	Semantic*			afterConversion;
+}
 
 
 bool findConversion(
@@ -90,8 +96,36 @@ bool findConversion(
 
 		// Note: the Semantic yielded by this sink dg cannot be retained
 		// because it's allocated within this function's StackBuffer
-		void delegate(SemanticConverter*, Semantic* afterConv) sink = null,
+		void delegate(ConvSinkItem[]) sink = null,
 		
+		int* retTotalCost = null
+) {
+	scope stack = new StackBuffer;
+
+	return findConversion(
+		from,
+		to,
+		semanticConverters,
+		stack,
+		sink,
+		retTotalCost
+	);
+}
+
+
+bool findConversion(
+		Semantic from,
+		Semantic to,
+		
+		SemanticConverterIter semanticConverters,
+
+		StackBufferUnsafe stack,
+
+		// Note: the Semantic yielded by this sink dg cannot be retained
+		// because it's allocated within this function's StackBuffer
+		void delegate(ConvSinkItem[]) sink = null,
+
+		// Note: set before sink is called
 		int* retTotalCost = null
 ) {
 	if (from == to) {
@@ -100,8 +134,6 @@ bool findConversion(
 		}
 		return true;
 	}
-
-	scope stack = new StackBuffer;
 
 	struct SearchItem {
 		Semantic			sem;
@@ -171,34 +203,32 @@ bool findConversion(
 		
 		//if (item.item.sem == to) {
 		if (item.item.isFinal) {
-			if (sink !is null) {
-				// reverse the list in place
-				SearchItem* next = item.item.prev;
-				SearchItem* prev = null;
-				for (SearchItem* ptr = item.item; ptr !is null; ptr = next) {
-					next = ptr.prev;
-					ptr.prev = prev;
-					prev = ptr;
-				}
-				
-				//Stdout.formatln("omfg! I've found it, I've found it!!");
-
-				auto first = prev;
-
-				for (auto it = first; it !is null; it = it.prev) {
-					if (it.conv !is null) {
-						sink(it.conv, &it.sem);
-//							Stdout.format(" -> {} ({}->{})", it.conv.name, it.conv.from, it.conv.to);
-					} else {
-//							Stdout.format("SRC");
-					}
-				}
-//					Stdout.newline;
-			}
-			
 			if (retTotalCost !is null) {
 				*retTotalCost = item.cost;
 			}
+
+			if (sink !is null) {
+				uword numItems = 0;
+
+				// Count the items
+				for (SearchItem* ptr = item.item; ptr.prev !is null; ptr = ptr.prev) {
+					++numItems;
+				}
+				
+				final resultArray = stack.allocArray!(ConvSinkItem)(numItems);
+
+				for (SearchItem* ptr = item.item; ptr.prev !is null; ptr = ptr.prev) {
+					assert (ptr.conv !is null);
+					resultArray[--numItems] = ConvSinkItem(
+						ptr.conv,
+						&ptr.sem
+					);
+				}
+				assert (0 == numItems);
+
+				sink(resultArray);
+			}
+			
 			return true;
 		}
 		
@@ -213,7 +243,7 @@ bool findConversion(
 			// closed set and the cost is lequal. The stack2 will dump it if it's not used.
 			scope stack2 = new StackBuffer;
 
-			auto converted = Semantic(&allocator);
+			auto converted = Semantic((uword bytes) { return stack2.allocRaw(bytes); });
 			conv.convert(&item.item.sem, &converted);
 			
 			int newCost = item.cost + conv.cost + extraCost;

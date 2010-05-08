@@ -45,8 +45,6 @@ scope class StackBuffer : StackBufferUnsafe {
 class StackBufferUnsafe {
 	this() {
 		_mainBuffer = &g_mainStackBuffer;
-		_chunkMark = _mainBuffer._topChunk;
-		_topMark = _mainBuffer._chunkTop;
 	}
 	
 	
@@ -74,7 +72,7 @@ class StackBufferUnsafe {
 				size = T.sizeof;
 			}
 			
-			auto buf = _mainBuffer.alloc(size);
+			auto buf = _mainBuffer.alloc(size, this);
 			
 			static if (is(T == class)) {
 				buf[] = T.classinfo.init[];
@@ -112,30 +110,38 @@ class StackBufferUnsafe {
 
 	T[] allocArrayNoInit(T)(size_t len, bool throwExc = true) {
 		size_t size = len * T.sizeof;
-		return cast(T[])_mainBuffer.alloc(size, throwExc);
+		return cast(T[])_mainBuffer.alloc(size, this, throwExc);
 	}
 
 
 	void* allocRaw(size_t bytes, bool throwExc = true) {
-		return _mainBuffer.alloc(bytes, throwExc).ptr;
+		return _mainBuffer.alloc(bytes, this, throwExc).ptr;
 	}
 
 
 	void forgetMemory() {
-		_chunkMark = _mainBuffer._topChunk;
-		_topMark = _mainBuffer._chunkTop;
+		if (_topChunk != size_t.max) {
+			_mainBuffer.forget(this);
+			_topChunk = size_t.max;
+		}
 	}
 
 	
 	~this() {
-		_mainBuffer.releaseChunksDownToButExcluding(_chunkMark);
-		_mainBuffer._chunkTop = _topMark;
+		assert (_mainBuffer !is null);
+		
+		if (_topChunk != size_t.max) {
+			_mainBuffer.release(this);
+		}
+
+		_mainBuffer = null;		// Cause an assert/segfault on double destruction
 	}
 	
 	
 	MainStackBuffer*	_mainBuffer;
-	size_t				_chunkMark;
-	size_t				_topMark;
+	size_t				_topChunk = size_t.max;
+	size_t				_topOffset;
+	StackBufferUnsafe	_prevBuffer;
 }
 
 
@@ -153,8 +159,10 @@ private {
 private struct MainStackBuffer {
 	const int				maxChunks = 128;	
 	Chunk*[maxChunks]		_chunks;
+	
 	size_t					_topChunk = size_t.max;
 	size_t					_chunkTop;
+	StackBufferUnsafe		_bufferList;
 	
 	static this() {
 		g_mutex = new Object;
@@ -162,29 +170,80 @@ private struct MainStackBuffer {
 	
 	
 	void releaseThreadData() {
-		releaseChunksDownToButExcluding(size_t.max, false);
+		if (size_t.max != _topChunk) {
+			releaseChunksDownToButExcluding(size_t.max, false);
+		}
+		_chunkTop = 0;
+		_bufferList = null;
+	}
+
+
+	void release(StackBufferUnsafe buf) {
+		assert (_bufferList !is null);
+		assert (buf._topChunk != size_t.max);
+
+		// Unlink from the buffer list
+		
+		if (buf is _bufferList) {
+			_bufferList = buf._prevBuffer;
+		} else {
+			auto next = _bufferList;
+			
+			while (next._prevBuffer !is buf) {
+				next = next._prevBuffer;
+				assert (next !is null);
+			}
+
+			next._prevBuffer = buf._prevBuffer;
+		}
+
+		if (auto prev = buf._prevBuffer) {
+			releaseChunksDownToButExcluding(prev._topChunk);
+			_chunkTop = prev._topOffset;
+		} else {
+			releaseChunksDownToButExcluding(size_t.max, true);
+			_chunkTop = 0;
+		}
+	}
+
+
+	void forget(StackBufferUnsafe buf) {
+		assert (_bufferList !is null);
+		assert (buf._topChunk != size_t.max);
+
+		// Unlink from the buffer list
+		
+		if (buf is _bufferList) {
+			_bufferList = buf._prevBuffer;
+		} else {
+			auto next = _bufferList;
+			
+			while (next._prevBuffer !is buf) {
+				next = next._prevBuffer;
+				assert (next !is null);
+			}
+
+			next._prevBuffer = buf._prevBuffer;
+		}
 	}
 	
 	
-	void releaseChunksDownToButExcluding(size_t mark, bool keepOne = true) {
-		if (size_t.max == _topChunk) {
-			assert (size_t.max == mark);
-			return;
-		}
+	void releaseChunksDownToButExcluding(size_t chunkIdx, bool keepOne = true) {
+		assert (_topChunk != size_t.max);
 		
 		// hold at least one buffer on the TLS so we don't constantly re-acquire it
-		if (size_t.max == mark) {
+		if (size_t.max == chunkIdx) {
 			if (keepOne) {
-				mark = 0;
+				chunkIdx = 0;
 			}
 		} else {
-			assert (_topChunk >= mark);
+			assert (_topChunk >= chunkIdx);
 		}
 		
 		// try to avoid taking the lock
-		if (_topChunk != mark) {
+		if (_topChunk != chunkIdx) {
 			synchronized (g_mutex) {
-				for (; _topChunk != mark; --_topChunk) {
+				for (; _topChunk != chunkIdx; --_topChunk) {
 					_chunks[_topChunk].dispose();
 				}
 			}
@@ -192,7 +251,7 @@ private struct MainStackBuffer {
 	}
 	
 	
-	void[] alloc(size_t bytes, bool throwExc = true) {
+	void[] alloc(size_t bytes, StackBufferUnsafe buf, bool throwExc = true) {
 		if (bytes > maxAllocSize) {
 			if (throwExc) {
 				throw new Exception("My spoon is too big!");
@@ -218,9 +277,40 @@ private struct MainStackBuffer {
 			chunk = _chunks[_topChunk];
 		}
 		
-		size_t bottom = _chunkTop;
+		final bottom = _chunkTop;
 		_chunkTop += bytes;
-		return chunk.ptr()[bottom .. _chunkTop];
+		final result = chunk.ptr()[bottom .. _chunkTop];
+
+		if (buf !is _bufferList) {
+			if (_bufferList is null) {
+				// This is the first allocation
+				_bufferList = buf;
+			} else if (size_t.max == buf._topChunk) {
+				// This is the first allocation with the new stack buffer
+				buf._prevBuffer = _bufferList;
+				_bufferList = buf;
+			} else {
+				// This stack buffer has already been used. We also previously
+				// allocated from another stack, move this one up in the list.
+				// This is O(n), but n should always be small.
+				
+				auto next = _bufferList;
+				
+				while (next._prevBuffer !is buf) {
+					next = next._prevBuffer;
+					assert (next !is null);
+				}
+
+				next._prevBuffer = buf._prevBuffer;
+				buf._prevBuffer = _bufferList;
+				_bufferList = buf;
+			}
+		}	// else we previously allocated from the same stack, nothing to do.
+
+		buf._topChunk = _topChunk;
+		buf._topOffset = _chunkTop;
+
+		return result;
 	}
 }
 

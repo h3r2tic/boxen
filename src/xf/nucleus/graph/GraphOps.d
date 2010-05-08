@@ -11,6 +11,8 @@ private {
 
 
 void findTopologicalOrder(Graph graph, GraphNodeId[] result) {
+	assert (result.length == graph.numNodes);
+
 	scope stack = new StackBuffer;
 	int[] order = stack.allocArray!(int)(graph.numNodes);
 	
