@@ -187,9 +187,7 @@ bool findConversion(
 		stack.allocArray!(Semantic*)(goodHashSize(minHashBuckets))
 	);
 
-	void* allocator(uword bytes) {
-		return stack.allocRaw(bytes);
-	}
+	void* delegate(uword) allocator = &stack.allocRaw;
 
 	// log.trace("Finding a conversion '{}' -> '{}'", from.toString, to.toString);
 
@@ -243,7 +241,11 @@ bool findConversion(
 			// closed set and the cost is lequal. The stack2 will dump it if it's not used.
 			scope stack2 = new StackBuffer;
 
-			auto converted = Semantic((uword bytes) { return stack2.allocRaw(bytes); });
+			void* allocator2(uword bytes) {
+				return stack2.allocRaw(bytes);
+			}
+
+			auto converted = Semantic(&stack2.allocRaw);
 			conv.convert(&item.item.sem, &converted);
 			
 			int newCost = item.cost + conv.cost + extraCost;
@@ -266,12 +268,9 @@ bool findConversion(
 					existing.isFinal = isFinal;
 					//Stdout.formatln("updating {} with cost {}", converted.toString, newCost);
 					openSet ~= HeapItem(existing, newCost);
-
-					// The converted Semantic is used
-					stack2.forgetMemory();
-				} else {
-					// converted will die at the end of stack2's scope
 				}
+
+				// converted will die at the end of stack2's scope
 			} else {
 				auto n = allocSearchItem();
 				n.sem = converted;
@@ -284,7 +283,7 @@ bool findConversion(
 				closedSet[&n.sem] = n;
 
 				// The converted Semantic is used
-				stack2.forgetMemory();
+				stack2.mergeWith(stack);
 			}
 		}
 	}

@@ -5,6 +5,7 @@ private {
 	
 	import xf.Common;
 	import xf.mem.ChunkQueue;
+	import xf.mem.StackBuffer;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.Param;
 	import xf.nucleus.Function;
@@ -286,6 +287,8 @@ void main() {
 		
 		mem.clear();
 	}
+
+	assert (0 == StackBuffer.bytesUsed);
 
 	Stdout.formatln("Test passed!");
 }

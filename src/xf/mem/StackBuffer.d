@@ -114,15 +114,41 @@ class StackBufferUnsafe {
 	}
 
 
-	void* allocRaw(size_t bytes, bool throwExc = true) {
+	void* allocRaw(size_t bytes) {		// throws
+		return _mainBuffer.alloc(bytes, this, true).ptr;
+	}
+
+
+	void* allocRaw(size_t bytes, bool throwExc) {
 		return _mainBuffer.alloc(bytes, this, throwExc).ptr;
 	}
 
 
-	void forgetMemory() {
+	/**
+	 * This moves ownership of the data associated with this stack buffer
+	 * to the other buffer given as a parameter. As a result, the current
+	 * buffer will not pop any data off the shared buffer and all the mem
+	 * will be assumed to belong to the other buffer.
+	 */
+	void mergeWith(StackBufferUnsafe other) {
 		if (_topChunk != size_t.max) {
-			_mainBuffer.forget(this);
+			_mainBuffer.mergeWith(this, other);
 			_topChunk = size_t.max;
+		}
+	}
+
+
+	static size_t bytesUsed() {
+		final buf = &g_mainStackBuffer;
+		if (size_t.max == buf._topChunk) {
+			return 0;
+		} else {
+			size_t res = 0;
+			foreach (ch; buf._chunks[0..buf._topChunk]) {
+				res += ch.size;
+			}
+			res += buf._chunkTop;
+			return res;
 		}
 	}
 
@@ -186,6 +212,14 @@ private struct MainStackBuffer {
 		
 		if (buf is _bufferList) {
 			_bufferList = buf._prevBuffer;
+
+			if (auto prev = _bufferList) {
+				releaseChunksDownToButExcluding(prev._topChunk);
+				_chunkTop = prev._topOffset;
+			} else {
+				releaseChunksDownToButExcluding(size_t.max, true);
+				_chunkTop = 0;
+			}
 		} else {
 			auto next = _bufferList;
 			
@@ -196,25 +230,56 @@ private struct MainStackBuffer {
 
 			next._prevBuffer = buf._prevBuffer;
 		}
-
-		if (auto prev = buf._prevBuffer) {
-			releaseChunksDownToButExcluding(prev._topChunk);
-			_chunkTop = prev._topOffset;
-		} else {
-			releaseChunksDownToButExcluding(size_t.max, true);
-			_chunkTop = 0;
-		}
 	}
 
 
-	void forget(StackBufferUnsafe buf) {
+	void mergeWith(StackBufferUnsafe buf, StackBufferUnsafe other) {
+		assert (buf !is null);
+		assert (other !is null);
 		assert (_bufferList !is null);
 		assert (buf._topChunk != size_t.max);
 
-		// Unlink from the buffer list
+
+		bool replaceWithOther = false;
+
+		if (size_t.max == other._topChunk) {
+			// Nothing was allocated from that other stack, put it in place
+			// of the original buffer
+
+			replaceWithOther = true;
+		} else if (
+				other._topChunk <= buf._topChunk
+			&&	other._topOffset <= buf._topOffset
+		) {
+			// If the 'other' buffer (that we're merging unto) is deeper in the stack
+			// than our current buffer, we'll need to move the 'other' buffer up
+			// all the way to the position of 'buf'. This happens in two steps
+			// - the first one is to remove 'other' from its current location in the list.
+
+			auto next = _bufferList;
+			
+			while (next._prevBuffer !is other) {
+				next = next._prevBuffer;
+				assert (next !is null);
+			}
+
+			next._prevBuffer = other._prevBuffer;
+
+			// The second step will be the same as for merging with an empty stack
+			// - the other stack will be put in place of the current one
+			replaceWithOther = true;
+		}
 		
 		if (buf is _bufferList) {
-			_bufferList = buf._prevBuffer;
+			if (replaceWithOther) {
+				_bufferList = other;
+				other._prevBuffer = buf._prevBuffer;
+				other._topChunk = buf._topChunk;
+				other._topOffset = buf._topOffset;
+				return;
+			} else {
+				_bufferList = buf._prevBuffer;
+			}
 		} else {
 			auto next = _bufferList;
 			
@@ -223,12 +288,22 @@ private struct MainStackBuffer {
 				assert (next !is null);
 			}
 
-			next._prevBuffer = buf._prevBuffer;
+			if (replaceWithOther) {
+				// Nothing was allocated from that other stack, put it in place
+				// of the original buffer
+				next._prevBuffer = other;
+				other._prevBuffer = buf._prevBuffer;
+				other._topChunk = buf._topChunk;
+				other._topOffset = buf._topOffset;
+				return;
+			} else {
+				next._prevBuffer = buf._prevBuffer;
+			}
 		}
 	}
 	
 	
-	void releaseChunksDownToButExcluding(size_t chunkIdx, bool keepOne = true) {
+	private void releaseChunksDownToButExcluding(size_t chunkIdx, bool keepOne = true) {
 		assert (_topChunk != size_t.max);
 		
 		// hold at least one buffer on the TLS so we don't constantly re-acquire it
