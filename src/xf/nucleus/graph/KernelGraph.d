@@ -160,6 +160,26 @@ class KernelGraph {
 				default: assert (false);
 			}
 		}
+
+
+		ParamList* getParamList() {
+			switch (_type) {
+				case NodeType.Output:	// fall through
+				case NodeType.Input:	// fall through
+				case NodeType.Data:		return &_inputOutputData.params;
+				case NodeType.Func:		return &_func.func.params;
+				
+				case NodeType.Kernel: {
+					error(
+						"Trying to access a param list of a Kernel node."
+						" Kernel nodes must be converted to Func nodes first."
+					);
+					assert (false);
+				}
+				
+				default: assert (false);
+			}
+		}
 	}
 
 	
@@ -214,6 +234,16 @@ class KernelGraph {
 		if (t & NodeType._Param) {
 			node._param._allocator = &_mem.pushBack;
 		}
+	}
+
+
+	uword numNodes() {
+		return _graph.numNodes;
+	}
+
+
+	uword capacity() {
+		return _graph.capacity;
 	}
 
 
@@ -303,6 +333,11 @@ class KernelGraph {
 
 
 	IGraphFlow flow() {
+		return _graph;
+	}
+
+
+	Graph backend_readOnly() {
 		return _graph;
 	}
 

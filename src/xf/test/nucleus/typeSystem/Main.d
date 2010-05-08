@@ -171,12 +171,14 @@ void main() {
 			return 0;
 		}
 
-		void convPrint(SemanticConverter* conv, Semantic* afterConv) {
-			Stdout.formatln(
+		void convPrint(ConvSinkItem[] convChain) {
+			foreach (ref c; convChain) {
+				Stdout.formatln(
 					"findConversion: use {} -> <{}>",
-					conv.func.name,
-					afterConv.toString
-			);
+					c.converter.func.name,
+					c.afterConversion.toString
+				);
+			}
 		}
 
 		// Test some basics
@@ -195,7 +197,7 @@ void main() {
 
 			sem2.addTrait("unit", "true");
 
-			Stdout.formatln("Finding a conversion <{}> -> <{}>\n", sem1, sem2);
+			Stdout.formatln("\nFinding a conversion <{}> -> <{}>", sem1, sem2);
 
 			assert (findConversion(
 				sem1,
@@ -213,7 +215,7 @@ void main() {
 			sem1.addTrait("basis", "local");
 			sem2.addTrait("basis", "clip");
 
-			Stdout.formatln("Finding a conversion <{}> -> <{}>\n", sem1, sem2);
+			Stdout.formatln("\nFinding a conversion <{}> -> <{}>", sem1, sem2);
 
 			assert (findConversion(
 				sem1,
@@ -231,7 +233,7 @@ void main() {
 			sem1.addTrait("basis", "clip");
 			sem2.addTrait("basis", "local");
 
-			Stdout.formatln("Finding a conversion <{}> -> <{}>\n", sem1, sem2);
+			Stdout.formatln("\nFinding a conversion <{}> -> <{}>", sem1, sem2);
 
 			assert (!findConversion(
 				sem1,
@@ -252,7 +254,7 @@ void main() {
 			sem1.addTrait("unit", "true");
 			sem2.addTrait("basis", "clip");
 
-			Stdout.formatln("Finding a conversion <{}> -> <{}>\n", sem1, sem2);
+			Stdout.formatln("\nFinding a conversion <{}> -> <{}>", sem1, sem2);
 
 			assert (findConversion(
 				sem1,
@@ -272,7 +274,7 @@ void main() {
 			sem2.addTrait("basis", "clip");
 			sem2.addTrait("unit", "true");
 
-			Stdout.formatln("Finding a conversion <{}> -> <{}>\n", sem1, sem2);
+			Stdout.formatln("\nFinding a conversion <{}> -> <{}>", sem1, sem2);
 
 			assert (findConversion(
 				sem1,
