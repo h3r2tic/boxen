@@ -86,6 +86,48 @@ private cstring _fmtChain(ConvSinkItem[] chain) {
 }
 
 
+private void _insertConversionNodes(
+	KernelGraph graph,
+	ConvSinkItem[] chain,
+	GraphNodeId fromId,
+	Param* fromParam,
+	GraphNodeId toId,
+	Param* toParam
+) {
+	GraphNodeId	srcId		= fromId;
+	Param*		srcParam	= fromParam;
+
+	foreach (c; chain) {
+		final cnodeId = graph.addNode(KernelGraph.NodeType.Func);
+		final cnode = graph.getNode(cnodeId).func();
+		cnode.func = c.converter.func;
+
+		assert (cnode.func.params[0].isInput);
+		assert (!cnode.func.params[1].isInput);
+		
+		graph.flow.addDataFlow(
+			srcId,
+			srcParam.name,
+			cnodeId,
+			cnode.func.params[0].name
+		);
+		
+		srcId = cnodeId;
+		srcParam = cnode.func.params[1];
+
+		// TODO: if/when actual param semantics are kept in graph nodes,
+		// dup the semantics allocated on the stack and store them in the graph.
+	}
+
+	graph.flow.addDataFlow(
+		srcId,
+		srcParam.name,
+		toId,
+		toParam.name
+	);
+}
+
+
 private void findAutoFlow(
 	KernelGraph graph,
 	GraphNodeId[] fromIds,
@@ -170,36 +212,12 @@ private void findAutoFlow(
 			error("{}", errMsg);
 		} else {
 			// Found a unique conversion path
-			
-			alias bestConvs conv;
 
-			GraphNodeId	srcId		= conv.fromId;
-			Param*		srcParam	= conv.fromParam;
-			
-			foreach (c; conv.chain) {
-				final cnodeId = graph.addNode(KernelGraph.NodeType.Func);
-				final cnode = graph.getNode(cnodeId).func();
-				cnode.func = c.converter.func;
-
-				assert (cnode.func.params[0].isInput);
-				assert (!cnode.func.params[1].isInput);
-				
-				graph.flow.addDataFlow(
-					srcId,
-					srcParam.name,
-					cnodeId,
-					cnode.func.params[0].name
-				);
-				
-				srcId = cnodeId;
-				srcParam = cnode.func.params[1];
-			}
-
-			graph.flow.addDataFlow(
-				srcId,
-				srcParam.name,
-				toId,
-				toParam.name
+			_insertConversionNodes(
+				graph,
+				bestConvs.chain,
+				bestConvs.fromId, bestConvs.fromParam,
+				toId, toParam
 			);
 		}
 	} else {
@@ -283,12 +301,40 @@ void convertGraphDataFlow(
 				findAutoFlow(graph, fromIds.data, toId, &param, semanticConverters);
 			}
 		}		
-		
-		// TODO
 	}
 
 	void doManualFlow(GraphNodeId fromId, GraphNodeId toId, DataFlow fl) {
-		// TODO
+		scope stack = new StackBuffer;
+
+		final fromParam = graph.getNode(fromId).getOutputParam(fl.from);
+		assert (fromParam !is null);
+		
+		final toParam = graph.getNode(toId).getInputParam(fl.to);
+		assert (toParam !is null);
+
+		if (!findConversion(
+			*fromParam.semantic,
+			*toParam.semantic,
+			semanticConverters,
+			stack,
+			(ConvSinkItem[] convChain) {
+				_insertConversionNodes(
+					graph,
+					convChain,
+					fromId,
+					fromParam,
+					toId,
+					toParam
+				);
+			}
+		)) {
+			error(
+				"Could not find a conversion for direct flow:"
+				"  {}:{} -> {}:{}",
+				fromId.id, fromParam.toString,
+				toId.id, toParam.toString
+			);
+		}
 	}
 
 	foreach (id; topological) {
