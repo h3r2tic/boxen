@@ -96,7 +96,122 @@ void main() {
 			}
 		}
 	}
+
+	{
+		int* p1, p2, p3, p4, p5, p6;
+		
+		scope b1 = new StackBuffer;
+		p1 = b1.alloc!(int)(1);
+		{
+			scope b2 = new StackBuffer;
+			p2 = b2.alloc!(int)(2);
+			b2.mergeWith(b1);
+		}
+		{
+			scope b3 = new StackBuffer;
+			p3 = b3.alloc!(int)(3);
+			b3.mergeWith(b1);
+		}
+		{
+			scope b4 = new StackBuffer;
+			p4 = b4.alloc!(int)(4);
+		}
+		{
+			scope b5 = new StackBuffer;
+			p5 = b5.alloc!(int)(5);
+		}
+		{
+			scope b6 = new StackBuffer;
+			p6 = b6.alloc!(int)(6);
+			b6.mergeWith(b1);
+		}
+
+		assert (1 == *p1);
+		assert (2 == *p2);
+		assert (3 == *p3);
+
+		assert (p4 is p5);
+		assert (p5 is p6);
+		assert (6 == *p6);
+	}
 	
+	{
+		int* p2, p3, p4, p5, p6;
+		
+		scope b1 = new StackBuffer;
+		{
+			scope b2 = new StackBuffer;
+			p2 = b2.alloc!(int)(2);
+			b2.mergeWith(b1);
+		}
+		{
+			scope b3 = new StackBuffer;
+			p3 = b3.alloc!(int)(3);
+			b3.mergeWith(b1);
+		}
+		{
+			scope b4 = new StackBuffer;
+			p4 = b4.alloc!(int)(4);
+		}
+		{
+			scope b5 = new StackBuffer;
+			p5 = b5.alloc!(int)(5);
+		}
+		{
+			scope b6 = new StackBuffer;
+			p6 = b6.alloc!(int)(6);
+			b6.mergeWith(b1);
+		}
+
+		assert (2 == *p2);
+		assert (3 == *p3);
+
+		assert (p4 is p5);
+		assert (p5 is p6);
+		assert (6 == *p6);
+	}
+
+	{
+		int* p1, p2, p3, p4, p5, p6, p7;
+		
+		scope b1 = new StackBuffer;
+		{
+			scope b2 = new StackBuffer;
+			p2 = b2.alloc!(int)(2);
+			b2.mergeWith(b1);
+		}
+		{
+			scope b3 = new StackBuffer;
+			p3 = b3.alloc!(int)(3);
+			p7 = b1.alloc!(int)(7);
+			b3.mergeWith(b1);
+		}
+		{
+			scope b4 = new StackBuffer;
+			p4 = b4.alloc!(int)(4);
+		}
+		{
+			scope b5 = new StackBuffer;
+			p5 = b5.alloc!(int)(5);
+		}
+		p1 = b1.alloc!(int)(1);
+		{
+			scope b6 = new StackBuffer;
+			p6 = b6.alloc!(int)(6);
+			b6.mergeWith(b1);
+		}
+
+		assert (1 == *p1);
+		assert (2 == *p2);
+		assert (3 == *p3);
+
+		assert (p4 is p5);
+		assert (p5 is p1);
+		
+		assert (6 == *p6);
+		assert (7 == *p7);
+	}
+
 	StackBuffer.releaseThreadData();
 	Trace.formatln("Test completed!");
 }

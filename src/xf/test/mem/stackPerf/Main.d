@@ -34,6 +34,10 @@ void main() {
 			measure({
 				for (int x = 0; x < numTests; ++x) {
 					({
+						if (StackBuffer.bytesUsed != 0) {
+							throw new Exception("stack buffer cleanup failed");
+						}
+						
 						scope buf = new StackBuffer;
 						auto ptr = buf.allocArrayNoInit!(ubyte)(chunkSize / i);
 						if (cast(size_t)ptr.ptr == size_t.max) {

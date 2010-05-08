@@ -166,7 +166,7 @@ private void findAutoFlow(
 						return;
 					}
 					
-					stack2.forgetMemory();
+					stack2.mergeWith(stack);
 					final info = stack.alloc!(ConvInfo)(
 						convChain,
 						fromId,
