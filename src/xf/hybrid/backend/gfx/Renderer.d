@@ -565,7 +565,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 		final state = _r.state();
 		state.blend.enabled = true;
-		state.blend.src = Gfx.RenderState.Blend.Factor.Src1Color;
+		state.blend.src = Gfx.RenderState.Blend.Factor.One;
 		state.blend.dst = Gfx.RenderState.Blend.Factor.OneMinusSrc1Color;
 		state.depth.enabled = false;
 

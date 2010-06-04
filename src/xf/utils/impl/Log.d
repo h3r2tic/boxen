@@ -9,9 +9,9 @@ private {
 
 
 
-static this() {
+/+static this() {
 	TangoLog.config(Stdout);
-}
+}+/
 
 
 extern (C) ILogger _xf_createLogger(cstring name) {

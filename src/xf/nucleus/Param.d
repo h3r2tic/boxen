@@ -191,19 +191,17 @@ struct Param {
 
 
 struct ParamList {
-	private {
-		alias void* delegate(uword) Allocator;
-		
-		// Several pieces of code assume this layout. Don't touch :P
-		union {
-			Array!(
-					Param,
-					ArrayExpandPolicy.FixedAmount!(4),
-					ScrapDgArrayAllocator
-					
-			)				_params;
-			Allocator		_allocator;
-		}
+	alias void* delegate(uword) Allocator;
+	
+	// Several pieces of code assume this layout. Don't touch :P
+	union {
+		Array!(
+				Param,
+				ArrayExpandPolicy.FixedAmount!(4),
+				ScrapDgArrayAllocator
+				
+		)				_params;
+		Allocator		_allocator;
 	}
 
 	
@@ -242,20 +240,20 @@ struct ParamList {
 		return 0;
 	}
 
-	bool getInput(cstring name, ref Param res) {
+	bool getInput(cstring name, Param** res) {
 		foreach (ref p; _params) {
 			if (p.isInput && p.name == name) {
-				res = p;
+				*res = &p;
 				return true;
 			}
 		}
 		return false;
 	}
 
-	bool getOutput(cstring name, ref Param res) {
+	bool getOutput(cstring name, Param** res) {
 		foreach (ref p; _params) {
 			if (!p.isInput && p.name == name) {
-				res = p;
+				*res = &p;
 				return true;
 			}
 		}
@@ -300,6 +298,18 @@ struct ParamList {
 			}
 		}
 		return null;
+	}
+
+	ParamList dup(Allocator allocator) {
+		ParamList res;
+		res._allocator = allocator;
+		res._params.resize(length);
+		
+		foreach (int i, ref Param p; *this) {
+			res._params[i] = p.dup(allocator);
+		}
+
+		return res;
 	}
 }
 

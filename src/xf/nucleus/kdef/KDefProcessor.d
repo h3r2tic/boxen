@@ -26,26 +26,27 @@ private {
 
 
 
-
 class KDefProcessor {
-	this (IKDefFileParser fileParser, void* delegate(size_t) allocator) {
-		this._allocator = allocator;
+	alias void* delegate(size_t) Allocator;
+
+
+	this (IKDefFileParser fileParser) {
 		this.fileParser = fileParser;
 	}
 	
 	
-	void processFile(string path) {
+	void processFile(string path, Allocator allocator) {
 		if (auto mod = path in modules) {
 			if ((*mod).processing) {
 				throw new Exception("Cyclic import in kernel module '" ~ path ~ "'");
 			}
 		} else {
 			Stdout.formatln("KDefProcessor.parseFile({})", path);
-			auto mod = fileParser.parseFile(path, _allocator);
+			auto mod = fileParser.parseFile(path, allocator);
 			modules[path] = mod;
 			mod.processing = true;
 			mod.filePath = path;
-			process(mod);
+			process(mod, allocator);
 			mod.processing = false;
 		}
 	}
@@ -60,8 +61,8 @@ class KDefProcessor {
 	}
 	
 	
-	void doSemantics() {
-		doKernelSemantics();
+	void doSemantics(Allocator allocator) {
+		doKernelSemantics(allocator);
 	}
 	
 	
@@ -159,11 +160,11 @@ class KDefProcessor {
 
 	
 	private {
-		void doKernelSemantics() {
+		void doKernelSemantics(Allocator allocator) {
 			int[KernelDef] kernelToId;
 			int nextOrderGraphId = 0;
 			
-			void process(KernelDef k) {
+			void process(KernelDef k, Allocator allocator) {
 				if (k in kernelToId) {
 					return;
 				}
@@ -184,7 +185,7 @@ class KDefProcessor {
 				foreach (sup; k.getInheritList) {
 					auto supk = getKernel(sup);
 					if (supk) {
-						process(supk);
+						process(supk, allocator);
 						
 						k.inherit(supk);
 					} else {
@@ -194,7 +195,7 @@ class KDefProcessor {
 			}
 			
 			foreach (k; &kernels) {
-				process(k);
+				process(k, allocator);
 			}
 
 			foreach (k; &kernels) {
@@ -386,7 +387,7 @@ class KDefProcessor {
 		}
 		
 		
-		void process(ImplementStatement implStmt) {
+		void process(ImplementStatement implStmt, Allocator allocator) {
 			if (auto qdv = cast(QuarkDefValue)implStmt.impl) {
 				auto q = qdv.quarkDef;
 				q.implList = implStmt.impls;
@@ -399,13 +400,15 @@ class KDefProcessor {
 		}
 		
 		
-		void process(Scope sc) {
+		void process(Scope sc, Allocator allocator) {
 			foreach (stmt_; sc.statements) {
 				if (auto stmt = cast(ImplementStatement)stmt_) {
 					if (auto mod = cast(KDefModule)sc) {
-						stmt.impl.doSemantics(&process);
+						stmt.impl.doSemantics((Scope s) {
+							return process(s, allocator);
+						});
 						mod.kernelImpls ~= stmt;
-						process(stmt);
+						process(stmt, allocator);
 					} else {
 						throw new Exception("kernel implementations only allowed at top-level scope");
 					}
@@ -417,7 +420,7 @@ class KDefProcessor {
 					}
 				} else if (auto stmt = cast(AssignStatement)stmt_) {
 					if (auto scopeValue = cast(IScopeValue)stmt.value) {
-						process(scopeValue.toScope);
+						process(scopeValue.toScope, allocator);
 					}
 					
 					if (auto kernelValue = cast(KernelDefValue)stmt.value) {
@@ -437,7 +440,7 @@ class KDefProcessor {
 					sc.doAssign(stmt.name, stmt.value);
 				} else if (auto stmt = cast(ImportStatement)stmt_) {
 					auto path = stmt.path;
-					processFile(path);
+					processFile(path, allocator);
 					auto names = stmt.what;
 					auto mod = modules[path];
 					
@@ -493,7 +496,5 @@ class KDefProcessor {
 		
 		// indexed by path
 		KDefModule[string]	modules;
-
-		void* delegate(size_t) _allocator;
 	}
 }

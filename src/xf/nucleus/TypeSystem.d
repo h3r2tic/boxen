@@ -218,8 +218,11 @@ struct Semantic {
 			}
 
 			sink(k);
-			sink(":");
-			sink(v);
+
+			if (v.length > 0) {
+				sink(":");
+				sink(v);
+			}
 		}
 	}
 

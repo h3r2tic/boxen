@@ -186,7 +186,7 @@ Param
 		Value defaultValue
 	)
 	::= [ParamDirection:dir]
-	ParamType:type
+	//ParamType:type
 	Identifier:name
 	[ "<" [ParamSemantic:semantic] ">" ]
 	[ "=" Value:defaultValue ];
@@ -219,7 +219,7 @@ ParamSemanticTrait
 	::= (
 			["in" "."] Identifier
 		|	"in" "." Identifier "." "actual"
-		):name Value:value;
+		):name [ Value:value ];
 
 // ----------------------------------------------------------------------------------------------------------------
 

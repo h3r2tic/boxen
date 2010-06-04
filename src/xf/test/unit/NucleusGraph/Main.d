@@ -3,9 +3,9 @@ module Main;
 import tango.core.tools.TraceExceptions;
 
 import xf.Common;
-import xf.nucleus.Graph;
-import xf.nucleus.GraphOps;
-import xf.nucleus.GraphMisc;
+import xf.nucleus.graph.Graph;
+import xf.nucleus.graph.GraphOps;
+import xf.nucleus.graph.GraphMisc;
 import tango.io.Stdout;
 import tango.io.device.File : File;
 import tango.text.convert.Format;
@@ -253,10 +253,7 @@ void main() {
 		g4.addDataFlow(n[7], "foo", n[8], "bar");
 		g4.addAutoFlow(n[9], n[3]);
 
-		// 1 and 5 are in different order in comparison to g2 and g3
-		// this is because internally, the flow iteration functions
-		// first yield all data and only then auto connections
-		checkOrder(g4, 0, 9, 3, 4, 5, 1, 2, 6, 7, 8);
+		checkOrder(g4, 0, 9, 3, 4, 1, 5, 2, 6, 7, 8);
 
 		File.set("g4.dot", toGraphviz(g4));
 

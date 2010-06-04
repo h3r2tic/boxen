@@ -94,7 +94,7 @@ class KDefParserBase : Parser!(KDefToken){
 		ParamSemanticExp parseParamSemanticTrait(string name, Value value) {
 			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Trait);
 			res.name = name.dup;
-			res.value = value.toString.dup;
+			res.value = value is null ? null : value.toString.dup;
 			return res;
 		}
 

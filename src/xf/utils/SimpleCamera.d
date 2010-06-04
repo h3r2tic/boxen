@@ -28,16 +28,16 @@ class SimpleCamera {
 		float seconds = 1.0f / this.updateFrequency;
 		vec3 move = vec3.zero;
 		
-		if (keyboard.keyDown(KeySym.w)) {
+		if (keyboard.keyDown(this.UpKey)) {
 			move.z -= 1.f * movementSpeed.z;
 		}
-		if (keyboard.keyDown(KeySym.s)) {
+		if (keyboard.keyDown(this.DownKey)) {
 			move.z += 1.f * movementSpeed.z;
 		}
-		if (keyboard.keyDown(KeySym.a)) {
+		if (keyboard.keyDown(this.LeftKey)) {
 			move.x -= 1.f * movementSpeed.x;
 		}
-		if (keyboard.keyDown(KeySym.d)) {
+		if (keyboard.keyDown(this.RightKey)) {
 			move.x += 1.f * movementSpeed.x;
 		}
 		if (keyboard.keyDown(KeySym.bracketleft)) {
@@ -99,6 +99,18 @@ class SimpleCamera {
 		vec3	pos = vec3.zero;
 		quat	rot = quat.identity;
 		int		updateFrequency;
+
+		version (SimpleCameraQwerty) {
+			const KeySym UpKey = KeySym.w;
+			const KeySym DownKey = KeySym.s;
+			const KeySym LeftKey = KeySym.a;
+			const KeySym RightKey = KeySym.d;
+		} else {	// Colemak :D
+			const KeySym UpKey = KeySym.w;
+			const KeySym DownKey = KeySym.r;
+			const KeySym LeftKey = KeySym.a;
+			const KeySym RightKey = KeySym.s;
+		}
 		
 		SimpleKeyboardReader	keyboard;
 	}

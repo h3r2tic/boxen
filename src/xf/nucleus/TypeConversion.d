@@ -132,6 +132,11 @@ bool findConversion(
 		if (retTotalCost !is null) {
 			*retTotalCost = 0;
 		}
+
+		if (sink) {
+			sink(null);
+		}
+		
 		return true;
 	}
 

@@ -52,7 +52,8 @@ class KernelGraph {
 
 
 	struct FuncNode {
-		Function func;
+		Function	func;
+		ParamList	params;
 	}
 
 
@@ -117,7 +118,7 @@ class KernelGraph {
 					assert (false);
 				}
 				case NodeType.Func: {
-					final p = _func.func.params.get(name);
+					final p = _func.params.get(name);
 					if (p.isInput) {
 						error(
 							"Trying to access a function's input parameter '{}'"
@@ -146,7 +147,7 @@ class KernelGraph {
 					assert (false);
 				}
 				case NodeType.Func: {
-					final p = _func.func.params.get(name);
+					final p = _func.params.get(name);
 					if (false == p.isInput) {
 						error(
 							"Trying to access a function's output parameter '{}'"
@@ -167,7 +168,7 @@ class KernelGraph {
 				case NodeType.Output:	// fall through
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return &_inputOutputData.params;
-				case NodeType.Func:		return &_func.func.params;
+				case NodeType.Func:		return &_func.params;
 				
 				case NodeType.Kernel: {
 					error(
@@ -342,8 +343,9 @@ class KernelGraph {
 	}
 
 
+	ScratchFIFO		_mem;
+
 	private {
-		ScratchFIFO	_mem;
 		Node*		_nodeFreeList;
 		Graph		_graph;
 	}

@@ -12,6 +12,7 @@ private {
 	import tango.stdc.stdio : printf;
 	import tango.stdc.stringz;
 	import xf.omg.core.Misc : ceil, rndint;
+	import xf.omg.color.RGB;
 	import tango.text.convert.Format;
 	
 	import tango.core.Memory;
@@ -496,7 +497,9 @@ class HybridSurface : DeeSurface {
 		ubyte g = cast(ubyte)((co >> 8) & 0xff);
 		ubyte b = cast(ubyte)(co & 0xff);
 		const float mul = 1.f / 255.f;
-		return vec3(mul * r, mul * g, mul * b);
+		vec3 res = vec3(mul * r, mul * g, mul * b);
+		convertRGB!(RGBSpace.sRGB, RGBSpace.Linear_sRGB)(res, &res);
+		return res;
 	}
 
 	vec3 toColor(ColourAllocated co) {

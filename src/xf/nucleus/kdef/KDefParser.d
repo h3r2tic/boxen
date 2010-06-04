@@ -1636,7 +1636,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Param
 		= new ParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue)
-		::= [ParamDirection:dir] ParamType:type Identifier:name ["<" [ParamSemantic:semantic] ">"] ["=" Value:defaultValue];
+		::= [ParamDirection:dir] Identifier:name ["<" [ParamSemantic:semantic] ">"] ["=" Value:defaultValue];
 
 	*/
 	ParamDef value_Param;
@@ -1658,55 +1658,49 @@ class KDefParser:KDefParserBase{
 					smartAssign(var_dir,value_ParamDirection);
 			term5:
 				// Production
-				if(!parse_ParamType()){
-					goto fail4;
-				}
-				smartAssign(var_type,value_ParamType);
-			term6:
-				// Production
 				if(!parse_Identifier()){
 					goto fail4;
 				}
 				smartAssign(var_name,value_Identifier);
-			term7:
+			term6:
 				// Optional
 					// AndGroup
-						auto position10 = pos;
+						auto position9 = pos;
 							// Terminal
 							if(!match("<")){
-								goto fail11;
+								goto fail10;
 							}
-						term12:
+						term11:
 							// Optional
 								// Production
 								if(!parse_ParamSemantic()){
-									goto term13;
+									goto term12;
 								}
 								smartAssign(var_semantic,value_ParamSemantic);
-						term13:
+						term12:
 							// Terminal
 							if(match(">")){
-								goto term8;
+								goto term7;
 							}
-						fail11:
-						pos = position10;
-						goto term8;
-			term8:
+						fail10:
+						pos = position9;
+						goto term7;
+			term7:
 				// Optional
 					// AndGroup
-						auto position15 = pos;
+						auto position14 = pos;
 							// Terminal
 							if(!match("=")){
-								goto fail16;
+								goto fail15;
 							}
-						term17:
+						term16:
 							// Production
 							if(parse_Value()){
 								smartAssign(var_defaultValue,value_Value);
 								goto pass0;
 							}
-						fail16:
-						pos = position15;
+						fail15:
+						pos = position14;
 					goto pass0;
 			fail4:
 			pos = position3;
@@ -2036,7 +2030,7 @@ class KDefParser:KDefParserBase{
 	/*
 	ParamSemanticTrait
 		= ParamSemanticExp parseParamSemanticTrait(string name,Value value)
-		::= (["in" "."] Identifier | "in" "." Identifier "." "actual"):name Value:value;
+		::= (["in" "."] Identifier | "in" "." Identifier "." "actual"):name [Value:value];
 
 	*/
 	ParamSemanticExp value_ParamSemanticTrait;
@@ -2107,11 +2101,13 @@ class KDefParser:KDefParserBase{
 					pass7:
 					smartAssign(var_name,slice(position6,pos));
 			term5:
-				// Production
-				if(parse_Value()){
-					smartAssign(var_value,value_Value);
+				// Optional
+					// Production
+					if(parse_Value()){
+						smartAssign(var_value,value_Value);
+						goto pass0;
+					}
 					goto pass0;
-				}
 			fail4:
 			pos = position3;
 			goto fail1;

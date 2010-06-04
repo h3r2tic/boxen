@@ -160,7 +160,8 @@ class GLWindow : GLContext {
 	typeof(this) swapInterval(uint i) {
 		_swapInterval = i;
 		if (created) {
-			_gl.SwapIntervalEXT(_swapInterval);
+			version (WINE) {}
+			else _gl.SwapIntervalEXT(_swapInterval);
 		}
 		return this;
 	}
@@ -710,7 +711,9 @@ class GLWindow : GLContext {
 			preInitDone = true;
 			bool recreate = false;
 			//if (!(_gl.ext(WGL_ARB_pixel_format) in {
-			{
+			
+			version (WINE) {}
+			else {
 				static float[] fAttributes = [ 0.f, 0.f ];
 				int[] formatAttribs; {
 					formatAttribs ~= WGL_DRAW_TO_WINDOW_ARB;

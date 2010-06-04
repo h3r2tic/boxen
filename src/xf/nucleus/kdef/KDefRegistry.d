@@ -28,9 +28,7 @@ class KDefRegistry : IKDefRegistry {
 
 
 	this() {
-		// TODO
-		pragma (msg, "TODO: KDefRegistry and its base.");
-		//kdefProcessor = new KDefProcessor(_fileParser = create!(IKDefFileParser)());
+		kdefProcessor = new KDefProcessor(_fileParser = create!(IKDefFileParser)());
 		super("*.kdef");
 	}
 	
@@ -60,11 +58,10 @@ class KDefRegistry : IKDefRegistry {
 	}
 	
 
-	// TODO
-	/+override void processFile(string path) {
+	override void processFile(string path, Allocator allocator) {
 		_fileParser.setVFS(_vfs);
-		kdefProcessor.processFile(path);
-	}+/
+		kdefProcessor.processFile(path, allocator);
+	}
 	
 	
 	int kernels(int delegate(ref KernelDef) dg) {
@@ -87,8 +84,8 @@ class KDefRegistry : IKDefRegistry {
 	}
 
 	
-	void doSemantics() {
-		kdefProcessor.doSemantics;
+	void doSemantics(Allocator allocator) {
+		kdefProcessor.doSemantics(allocator);
 	}
 	
 
