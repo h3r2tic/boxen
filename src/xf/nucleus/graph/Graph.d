@@ -125,6 +125,7 @@ interface IGraphFlow {
 	void			addAutoFlow(GraphNodeId from, GraphNodeId to);
 	void			removeAutoFlow(GraphNodeId from, GraphNodeId to);
 	bool			hasAutoFlow(GraphNodeId from, GraphNodeId to);
+	void			removeAllAutoFlow();
 	void			removeAllFlow(GraphNodeId from, GraphNodeId to);
 }
 
@@ -419,6 +420,13 @@ final class Graph : IGraphFlow {
 		_verifyNodeId(from);
 		_verifyNodeId(to);
 		return _readFlag(_autoFlowFlags, from.id, to.id);
+	}
+
+	// ----
+
+	void			removeAllAutoFlow() {
+		alias _capacity num;
+		memset(_autoFlowFlags, 0, uword.sizeof * ((num*num+wordBits-1) / wordBits));
 	}
 
 	// ----

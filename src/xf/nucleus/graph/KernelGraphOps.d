@@ -492,4 +492,6 @@ void convertGraphDataFlow(
 		}
 		simplifyParamSemantics(graph, id);
 	}
+
+	graph.flow.removeAllAutoFlow();
 }
