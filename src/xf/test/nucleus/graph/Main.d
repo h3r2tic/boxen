@@ -58,8 +58,12 @@ void findBestKernelImpls(IKDefRegistry reg) {
 }
 
 
+import tango.core.Memory;
+
 void main() {
 	{
+		GC.disable();
+		
 		ScratchFIFO mem;
 		mem.initialize();
 
@@ -74,17 +78,6 @@ void main() {
 		registry.dumpInfo();
 
 		findBestKernelImpls(registry);
-
-		SemanticConverter[] conv;
-		int semanticConverters(int delegate(ref SemanticConverter) sink) {
-			foreach (ref c; conv) {
-				if (int r = sink(c)) {
-					return r;
-				}
-			}
-			return 0;
-		}
-
 
 		foreach (g; &registry.graphs) {
 			auto kg = createKernelGraph();
@@ -121,7 +114,7 @@ void main() {
 
 			verifyDataFlowNames(kg);
 
-			convertGraphDataFlow(kg, &semanticConverters);
+			convertGraphDataFlow(kg, &registry.converters);
 
 			File.set("graph.dot", toGraphviz(kg.backend_readOnly));
 

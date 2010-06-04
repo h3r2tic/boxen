@@ -100,9 +100,7 @@ class StackBufferUnsafe {
 	T[] allocArray(T)(size_t len, bool throwExc = true) {
 		auto res = allocArrayNoInit!(T)(len, throwExc);
 		if (res) {
-			foreach (ref r; res) {
-				r = T.init;
-			}
+			res[] = T.init;
 		}
 		return res;
 	}

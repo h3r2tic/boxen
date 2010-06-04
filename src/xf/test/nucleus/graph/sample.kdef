@@ -65,7 +65,7 @@ graph default {
 node_0 = node {
 	type = "input";
 	params = (
-		out pos<type vec3 + basis world>
+		out pos<type vec3 + basis model>
 	);
 };
 node_1 = node {
@@ -111,4 +111,12 @@ unit = trait {
 converter(20) normalizer(in a <type vec3>, out b <type vec3 + unit true>)
 D {
 	b = a.normalized;
+}
+
+
+converter(20) model2world(
+	in a <type vec3 + basis model>,
+	out b <in.a.actual + basis world>
+) Cg {
+	b = a;		// TODO
 }
