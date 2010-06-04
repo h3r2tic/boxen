@@ -83,7 +83,7 @@ class KDefProcessor {
 	
 	int kernels(int delegate(ref KernelDef) dg) {
 		foreach (name, mod; modules) {
-			foreach (kernel; mod.kernels) {
+			foreach (ref kernel; mod.kernels) {
 				if (auto r = dg(kernel)) {
 					return r;
 				}
@@ -96,7 +96,7 @@ class KDefProcessor {
 	
 	int quarks(int delegate(ref QuarkDef) dg) {
 		foreach (name, mod; modules) {
-			foreach (impl; mod.kernelImpls) {
+			foreach (ref impl; mod.kernelImpls) {
 				if (auto qdef = cast(QuarkDefValue)impl.impl) {
 					if (auto r = dg(qdef.quarkDef)) {
 						return r;
@@ -111,7 +111,7 @@ class KDefProcessor {
 
 	int graphs(int delegate(ref GraphDef) dg) {
 		foreach (name, mod; modules) {
-			foreach (impl; mod.kernelImpls) {
+			foreach (ref impl; mod.kernelImpls) {
 				if (auto gdef = cast(GraphDefValue)impl.impl) {
 					if (auto r = dg(gdef.graphDef)) {
 						return r;
@@ -126,7 +126,7 @@ class KDefProcessor {
 
 	int converters(int delegate(ref SemanticConverter) dg) {
 		foreach (name, mod; modules) {
-			foreach (conv; mod.converters) {
+			foreach (ref conv; mod.converters) {
 				if (auto r = dg(conv)) {
 					return r;
 				}

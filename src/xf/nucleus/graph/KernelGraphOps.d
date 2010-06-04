@@ -160,6 +160,7 @@ private void _insertConversionNodes(
 		final cnode = graph.getNode(cnodeId).func();
 		cnode.func = c.converter.func;
 
+		assert (2 == cnode.func.params.length);
 		assert (cnode.func.params[0].isInput);
 		assert (cnode.func.params[0].hasPlainSemantic);
 		assert (!cnode.func.params[1].isInput);
@@ -171,16 +172,16 @@ private void _insertConversionNodes(
 			cnode.func.params[0].name
 		);
 		
-		srcId = cnodeId;
-		srcParam = cnode.func.params[1];
-
 		void* delegate(uword) mem = &graph._mem.pushBack;
 		cnode.params._allocator = mem;
 		cnode.params.add(cnode.func.params[0].dup(mem));
 		
-		auto p = cnode.params.add(ParamDirection.Out, cnode.func.params[0].name);
+		auto p = cnode.params.add(ParamDirection.Out, cnode.func.params[1].name);
 		p.hasPlainSemantic = true;
 		*p.semantic() = c.afterConversion.dup(mem);
+
+		srcId = cnodeId;
+		srcParam = cnode.params[1];
 	}
 
 	graph.flow.addDataFlow(
