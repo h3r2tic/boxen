@@ -17,8 +17,7 @@ private {
 	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.TypeSystem;
-//	import xf.nucleus.Param;
-//	import xf.nucleus.Function;
+	import xf.nucleus.graph.GraphMisc;
 	import xf.nucleus.TypeConversion;
 
 	import tango.text.convert.Format;
@@ -123,6 +122,8 @@ void main() {
 			verifyDataFlowNames(kg);
 
 			convertGraphDataFlow(kg, &semanticConverters);
+
+			File.set("graph.dot", toGraphviz(kg.backend_readOnly));
 
 			disposeKernelGraph(kg);
 		}
