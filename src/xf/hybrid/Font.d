@@ -632,6 +632,8 @@ final class Font {
 									y * bitmap.pitch + x*3 - 3 * (borderWidth-1)
 								];
 
+								gammaCorrect(a[0..3], 0.5f);
+
 								buffer[bufferIdx+3+0] = a[0];
 								buffer[bufferIdx+3+4] = a[1];
 								buffer[bufferIdx+3+8] = a[2];
@@ -787,23 +789,23 @@ final class Font {
 
 
 private void gammaCorrect(ubyte[] rgb, float factor) {
-	float scale = 1.f, temp = 0.f;
-	float r = cast(float)rgb[0];
-	float g = cast(float)rgb[1];
-	float b = cast(float)rgb[2];
-	r = r * factor / 255.f;
-	g = g * factor / 255.f;
-	b = b * factor / 255.f;
-	if (r > 1.f && (temp = (1.f / r)) < scale) scale = temp;
-	if (g > 1.f && (temp = (1.f / g)) < scale) scale = temp;
-	if (b > 1.f && (temp = (1.f / b)) < scale) scale = temp;
-	scale *= 255.0f;
-	r *= scale;	
-	g *= scale;	
-	b *= scale;
-	rgb[0] = cast(ubyte)r;
-	rgb[1] = cast(ubyte)g;
-	rgb[2] = cast(ubyte)b;
+	ubyte meh(ubyte x) {
+		float r = cast(float)x / 255.f;
+		
+		r *= r;
+		r *= r;
+		r *= 5f;
+		
+		if (r > 1.0f) r = 1.0f;
+		if (r < 0.0f) r = 0.0f;
+		r *= 255.f;
+		
+		return cast(ubyte)rndint(r);
+	}
+
+	rgb[0] = meh(rgb[0]);
+	rgb[1] = meh(rgb[1]);
+	rgb[2] = meh(rgb[2]);
 }
 
 

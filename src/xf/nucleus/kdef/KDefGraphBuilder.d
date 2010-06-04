@@ -7,6 +7,7 @@ private {
 	import xf.nucleus.graph.Graph;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.kdef.Common;
+	import xf.nucleus.Log : log = nucleusLog;
 	import xf.mem.StackBuffer;
 }
 
@@ -102,6 +103,11 @@ void buildKernelGraph(
 		final n = nodeIds[i] = kg.addNode(type);
 		nodeDefs[i] = nodeDef;
 		++i;
+
+		log.trace(
+			"Created a graph node '{}'. Id = {}.",
+			nodeName, n.id
+		);
 
 		createData(type, n);
 	}

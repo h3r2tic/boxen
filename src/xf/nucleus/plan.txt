@@ -79,7 +79,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 +	revive the kernel/quark parser
 	* only for Cg
 
--	do a semantic pass on parsed data and pack stuff into runtime structs
++	do a semantic pass on parsed data and pack stuff into runtime structs
 
 -	create facades for structure, material and light kernels
 	-	figure out wtf I exactly had in mind when writing that
@@ -90,7 +90,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 -	kernel graph flattening (composite kernels -> quarks)
 
--	quark graph codegen into Cg
+~	quark graph codegen into Cg
 
 -	heavy and ugly CPU quarks for post-proc and the pipeline
 	* no fancy runtime fixups

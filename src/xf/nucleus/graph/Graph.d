@@ -543,7 +543,6 @@ final class Graph : IGraphFlow {
 			_verifyNodeId(to);
 			
 			ConnectionList* outList = &_outgoingConnections[from.id];
-			ConnectionList* incList = &_incomingConnections[to.id];
 			Connection* con;
 			
 			foreach (item; outList.items) {
@@ -594,15 +593,6 @@ final class Graph : IGraphFlow {
 
 			ConnectionList* outList = &_outgoingConnections[from.id];
 
-			// data flow
-			
-			foreach (item; outList.items) {
-				auto con = item.to;
-				if (int r = sink(con)) {
-					return r;
-				}
-			}
-
 			// auto flow
 
 			for (uword to = 0; to < _capacity; ++to) {
@@ -616,6 +606,17 @@ final class Graph : IGraphFlow {
 				}
 			}
 
+			// data flow
+			
+			foreach (item; outList.items) {
+				auto con = item.to;
+				if (!_readFlag(_autoFlowFlags, from.id, item.to.id)) {
+					if (int r = sink(con)) {
+						return r;
+					}
+				}
+			}
+
 			return 0;
 		}
 
@@ -623,15 +624,6 @@ final class Graph : IGraphFlow {
 			_verifyNodeId(to);
 
 			ConnectionList* incList = &_incomingConnections[to.id];
-
-			// data flow
-
-			foreach (item; incList.items) {
-				auto con = item.from;
-				if (int r = sink(con)) {
-					return r;
-				}
-			}
 
 			// auto flow
 
@@ -641,6 +633,17 @@ final class Graph : IGraphFlow {
 					&&	_readFlag(_autoFlowFlags, from, to.id)
 				) {
 					if (int r = sink(GraphNodeId(cast(ushort)from, _idReuseCounts[from]))) {
+						return r;
+					}
+				}
+			}
+
+			// data flow
+
+			foreach (item; incList.items) {
+				auto con = item.from;
+				if (!_readFlag(_autoFlowFlags, item.from.id, to.id)) {
+					if (int r = sink(con)) {
 						return r;
 					}
 				}

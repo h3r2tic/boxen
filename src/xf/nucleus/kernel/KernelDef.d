@@ -16,6 +16,9 @@ class KernelDef {
 	Param[]				attribs;
 	word				renderingOrdinal = -1;
 	Domain				domain;
+	
+	void*				bestImpl;		// QuarkDef
+	word				bestImplScore;
 
 
 	bool isSubkernelOf(KernelDef k) {
