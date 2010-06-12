@@ -48,8 +48,12 @@ void FragmentProgram(
 
 	//const float4 wb = float4(0.08, 0.24, 0.36, 0.24);
 	//const float4 wb = float4(0.07, 0.23, 0.40, 0.23);
-	//const float4 wb = float4(0.06, 0.20, 0.48, 0.20);
-	const float4 wb = float4(0.04, 0.125, 0.69, 0.125);
+	//const float4 wb = float4(0.06, 0.19, 0.5, 0.19);
+
+	const float w0 = 0.06;
+	const float w1 = 0.21;
+	const float w2 = 0.46;
+	const float4 wb = float4(w0, w1, w2, w1);
 
 	float4 colb = wb.x * tm2 + wb.y * tm1 + wb.z * t0 + wb.w * tp1 + wb.x * tp2;
 
@@ -66,4 +70,13 @@ void FragmentProgram(
 		dot(wb, float4(tm1.w, t0.w, tp1.w, tp2.w)).x + wb.x * tp3.w,
 		1
 	) * input.color.wwww;
+
+	col0 *= col1;
+
+	const float a = 0.055f;
+	
+	col1 =
+		col1 <= 0.0031308
+		? 12.92 * col1
+		: ((1.0 + a ) * pow(col1, 1.0/2.4) - a);
 }
