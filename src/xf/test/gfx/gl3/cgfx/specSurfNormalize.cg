@@ -10,6 +10,8 @@ float3 expand(float3 v) { return (v-0.5)*2; }
 void specSurfNormalize(float2 normalMapTexCoord : TEXCOORD0,
                        float3 lightDirection    : TEXCOORD1,
                        float3 halfAngle         : TEXCOORD2,
+                       float3 toEye             : TEXCOORD3,
+                       float3 vnormal           : TEXCOORD4,
 
                    out float4 color : COLOR,
 
@@ -21,19 +23,98 @@ void specSurfNormalize(float2 normalMapTexCoord : TEXCOORD0,
                uniform sampler2D normalMap)
 {
   // Fetch and expand range-compressed normal
-  half3 normalTex = tex2D(normalMap, normalMapTexCoord).xyz;
-  half3 normal = expand(normalTex);
+  float3 normalTex = tex2D(normalMap, normalMapTexCoord).xyz;
+  float3 normal = expand(normalTex);
+  vnormal = normalize(vnormal);
+//  float3 normal = vnormal;
+  toEye = normalize(toEye);
 
   // Normalize interpolated vectors, half-precision is adequate
-  half3 normLightDir = normalize(lightDirection);
-  half3 normHalfAngle = normalize(halfAngle);
+  float3 normLightDir = normalize(lightDirection);
+  float3 normHalfAngle = normalize(halfAngle);
  
-  // Compute diffuse and specular lighting contributions
-  half NdotL = dot(normal, normLightDir);
-  half NdotH = dot(normal, normHalfAngle);
-  half diffuse = saturate(NdotL);
-  half specular = (NdotL >= 0) ? pow(saturate(NdotH), shininessExponent) : 0;
+  float roughness_value = 0.3;
 
-  color.rgb = LMd*(ambient+diffuse) + LMs*specular;
+  // Compute diffuse and specular lighting contributions
+  float sss = saturate(smoothstep(-2.0, 2.0, dot(vnormal, normLightDir)));
+
+  float R0 = 0.05;
+
+  float NdotL = dot(normal, normLightDir);
+  float NdotH = dot(normal, normHalfAngle);
+  float NdotHpos  = max(0.f, NdotH);
+  float NdotV = dot(normal, toEye);
+  float VdotH = dot(toEye, normHalfAngle);
+  float r_sq  = roughness_value * roughness_value;
+
+  float diffuse = saturate(NdotL) * 0.3;
+//  float specular = (NdotL >= 0) ? pow(saturate(NdotH), shininessExponent) : 0;
+
+	// Evaluate the geometric term
+	// --------------------------------
+	float geo_numerator = 2.0f * NdotH;
+ 
+	float geo_b = (geo_numerator * NdotV ) / VdotH;
+	float geo_c = (geo_numerator * NdotL ) / VdotH;
+	float geo   = saturate((min(geo_b, geo_c)));
+ 
+ 
+	// Now evaluate the roughness term
+	// -------------------------------
+	float roughness;
+	{
+		float roughness_a = 1.0f / ( 4.0f * r_sq * pow( NdotHpos, 4 ) );
+		float roughness_b = NdotHpos * NdotHpos - 1.0f;
+		float roughness_c = r_sq * NdotHpos * NdotHpos;
+ 
+		roughness = roughness_a * exp( roughness_b / roughness_c );
+	}
+
+ 
+	// Next evaluate the Fresnel value
+	// -------------------------------
+	float fresnelS = pow(1.0f - VdotH, 5.0f);
+	fresnelS *= ( 1.0f - R0 );
+	fresnelS += R0;
+ 
+ 	// Put all the terms together to compute
+	// the specular term in the equation
+	// -------------------------------------
+	float specular = max(0.f, ( fresnelS * geo * roughness ) / NdotV);
+
+  float fresnel1 = 1.0f - saturate(dot(toEye, vnormal)).x;
+  float fresnel2 = 1.0f - saturate(dot(toEye, normal)).x;
+  float fresnel = (fresnel1 + fresnel2) * 0.5 * 0.3 + min(fresnel1, fresnel2) * 0.7;
+  fresnel *= fresnel;
+  fresnel = R0 + (1.0f - R0) * fresnel;
+
+//  float3 diffSum = lerp(LMd*(ambient+diffuse), ambient.xxx, fresnel.xxx).xyz;
+  float3 diffSum = LMd*(ambient+diffuse) + ambient.xxx * fresnel.xxx;
+
+  color.rgb = LMs*specular*2*max(0.f, 1.1*NdotL-0.1) + (LMd * sss - 0.06) * 0.5 + diffSum;
+
+  float luma = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+  float luma2 = luma;
+
+  luma2 *= 2.0;
+  luma2 += 0.33;
+  luma2 = pow(luma2, 1/0.35);
+
+  color.rgb *= luma2 / luma;
+
+/*  color.rgb *= 4.64;
+  color.rgb += 0.14;
+  color.rgb = pow(color.rgb, 1/0.35);
+
+  color.rgb = saturate(color.rgb);
+
+  color.r -= 0.3;*/
+
+//  float luma = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b;
+//  color.rgb += 0.001;
+//  color.rgb *= 100 * pow(luma, 3.0) / luma;
+
+//  color.rgb -= color.rgb > 1.0 ? 10 : 0;
+//  color.rgb = color.rgb >= 1 ? 1 : 0;
   color.a = opacity;
 }

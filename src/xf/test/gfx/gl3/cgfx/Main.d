@@ -1,13 +1,14 @@
 module Main;
 
 import xf.gfx.api.gl3.OpenGL;
-import xf.gfx.api.gl3.backend.Native;
+import xf.gfx.api.gl3.backend.Root;
 import xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB;
 import xf.gfx.api.gl3.ext.WGL_EXT_swap_control;
 import xf.gfx.api.gl3.Cg;
 
 import xf.omg.core.Misc;
 import xf.omg.core.LinearAlgebra;
+import xf.omg.color.RGB;
 import xf.utils.HardwareTimer;
 
 import tango.stdc.stdio;
@@ -30,14 +31,24 @@ CGparameter	myCgNormalMapParam,
 mat4 projectionMatrix;
 mat4 modelviewMatrix;
 
+import tango.core.Thread;
+
+GLRootWindow context;
+
 void main() {
-	auto context = GLWindow();
+	Thread.getThis().priority = -2;
+	
+	const winSize = 800;
+	
+	context = GLRootWindow();
 	context
 		.title(`GL3 + CgFX Demo`)
-		.showCursor(false)
+		.showCursor(true)
 		.fullscreen(false)
-		.width(800)
-		.height(600)
+		.width(winSize)
+		.height(winSize)
+		.decorations(false)
+		.position(vec2i((1050-winSize)/2, (1680-winSize)/2))
 	.create();
 	
 	initCgBinding();
@@ -53,9 +64,14 @@ void main() {
 	
 	auto timer = new HardwareTimer;
 	const float microsPerSecond = 1_000_000;
-	const float radiansPerSecond = 2.5f;
+	const float radiansPerSecond = 0.5f;
 
 	while (context.created) {
+		for (int i = 0; i < 10; ++i) {
+			Thread.sleep(1.0f / 400);
+			context.update();
+		}
+
 		use(context) in (GL gl) {
 			draw(gl);
 		};
@@ -65,7 +81,7 @@ void main() {
 		if (myEyeAngle > 2*3.14159)
 		myEyeAngle -= 2*3.14159f;
 
-		context.update().show();
+		context.show().update();
 	}
 }
 
@@ -169,12 +185,14 @@ CGparameter useSamplerParameter(CGeffect effect, char *paramName, GLuint texobj)
 
 void initOpenGL(GL gl)
 {
-	reshape(gl, 800, 600);
+	reshape(gl, context.width, context.height);
 
 	uint size, level, face;
 	GLubyte *image;
 
-	gl.ClearColor(0.03, 0.1, 0.4, 0.0);	/* Blue background */
+	//gl.ClearColor(0.03, 0.1, 0.4, 0.0);	/* Blue background */
+	float meh = Gamma.sRGB.toLinear(68.f / 255);
+	gl.ClearColor(meh, meh, meh, 0.0);
 	gl.Enable(DEPTH_TEST);
 	gl.PixelStorei(UNPACK_ALIGNMENT, 1); /* Tightly packed texture data. */
 

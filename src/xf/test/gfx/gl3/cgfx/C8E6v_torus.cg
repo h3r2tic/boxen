@@ -8,6 +8,8 @@ void C8E6v_torus(float2 parametric : POSITION,
              out float2 oTexCoord      : TEXCOORD0,
              out float3 lightDirection : TEXCOORD1,
              out float3 halfAngle      : TEXCOORD2,
+             out float3 toEye          : TEXCOORD3,
+             out float3 vnormal        : TEXCOORD4,
 
          uniform float3 lightPosition,  // Object-space
          uniform float3 eyePosition,    // Object-space
@@ -33,6 +35,7 @@ void C8E6v_torus(float2 parametric : POSITION,
   float3 dPds = float3(-sinS*(M+N*cosT), cosS*(M+N*cosT), 0);
   float3 norm_dPds = normalize(dPds);
   float3 normal = float3(cosS * cosT, sinS * cosT, sinT);
+  vnormal = float3(0, 0, 1);
   float3 dPdt = cross(normal, norm_dPds);
   float3x3 rotation = float3x3(norm_dPds,
                                dPdt,
@@ -44,4 +47,6 @@ void C8E6v_torus(float2 parametric : POSITION,
   eyeDirection = mul(rotation, eyeDirection);
   halfAngle = normalize(normalize(lightDirection) +
                         normalize(eyeDirection));
+
+  toEye = normalize(eyeDirection);
 }

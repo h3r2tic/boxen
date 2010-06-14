@@ -12,8 +12,12 @@ private {
 
 
 struct GraphNodeId {
-	ushort	id;
+	ushort	id = ushort.max;
 	ushort	reuseCnt;
+
+	bool valid() {
+		return id != ushort.max;
+	}
 }
 
 

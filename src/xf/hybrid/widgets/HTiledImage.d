@@ -55,7 +55,15 @@ class HTiledImage : Widget {
 				tc[3] = vec2(tc[2].x, tc[0].y);
 				
 				vec2[4] pos = vp;
-				pos[] += off;
+				/+ Way to go, DMD
+
+.objs\xf-hybrid-widgets-HTiledImage.obj(xf-hybrid-widgets-HTiledImage)  Offset 06304H Record Type 00C3
+ Error 1: Previous Definition Different : __arrayExpSliceAddass_S2xf3omg4core13LinearAlgebra16__T6VectorTfVi2Z6Vector
+				+/
+				// pos[] += off;
+				foreach (ref p; pos) {
+					p += off;
+				}
 				
 				r.absoluteQuad(pos, tc);
 			}
