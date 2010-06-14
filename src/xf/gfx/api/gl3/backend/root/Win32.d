@@ -827,6 +827,7 @@ class GLRootWindow : GLContext {
 
 	ubyte*	dibBuf = null;
 	size_t	dibBufSize = 0;
+	uint	swMode = uint.max;
 	
 	GLRootWindow show() {
 		if (_hdc !is null) {
@@ -838,13 +839,31 @@ class GLRootWindow : GLContext {
 				non-hardware stuff to the window. The code below draws an invisible
 				line, which is enough to invalidate the whole rectangle.
 			*/
-			auto targetHWND = _hwnd;
-			auto targetDC = GetDC(targetHWND);
-
 			auto desktopHWND = getDesktopHWND();
-			assert (desktopHWND !is null);
+			HWND targetHWND = _hwnd;
+			uint targetOffsetX = 0;
+			uint targetOffsetY = 0;
+			bool releaseDC = false;
+			
+			if (.GetDesktopWindow == desktopHWND) {
+				if (swMode != SW_HIDE) {
+					ShowWindow(_hwnd, SW_HIDE);
+					swMode = SW_HIDE;
+				}
 
-			SetWindowLong(_hwnd, GWL_HWNDPARENT, cast(int)desktopHWND);
+				targetHWND = desktopHWND;
+				targetOffsetX = _xpos;
+				targetOffsetY = _ypos;
+				releaseDC = true;
+			} else {
+				if (swMode != SW_NORMAL) {
+					SetWindowLong(_hwnd, GWL_HWNDPARENT, cast(LPARAM)desktopHWND);
+					ShowWindow(_hwnd, SW_NORMAL);
+					swMode = SW_NORMAL;
+				}
+			}
+
+			auto targetDC = GetDC(targetHWND);
 
 			size_t dibSize = _width * _height * 4;
 			if (dibBuf is null || dibSize != dibBufSize) {
@@ -880,11 +899,32 @@ class GLRootWindow : GLContext {
 
 			SwapBuffers(_hdc);
 
+			/+ interlaced
+			
+			void blitLine(int y) {
+				SetDIBitsToDevice(
+					targetDC, targetOffsetX, targetOffsetY+y, _width, 1,
+					0, y, 0, _height,
+					dibBuf, &bmi, DIB_RGB_COLORS
+				);
+			}
+
+			static int yoff = 0;
+			yoff ^= 1;
+
+			for (int y = yoff; y < _height; y += 2) {
+				blitLine(y);
+			}+/
+
 			SetDIBitsToDevice(
-				targetDC, 0, 0, _width, _height,
+				targetDC, targetOffsetX, targetOffsetY, _width, _height,
 				0, 0, 0, _height,
 				dibBuf, &bmi, DIB_RGB_COLORS
 			);
+
+			if (releaseDC) {
+				ReleaseDC(targetHWND, targetDC);
+			}
 		}
 		return this;
 	}
@@ -903,6 +943,9 @@ class GLRootWindow : GLContext {
 
 	private HWND getDesktopHWND() {
 		auto desktopHWND = FindWindow("DesktopBackgroundClass", "");
+		if (desktopHWND is null) {
+			desktopHWND = GetDesktopWindow();
+		}
 		return desktopHWND;
 	}
 

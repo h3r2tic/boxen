@@ -41,7 +41,7 @@ void findTopologicalOrder(Graph graph, GraphNodeId[] result) {
 }
 
 
-void removeUnreachableBackwards(Graph graph, GraphNodeId[] initialNodes_ ...) {
+void markPrecedingNodes(Graph graph, DynamicBitSet* bs, void delegate(GraphNodeId) visitor, GraphNodeId[] initialNodes_ ...) {
 	scope stack = new StackBuffer;
 
 	// Enough storage for all graph nodes
@@ -56,19 +56,10 @@ void removeUnreachableBackwards(Graph graph, GraphNodeId[] initialNodes_ ...) {
 		initialNodes[$-1] = id;
 	}
 
-	// Not disposed anywhere since its storage is on the StackBuffer
-	DynamicBitSet visitedNodes;
-	
-	visitedNodes.alloc(graph.capacity, (uword bytes) {
-		void* mem = stack.allocRaw(bytes);
-		memset(mem, 0, bytes);
-		return mem;
-	});
-
 	// perform a backwards search and find useful nodes
 
 	foreach (n; initialNodes) {
-		visitedNodes.set(n.id);
+		bs.set(n.id);
 	}
 	
 	while (initialNodes.length > 0) {
@@ -76,12 +67,46 @@ void removeUnreachableBackwards(Graph graph, GraphNodeId[] initialNodes_ ...) {
 		initialNodes = initialNodes[0..$-1];
 
 		foreach (incFrom; graph.iterIncomingConnections(n)) {
-			if (!visitedNodes.isSet(incFrom.id)) {
+			if (!bs.isSet(incFrom.id)) {
+				if (visitor !is null) {
+					visitor(incFrom);
+				}
 				addInitial(incFrom);
-				visitedNodes.set(incFrom.id);
+				bs.set(incFrom.id);
 			}
 		}
 	}
+}
+
+
+void markPrecedingNodes(Graph graph, DynamicBitSet* bs, GraphNodeId[] initialNodes_ ...) {
+	return markPrecedingNodes(graph, bs, null, initialNodes_);
+}
+	
+
+void visitPrecedingNodes(Graph graph, void delegate(GraphNodeId) visitor, GraphNodeId[] initialNodes_ ...) {
+	scope stack = new StackBuffer;
+
+	// Not disposed anywhere since its storage is on the StackBuffer
+	DynamicBitSet visitedNodes;
+	
+	visitedNodes.alloc(graph.capacity, &stack.allocRaw);
+	visitedNodes.clearAll();
+
+	return markPrecedingNodes(graph, &visitedNodes, visitor, initialNodes_);
+}
+
+
+void removeUnreachableBackwards(Graph graph, GraphNodeId[] initialNodes_ ...) {
+	scope stack = new StackBuffer;
+
+	// Not disposed anywhere since its storage is on the StackBuffer
+	DynamicBitSet visitedNodes;
+	
+	visitedNodes.alloc(graph.capacity, &stack.allocRaw);
+	visitedNodes.clearAll();
+
+	markPrecedingNodes(graph, &visitedNodes, initialNodes_);
 
 	graph.removeNodes((GraphNodeId id) {
 		return !visitedNodes.isSet(id.id);

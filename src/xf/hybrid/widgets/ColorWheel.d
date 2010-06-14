@@ -284,7 +284,16 @@ class ColorWheel : Widget {
 		tc[1] = vec2(tc[0].x, tc[2].y);
 		tc[3] = vec2(tc[2].x, tc[0].y);
 		
-		vp[] += off;
+		/+ Way to go, DMD
+
+.objs\xf-hybrid-widgets-HTiledImage.obj(xf-hybrid-widgets-HTiledImage)  Offset 06304H Record Type 00C3
+ Error 1: Previous Definition Different : __arrayExpSliceAddass_S2xf3omg4core13LinearAlgebra16__T6VectorTfVi2Z6Vector
+		+/
+		//vp[] += off;
+		foreach (ref p; vp) {
+			p += off;
+		}
+
 		r.absoluteQuad(vp, tc);
 	}
 

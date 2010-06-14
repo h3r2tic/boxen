@@ -2,6 +2,7 @@ module xf.nucleus.Defs;
 
 private {
 	import xf.Common;
+	import xf.gfx.Defs;
 }
 
 
@@ -15,3 +16,6 @@ enum Domain {
 	Any	= GPU | CPU,
 	Unresolved = 0b100
 }
+
+
+alias xf.gfx.Defs.GPUDomain GPUDomain;

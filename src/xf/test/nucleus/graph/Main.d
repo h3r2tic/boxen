@@ -113,10 +113,10 @@ void main() {
 			);
 
 			verifyDataFlowNames(kg);
-
 			convertGraphDataFlow(kg, &registry.converters);
+			verifyDataFlowNames(kg);
 
-			File.set("graph.dot", toGraphviz(kg.backend_readOnly));
+			File.set("graph.dot", toGraphviz(kg));
 
 			disposeKernelGraph(kg);
 		}

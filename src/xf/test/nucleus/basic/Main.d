@@ -86,7 +86,7 @@ class MeshStructure : IStructureData {
 		return "Mesh";
 	}
 
-	void setKernelObjectData(KernelParamInterface kpi) {
+	void setKernelObjectData(KernelParamInterface kpi) { 
 		kpi.setIndexData(&indexData);
 		
 		foreach (i, ref attr; vertexAttribs) {
@@ -166,7 +166,7 @@ class TestApp : GfxApp {
 
 		// ----
 
-		cstring path = `C:\Users\h3r3tic\Documents\3dsMax\export\soldier.hsf`;
+		cstring path = `../../media/mesh/soldier.hsf`;
 		path = Path.normalize(path);
 		
 		scope loader = new HsfLoader;

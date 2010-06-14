@@ -4,6 +4,7 @@ private {
 	import xf.Common;
 
 	import
+		xf.gfx.Defs,
 		xf.gfx.Buffer,
 		xf.gfx.VertexBuffer,
 		xf.gfx.VertexArray,
@@ -169,13 +170,6 @@ template MUniformParamGroupInstance() {
 }
 
 
-enum GPUDomain {
-	Vertex,
-	Geometry,
-	Fragment
-}
-
-
 cstring GPUDomainName(GPUDomain d) {
 	switch (d) {
 		case GPUDomain.Vertex:
@@ -282,7 +276,7 @@ abstract class Effect {
 		}
 		
 
-		char*[GPUDomain.max+1] _domainProgramNames = [
+		char*[GPUDomain.Last+1] _domainProgramNames = [
 			"VertexProgram".ptr,
 			"GeometryProgram".ptr,
 			"FragmentProgram".ptr
@@ -291,7 +285,7 @@ abstract class Effect {
 		static assert (0 == GPUDomain.Vertex);
 		static assert (1 == GPUDomain.Geometry);
 		static assert (2 == GPUDomain.Fragment);
-		static assert (2 == GPUDomain.max);
+		static assert (2 == GPUDomain.Last);
 
 		mixin(multiArray(`_uniformParams`, uniformParamMix));
 		mixin(multiArray(`_effectUniformParams`, uniformParamMix));

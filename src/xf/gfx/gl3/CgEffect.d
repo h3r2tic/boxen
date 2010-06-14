@@ -13,6 +13,7 @@ private {
 		xf.gfx.api.gl3.OpenGL,
 		xf.gfx.api.gl3.ext.NV_parameter_buffer_object,
 		xf.gfx.api.gl3.ext.NV_transform_feedback,
+		xf.gfx.Defs,
 		xf.gfx.Buffer,
 		xf.gfx.VertexBuffer,
 		xf.gfx.Texture;

@@ -13,6 +13,16 @@ private {
 
 
 
+// TODO: move this somewhere
+enum SourceKernelType {
+	Undefined,
+	Structure,
+	Surface,
+	Light
+}
+
+
+
 class KernelGraph {
 	private typedef cstring _cstring;
 
@@ -42,6 +52,9 @@ class KernelGraph {
 			ParamList	params;
 			Allocator	_allocator;
 		}
+
+		SourceKernelType	sourceKernelType;
+		uint				sourceLightIndex;
 	}
 
 
@@ -72,6 +85,17 @@ class KernelGraph {
 
 		NodeType type() {
 			return _type;
+		}
+
+		cstring typeString() {
+			switch (_type) {
+				case NodeType.Input: return "Input";
+				case NodeType.Output: return "Output";
+				case NodeType.Data: return "Data";
+				case NodeType.Kernel: return "Kernel";
+				case NodeType.Func: return "Func";
+				default: assert (false);
+			}
 		}
 
 		ParamNode* input() {
@@ -235,6 +259,11 @@ class KernelGraph {
 		if (t & NodeType._Param) {
 			node._param._allocator = &_mem.pushBack;
 		}
+	}
+
+
+	void removeNode(GraphNodeId id) {
+		_graph.removeNode(id);
 	}
 
 
