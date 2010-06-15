@@ -105,6 +105,31 @@ class Code {
 		this.tokens = tokens;
 		this.language = language;
 	}
+
+
+	void writeOut(void delegate(char[]) sink) {
+		if (0 != tokens.length) {
+			int lin = tokens[0].line;
+			int col = 0;
+			
+			cstring value = null;
+			foreach (tok; tokens) {
+				while (tok.line > lin) {
+					++lin;
+					sink("\n");
+					col = 0;
+				}
+				cstring val = tok.verbatim;
+				col += val.length;
+				while (tok.column > col) {
+					++col;
+					sink(" ");
+					value ~= ' ';
+				}
+				sink(val);
+			}
+		}
+	}
 	
 	
 	cstring toString() {
