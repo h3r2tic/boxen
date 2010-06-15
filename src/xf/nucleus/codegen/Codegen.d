@@ -354,6 +354,7 @@ void codegen(
 			graph,
 			nodeDomains
 		),
+		"VertexProgram",
 		vinputs,
 		voutputs,
 		(void delegate(GraphNodeId) sink) {
@@ -362,7 +363,8 @@ void codegen(
 					sink(nid);
 				}
 			}
-		}
+		},
+		node2funcName
 	);
 
 	// ---- codegen the fragment shader ----
@@ -374,6 +376,7 @@ void codegen(
 			graph,
 			nodeDomains
 		),
+		"FragmentProgram",
 		finputs,
 		foutputs,
 		(void delegate(GraphNodeId) sink) {
@@ -382,7 +385,8 @@ void codegen(
 					sink(nid);
 				}
 			}
-		}
+		},
+		node2funcName
 	);
 }
 
@@ -441,12 +445,16 @@ void emitSourceParamName(
 
 void domainCodegen(
 	CodegenContext ctx,
+	cstring domainFuncName,
 	CgParam[] inputs,
 	CgParam[] outputs,
-	void delegate(void delegate(GraphNodeId)) nodesTopo
+	void delegate(void delegate(GraphNodeId)) nodesTopo,
+	cstring[] node2funcName
 ) {
+	auto sink = ctx.sink;
+	
 	/*
-	 * void funcName(
+	 * void domainFuncName(
 	 *   each input param passed through sourceParamName()
 	 *   each output param with a bridge__{i} name
 	 * ) {
@@ -459,12 +467,104 @@ void domainCodegen(
 	 *     bridge__{i} = sourceParamName(outputs[i]);
 	 * }
 	 */
+
+	sink.formatln("void {} (", domainFuncName);
+	
+	foreach (i, par; inputs) {
+		assert (par.param.hasTypeConstraint);
+
+		sink("\tin ");
+		sink(par.param.type);
+		sink(" ");
+		emitSourceParamName(ctx, par.node, par.param.name);
+		sink(" : ");
+		par.bindingSemantic.writeOut(sink);
+		
+		if (i+1 != inputs.length+outputs.length) {
+			sink(",");
+		}
+		
+		sink.newline();
+	}
+	
+	foreach (i, par; outputs) {
+		assert (par.param.hasTypeConstraint);
+
+		sink("\tout ");
+		sink(par.param.type);
+		sink(" ");
+		sink.formatln("bridge__{}", i);
+		sink(" : ");
+		par.bindingSemantic.writeOut(sink);
+		
+		if (i+1 != outputs.length) {
+			sink(",");
+		}
+		
+		sink.newline();
+	}
+
+	sink(") {").newline();
+
+	domainCodegenBody(ctx, nodesTopo, node2funcName);
+
+	foreach (i, par; outputs) {
+		sink.format("bridge__{} = ", i);
+		emitSourceParamName(ctx, par.node, par.param.name);
+		sink(';').newline();
+	}
+
+	sink("}").newline();
+}
+
+
+void domainCodegenBody(
+	CodegenContext ctx,
+	void delegate(void delegate(GraphNodeId)) nodesTopo,
+	cstring[] node2funcName
+) {
+	auto sink = ctx.sink;
+
+	nodesTopo((GraphNodeId nid) {
+		auto node = ctx.graph.getNode(nid);
+		if (KernelGraph.NodeType.Func != node.type) {
+			return;
+		}
+
+		auto funcNode = node.func();
+		
+		foreach (par; funcNode.params) {
+			assert (par.hasTypeConstraint);
+			
+			if (!par.isInput) {
+				sink(par.type)(' ');
+				emitSourceParamName(ctx, nid, par.name);
+				sink(';').newline();
+			}
+		}
+
+		auto funcName = node2funcName[nid.id];
+		assert (funcName !is null);
+		
+		sink(funcName)('(').newline;
+		foreach (i, par; funcNode.params) {
+			emitSourceParamName(ctx, nid, par.name);
+			if (i+1 != funcNode.params.length) {
+				sink(',').newline();
+			}
+		}
+		sink(");").newline;
+	});
 }
 
 
 struct BindingSemantic {
 	cstring	name;
 	uint	index;
+
+	void writeOut(CodeSink sink) {
+		sink(name)(index);
+	}
 }
 
 struct CgParam {
