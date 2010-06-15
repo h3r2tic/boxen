@@ -5,6 +5,7 @@ private {
 	import xf.nucleus.graph.Graph;
 	import xf.nucleus.Param;
 	import xf.nucleus.Kernel;
+	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.Function;
 	import xf.mem.ChunkQueue;
 	import xf.mem.FreeList;
@@ -129,20 +130,16 @@ class KernelGraph {
 		}
 
 
-		Param* getOutputParam(cstring name) {
+		Param* getOutputParam(
+				cstring name,
+				KernelDef delegate(cstring) kernelLookup = null
+		) {
 			switch (_type) {
 				case NodeType.Output:	return null;
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return _inputOutputData.params.get(name);
-				case NodeType.Kernel: {
-					error(
-						"Trying to access an output param '{}' of a Kernel node."
-						" Kernel nodes must be converted to Func nodes first."
-					);
-					assert (false);
-				}
-				case NodeType.Func: {
-					final p = _func.params.get(name);
+				default: {
+					final p = getParamList(kernelLookup).get(name);
 					if (p.isInput) {
 						error(
 							"Trying to access a function's input parameter '{}'"
@@ -153,25 +150,20 @@ class KernelGraph {
 						return p;
 					}
 				}
-				default: assert (false);
 			}
 		}
 
 
-		Param* getInputParam(cstring name) {
+		Param* getInputParam(
+				cstring name,
+				KernelDef delegate(cstring) kernelLookup = null
+		) {
 			switch (_type) {
 				case NodeType.Output:	return _inputOutputData.params.get(name);
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return null;
-				case NodeType.Kernel: {
-					error(
-						"Trying to access an input param '{}' of a Kernel node."
-						" Kernel nodes must be converted to Func nodes first."
-					);
-					assert (false);
-				}
-				case NodeType.Func: {
-					final p = _func.params.get(name);
+				default: {
+					final p = getParamList(kernelLookup).get(name);
 					if (false == p.isInput) {
 						error(
 							"Trying to access a function's output parameter '{}'"
@@ -182,12 +174,11 @@ class KernelGraph {
 						return p;
 					}
 				}
-				default: assert (false);
 			}
 		}
 
 
-		ParamList* getParamList() {
+		ParamList* getParamList(KernelDef delegate(cstring) kernelLookup = null) {
 			switch (_type) {
 				case NodeType.Output:	// fall through
 				case NodeType.Input:	// fall through
@@ -195,6 +186,22 @@ class KernelGraph {
 				case NodeType.Func:		return &_func.params;
 				
 				case NodeType.Kernel: {
+					if (kernelLookup !is null) {
+						auto k = kernelLookup(_kernel.kernelName);
+						if (k is null) {
+							error("Unknown kernel: '{}'", _kernel.kernelName);
+						}
+						auto f = k.getFunction(_kernel.funcName);
+						if (f is null) {
+							error(
+								"Unknown function: '{}' in kernel: '{}'",
+								_kernel.funcName,
+								_kernel.kernelName
+							);
+						}
+						return &f.params;
+					}
+					
 					error(
 						"Trying to access a param list of a Kernel node."
 						" Kernel nodes must be converted to Func nodes first."
