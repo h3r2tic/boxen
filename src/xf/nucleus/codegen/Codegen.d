@@ -221,11 +221,26 @@ void codegen(
 		);
 	}
 
+	// ---- figure out the binding semantics ----
+
 	// HACK: Will need to handle DEPTH semantics too.
 	foreach (i, ref p; foutputs) {
 		p.bindingSemantic.name = "COLOR";
 		p.bindingSemantic.index = i;
 	}
+
+	void assignTexcoords(CgParam[] pars) {
+		uword next = 0;
+		foreach (ref p; pars) {
+			if (p.bindingSemantic.name is null) {
+				p.bindingSemantic.name = "TEXCOORD";
+				p.bindingSemantic.index = next++;
+			}
+		}
+	}
+
+	assignTexcoords(vinputs);
+	assignTexcoords(voutputs);
 
 	// ---- dump all quark funcs ----
 
@@ -251,7 +266,12 @@ void codegen(
 		overloadSearch: foreach (emid; emittedFuncs) {
 			auto f = graph.getNode(emid).func();
 			
-			if (f.func is funcNode.func) {
+			if (f.func.name == funcNode.func.name) {
+				if (f.params.length != funcNode.func.params.length) {
+					++overloadIndex;
+					continue overloadSearch;
+				}
+				
 				foreach (i, p1; f.params) {
 					assert (p1.hasTypeConstraint);
 					auto p2 = funcNode.params[i];
@@ -268,6 +288,8 @@ void codegen(
 				continue funcDumpIter;
 			}
 		}
+
+		_emittedFuncs[numEmittedFuncs++] = nid;
 
 		cstring funcName; {
 			if (0 == overloadIndex) {
@@ -311,6 +333,7 @@ void codegen(
 		funcNode.func.code.writeOut((char[] text) {
 			sink(text);
 		});
+		sink.newline();
 		sink("}").newline();
 	}
 	
@@ -377,7 +400,7 @@ void codegen(
 			nodeDomains
 		),
 		"FragmentProgram",
-		finputs,
+		finputs[1..$],	// without the POSITION param
 		foutputs,
 		(void delegate(GraphNodeId) sink) {
 			foreach (nid; topological) {
@@ -409,16 +432,18 @@ void emitSourceParamName(
 	final node = ctx.graph.getNode(nid);
 	
 	if (
-		KernelGraph.NodeType.Data == node.type
-		|| (
 			KernelGraph.NodeType.Input == node.type
 		&&	ctx.nodeDomains[nid.id] == ctx.domain
-		)
+	) {
+		// Can only have Input nodes for structure kernels
+		ctx.sink("structure__");
+	} else if (
+		KernelGraph.NodeType.Data == node.type
 	) {
 		final pnode = node._param();
 		switch (pnode.sourceKernelType) {
 			case SourceKernelType.Undefined: {
-				error("Param (Input/Data) node without a source kernel type :(");
+				error("Data node without a source kernel type :(");
 			} break;
 
 			case SourceKernelType.Structure: {
@@ -493,7 +518,7 @@ void domainCodegen(
 		sink("\tout ");
 		sink(par.param.type);
 		sink(" ");
-		sink.formatln("bridge__{}", i);
+		sink.format("bridge__{}", i);
 		sink(" : ");
 		par.bindingSemantic.writeOut(sink);
 		
@@ -509,12 +534,33 @@ void domainCodegen(
 	domainCodegenBody(ctx, nodesTopo, node2funcName);
 
 	foreach (i, par; outputs) {
-		sink.format("bridge__{} = ", i);
+		sink.format("\tbridge__{} = ", i);
 		emitSourceParamName(ctx, par.node, par.param.name);
 		sink(';').newline();
 	}
 
 	sink("}").newline();
+}
+
+
+bool findSrcParam(
+	KernelGraph kg,
+	GraphNodeId dstNid,
+	cstring dstParam,
+	GraphNodeId* srcNid,
+	Param** srcParam
+) {
+	foreach (src; kg.flow.iterIncomingConnections(dstNid)) {
+		foreach (fl; kg.flow.iterDataFlow(src, dstNid)) {
+			if (fl.to == dstParam) {
+				*srcNid = src;
+				*srcParam = kg.getNode(src).getOutputParam(fl.from);
+				return true;
+			}
+		}
+	}
+
+	return false;
 }
 
 
@@ -537,6 +583,7 @@ void domainCodegenBody(
 			assert (par.hasTypeConstraint);
 			
 			if (!par.isInput) {
+				sink('\t');
 				sink(par.type)(' ');
 				emitSourceParamName(ctx, nid, par.name);
 				sink(';').newline();
@@ -546,14 +593,40 @@ void domainCodegenBody(
 		auto funcName = node2funcName[nid.id];
 		assert (funcName !is null);
 		
-		sink(funcName)('(').newline;
+		sink('\t')(funcName)('(').newline;
 		foreach (i, par; funcNode.params) {
-			emitSourceParamName(ctx, nid, par.name);
-			if (i+1 != funcNode.params.length) {
-				sink(',').newline();
+			sink('\t');
+			sink('\t');
+
+			if (par.isInput) {
+				GraphNodeId	srcNid;
+				Param*		srcParam;
+
+				if (!findSrcParam(
+					ctx.graph,
+					nid,
+					par.name,
+					&srcNid,
+					&srcParam
+				)) {
+					error(
+						"No flow to {}.{}. Should have been caught earlier.",
+						nid.id,
+						par.name
+					);
+				}
+
+				emitSourceParamName(ctx, srcNid, srcParam.name);
+			} else {
+				emitSourceParamName(ctx, nid, par.name);
 			}
+			
+			if (i+1 != funcNode.params.length) {
+				sink(',');
+			}
+			sink.newline();
 		}
-		sink(");").newline;
+		sink("\t);").newline;
 	});
 }
 

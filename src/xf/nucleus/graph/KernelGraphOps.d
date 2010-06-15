@@ -3,6 +3,7 @@ module xf.nucleus.graph.KernelGraphOps;
 private {
 	import xf.Common;
 	import xf.nucleus.Function;
+	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.KernelGraph;
 
 	// for the conversion
@@ -23,27 +24,34 @@ private {
 
 void convertKernelNodesToFuncNodes(
 	KernelGraph graph,
-	Function delegate(cstring kname, cstring fname) getFuncImpl
+	Function delegate(cstring kname, cstring fname) getFuncImpl,
+	bool delegate(cstring kname, cstring fname) filter = null
 ) {
 	foreach (nid, ref node; graph.iterNodes(KernelGraph.NodeType.Kernel)) {
 		final ndata = node.kernel();
-		final func = getFuncImpl(ndata.kernelName, ndata.funcName);
-		
-		if (func is null) {
-			error(
-				"Could not find a kernel func '{}'::'{}'",
-				ndata.kernelName, ndata.funcName
-			);
-		}
 
-		graph.resetNode(nid, KernelGraph.NodeType.Func);
-		node.func.func = func;
-		node.func.params = func.params.dup(&graph._mem.pushBack);
+		if (filter is null || filter(ndata.kernelName, ndata.funcName)) {
+			final func = getFuncImpl(ndata.kernelName, ndata.funcName);
+			
+			if (func is null) {
+				error(
+					"Could not find a kernel func '{}'::'{}'",
+					ndata.kernelName, ndata.funcName
+				);
+			}
+
+			graph.resetNode(nid, KernelGraph.NodeType.Func);
+			node.func.func = func;
+			node.func.params = func.params.dup(&graph._mem.pushBack);
+		}
 	}
 }
 
 
-void verifyDataFlowNames(KernelGraph graph) {
+alias KernelDef delegate(cstring) KernelLookup;
+
+
+void verifyDataFlowNames(KernelGraph graph, KernelLookup getKernel) {
 	final flow = graph.flow();
 	
 	foreach (fromId; graph.iterNodes) {
@@ -53,7 +61,7 @@ void verifyDataFlowNames(KernelGraph graph) {
 			final toNode = graph.getNode(toId);
 			
 			foreach (fl; flow.iterDataFlow(fromId, toId)) {
-				final op = fromNode.getOutputParam(fl.from);
+				final op = fromNode.getOutputParam(fl.from, getKernel);
 				if (op is null) {
 					error(
 						"verifyDataFlowNames: The source node for flow {}->{}"
@@ -63,7 +71,7 @@ void verifyDataFlowNames(KernelGraph graph) {
 				}
 				assert (ParamDirection.Out == op.dir);
 
-				final ip = toNode.getInputParam(fl.to);
+				final ip = toNode.getInputParam(fl.to, getKernel);
 				if (ip is null) {
 					error(
 						"verifyDataFlowNames: The target node for flow {}->{}"
@@ -81,7 +89,14 @@ void verifyDataFlowNames(KernelGraph graph) {
 
 	foreach (toId; graph.iterNodes) {
 		final toNode = graph.getNode(toId);
-		ParamList* plist = toNode.getParamList();
+		ParamList* plist;
+		
+		if (KernelGraph.NodeType.Kernel == toNode.type) {
+			plist = &getKernel(toNode.kernel.kernelName)
+				.getFunction(toNode.kernel.funcName).params;
+		} else {
+			plist = toNode.getParamList();
+		}
 
 		DynamicBitSet paramHasInput;
 		paramHasInput.alloc(plist.length, &stack.allocRaw);
@@ -324,9 +339,19 @@ private void findAutoFlow(
 }
 
 
-private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
+private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id, KernelLookup getKernel) {
 	final node = graph.getNode(id);
-	if (KernelGraph.NodeType.Func == node.type) {
+
+	if (KernelGraph.NodeType.Kernel == node.type) {
+		auto kernel = getKernel(node.kernel.kernelName);
+		foreach (ref Param par; kernel.getFunction(node.kernel.funcName).params) {
+			if (!par.hasPlainSemantic) {
+				error("Special Kernel-type nodes must only have plain semantics.");
+			}
+		}
+	}
+
+	else if (KernelGraph.NodeType.Func == node.type) {
 		final params = &node.func.params;
 		foreach (ref Param par; *params) {
 			if (par.isInput || par.hasPlainSemantic) {
@@ -381,7 +406,8 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 					}
 
 					assert (fromName !is null, "No flow D:");
-					return *graph.getNode(fromId).getOutputParam(fromName).semantic();
+					return *graph.getNode(fromId)
+						.getOutputParam(fromName, getKernel).semantic();
 				},
 				
 				&plainSem
@@ -397,7 +423,8 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 // Assumes the consists of param/calc nodes only
 void convertGraphDataFlow(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel
 ) {
 	scope stack = new StackBuffer;
 
@@ -415,6 +442,11 @@ void convertGraphDataFlow(
 
 			case KernelGraph.NodeType.Output: {
 				plist = &toNode.output.params;
+			} break;
+
+			case KernelGraph.NodeType.Kernel: {
+				plist = &getKernel(toNode.kernel.kernelName)
+					.getFunction(toNode.kernel.funcName).params;
 			} break;
 
 			default: return;		// just outputs here
@@ -453,10 +485,10 @@ void convertGraphDataFlow(
 	void doManualFlow(GraphNodeId fromId, GraphNodeId toId, DataFlow fl) {
 		scope stack = new StackBuffer;
 
-		final fromParam = graph.getNode(fromId).getOutputParam(fl.from);
+		final fromParam = graph.getNode(fromId).getOutputParam(fl.from, getKernel);
 		assert (fromParam !is null);
 		
-		final toParam = graph.getNode(toId).getInputParam(fl.to);
+		final toParam = graph.getNode(toId).getInputParam(fl.to, getKernel);
 		assert (toParam !is null);
 
 		if (!findConversion(
@@ -491,7 +523,7 @@ void convertGraphDataFlow(
 				doManualFlow(id, con, fl);
 			}
 		}
-		simplifyParamSemantics(graph, id);
+		simplifyParamSemantics(graph, id, getKernel);
 	}
 
 	graph.flow.removeAllAutoFlow();

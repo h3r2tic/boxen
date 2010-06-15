@@ -168,8 +168,8 @@ cstring toGraphviz(KernelGraph kgraph) {
 		} else if (KernelGraph.NodeType.Kernel == node.type) {
 			return Format("{} - {}.{}",
 				n.id,
-				node.kernel.kernelName,
-				node.kernel.funcName
+				cast(char[])node.kernel.kernelName,
+				cast(char[])node.kernel.funcName
 			);
 		} else {
 			return Format("{} - {}", n.id, node.typeString);
