@@ -118,6 +118,12 @@ class KDefProcessor {
 					}
 				}
 			}
+
+			foreach (ref gdef; mod.graphDefs) {
+				if (auto r = dg(gdef)) {
+					return r;
+				}
+			}
 		}
 		
 		return 0;
@@ -427,6 +433,13 @@ class KDefProcessor {
 						kernelValue.kernelDef.name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {
 							mod.kernels ~= kernelValue.kernelDef;
+						}
+					}
+					
+					if (auto graphValue = cast(GraphDefValue)stmt.value) {
+						graphValue.graphDef.label = stmt.name;
+						if (auto mod = cast(KDefModule)sc) {
+							mod.graphDefs ~= graphValue.graphDef;
 						}
 					}
 					

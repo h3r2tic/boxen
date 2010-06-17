@@ -1,0 +1,129 @@
+Structure = kernel {
+	quark main(
+		in inPos <type vec3 + basis model>,
+		out outPos <in.inPos.actual>
+	);
+};
+
+Surface = kernel {
+	quark main(
+		in position <type vec3 + basis model>,
+		out radiance <type vec4 + use color>
+	);
+};
+
+
+FancyTransform = kernel {
+	quark main(
+		in inPos <type vec3 + basis world>,
+		out outPos <in.inPos.actual>
+	);
+};
+
+
+FancyShade = kernel {
+	quark main(
+		in inPos <type vec3 + basis world>,
+		out radiance <type vec4 + use color>
+	);
+};
+
+
+implement FancyTransform(20)
+quark FancyTransformDefault {
+	quark FancyTransform_main(
+		in inPos <type vec3 + basis world>,
+		out outPos <in.inPos.actual>
+	) Cg {
+	}
+}
+
+implement FancyShade(20)
+quark FancyShadeDefault {
+	quark FancyShade_main(
+		in inPos <type vec3 + basis world>,
+		out radiance <type vec4 + use color>
+	) Cg {
+	}
+}
+
+
+implement Structure(20)
+graph DefaultStructure {
+	node_0 = node {
+		type = "input";
+		params = (
+			out inPos<type vec3 + basis model>
+		);
+	};
+	node_1 = node {
+		type = "kernel";
+		kernelName = "FancyTransform";
+		funcName = "FancyTransform_main";
+	};
+	node_2 = node {
+		type = "output";
+		params = (
+			in pos<type vec3>
+		);
+	};
+
+	connect node_0 node_1;
+	connect node_1 node_2;
+}
+
+
+implement Surface(20)
+graph DefaultSurface {
+	node_0 = node {
+		type = "input";
+		params = (
+			out pos<type vec3 + basis world>
+		);
+	};
+	node_1 = node {
+		type = "kernel";
+		kernelName = "FancyShade";
+		funcName = "FancyShade_main";
+	};
+	node_2 = node {
+		type = "output";
+		params = (
+			in radiance<type vec4 + use color>
+		);
+	};
+
+	connect node_0 node_1;
+	connect node_1 node_2;
+}
+
+
+use = trait {
+	color,
+	position
+};
+
+unit = trait {
+	true,
+	false
+} = false;
+
+converter(20) normalizer(in a <type vec3>, out b <type vec3 + unit true>)
+D {
+	b = a.normalized;
+}
+
+
+converter(20) model2world(
+	in a <type vec3 + basis model>,
+	out b <in.a.actual + basis world>
+) Cg {
+	b = a;		// TODO
+}
+
+converter(20) world2model(
+	in a <type vec3 + basis world>,
+	out b <in.a.actual + basis model>
+) Cg {
+	b = a;		// TODO
+}
