@@ -81,27 +81,36 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 +	do a semantic pass on parsed data and pack stuff into runtime structs
 
--	quark graph codegen into Cg
++	quark graph codegen into Cg
 	* it is assumed that Structure and Surface kernels are merged before this stage
 	+ mark nodes for various stages of processing
 		+ have a special Rasterize node, mark everything before it for vertex
 		+ the rest for fragment
 			* will later move between stages via special quark annotations
-	- mark certain inputs with special Cg binding semantics
+	+ mark certain inputs with special Cg binding semantics
 		* POSITION, COLOR
-	- uniquely rename param names at domain boundaries
-	- derive the other binding semantics at domain boundaries
+	+ uniquely rename param names at domain boundaries
+	+ derive the other binding semantics at domain boundaries
 		* basically, assign TEXCOORD in sequence
-	- find all quarks required for computation and dump their bodies
-		- uniquely rename function names
-	- split the graph into multiple stages and codegen for each
-		- serialize calc nodes
-		- create the main shader with linking via temporaries
+	+ find all quarks required for computation and dump their bodies
+		+ uniquely rename function names
+	+ split the graph into multiple stages and codegen for each
+		+ serialize calc nodes
+		+ create the main shader with linking via temporaries
 
--	create facades for structure, material and light kernels
+~	create facades for structure, material and light kernels
 	-	figure out wtf I exactly had in mind when writing that
-	-	also the ability to automatically connect them
+		* binding of material/light/asset data into shaders
+	+	also the ability to automatically connect them
 		* param names must match
+
+-	plug the codegen into the Forward renderer
+	- generate code
+	- create the Cg Effect
+	- instantiate the Effect
+	- bind params
+
+-	monitor quark files for changes, recompile shaders when needed
 
 -	light kernel instantiation (in the Forward renderer)
 

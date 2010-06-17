@@ -42,7 +42,7 @@ void findBestKernelImpls(
 			if (auto kernel = getKernel(impl.name)) {
 				if (impl.score > kernel.bestImplScore) {
 					kernel.bestImplScore = impl.score;
-					kernel.bestImpl = cast(void*)q;
+					kernel.bestImpl = cast(Object)q;
 				}
 			}
 		}
@@ -102,7 +102,7 @@ void main() {
 					if (kernel.bestImpl is null) {
 						error(
 							"The '{}' kernel requested by convertKernelNodesToFuncNodes"
-							" has no implemenation."
+							" has no implemenation.", kname
 						);
 					}
 
@@ -112,9 +112,9 @@ void main() {
 				}
 			);
 
-			verifyDataFlowNames(kg);
-			convertGraphDataFlow(kg, &registry.converters);
-			verifyDataFlowNames(kg);
+			verifyDataFlowNames(kg, &registry.getKernel);
+			convertGraphDataFlow(kg, &registry.converters, &registry.getKernel);
+			verifyDataFlowNames(kg, &registry.getKernel);
 
 			File.set("graph.dot", toGraphviz(kg));
 

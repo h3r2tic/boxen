@@ -100,6 +100,7 @@ class KDefModule : Scope {
 	ImplementStatement[]	kernelImpls;
 	KernelDef[]				kernels;
 	TraitDef[]				traitDefs;
+	GraphDef[]				graphDefs;
 	SemanticConverter[]		converters;
 	
 	

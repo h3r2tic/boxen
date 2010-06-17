@@ -6,6 +6,7 @@ private {
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.Graph;
 	import xf.nucleus.graph.GraphOps;
+	import xf.nucleus.graph.KernelGraphOps;
 	import xf.gfx.Defs : GPUDomain;
 	import xf.utils.BitSet;
 	import xf.mem.StackBuffer;
@@ -542,26 +543,6 @@ void domainCodegen(
 	sink("}").newline();
 }
 
-
-bool findSrcParam(
-	KernelGraph kg,
-	GraphNodeId dstNid,
-	cstring dstParam,
-	GraphNodeId* srcNid,
-	Param** srcParam
-) {
-	foreach (src; kg.flow.iterIncomingConnections(dstNid)) {
-		foreach (fl; kg.flow.iterDataFlow(src, dstNid)) {
-			if (fl.to == dstParam) {
-				*srcNid = src;
-				*srcParam = kg.getNode(src).getOutputParam(fl.from);
-				return true;
-			}
-		}
-	}
-
-	return false;
-}
 
 
 void domainCodegenBody(

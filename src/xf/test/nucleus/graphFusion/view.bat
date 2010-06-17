@@ -1,0 +1,1 @@
+@call dotAndView graph.dot

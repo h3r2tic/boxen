@@ -17,7 +17,7 @@ class KernelDef {
 	word				renderingOrdinal = -1;
 	Domain				domain;
 	
-	void*				bestImpl;		// QuarkDef
+	Object				bestImpl;		// QuarkDef or GraphDef
 	word				bestImplScore;
 
 
