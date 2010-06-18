@@ -1,0 +1,11 @@
+-version=StackTracing
+-version=ValidateFuncCalls
+-version=DogCgNoErrorChecking
+-d
+../../../utils/impl/
+../../../gfx/gl3/
+../../../nucleus/kdef/
+../../../nucleus/renderer/
++xtango
+-g
+-I../../../..

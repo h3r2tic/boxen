@@ -17,6 +17,12 @@ private {
 	import xf.nucleus.CompiledMeshAsset;
 	import xf.nucleus.KernelParamInterface;
 
+	import xf.nucleus.kdef.model.IKDefRegistry;
+	import xf.nucleus.quark.QuarkDef;
+	import xf.nucleus.kernel.KernelDef;
+	import tango.io.vfs.FileFolder;
+	import xf.mem.ChunkQueue;
+
 	import xf.gfx.IRenderer : IRenderer;
 	import xf.gfx.Buffer;
 	import xf.gfx.VertexBuffer;
@@ -115,19 +121,47 @@ class MeshStructure : IStructureData {
 }
 
 
-
-KernelRef defaultMeshStructureKernel;
-static this() {
-	defaultMeshStructureKernel = KernelRef("DefaultMeshStructure", null);
-}
-
-
-KernelRef defaultStructureKernel(cstring structureTypeName) {
+cstring defaultStructureKernel(cstring structureTypeName) {
 	switch (structureTypeName) {
-		case "Mesh": return defaultMeshStructureKernel;
+		case "Mesh": return "DefaultMeshStructure";
 		default: assert (false, structureTypeName);
 	}
 }
+
+
+// ----
+
+void findBestKernelImpls(
+	int			delegate(int delegate(ref QuarkDef) dg)
+			quarks,
+			
+	KernelDef	delegate(cstring name)
+			getKernel
+) {
+	foreach (q; quarks) {
+		static assert (is(typeof(q) == QuarkDef));
+		
+		foreach (impl; q.implList) {
+			if (auto kernel = getKernel(impl.name)) {
+				if (impl.score > kernel.bestImplScore) {
+					kernel.bestImplScore = impl.score;
+					kernel.bestImpl = cast(Object)q;
+				}
+			}
+		}
+	}
+}
+
+
+void findBestKernelImpls(IKDefRegistry reg) {
+	return findBestKernelImpls(
+		&reg.quarks,
+		&reg.getKernel
+	);
+}
+
+
+// ----
 
 
 
@@ -136,10 +170,28 @@ class TestApp : GfxApp {
 	Renderer nr;
 	VSDRoot vsd;
 	SimpleCamera camera;
-	
-	
+
+	IKDefRegistry	kdefRegistry;
+	ScratchFIFO		mem;
+	FileFolder		vfs;
+
 	override void initialize() {
-		nr = Nucleus.createRenderer("Forward", rendererBackend);
+		mem.initialize();
+
+		void* delegate(size_t) allocator = &mem.pushBack;
+		final vfs = new FileFolder(".");
+
+		kdefRegistry = create!(IKDefRegistry)();
+		kdefRegistry.setVFS(vfs);
+		kdefRegistry.registerFolder(".", allocator);
+		kdefRegistry.doSemantics(allocator);
+		kdefRegistry.dumpInfo();
+
+		findBestKernelImpls(kdefRegistry);
+
+		// ----
+
+		nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
@@ -194,7 +246,7 @@ class TestApp : GfxApp {
 			final rid = createRenderable();	
 			renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 			renderables.structureData[rid] = ms;
-			renderables.surfaceKernel[rid] = KernelRef.init;	// TODO
+			renderables.surfaceKernel[rid] = "TestSurface";
 			renderables.surfaceData[rid] = null;	// TODO
 			renderables.transform[rid] = CoordSys.identity;
 			renderables.localHalfSize[rid] = compiledMesh.halfSize;

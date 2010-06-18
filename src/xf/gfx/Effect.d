@@ -560,16 +560,32 @@ typedef ResourceHandle EffectInstanceHandle;
 
 struct EffectSource {
 	enum Type {
-		FilePath
+		FilePath,
+		String
 	}
 	
 	static EffectSource filePath(cstring path) {
-		return EffectSource(path, toStringz(path), Type.FilePath);
+		return EffectSource(path, null, Type.FilePath);
 	}
 	
-	cstring _path;
-	char*	_pathStringz;
-	Type	_type;
+	static EffectSource string(cstring s) {
+		return EffectSource(s, null, Type.String);
+	}
+
+	static EffectSource stringz(char* s) {
+		return EffectSource(fromStringz(s), s, Type.String);
+	}
+
+	char* dataStringz() {
+		if (_dataStringz is null) {
+			_dataStringz = toStringz(_data);
+		}
+		return _dataStringz;
+	}
+
+	private	cstring _data;
+	private	char*	_dataStringz;
+	public	Type	_type;
 }
 
 

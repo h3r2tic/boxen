@@ -211,14 +211,30 @@ void codegen(
 
 	graph.removeNode(rasterNode);
 
-	// TODO: anything special about the POSITION semantic here?
 	alias voutputs finputs;
 	
 	CgParam[] foutputs = stack.allocArray!(CgParam)(foutputNode.params.length);
 	foreach (i, ref p; foutputNode.params) {
-		foutputs[i] = CgParam(
+		GraphNodeId	srcNid;
+		Param*		srcParam;
+
+		if (!findSrcParam(
+			graph,
 			foutputNodeId,
-			&p
+			p.name,
+			&srcNid,
+			&srcParam
+		)) {
+			error(
+				"No flow to {}.{}. Should have been caught earlier.",
+				foutputNodeId.id,
+				p.name
+			);
+		}
+
+		foutputs[i] = CgParam(
+			srcNid,
+			srcParam
 		);
 	}
 
@@ -536,6 +552,28 @@ void domainCodegen(
 
 	foreach (i, par; outputs) {
 		sink.format("\tbridge__{} = ", i);
+
+/+
+		GraphNodeId	srcNid;
+		Param*		srcParam;
+
+		if (!findSrcParam(
+			ctx.graph,
+			par.node,
+			par.param.name,
+			&srcNid,
+			&srcParam
+		)) {
+			error(
+				"No flow to {}.{}. Should have been caught earlier.",
+				par.node.id,
+				par.param.name
+			);
+		}
+
+		emitSourceParamName(ctx, srcNid, srcParam.name);
++/
+
 		emitSourceParamName(ctx, par.node, par.param.name);
 		sink(';').newline();
 	}

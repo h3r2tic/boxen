@@ -7,8 +7,17 @@ private {
 	import xf.nucleus.Renderer;
 	import xf.nucleus.RenderList;
 	import xf.nucleus.KernelParamInterface;
+	import xf.nucleus.KernelCompiler;
+	import xf.nucleus.kdef.model.IKDefRegistry;
+	import xf.nucleus.kdef.KDefGraphBuilder;
+	import xf.nucleus.graph.KernelGraph;
+	import xf.nucleus.graph.KernelGraphOps;
+	import xf.nucleus.graph.GraphMisc;
+	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
+	
 	import Nucleus = xf.nucleus.Nucleus;
+	
 	import xf.gfx.Effect;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import xf.gfx.IndexData;
@@ -19,6 +28,7 @@ private {
 
 	// TMP
 	static import xf.utils.Memory;
+	import tango.io.device.File;
 }
 
 
@@ -27,29 +37,9 @@ class ForwardRenderer : Renderer {
 	mixin MRenderer!("Foward");
 
 	
-	this (RendererBackend backend) {
+	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
+		_kdefRegistry = kdefRegistry;
 		super(backend);
-
-		EffectCompilationOptions opts;
-		opts.useGeometryProgram = false;
-		_meshEffect = _backend.createEffect(
-			"meshEffect",
-			EffectSource.filePath("meshEffect.cgfx"),
-			opts
-		);
-		_meshEffect.compile();
-
-		void** uniforms = _meshEffect.getUniformPtrsDataPtr();
-
-		void setUniform(cstring name, void* ptr) {
-			uniforms[_meshEffect.effectUniformParams.getUniformIndex(name)]
-				= ptr;
-		}
-
-		setUniform("worldToView", &worldToView);
-		setUniform("viewToClip", &viewToClip);
-
-		// TODO: other params
 	}
 
 
@@ -57,24 +47,138 @@ class ForwardRenderer : Renderer {
 		foreach (idx, rid; rids) {
 			if (!this._renderableValid.isSet(rid)) {
 				// compile the kernels, create an EffectInstance
+				// TODO: cache Effects and only create new EffectInstances
 
-				final structureKernel = renderables.structureKernel[rid];
+				final structureKernelName	= renderables.structureKernel[rid];
+				final surfaceKernelName		= renderables.surfaceKernel[rid];
 
-				// TODO
-				/+if (structureKernel() is null) {
-					error("Structure kernel is null for renderable {}.", rid);
-				}+/
+				GraphDef[char[]] graphs;
 
-				EffectInstance efInst;
-				
-				// HACK
-				switch (structureKernel.name) {
-					case "DefaultMeshStructure": {
-						efInst = _backend.instantiateEffect(_meshEffect);
-					} break;
-
-					default: assert (false, structureKernel.name);
+				foreach (g; &_kdefRegistry.graphs) {
+					graphs[g.label] = g;
 				}
+
+				// ----
+
+				GraphNodeId output, input;
+
+				auto kg = createKernelGraph();
+				buildKernelGraph(
+					graphs[structureKernelName],
+					kg
+				);
+				foreach (nid, n; kg.iterNodes) {
+					if (KernelGraph.NodeType.Output == n.type) {
+						output = nid;
+					}
+					if (KernelGraph.NodeType.Data == n.type) {
+						n.data.sourceKernelType = SourceKernelType.Structure;
+					}
+				}
+				assert (output.valid);
+
+				
+				buildKernelGraph(
+					graphs[surfaceKernelName],
+					kg
+				);
+				foreach (nid, n; kg.iterNodes) {
+					if (KernelGraph.NodeType.Input == n.type && nid.id > output.id) {
+						input = nid;
+					}
+					if (
+						KernelGraph.NodeType.Data == n.type
+					&&	SourceKernelType.Undefined == n.data.sourceKernelType
+					) {
+						n.data.sourceKernelType = SourceKernelType.Surface;
+					}
+				}
+				assert (output.valid);
+
+				// ----
+
+				convertKernelNodesToFuncNodes(
+					kg,
+					(cstring kname, cstring fname) {
+						final kernel = _kdefRegistry.getKernel(kname);
+						
+						if (kernel is null) {
+							error(
+								"convertKernelNodesToFuncNodes requested a nonexistent"
+								" kernel '{}'", kname
+							);
+						}
+
+						if (kernel.bestImpl is null) {
+							error(
+								"The '{}' kernel requested by convertKernelNodesToFuncNodes"
+								" has no implemenation.", kname
+							);
+						}
+
+						final quark = cast(QuarkDef)kernel.bestImpl;
+						
+						return quark.getFunction(fname);
+					},
+					(cstring kname, cstring fname) {
+						return kname != "Rasterize";
+					}
+				);
+
+				// ----
+
+				verifyDataFlowNames(kg, &_kdefRegistry.getKernel);
+
+				fuseGraph(
+					kg,
+					output,
+					input,
+					&_kdefRegistry.converters,
+					&_kdefRegistry.getKernel
+				);
+
+				verifyDataFlowNames(kg, &_kdefRegistry.getKernel);
+
+				File.set("graph.dot", toGraphviz(kg));
+
+				// ----
+
+				final effect = compileKernelGraph(
+					null,
+					kg,
+					_backend,
+					(CodeSink fmt) {
+						fmt(`
+							float3x4 modelToWorld;
+
+							float4x4 worldToView <
+								string scope = "effect";
+							>;
+							float4x4 viewToClip <
+								string scope = "effect";
+							>;
+							`
+						);
+					}
+				);
+
+				// ----
+
+				effect.compile();
+
+				void** uniforms = effect.getUniformPtrsDataPtr();
+
+				void setUniform(cstring name, void* ptr) {
+					uniforms[effect.effectUniformParams.getUniformIndex(name)]
+						= ptr;
+				}
+
+				setUniform("worldToView", &worldToView);
+				setUniform("viewToClip", &viewToClip);
+
+				// ----
+				
+				EffectInstance efInst = _backend.instantiateEffect(effect);
 
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
@@ -82,7 +186,7 @@ class ForwardRenderer : Renderer {
 						// getVaryingParam
 						(cstring name) {
 							char[256] fqn;
-							sprintf(fqn.ptr, "VertexProgram.input.%.*s", name);
+							sprintf(fqn.ptr, "VertexProgram.structure__%.*s", name);
 
 							size_t paramIdx = void;
 							if (efInst.getEffect.hasVaryingParam(
@@ -146,6 +250,8 @@ class ForwardRenderer : Renderer {
 		EffectInstance[]	_renderableEI;
 		IndexData*[]		_renderableIndexData;
 		Effect				_meshEffect;
+
+		IKDefRegistry		_kdefRegistry;
 
 		mat4	worldToView;
 		mat4	viewToClip;
