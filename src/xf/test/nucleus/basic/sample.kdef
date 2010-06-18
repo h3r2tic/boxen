@@ -1,0 +1,129 @@
+Structure = kernel {
+	quark main(
+		in position <type vec3 + basis model + use position>,
+		in normal <type vec3 + basis model + use normal>,
+		out outPosition <type vec3 + basis model + use position>,
+		out outNormal <type vec3 + basis model + use normal>
+	);
+};
+
+Surface = kernel {
+	quark main(
+		in position <type vec3 + basis model + use position>,
+		in normal <type vec3 + basis model + use normal>,
+		out radiance <type vec4 + use color>
+	);
+};
+
+Rasterize = kernel {
+	quark main(
+		in inPos <type vec4 + use position + basis clip>
+	);
+};
+
+
+implement Structure(20)
+graph DefaultMeshStructure {
+	node_0 = node {
+		type = "input";
+		params = (
+			out position <type vec3 + basis model + use position>,
+			out normal <type vec3 + basis model + use normal>
+		);
+	};
+	node_1 = node {
+		type = "kernel";
+		kernelName = "Rasterize";
+		funcName = "main";
+	};
+	node_2 = node {
+		type = "output";
+		params = (
+			in position <type vec3 + basis model + use position>,
+			in normal <type vec3 + basis model + use normal>
+		);
+	};
+
+	connect node_0 node_1;
+	connect node_0 node_2;
+}
+
+
+implement Surface(20)
+graph TestSurface {
+	node_0 = node {
+		type = "input";
+		params = (
+			out position <type vec3 + basis model + use position>,
+			out normal <type vec3 + basis model + use normal>
+		);
+	};
+	node_1 = node {
+		type = "output";
+		params = (
+			in radiance<type vec4 + use color>
+		);
+	};
+
+	connect node_0 node_1;
+}
+
+
+use = trait {
+	color,
+	position,
+	normal
+};
+
+unit = trait {
+	true,
+	false
+} = false;
+
+basis = trait {
+	model,
+	world,
+	view,
+	clip
+};
+
+converter(20) normalizer(in a <type vec3>, out b <type vec3 + unit true>)
+D {
+	b = a.normalized;
+}
+
+converter(20) normal2color(
+	in a <type vec3 + use normal>,
+	out b <type vec4 + use color>
+) Cg {
+	b = float4((a + 1.0f) * 0.5f, 1.0f);
+}
+
+
+converter(20) model2world_p(
+	in a <type vec3 + basis model + use position>,
+	out b <in.a.actual + basis world>
+) Cg {
+	b = mul(modelToWorld, float4(a, 1)).xyz;
+}
+
+converter(20) model2world_n(
+	in a <type vec3 + basis model + use normal>,
+	out b <in.a.actual + basis world>
+) Cg {
+	b = mul(modelToWorld, float4(a, 0)).xyz;
+}
+
+converter(20) world2view(
+	in a <type vec3 + basis world + use position>,
+	out b <in.a.actual + basis view>
+) Cg {
+	b = mul(worldToView, float4(a, 1.0));
+}
+
+converter(20) view2clip(
+	in a <type vec3 + basis view + use position>,
+	out b <in.a.actual + basis clip + type vec4>
+) Cg {
+	b = mul(viewToClip, float4(a, 1.0));
+}

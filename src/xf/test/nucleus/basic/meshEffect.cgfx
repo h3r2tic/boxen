@@ -1,6 +1,6 @@
 struct vertInput {
-	float3 position : POSITION;
-	float3 normal : TEXCOORD0;
+	float3 position : TEXCOORD0;
+	float3 normal : TEXCOORD1;
 };
 
 struct fragInput {

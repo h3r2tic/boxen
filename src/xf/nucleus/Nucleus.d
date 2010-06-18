@@ -3,19 +3,23 @@ module xf.nucleus.Nucleus;
 private {
 	import xf.Common;
 	import xf.nucleus.Renderer;
+	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 }
 
 
 
-Renderer createRenderer(cstring name, RendererBackend back) {
-	return _rendererFactories[name](back);
+Renderer createRenderer(cstring name, RendererBackend back, IKDefRegistry reg) {
+	return _rendererFactories[name](back, reg);
 }
 
 
 void registerRenderer(T)(cstring name) {
-	_rendererFactories[name] = function Renderer(RendererBackend backend) {
-		return new T(backend);
+	_rendererFactories[name] = function Renderer(
+			RendererBackend backend,
+			IKDefRegistry registry
+	) {
+		return new T(backend, registry);
 	};
 }
 
@@ -23,5 +27,5 @@ void registerRenderer(T)(cstring name) {
 
 
 private {
-	Renderer function(RendererBackend)[cstring]	_rendererFactories;
+	Renderer function(RendererBackend, IKDefRegistry)[cstring]	_rendererFactories;
 }

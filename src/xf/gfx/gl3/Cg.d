@@ -89,11 +89,19 @@ class CgCompiler {
 			case EffectSource.Type.FilePath: {
 				eh = cgCreateEffectFromFile(
 					_context,
-					toStringz(source._path),
+					source.dataStringz,
 					null
 				);
 			} break;
 			
+			case EffectSource.Type.String: {
+				eh = cgCreateEffect(
+					_context,
+					source.dataStringz,
+					null
+				);
+			} break;
+
 			default: assert (false);
 		}
 

@@ -15,9 +15,9 @@ private {
 
 // Renderables as a 'Struct of Arrays'
 mixin(multiArray(`renderables`, `
-	KernelRef			structureKernel
+	cstring				structureKernel
 	IStructureData		structureData
-	KernelRef			surfaceKernel
+	cstring				surfaceKernel
 	ISurfaceData		surfaceData
 	CoordSys			transform
 	vec3				localHalfSize		// half-size of the local bounding box (OBB)
@@ -41,9 +41,9 @@ RenderableId createRenderable() {
 		renderables.growBy(1);
 	}
 
-	renderables.structureKernel[res] = KernelRef.init;
+	renderables.structureKernel[res] = null;
 	renderables.structureData[res] = null;
-	renderables.surfaceKernel[res] = KernelRef.init;
+	renderables.surfaceKernel[res] = null;
 	renderables.surfaceData[res] = null;
 	renderables.transform[res] = CoordSys.identity;
 	renderables.localHalfSize[res] = vec3.zero;

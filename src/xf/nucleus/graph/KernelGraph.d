@@ -22,6 +22,8 @@ enum SourceKernelType {
 	Light
 }
 
+alias xf.nucleus.graph.Graph.GraphNodeId GraphNodeId;
+
 
 
 class KernelGraph {
