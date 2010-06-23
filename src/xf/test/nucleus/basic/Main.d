@@ -92,9 +92,11 @@ class MeshStructure : IStructureData {
 		return "Mesh";
 	}
 
-	void setKernelObjectData(KernelParamInterface kpi) { 
+	void setKernelObjectData(KernelParamInterface kpi) {
+		Stdout.formatln("1").flush;
 		kpi.setIndexData(&indexData);
 		
+		Stdout.formatln("2").flush;
 		foreach (i, ref attr; vertexAttribs) {
 			final name = vertexAttribNames[i];
 			final param = kpi.getVaryingParam(name);
@@ -105,6 +107,7 @@ class MeshStructure : IStructureData {
 				gfxLog.warn("No param named '{}' in the kernel.", name);
 			}
 		}
+		Stdout.formatln("3").flush;
 	}
 
 	// TODO: hardcode the available data and expose meta-info
@@ -163,6 +166,12 @@ void findBestKernelImpls(IKDefRegistry reg) {
 
 // ----
 
+import xf.mem.MainHeap;
+T mallocObject(T)() {
+	void[] data = mainHeap.allocRaw(T.classinfo.init.length)[0..T.classinfo.init.length];
+	data[] = T.classinfo.init;
+	return cast(T)cast(void*)data.ptr;
+}
 
 
 class TestApp : GfxApp {
@@ -241,7 +250,9 @@ class TestApp : GfxApp {
 			// This should be a part of the content pipeline
 
 			final compiledMesh = compileMeshAsset(m);
-			final ms = new MeshStructure(compiledMesh, rendererBackend);
+			
+			final ms = mallocObject!(MeshStructure);
+			ms._ctor(compiledMesh, rendererBackend);
 
 			final rid = createRenderable();	
 			renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);

@@ -99,6 +99,10 @@ template MSmallTempArray(T) {
 			_capacity = 0;
 		}
 	}
+
+	void clear() {
+		_length = 0;
+	}
 	
 
 	T*		_items;
@@ -859,6 +863,7 @@ final class Graph : IGraphFlow {
 			if (_connectionFreeList !is null) {
 				auto con = _connectionFreeList;
 				_connectionFreeList = con._freeListNext;
+				con._freeListNext = null;
 				assert (0 == con._length);		// must be properly disposed
 				return con;
 			} else {
