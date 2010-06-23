@@ -43,29 +43,49 @@ bool findSrcParam(
 }
 
 
-/**
- * Redirects the data flow from the 'output' node into the nodes connected
- * to the 'input' node, then removes both nodes, thus fusing two separate
- * sub-graphs.
- *
- * This should optimally be called before resolving auto flow, so that
- * some conversions may potentially be avoided.
- */
 void fuseGraph(
 	KernelGraph	graph,
-	GraphNodeId	output,
 	GraphNodeId	input,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel
+	KernelLookup getKernel,
+	GraphNodeId[] dstGraphTopological,
+	bool delegate(
+		cstring dstParam,
+		GraphNodeId* srcNid,
+		Param** srcParam
+	) _findSrcParam
+) {
+	return fuseGraph(
+		graph,
+		input,
+		semanticConverters,
+		getKernel,
+		(int delegate(ref GraphNodeId) sink) {
+			foreach (nid; dstGraphTopological) {
+				if (int r = sink(nid)) {
+					return r;
+				}
+			}
+			return 0;
+		},
+		_findSrcParam
+	);
+}
+
+
+void fuseGraph(
+	KernelGraph	graph,
+	GraphNodeId	input,
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel,
+	int delegate(int delegate(ref GraphNodeId)) dstGraphTopological,
+	bool delegate(
+		cstring dstParam,
+		GraphNodeId* srcNid,
+		Param** srcParam
+	) _findSrcParam
 ) {
 	scope stack = new StackBuffer;
-
-	foreach (dummy; graph.flow.iterOutgoingConnections(output)) {
-		error(
-			"The 'output' node may not have any outgoing connections"
-			" prior to calling fuseGraph"
-		);
-	}
 
 	foreach (dummy; graph.flow.iterIncomingConnections(input)) {
 		error(
@@ -74,88 +94,45 @@ void fuseGraph(
 		);
 	}
 
-	// Not disposed anywhere since its storage is on the StackBuffer
-	DynamicBitSet graph1Nodes;
-	
-	graph1Nodes.alloc(graph.capacity, &stack.allocRaw);
-	graph1Nodes.clearAll();
-
-	markPrecedingNodes(graph.backend_readOnly, &graph1Nodes, null, output);
-	graph1Nodes.set(output.id);
-
-	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
-	findTopologicalOrder(graph.backend_readOnly, topological);
-
-	// Do auto flow for the first graph, but not generating conversions
-	// for the output node
-	foreach (id; topological) {
-		if (graph1Nodes.isSet(id.id)) {
-			doAutoFlow(
-				graph,
-				id,
-				semanticConverters,
-				getKernel,
-				id == output
-					? FlowGenMode.DirectConnection
-					: FlowGenMode.InsertConversionNodes
-			);
-			
-			foreach (con; graph.flow.iterOutgoingConnections(id)) {
-				if (con != output) {
-					foreach (fl; graph.flow.iterDataFlow(id, con)) {
-						doManualFlow(
-							graph,
-							id,
-							con, fl,
-							semanticConverters,
-							getKernel
-						);
-					}
-				}
-			}
-			simplifyParamSemantics(graph, id, getKernel);
-		}
-	}
-
 	// A list of all output ports on the Input node, to be used in custom
 	// auto flow port generation
 	final outputPorts = LocalDynArray!(NodeParam)(stack);
 	foreach (ref fromParam; *graph.getNode(input).getParamList()) {
 		if (!fromParam.isInput) {
-			outputPorts.pushBack(NodeParam(output, &fromParam));
+			outputPorts.pushBack(NodeParam(input, &fromParam));
 		}
 	}						
 
+	bool isOutputNode(GraphNodeId id) {
+		return graph.getNode(id).type != KernelGraph.NodeType.Output;
+	}
+
 	// Do auto flow for the second graph, extending the incoming flow of the
 	// input node to the inputs of the output node from the first graph
-	foreach (id; topological) {
-		if (graph1Nodes.isSet(id.id)) {
-			continue;
-		}
-		
+	foreach (id; dstGraphTopological) {
 		if (input == id) {
 			foreach (outCon; graph.flow.iterOutgoingConnections(input)) {
-				foreach (outFl; graph.flow.iterDataFlow(input, outCon)) {
-					GraphNodeId	fromNode;
-					Param*		fromParam;
-					
-					if (!findSrcParam(
-						graph,
-						output,
-						outFl.from,
-						&fromNode,
-						&fromParam
-					)) {
-						assert (false);
-					}
+				if (!isOutputNode(outCon)) {
+					foreach (outFl; graph.flow.iterDataFlow(input, outCon)) {
+						GraphNodeId	fromNode;
+						Param*		fromParam;
+						
+						if (!_findSrcParam(
+							outFl.from,
+							&fromNode,
+							&fromParam
+						)) {
+							assert (false);
+						}
 
-					doManualFlow(
-						graph,
-						fromNode, outCon,
-						DataFlow(fromParam.name, outFl.to),
-						semanticConverters,
-						getKernel
-					);
+						doManualFlow(
+							graph,
+							fromNode, outCon,
+							DataFlow(fromParam.name, outFl.to),
+							semanticConverters,
+							getKernel
+						);
+					}
 				}
 			}
 		} else {
@@ -164,7 +141,9 @@ void fuseGraph(
 				id,
 				semanticConverters,
 				getKernel,
-				FlowGenMode.InsertConversionNodes,
+				isOutputNode(id)
+					? FlowGenMode.DirectConnection
+					: FlowGenMode.InsertConversionNodes,
 
 				/* Using custom enumeration of incoming nodes/ports
 				 * because we'll need to treat the Input node specially.
@@ -208,46 +187,49 @@ void fuseGraph(
 										GraphNodeId intermediateId,
 										Param* intermediateParam
 									) {
+										if (input == intermediateId) {
+											/* Now, the Input node is the graph2-side
+											 * connector, which is a twin to an
+											 * Output node in graph1 and which has
+											 * incoming params connected to. We now
+											 * find which param connects to the port
+											 * equivalent to what we just identified
+											 * for the Input node.
+											 */
 
-										/* Now, the Input node is the graph2-side
-										 * connector, which is a twin to an
-										 * Output node in graph1 and which has
-										 * incoming params connected to. We now
-										 * find which param connects to the port
-										 * equivalent to what we just identified
-										 * for the Input node. We perform the
-										 * lookup by name only (TODO?).
-										 */
+											GraphNodeId	fromNode;
+											Param*		fromParam;
+											
+											if (!_findSrcParam(
+												intermediateParam.name,
+												&fromNode,
+												&fromParam
+											)) {
+												assert (false,
+													"Could not find a source parameter"
+													" for the Output node twin to the"
+													" Input node used in graph fusion."
+													" This should have been triggered"
+													" earlier, when resolving the Output."
+												);
+											}
 
-										GraphNodeId	fromNode;
-										Param*		fromParam;
-										
-										if (!findSrcParam(
-											graph,
-											output,
-											intermediateParam.name,
-											&fromNode,
-											&fromParam
-										)) {
-											assert (false,
-												"Could not find a source parameter"
-												" for the Output node twin to the"
-												" Input node used in graph fusion."
-												" This should have been triggered"
-												" earlier, when resolving the Output."
-											);
+											assert (!fromParam.isInput);
+
+											/* Finally, the original port from graph1
+											 * is added to the list of all connections
+											 * to consider for the auto flow resolving
+											 * process for the particular param we're
+											 * evaluating a few scopes higher :P
+											 */
+
+											incomingSink(NodeParam(fromNode, fromParam));
+										} else {
+											incomingSink(NodeParam(
+												intermediateId,
+												intermediateParam
+											));
 										}
-
-										assert (!fromParam.isInput);
-
-										/* Finally, the original port from graph1
-										 * is added to the list of all connections
-										 * to consider for the auto flow resolving
-										 * process for the particular param we're
-										 * evaluating a few scopes higher :P
-										 */
-
-										incomingSink(NodeParam(fromNode, fromParam));
 									}
 								);
 							} else {
@@ -271,14 +253,16 @@ void fuseGraph(
 
 
 			foreach (con; graph.flow.iterOutgoingConnections(id)) {
-				foreach (fl; graph.flow.iterDataFlow(id, con)) {
-					doManualFlow(
-						graph,
-						id,
-						con, fl,
-						semanticConverters,
-						getKernel
-					);
+				if (!isOutputNode(con)) {
+					foreach (fl; graph.flow.iterDataFlow(id, con)) {
+						doManualFlow(
+							graph,
+							id,
+							con, fl,
+							semanticConverters,
+							getKernel
+						);
+					}
 				}
 			}
 			simplifyParamSemantics(graph, id, getKernel);
@@ -286,6 +270,99 @@ void fuseGraph(
 	}
 
 	graph.removeNode(input);
+}
+
+
+/**
+ * Redirects the data flow from the 'output' node into the nodes connected
+ * to the 'input' node, then removes both nodes, thus fusing two separate
+ * sub-graphs.
+ *
+ * This should optimally be called before resolving auto flow, so that
+ * some conversions may potentially be avoided.
+ */
+void fuseGraph(
+	KernelGraph	graph,
+	GraphNodeId	output,
+	GraphNodeId	input,
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel
+) {
+	scope stack = new StackBuffer;
+
+	foreach (dummy; graph.flow.iterOutgoingConnections(output)) {
+		error(
+			"The 'output' node may not have any outgoing connections"
+			" prior to calling fuseGraph"
+		);
+	}
+
+	// Not disposed anywhere since its storage is on the StackBuffer
+	DynamicBitSet graph1Nodes;
+	
+	graph1Nodes.alloc(graph.capacity, &stack.allocRaw);
+	graph1Nodes.clearAll();
+
+	markPrecedingNodes(graph.backend_readOnly, &graph1Nodes, null, output);
+	graph1Nodes.set(output.id);
+
+	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
+	findTopologicalOrder(graph.backend_readOnly, topological);
+
+	int iterGraph1Nodes(int delegate(ref GraphNodeId) sink) {
+		foreach (id; topological) {
+			if (graph1Nodes.isSet(id.id)) {
+				if (int r = sink(id)) {
+					return r;
+				}
+			}
+		}
+		return 0;
+	}
+
+	int iterGraph2Nodes(int delegate(ref GraphNodeId) sink) {
+		foreach (id; topological) {
+			if (!graph1Nodes.isSet(id.id)) {
+				if (int r = sink(id)) {
+					return r;
+				}
+			}
+		}
+		return 0;
+	}
+
+	convertGraphDataFlowExceptOutput(
+		graph,
+		semanticConverters,
+		getKernel,
+		&iterGraph1Nodes
+	);
+
+	fuseGraph(
+		graph,
+		input,
+		semanticConverters,
+		getKernel,
+		&iterGraph2Nodes,
+		(
+			cstring dstParam,
+			GraphNodeId* srcNid,
+			Param** srcParam
+		) {
+			/*
+			 * We perform the lookup by name only (TODO?).
+			 */
+
+			return .findSrcParam(
+				graph,
+				output,
+				dstParam,
+				srcNid,
+				srcParam
+			);
+		}
+	);
+
 	graph.removeNode(output);
 	graph.flow.removeAllAutoFlow();
 }
@@ -866,6 +943,16 @@ void convertGraphDataFlow(
 	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
 	findTopologicalOrder(graph.backend_readOnly, topological);
 
+	return convertGraphDataFlow(graph, semanticConverters, getKernel, topological);
+}
+
+
+void convertGraphDataFlow(
+	KernelGraph graph,
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel,
+	GraphNodeId[] topological
+) {
 	foreach (id; topological) {
 		doAutoFlow(
 			graph,
@@ -889,5 +976,157 @@ void convertGraphDataFlow(
 		simplifyParamSemantics(graph, id, getKernel);
 	}
 
-	graph.flow.removeAllAutoFlow();
+	// NOTE: this was removed, m'kay?
+	//graph.flow.removeAllAutoFlow();
+}
+
+
+
+void convertGraphDataFlowExceptOutput(
+	KernelGraph graph,
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel
+) {
+	scope stack = new StackBuffer;
+
+	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
+	findTopologicalOrder(graph.backend_readOnly, topological);
+
+	return convertGraphDataFlowExceptOutput(graph, semanticConverters, getKernel, topological);
+}
+
+
+void convertGraphDataFlowExceptOutput(
+	KernelGraph graph,
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel,
+	GraphNodeId[] topological
+) {
+	return convertGraphDataFlowExceptOutput(
+		graph,
+		semanticConverters,
+		getKernel,
+		(int delegate(ref GraphNodeId) sink) {
+			foreach (id; topological) {
+				if (int r = sink(id)) {
+					return r;
+				}
+			}
+			return 0;
+		}
+	);
+}
+
+void convertGraphDataFlowExceptOutput(
+	KernelGraph graph,
+	SemanticConverterIter semanticConverters,
+	KernelLookup getKernel,
+	int delegate(int delegate(ref GraphNodeId)) topological
+) {
+	bool isOutputNode(GraphNodeId id) {
+		return graph.getNode(id).type != KernelGraph.NodeType.Output;
+	}
+	
+	// Do auto flow for the first graph, but not generating conversions
+	// for the output node
+	foreach (id; topological) {
+		doAutoFlow(
+			graph,
+			id,
+			semanticConverters,
+			getKernel,
+			isOutputNode(id)
+				? FlowGenMode.DirectConnection
+				: FlowGenMode.InsertConversionNodes
+		);
+		
+		foreach (con; graph.flow.iterOutgoingConnections(id)) {
+			if (!isOutputNode(con)) {
+				foreach (fl; graph.flow.iterDataFlow(id, con)) {
+					doManualFlow(
+						graph,
+						id,
+						con, fl,
+						semanticConverters,
+						getKernel
+					);
+				}
+			}
+		}
+		simplifyParamSemantics(graph, id, getKernel);
+	}
+
+	// NOTE: this was removed, m'kay?
+	//graph.flow.removeAllAutoFlow();
+}
+
+
+void reduceGraphData(
+	KernelGraph kg,
+	void delegate(void delegate(
+		GraphNodeId	nid,
+		cstring		pname
+	)) iterNodes,
+	Function		reductionFunc,
+	GraphNodeId*	outputNid,
+	cstring*		outputPName
+) {
+	GraphNodeId	prevNid;
+	cstring		prevPName;
+	bool		gotAny = false;
+	cstring		reductionPName;
+
+	foreach (i, p; reductionFunc.params) {
+		if (i > 3 || (i <= 1 && !p.isInput) || (2 == i && p.isInput)) {
+			error(
+				"reduceGraphData: '{}' is not a valid reduction func.",
+				reductionFunc.name
+			);
+		}
+		
+		if (!p.isInput) {
+			if (reductionPName is null) {
+				reductionPName = p.name;
+			} else {
+				error(
+					"reduceGraphData: The reduction func must only have"
+					" one output param. The passed '{}' func has more.",
+					reductionFunc.name
+				);
+			}
+		}
+	}
+
+	iterNodes((
+			GraphNodeId	nid,
+			cstring		pname
+		) {
+			if (gotAny) {
+				final rnid = kg.addNode(KernelGraph.NodeType.Func);
+				final rnode = kg.getNode(rnid);
+				rnode.func.func = reductionFunc;
+				rnode.func.params = reductionFunc.params.dup(&kg._mem.pushBack);
+
+				kg.flow.addDataFlow(
+					prevNid, prevPName,
+					rnid, reductionFunc.params[0].name
+				);
+
+				kg.flow.addDataFlow(
+					nid, pname,
+					rnid, reductionFunc.params[1].name
+				);
+
+				prevNid = rnid;
+				prevPName = reductionPName;
+			} else {
+				prevNid = nid;
+				prevPName = pname;
+				gotAny = true;
+			}
+		}
+	);
+
+	*outputNid = prevNid;
+	*outputPName = prevPName;
 }

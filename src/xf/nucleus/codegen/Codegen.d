@@ -105,7 +105,7 @@ void codegen(
 	 * when generating param flow, if the param comes from a previous
 	 * domain level or it doesn't belong to an Input or Data node,
 	 * use the n{nodeId}__ prefix for its name, otherwise prefix with
-	 * the kernel prefix (structure__, surface__, or light{id}__)
+	 * the kernel prefix (structure__, pigment__, illumination__ or light{id}__)
 	 *
 	 * The func that generates code for each stage will take two lists of
 	 * these cg param structs - one for inputs, one for outputs.
@@ -467,8 +467,12 @@ void emitSourceParamName(
 				ctx.sink("structure__");
 			} break;
 
-			case SourceKernelType.Surface: {
-				ctx.sink("surface__");
+			case SourceKernelType.Pigment: {
+				ctx.sink("pigment__");
+			} break;
+
+			case SourceKernelType.Illumination: {
+				ctx.sink("illumination__");
 			} break;
 
 			case SourceKernelType.Light: {

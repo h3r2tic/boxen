@@ -8,6 +8,7 @@ private {
 
 
 typedef u32 RenderableId;
+typedef u32 LightId;
 
 
 enum Domain {

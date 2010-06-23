@@ -1,4 +1,4 @@
-module xf.nucleus.ISurfaceData;
+module xf.nucleus.IPigmentData;
 
 private {
 	import xf.nucleus.KernelParam;
@@ -7,7 +7,7 @@ private {
 
 
 
-interface ISurfaceData {
+interface IPigmentData {
 	int		iterKernelDataInfo(int delegate(ref KernelParamInfo));
 	void	setKernelObjectData(KernelParamInterface);
 	void	setKernelStaticData(KernelParamInterface);

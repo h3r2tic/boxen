@@ -98,17 +98,12 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ serialize calc nodes
 		+ create the main shader with linking via temporaries
 
-~	create facades for structure, material and light kernels
-	-	figure out wtf I exactly had in mind when writing that
-		* binding of material/light/asset data into shaders
-	+	also the ability to automatically connect them
-		* param names must match
-
--	plug the codegen into the Forward renderer
-	- generate code
-	- create the Cg Effect
-	- instantiate the Effect
-	- bind params
+~	plug the codegen into the Forward renderer
+	+ generate code
+	+ create the Cg Effect
+	+ instantiate the Effect
+	+ bind params
+	- caching
 
 -	monitor quark files for changes, recompile shaders when needed
 
