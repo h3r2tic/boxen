@@ -41,6 +41,39 @@ void findTopologicalOrder(Graph graph, GraphNodeId[] result) {
 }
 
 
+/// Note: the nodes must be an isolated subgraph within 'graph'.
+/// Otherwise, connection iteration will find them and things will go bada boom.
+void findTopologicalOrder(Graph graph, GraphNodeId[] nodes, GraphNodeId[] result) {
+	assert (result.length == nodes.length);
+
+	scope stack = new StackBuffer;
+	int[] order = stack.allocArray!(int)(nodes.length);
+	
+	int numOrdered = GraphUtils.findTopologicalOrder(
+		// nodeIter
+		(void delegate(int) sink) {
+			foreach (n; nodes) {
+				sink(n.id);
+			}
+		},
+		
+		// nodeSuccIter
+		(int n, void delegate(int) sink) {
+			foreach (n2; graph.iterOutgoingConnections(graph._getNodeId(n))) {
+				sink(n2.id);
+			}
+		},
+		
+		order
+	);
+
+	assert (numOrdered == nodes.length);
+	foreach (i, n; order) {
+		result[i] = graph._getNodeId(n);
+	}
+}
+
+
 void markPrecedingNodes(Graph graph, DynamicBitSet* bs, void delegate(GraphNodeId) visitor, GraphNodeId[] initialNodes_ ...) {
 	scope stack = new StackBuffer;
 

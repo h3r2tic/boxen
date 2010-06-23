@@ -7,7 +7,7 @@ Structure = kernel {
 	);
 };
 
-Surface = kernel {
+Pigment = kernel {
 	quark main(
 		in position <type vec3 + basis model + use position>,
 		in normal <type vec3 + basis model + use normal>,
@@ -49,8 +49,8 @@ graph DefaultMeshStructure {
 }
 
 
-implement Surface(20)
-graph TestSurface {
+implement Pigment(20)
+graph TestPigment {
 	node_0 = node {
 		type = "input";
 		params = (

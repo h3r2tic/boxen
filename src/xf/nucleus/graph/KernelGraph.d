@@ -18,7 +18,8 @@ private {
 enum SourceKernelType {
 	Undefined,
 	Structure,
-	Surface,
+	Illumination,
+	Pigment,
 	Light
 }
 

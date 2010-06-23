@@ -246,8 +246,8 @@ class TestApp : GfxApp {
 			final rid = createRenderable();	
 			renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 			renderables.structureData[rid] = ms;
-			renderables.surfaceKernel[rid] = "TestSurface";
-			renderables.surfaceData[rid] = null;	// TODO
+			renderables.pigmentKernel[rid] = "TestPigment";
+			renderables.pigmentData[rid] = null;	// TODO
 			renderables.transform[rid] = CoordSys.identity;
 			renderables.localHalfSize[rid] = compiledMesh.halfSize;
 		});

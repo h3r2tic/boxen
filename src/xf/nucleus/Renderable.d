@@ -5,11 +5,12 @@ private {
 	import xf.nucleus.Defs;
 	import xf.nucleus.Kernel;
 	import xf.nucleus.IStructureData;
-	import xf.nucleus.ISurfaceData;
+	import xf.nucleus.IPigmentData;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.mem.MultiArray;
 	import xf.mem.Array;
+	import xf.mem.ArrayAllocator;
 }
 
 
@@ -17,8 +18,8 @@ private {
 mixin(multiArray(`renderables`, `
 	cstring				structureKernel
 	IStructureData		structureData
-	cstring				surfaceKernel
-	ISurfaceData		surfaceData
+	cstring				pigmentKernel
+	IPigmentData		pigmentData
 	CoordSys			transform
 	vec3				localHalfSize		// half-size of the local bounding box (OBB)
 `));
@@ -43,8 +44,8 @@ RenderableId createRenderable() {
 
 	renderables.structureKernel[res] = null;
 	renderables.structureData[res] = null;
-	renderables.surfaceKernel[res] = null;
-	renderables.surfaceData[res] = null;
+	renderables.pigmentKernel[res] = null;
+	renderables.pigmentData[res] = null;
 	renderables.transform[res] = CoordSys.identity;
 	renderables.localHalfSize[res] = vec3.zero;
 

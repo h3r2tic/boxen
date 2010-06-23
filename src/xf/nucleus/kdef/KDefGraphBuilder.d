@@ -15,7 +15,13 @@ private {
 
 void buildKernelGraph(
 		GraphDef def,
-		KernelGraph kg
+		KernelGraph kg,
+		GraphNodeId delegate(
+			uword			i,
+			cstring			nodeName,
+			GraphDefNode	nodeDef,
+			GraphNodeId delegate() defaultBuilder
+		) nodeBuilder = null
 ) {
 	scope stack = new StackBuffer;
 	final nodeIds = stack.allocArray!(GraphNodeId)(def.nodes.length);
@@ -89,27 +95,42 @@ void buildKernelGraph(
 		auto createData = &createParamData;
 		
 		NT type; {
-			auto typeVar = nodeDef.vars["type"];
-			assert (cast(StringValue)typeVar);
-			switch ((cast(StringValue)typeVar).value) {
+			switch (nodeDef.type) {
 				case "input":	type = NT.Input; break;
 				case "output":	type = NT.Output; break;
 				case "data":	type = NT.Data; break;
 				case "kernel":	type = NT.Kernel; createData = &createKernelData; break;
-				default: assert (false, (cast(StringValue)typeVar).value);
+				default: assert (false, nodeDef.type);
 			}
 		}
 
-		final n = nodeIds[i] = kg.addNode(type);
 		nodeDefs[i] = nodeDef;
+
+		GraphNodeId defaultNodeBuilder() {
+			final n = kg.addNode(type);
+
+			log.trace(
+				"Created a graph node '{}'. Id = {}.",
+				nodeName, n.id
+			);
+
+			createData(type, n);
+
+			return n;
+		}
+
+		if (nodeBuilder !is null) {
+			nodeIds[i] = nodeBuilder(
+				i,
+				nodeName,
+				nodeDef,
+				&defaultNodeBuilder
+			);
+		} else {
+			nodeIds[i] = defaultNodeBuilder();
+		}
+
 		++i;
-
-		log.trace(
-			"Created a graph node '{}'. Id = {}.",
-			nodeName, n.id
-		);
-
-		createData(type, n);
 	}
 
 	GraphNodeId findId(GraphDefNode g) {
