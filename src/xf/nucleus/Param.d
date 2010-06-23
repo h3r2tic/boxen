@@ -66,7 +66,7 @@ struct Param {
 		}
 		res.hasPlainSemantic = hasPlainSemantic;
 		res.dir = this.dir;
-		res._name = res._allocString(this.name);
+		res.name = this._name;
 		return res;
 	}
 
@@ -262,6 +262,7 @@ struct ParamList {
 
 
 	Param* add(ParamDirection dir, cstring name) {
+		assert (name.length > 0);
 		final pidx = _params.pushBack(Param(_allocator));
 		final p = _params.ptr + pidx;
 		p.dir = dir;
@@ -271,6 +272,7 @@ struct ParamList {
 
 	
 	void add(Param p) {
+		assert (p.name.length > 0);
 		_params.pushBack(p.dup(_allocator));
 	}
 	

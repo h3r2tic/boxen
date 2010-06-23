@@ -149,4 +149,23 @@ void buildKernelGraph(
 	foreach (con; def.nodeFieldConnections) {
 		flow.addDataFlow(findId(con.fromNode), con.from, findId(con.toNode), con.to);
 	}
+
+
+	version (DebugGraphConnections) {
+		void assertAddedNode(GraphNodeId x) {
+			foreach (n; nodeIds) {
+				if (n == x) return;
+			}
+			assert (false);
+		}
+
+		foreach (n; nodeIds) {
+			foreach (con; flow.iterOutgoingConnections(n)) {
+				assertAddedNode(con);
+			}
+			foreach (con; flow.iterIncomingConnections(n)) {
+				assertAddedNode(con);
+			}
+		}
+	}
 }

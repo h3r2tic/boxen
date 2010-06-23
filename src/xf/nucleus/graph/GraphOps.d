@@ -60,6 +60,18 @@ void findTopologicalOrder(Graph graph, GraphNodeId[] nodes, GraphNodeId[] result
 		// nodeSuccIter
 		(int n, void delegate(int) sink) {
 			foreach (n2; graph.iterOutgoingConnections(graph._getNodeId(n))) {
+				version (DebugGraphConnections) {
+					bool found = false;
+					foreach (x; nodes) {
+						if (x == n2) {
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						assert (false, "findTopologicalOrder: connection outside of subgraph.");
+					}
+				}
 				sink(n2.id);
 			}
 		},

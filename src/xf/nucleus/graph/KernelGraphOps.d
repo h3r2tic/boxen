@@ -262,6 +262,8 @@ void fuseGraph(
 
 
 			foreach (con; graph.flow.iterOutgoingConnections(id)) {
+				simplifyParamSemantics(graph, id, getKernel);
+
 				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(con)) {
 					foreach (fl; graph.flow.iterDataFlow(id, con)) {
 						doManualFlow(
@@ -274,7 +276,6 @@ void fuseGraph(
 					}
 				}
 			}
-			simplifyParamSemantics(graph, id, getKernel);
 		}
 	}
 
@@ -398,6 +399,11 @@ void convertKernelNodesToFuncNodes(
 					"Could not find a kernel func '{}'::'{}'",
 					cast(char[])ndata.kernelName, cast(char[])ndata.funcName
 				);
+			}
+
+			log.info("Got a func for kernel {}'s function {}", cast(char[])ndata.kernelName, cast(char[])ndata.funcName);
+			foreach (p; func.params) {
+				log.info("   param: {}", p.toString);
 			}
 
 			graph.resetNode(nid, KernelGraph.NodeType.Func);
@@ -784,6 +790,45 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id, KernelLoo
 			par.hasPlainSemantic = true;
 			*par.semantic() = plainSem;
 		}
+
+		foreach (ref Param par; *params) {
+			if (!par.isInput) {
+				continue;
+			}
+
+			GraphNodeId	fromId;
+			cstring		fromName;
+
+			// Note: O (cons * flow * inputPorts). Maybe too slow?
+			foreach (fromId_; graph.flow.iterIncomingConnections(id)) {
+				foreach (fl; graph.flow.iterDataFlow(fromId_, id)) {
+					if (fl.to == par.name) {
+						if (fromName !is null) {
+							error(
+								"The semantic conversion process introduced"
+								" duplicate flow\n    to {}.{}"
+								" from {}.{} and {}.{}.",
+								id.id, par.name,
+								fromId.id, fromName,
+								fromId_.id, fl.from
+							);
+						}
+						
+						fromId = fromId_;
+						fromName = fl.from;
+					}
+				}
+			}
+
+			assert (fromName !is null, "No flow D:");
+			final srcParam = graph.getNode(fromId)
+				.getOutputParam(fromName, getKernel);
+
+			/+assert (srcParam.hasPlainSemantic);
+			*toParam.semantic() = srcParam.semantic().dup(&graph._mem.pushBack);+/
+
+			*par.semantic() = *srcParam.semantic();
+		}
 	}
 }
 
@@ -915,9 +960,11 @@ private void doManualFlow(
 
 	final fromParam = graph.getNode(fromId).getOutputParam(fl.from, getKernel);
 	assert (fromParam !is null);
+	assert (fromParam.hasPlainSemantic);
 	
 	final toParam = graph.getNode(toId).getInputParam(fl.to, getKernel);
 	assert (toParam !is null);
+	assert (toParam.hasPlainSemantic);
 
 	if (!findConversion(
 		*fromParam.semantic,
@@ -975,6 +1022,8 @@ void convertGraphDataFlow(
 			getKernel,
 			FlowGenMode.InsertConversionNodes
 		);
+
+		simplifyParamSemantics(graph, id, getKernel);
 		
 		foreach (con; graph.flow.iterOutgoingConnections(id)) {
 			foreach (fl; graph.flow.iterDataFlow(id, con)) {
@@ -987,7 +1036,6 @@ void convertGraphDataFlow(
 				);
 			}
 		}
-		simplifyParamSemantics(graph, id, getKernel);
 	}
 
 	// NOTE: this was removed, m'kay?
@@ -1054,6 +1102,8 @@ void convertGraphDataFlowExceptOutput(
 				: FlowGenMode.InsertConversionNodes
 		);
 		
+		simplifyParamSemantics(graph, id, getKernel);
+
 		foreach (con; graph.flow.iterOutgoingConnections(id)) {
 			if (!isOutputNode(con)) {
 				foreach (fl; graph.flow.iterDataFlow(id, con)) {
@@ -1067,7 +1117,6 @@ void convertGraphDataFlowExceptOutput(
 				}
 			}
 		}
-		simplifyParamSemantics(graph, id, getKernel);
 	}
 
 	// NOTE: this was removed, m'kay?

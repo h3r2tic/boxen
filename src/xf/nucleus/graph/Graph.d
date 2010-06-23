@@ -34,6 +34,9 @@ struct DataFlow {
 }
 
 
+// version = DebugGraphConnections;
+
+
 
 template MSmallTempArray(T) {
 	enum { GrowBy = 8 }
@@ -91,6 +94,7 @@ template MSmallTempArray(T) {
 		if (num > 0) {
 			_capacity = cast(ushort)(((num + cast(ushort)(GrowBy-1)) / GrowBy) * GrowBy);
 			_items = cast(T*)mem.pushBack(_capacity * T.sizeof);
+			assert (_items !is null);
 			_length = num;
 			_items[0.._capacity] = T.init;
 		} else {
@@ -168,6 +172,11 @@ final class Graph : IGraphFlow {
 		_nodeInfos[res.id] = GraphNodeInfo.init;
 		_nodeLabels[res.id] = null;
 		// _dataFlow[res.id] is already good and its items can be reused
+
+		version (DebugGraphConnections) {
+			foreach (con; iterIncomingConnections(res)) { assert (false); }
+			foreach (con; iterOutgoingConnections(res)) { assert (false); }
+		}
 		
 		return res;
 	}
@@ -189,11 +198,22 @@ final class Graph : IGraphFlow {
 	 */
 	void			removeNode(GraphNodeId id) {
 		_verifyNodeId(id);
+
+		version (DebugGraphConnections) {
+			foreach (con; iterIncomingConnections(id)) {}
+			foreach (con; iterOutgoingConnections(id)) {}
+		}
+
 		_removeExternalConnectionsToAndFrom(id);
 		
 		// so their items can be reused
 		_disposeConnectionList(&_incomingConnections[id.id]);
 		_disposeConnectionList(&_outgoingConnections[id.id]);
+
+		for (uword i = 0; i < _capacity; ++i) {
+			_writeFlag(_autoFlowFlags, id.id, i, false);
+			_writeFlag(_autoFlowFlags, i, id.id, false);
+		}
 
 		++_idReuseCounts[id.id];
 		_writeFlag(_presentFlags, id.id, false);
@@ -213,6 +233,11 @@ final class Graph : IGraphFlow {
 					// so their items can be reused
 					_disposeConnectionList(&_incomingConnections[i]);
 					_disposeConnectionList(&_outgoingConnections[i]);
+
+					for (uword j = 0; j < _capacity; ++j) {
+						_writeFlag(_autoFlowFlags, id.id, j, false);
+						_writeFlag(_autoFlowFlags, j, id.id, false);
+					}
 
 					++_idReuseCounts[i];
 					_writeFlag(_presentFlags, i, false);
@@ -271,6 +296,9 @@ final class Graph : IGraphFlow {
 	) {
 		_verifyNodeId(from);
 		_verifyNodeId(to);
+		
+		assert (from.id != to.id);
+		
 		ConnectionList* outList = &_outgoingConnections[from.id];
 		ConnectionList* incList = &_incomingConnections[to.id];
 		Connection* con;
@@ -286,6 +314,10 @@ final class Graph : IGraphFlow {
 		}
 
 		if (con !is null) {
+			version (DebugGraphConnections) {
+				assert (con.alive);
+			}
+
 			if (auto fl = con.containsFlow(fromPort, toPort)) {
 				return fl;
 			}
@@ -293,6 +325,16 @@ final class Graph : IGraphFlow {
 			con = _allocConnection();
 			con.from = from;
 			con.to = to;
+
+			outList.pushBack(
+				con,
+				_mem
+			);
+
+			incList.pushBack(
+				con,
+				_mem
+			);
 		}
 
 		con.pushBack(
@@ -300,16 +342,6 @@ final class Graph : IGraphFlow {
 				_allocString(fromPort),
 				_allocString(toPort)
 			),
-			_mem
-		);
-
-		outList.pushBack(
-			con,
-			_mem
-		);
-
-		incList.pushBack(
-			con,
 			_mem
 		);
 
@@ -562,6 +594,10 @@ final class Graph : IGraphFlow {
 			Connection* con;
 			
 			foreach (item; outList.items) {
+				version (DebugGraphConnections) {
+					assert (item.alive);
+				}
+
 				if (item.from.id is from.id) {
 					assert (item.from.reuseCnt is from.reuseCnt);
 					if (item.to.id is to.id) {
@@ -626,6 +662,11 @@ final class Graph : IGraphFlow {
 			
 			foreach (item; outList.items) {
 				auto con = item.to;
+
+				version (DebugGraphConnections) {
+					assert (item.alive);
+				}
+
 				if (!_readFlag(_autoFlowFlags, from.id, item.to.id)) {
 					if (int r = sink(con)) {
 						return r;
@@ -658,6 +699,11 @@ final class Graph : IGraphFlow {
 
 			foreach (item; incList.items) {
 				auto con = item.from;
+
+				version (DebugGraphConnections) {
+					assert (item.alive);
+				}
+
 				if (!_readFlag(_autoFlowFlags, item.from.id, to.id)) {
 					if (int r = sink(con)) {
 						return r;
@@ -680,6 +726,10 @@ final class Graph : IGraphFlow {
 				GraphNodeId	to;
 
 				mixin MSmallTempArray!(DataFlow);
+
+				version (DebugGraphConnections) {
+					bool alive = false;
+				}
 			}
 
 			DataFlow* containsFlow(cstring from, cstring to) {
@@ -744,6 +794,10 @@ final class Graph : IGraphFlow {
 			return _writeFlag(flags, idx1 * _capacity + idx2, val);
 		}
 
+		void _writeFlag(uword* flags, uword idx1, uword idx2, bool val, uword capacity) {
+			return _writeFlag(flags, idx1 * capacity + idx2, val);
+		}
+
 		cstring _allocString(cstring s) {
 			if (s.length > 0) {
 				cstring ns = (cast(char*)_mem.pushBack(s.length))[0..s.length];
@@ -756,6 +810,8 @@ final class Graph : IGraphFlow {
 
 
 		void _reallocateNodes(int num) {
+			log.trace("Graph._reallocateNodes()");
+			
 			uword*			presentFlags;
 			ushort*			idReuseCounts;
 			GraphNodeInfo*	nodeInfos;
@@ -772,7 +828,7 @@ final class Graph : IGraphFlow {
 			_alloc(nodeLabels, num);
 			_alloc(autoFlowFlags, (num*num+wordBits-1) / wordBits, true);
 
-			// zeroed because the items are re-usable
+			// zeroed because the items are reusable
 			_alloc(incomingConnections, num, true);
 			_alloc(outgoingConnections, num, true);
 
@@ -800,7 +856,7 @@ final class Graph : IGraphFlow {
 				
 				for (int j = 0; j < _capacity; ++j) {
 					if (_readFlag(_autoFlowFlags, i, j)) {
-						_writeFlag(autoFlowFlags, i, j, true);
+						_writeFlag(autoFlowFlags, i, j, true, num);
 					}
 				}
 
@@ -862,6 +918,12 @@ final class Graph : IGraphFlow {
 		Connection* _allocConnection() {
 			if (_connectionFreeList !is null) {
 				auto con = _connectionFreeList;
+
+				version (DebugGraphConnections) {
+					assert (!con.alive);
+					con.alive = true;
+				}
+
 				_connectionFreeList = con._freeListNext;
 				con._freeListNext = null;
 				assert (0 == con._length);		// must be properly disposed
@@ -869,12 +931,20 @@ final class Graph : IGraphFlow {
 			} else {
 				auto con = cast(Connection*)_mem.pushBack(Connection.sizeof);
 				*con = Connection.init;
+				version (DebugGraphConnections) {
+					con.alive = true;
+				}
 				return con;
 			}
 		}
 
 		// Warning: Doesn't remove the connection from the incoming and outgoing lists
 		void _disposeConnection(Connection* con) {
+			version (DebugGraphConnections) {
+				assert (con.alive);
+				con.alive = false;
+			}
+
 			con._length = 0;
 			con._freeListNext = _connectionFreeList;
 			_connectionFreeList = con;
@@ -900,13 +970,7 @@ final class Graph : IGraphFlow {
 
 				foreach (n; _conNodes[0..numCon]) {
 					_outgoingConnections[n].removeMatching((Connection* c) {
-						bool res = c.to.id == id.id;
-						if (res) {
-							_disposeConnection(c);
-							return true;
-						} else {
-							return false;
-						}
+						return c.to.id == id.id;
 					});
 				}
 			}
@@ -921,13 +985,7 @@ final class Graph : IGraphFlow {
 
 				foreach (n; _conNodes[0..numCon]) {
 					_incomingConnections[n].removeMatching((Connection* c) {
-						bool res = c.from.id == id.id;
-						if (res) {
-							_disposeConnection(c);
-							return true;
-						} else {
-							return false;
-						}
+						return c.from.id == id.id;
 					});
 				}
 			}

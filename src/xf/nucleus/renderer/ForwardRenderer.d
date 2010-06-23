@@ -78,7 +78,7 @@ class ForwardRenderer : Renderer {
 	private Effect buildEffectForRenderable(RenderableId rid) {
 		final structureKernelName	= renderables.structureKernel[rid];
 		final pigmentKernelName		= renderables.pigmentKernel[rid];
-		final illumKernelName		= "PhongBlinn";//renderables.illuminationKernel[rid];
+		final illumKernelName		= "BlinnPhong";//renderables.illuminationKernel[rid];
 
 		GraphDef[char[]] graphs;
 
@@ -138,6 +138,10 @@ class ForwardRenderer : Renderer {
 			);
 			assert (pigmentInput.valid);
 
+			foreach (n; nodes) {
+				assert (n.valid);
+			}
+
 			convertKernelNodesToFuncNodes(
 				kg,
 				&getFuncForKernel,
@@ -196,6 +200,13 @@ class ForwardRenderer : Renderer {
 					}
 				);
 
+				foreach (_lightI, ref _lightGraph; lightGraphs) {
+					log.info("lightI: {}, _lightI: {}", lightI, _lightI);
+					scope stack2 = new StackBuffer;
+					auto lightNodesTopo = stack2.allocArray!(GraphNodeId)(_lightGraph.nodes.length);
+					findTopologicalOrder(kg.backend_readOnly, _lightGraph.nodes, lightNodesTopo);
+				}
+
 				// Build illumination kernel graphs
 
 				final illumGraphDef = graphs[illumKernelName];
@@ -207,16 +218,16 @@ class ForwardRenderer : Renderer {
 					(uint nidx, cstring, GraphDefNode def, GraphNodeId delegate() getNid) {
 						if ("data" == def.type && lightI > 0) {
 							// Data nodes are shared among all illum graph instances
-							return lightGraph.nodes[nidx] = lightGraphs[0].nodes[nidx];
+							return illumGraph.nodes[nidx] = illumGraphs[0].nodes[nidx];
 						} else {
 							final nid = getNid();
 							final n = kg.getNode(nid);
-							lightGraph.nodes[nidx] = nid;
+							illumGraph.nodes[nidx] = nid;
 							if (KernelGraph.NodeType.Input == n.type) {
-								lightGraph.input = nid;
+								illumGraph.input = nid;
 							}
 							if (KernelGraph.NodeType.Output == n.type) {
-								lightGraph.output = nid;
+								illumGraph.output = nid;
 							}
 							if (KernelGraph.NodeType.Data == n.type) {
 								n.data.sourceKernelType = SourceKernelType.Illumination;
@@ -259,7 +270,7 @@ class ForwardRenderer : Renderer {
 						GraphNodeId* srcNid,
 						Param** srcParam
 					) {
-						if (dstParam != "position" || dstParam != "normal") {
+						if (dstParam != "position" && dstParam != "normal") {
 							error(
 								"Expected position or normal input from a"
 								" light kernel. Got: '{}'", dstParam
@@ -449,6 +460,7 @@ class ForwardRenderer : Renderer {
 
 							*srcNid = specularSumNid;
 							*srcParam = param;
+							return true;
 						}
 
 						default:
