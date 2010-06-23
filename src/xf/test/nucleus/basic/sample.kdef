@@ -11,15 +11,79 @@ Pigment = kernel {
 	quark main(
 		in position <type vec3 + basis model + use position>,
 		in normal <type vec3 + basis model + use normal>,
+		in diffuse <type vec4 + use diffuse>,
+		in specular <type vec4 + use specular>,
 		out radiance <type vec4 + use color>
 	);
 };
+
+implement Pigment(20)
+quark PigmentFFFFUUUU {
+	quark main(
+		in position <type vec3 + basis model + use position>,
+		in normal <type vec3 + basis model + use normal>,
+		in diffuse <type vec4 + use diffuse>,
+		in specular <type vec4 + use specular>,
+		out radiance <type vec4 + use color>
+	) Cg {
+		radiance = diffuse + specular;
+	}
+}
 
 Rasterize = kernel {
 	quark main(
 		in inPos <type vec4 + use position + basis clip>
 	);
 };
+
+
+PointLight = kernel {
+	quark main(
+		in position <type vec3 + use position + basis world>,
+		out intensity <type vec4 + use color>,
+		out toLight <type vec3 + basis world + use toLight>
+	);
+};
+
+implement PointLight(20)
+quark TestPointLight {
+	quark main(
+		in position <type vec3 + use position + basis world>,
+		out intensity <type vec4 + use color>,
+		out toLight <type vec3 + basis world + use toLight>
+	) Cg {
+		vec3 lightPos = vec3(1, 2, 2);
+		toLight = lightPos - position;
+		intensity = float4(1.0f, 1.0f, 1.0f, 1.0f) / dot(toLight, toLight).xxxx;
+		toLight = normalize(toLight);
+	}
+}
+
+BlinnPhongImpl = kernel {
+	quark main(
+		in normal <type vec3 + use normal + basis world>,
+		in intensity <type vec4 + use color>,
+		in toLight <type vec3 + basis world + use toLight>,
+		out diffuse <type vec4 + use diffuse>,
+		out specular <type vec4 + use specular>
+	);
+};
+
+implement BlinnPhongImpl(20)
+quark TestBlinnPhongImpl {
+	quark main(
+		in normal <type vec3 + use normal + basis world>,
+		in intensity <type vec4 + use color>,
+		in toLight <type vec3 + basis world + use toLight>,
+		out diffuse <type vec4 + use diffuse>,
+		out specular <type vec4 + use specular>
+	) Cg {
+		float NdotL = dot(normal, toLight).x;
+		diffuse = intensity * saturate(NdotL);
+		specular = 0;
+	}
+}
+
 
 
 implement Structure(20)
@@ -49,16 +113,22 @@ graph DefaultMeshStructure {
 }
 
 
-implement Pigment(20)
-graph TestPigment {
+TestPigment = graph {
 	node_0 = node {
 		type = "input";
 		params = (
 			out position <type vec3 + basis model + use position>,
-			out normal <type vec3 + basis model + use normal>
+			out normal <type vec3 + basis model + use normal>,
+			in diffuse <type vec4 + use diffuse>,
+			in specular <type vec4 + use specular>
 		);
 	};
 	node_1 = node {
+		type = "kernel";
+		kernelName = "Pigment";
+		funcName = "main";
+	};
+	node_2 = node {
 		type = "output";
 		params = (
 			in radiance<type vec4 + use color>
@@ -66,7 +136,60 @@ graph TestPigment {
 	};
 
 	connect node_0 node_1;
-}
+	connect node_1 node_2;
+};
+
+
+TestLight = graph {
+	node_0 = node {
+		type = "input";
+		params = (
+			out position <type vec3 + use position + basis world>
+		);
+	};
+	node_1 = node {
+		type = "kernel";
+		kernelName = "PointLight";
+		funcName = "main";
+	};
+	node_2 = node {
+		type = "output";
+		params = (
+			in intensity <type vec4 + use color>,
+			in toLight <type vec3 + basis world + use toLight>
+		);
+	};
+
+	connect node_0 node_1;
+	connect node_1 node_2;
+};
+
+
+BlinnPhong = graph {
+	node_0 = node {
+		type = "input";
+		params = (
+			normal <type vec3 + use normal + basis world>,
+			intensity <type vec4 + use color>,
+			toLight <type vec3 + basis world + use toLight>
+		);
+	};
+	node_1 = node {
+		type = "kernel";
+		kernelName = "BlinnPhongImpl";
+		funcName = "main";
+	};
+	node_2 = node {
+		type = "output";
+		params = (
+			in diffuse <type vec4 + use diffuse>,
+			in specular <type vec4 + use specular>
+		);
+	};
+
+	connect node_0 node_1;
+	connect node_1 node_2;
+};
 
 
 use = trait {
@@ -126,4 +249,24 @@ converter(20) view2clip(
 	out b <in.a.actual + basis clip + type vec4>
 ) Cg {
 	b = mul(viewToClip, float4(a, 1.0));
+}
+
+
+Add = kernel {
+	quark main(
+		in a,
+		in b,
+		out c <in.a.actual>
+	);
+};
+
+implement Add(20)
+quark AddFFFFUUUU {
+	quark main(
+		in a,
+		in b,
+		out c <in.a.actual>
+	) Cg {
+		c = a + b;
+	}
 }

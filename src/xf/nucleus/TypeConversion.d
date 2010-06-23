@@ -184,8 +184,15 @@ bool findConversion(
 		item.sem = from;
 		item.prev = null;
 		item.cost = 0;
-		item.isFinal = false;
-		openSet ~= HeapItem(item, 0);
+
+		item.isFinal = canPassSemanticFor(
+			from,
+			to,
+			true,
+			&item.cost
+		);
+
+		openSet ~= HeapItem(item, item.cost);
 	}
 	
 	auto closedSet = IntrusiveHashMap!(Semantic, SearchItem*)(

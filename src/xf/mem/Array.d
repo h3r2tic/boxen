@@ -21,7 +21,7 @@ struct Array(
 			_ptr[_length++] = x;
 		} else {
 			_expand(1U);
-			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
 			_ptr[_length++] = x;
 		}
 		return res;
@@ -36,7 +36,7 @@ struct Array(
 			_length += xlen;
 		} else {
 			_expand(xlen);
-			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
 			_ptr[_length .. _length+xlen] = x;
 			_length += xlen;
 		}
@@ -60,7 +60,7 @@ struct Array(
 	void reserve(size_t num) {
 		if (num > _capacity) {
 			_expand(num - _capacity);
-			_ptr = cast(T*)_reallocate(_ptr, 0, _length, _capacity * T.sizeof);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
 		}
 	}
 	

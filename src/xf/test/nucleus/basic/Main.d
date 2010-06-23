@@ -12,6 +12,7 @@ private {
 	import xf.nucleus.Defs;
 	import xf.nucleus.Renderer;
 	import xf.nucleus.Renderable;
+	import xf.nucleus.Light;
 	import xf.nucleus.IStructureData;
 	import xf.nucleus.Kernel;
 	import xf.nucleus.CompiledMeshAsset;
@@ -93,10 +94,8 @@ class MeshStructure : IStructureData {
 	}
 
 	void setKernelObjectData(KernelParamInterface kpi) {
-		Stdout.formatln("1").flush;
 		kpi.setIndexData(&indexData);
 		
-		Stdout.formatln("2").flush;
 		foreach (i, ref attr; vertexAttribs) {
 			final name = vertexAttribNames[i];
 			final param = kpi.getVaryingParam(name);
@@ -107,7 +106,6 @@ class MeshStructure : IStructureData {
 				gfxLog.warn("No param named '{}' in the kernel.", name);
 			}
 		}
-		Stdout.formatln("3").flush;
 	}
 
 	// TODO: hardcode the available data and expose meta-info
@@ -122,6 +120,43 @@ class MeshStructure : IStructureData {
 		IndexData		indexData;
 	}
 }
+
+
+class TestLight : Light {
+	override cstring kernelName() {
+		return "TestLight";
+	}
+	
+	override void setKernelData(KernelParamInterface) {
+		/+final param = kpi.getUniformParam(name);
+		if (param !is null) {
+			param.buffer = &vertexBuffer;
+			param.attrib = &attr;
+		} else {
+			gfxLog.warn("No param named '{}' in the kernel.", name);
+		}+/
+	}
+	
+	override void determineInfluenced(
+		void delegate(
+			bool delegate(
+				ref CoordSys	cs,
+				ref vec3		localHalfSize
+			)
+		) objectIter
+	) {
+		objectIter((
+				ref CoordSys	cs,
+				ref vec3		localHalfSize
+			) {
+				return true;
+			}
+		);
+	}
+
+	vec3	position = { x: 0, y: 0, z: 2 };
+}
+
 
 
 cstring defaultStructureKernel(cstring structureTypeName) {
@@ -239,6 +274,17 @@ class TestApp : GfxApp {
 		
 		assert (1 == scene.nodes.length);
 		final root = scene.nodes[0];
+
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
+		createLight(new TestLight);
 
 		void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
 			foreach (i, ref m; loader.meshes) {
