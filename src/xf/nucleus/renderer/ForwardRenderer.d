@@ -20,6 +20,8 @@ private {
 	import xf.nucleus.graph.GraphMisc;
 	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
+
+	import xf.gfx.EffectHelper;		// TODO: get rid of this
 	
 	import Nucleus = xf.nucleus.Nucleus;
 	
@@ -135,6 +137,14 @@ class ForwardRenderer : Renderer {
 				}
 			);
 			assert (pigmentInput.valid);
+
+			convertKernelNodesToFuncNodes(
+				kg,
+				&getFuncForKernel,
+				(cstring kname, cstring fname) {
+					return kname != "Rasterize";
+				}
+			);
 		}
 
 		// --- Find the lights affecting this renderable
@@ -263,7 +273,9 @@ class ForwardRenderer : Renderer {
 							srcNid,
 							srcParam
 						);
-					}
+					},
+
+					OutputNodeConversion.Skip
 				);
 			}
 
@@ -307,7 +319,9 @@ class ForwardRenderer : Renderer {
 									srcParam
 								);
 						}
-					}
+					},
+					
+					OutputNodeConversion.Skip
 				);
 
 				kg.removeNode(lightGraphs[lightI].output);
@@ -446,7 +460,9 @@ class ForwardRenderer : Renderer {
 								srcParam
 							);
 					}
-				}
+				},
+
+				OutputNodeConversion.Perform
 			);
 
 			kg.removeNode(structureOutput);
@@ -455,6 +471,15 @@ class ForwardRenderer : Renderer {
 			// TODO: zero the diffuse and specular contribs
 			// ... or don't draw the object
 
+			scope stack = new StackBuffer;
+			final structureNodes = stack.allocArray!(GraphNodeId)(kg.numNodes);
+			{
+				uword i = 0;
+				foreach (nid, dummy; kg.iterNodes) {
+					structureNodes[i++] = nid;
+				}
+			}
+
 			buildPigmentGraph();
 
 			verifyDataFlowNames(kg, &_kdefRegistry.getKernel);
@@ -462,9 +487,21 @@ class ForwardRenderer : Renderer {
 			fuseGraph(
 				kg,
 				structureOutput,
+
+				// graph1NodeIter
+				(int delegate(ref GraphNodeId) sink) {
+					foreach (nid; structureNodes) {
+						if (int r = sink(nid)) {
+							return r;
+						}
+					}
+					return 0;
+				},
+
 				pigmentInput,
 				&_kdefRegistry.converters,
-				&_kdefRegistry.getKernel
+				&_kdefRegistry.getKernel,
+				OutputNodeConversion.Perform
 			);
 		}
 
@@ -505,20 +542,26 @@ class ForwardRenderer : Renderer {
 				// ----
 
 				effect.compile();
+				allocateDefaultUniformStorage(effect);
 
 				void** uniforms = effect.getUniformPtrsDataPtr();
+				if (uniforms) {
+					void setUniform(cstring name, void* ptr) {
+						final idx = effect.effectUniformParams.getUniformIndex(name);
+						if (idx != -1) {
+							uniforms[idx] = ptr;
+						}
+					}
 
-				void setUniform(cstring name, void* ptr) {
-					uniforms[effect.effectUniformParams.getUniformIndex(name)]
-						= ptr;
+					setUniform("worldToView", &worldToView);
+					setUniform("viewToClip", &viewToClip);
 				}
-
-				setUniform("worldToView", &worldToView);
-				setUniform("viewToClip", &viewToClip);
 
 				// ----
 				
 				EffectInstance efInst = _backend.instantiateEffect(effect);
+				allocateDefaultUniformStorage(efInst);
+				allocateDefaultVaryingStorage(efInst);
 
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
@@ -541,7 +584,7 @@ class ForwardRenderer : Renderer {
 
 						// setIndexData
 						(IndexData* id) {
-							//log.info("_renderableIndexData[{}] = {};", rid, id);
+							log.info("_renderableIndexData[{}] = {};", rid, id);
 							_renderableIndexData[rid] = id;
 						}
 				));				

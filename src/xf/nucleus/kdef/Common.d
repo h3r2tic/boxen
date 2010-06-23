@@ -244,7 +244,7 @@ class GraphDefNode : Scope {
 	}
 
 	char[] type() {
-		auto typeVar = nodeDef.vars["type"];
+		auto typeVar = vars["type"];
 		assert (cast(StringValue)typeVar);
 		return (cast(StringValue)typeVar).value;
 	}

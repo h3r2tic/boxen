@@ -22,6 +22,12 @@ private {
 
 
 
+enum OutputNodeConversion {
+	Perform,
+	Skip
+}
+
+
 bool findSrcParam(
 	KernelGraph kg,
 	GraphNodeId dstNid,
@@ -53,7 +59,8 @@ void fuseGraph(
 		cstring dstParam,
 		GraphNodeId* srcNid,
 		Param** srcParam
-	) _findSrcParam
+	) _findSrcParam,
+	OutputNodeConversion outNodeConversion
 ) {
 	return fuseGraph(
 		graph,
@@ -68,7 +75,8 @@ void fuseGraph(
 			}
 			return 0;
 		},
-		_findSrcParam
+		_findSrcParam,
+		outNodeConversion
 	);
 }
 
@@ -83,7 +91,8 @@ void fuseGraph(
 		cstring dstParam,
 		GraphNodeId* srcNid,
 		Param** srcParam
-	) _findSrcParam
+	) _findSrcParam,
+	OutputNodeConversion outNodeConversion
 ) {
 	scope stack = new StackBuffer;
 
@@ -104,7 +113,7 @@ void fuseGraph(
 	}						
 
 	bool isOutputNode(GraphNodeId id) {
-		return graph.getNode(id).type != KernelGraph.NodeType.Output;
+		return KernelGraph.NodeType.Output == graph.getNode(id).type;
 	}
 
 	// Do auto flow for the second graph, extending the incoming flow of the
@@ -112,7 +121,7 @@ void fuseGraph(
 	foreach (id; dstGraphTopological) {
 		if (input == id) {
 			foreach (outCon; graph.flow.iterOutgoingConnections(input)) {
-				if (!isOutputNode(outCon)) {
+				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(outCon)) {
 					foreach (outFl; graph.flow.iterDataFlow(input, outCon)) {
 						GraphNodeId	fromNode;
 						Param*		fromParam;
@@ -141,7 +150,7 @@ void fuseGraph(
 				id,
 				semanticConverters,
 				getKernel,
-				isOutputNode(id)
+				OutputNodeConversion.Skip == outNodeConversion && isOutputNode(id)
 					? FlowGenMode.DirectConnection
 					: FlowGenMode.InsertConversionNodes,
 
@@ -253,7 +262,7 @@ void fuseGraph(
 
 
 			foreach (con; graph.flow.iterOutgoingConnections(id)) {
-				if (!isOutputNode(con)) {
+				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(con)) {
 					foreach (fl; graph.flow.iterDataFlow(id, con)) {
 						doManualFlow(
 							graph,
@@ -284,9 +293,11 @@ void fuseGraph(
 void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	output,
+	int delegate(int delegate(ref GraphNodeId)) graph1NodeIter,
 	GraphNodeId	input,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel
+	KernelLookup getKernel,
+	OutputNodeConversion outNodeConversion
 ) {
 	scope stack = new StackBuffer;
 
@@ -303,8 +314,10 @@ void fuseGraph(
 	graph1Nodes.alloc(graph.capacity, &stack.allocRaw);
 	graph1Nodes.clearAll();
 
-	markPrecedingNodes(graph.backend_readOnly, &graph1Nodes, null, output);
-	graph1Nodes.set(output.id);
+	//markPrecedingNodes(graph.backend_readOnly, &graph1Nodes, null, output);
+	foreach (nid; graph1NodeIter) {
+		graph1Nodes.set(nid.id);
+	}
 
 	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
 	findTopologicalOrder(graph.backend_readOnly, topological);
@@ -360,7 +373,8 @@ void fuseGraph(
 				srcNid,
 				srcParam
 			);
-		}
+		},
+		outNodeConversion
 	);
 
 	graph.removeNode(output);
@@ -1024,7 +1038,7 @@ void convertGraphDataFlowExceptOutput(
 	int delegate(int delegate(ref GraphNodeId)) topological
 ) {
 	bool isOutputNode(GraphNodeId id) {
-		return graph.getNode(id).type != KernelGraph.NodeType.Output;
+		return KernelGraph.NodeType.Output == graph.getNode(id).type;
 	}
 	
 	// Do auto flow for the first graph, but not generating conversions
