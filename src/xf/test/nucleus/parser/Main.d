@@ -5,7 +5,8 @@ private {
 	
 	import xf.Common;
 	import xf.mem.ChunkQueue;
-	
+
+	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefFileParser;
 	import xf.nucleus.kdef.KDefProcessor;
 
@@ -39,8 +40,12 @@ void main() {
 		processor.doSemantics(allocator);
 		processor.dumpInfo();
 
-		assert (false, "TODO");
-		/+foreach (g; &processor.graphs) {
+		foreach (impl; processor.kernels) {
+			if (impl.impl.type != KernelImpl.Type.Graph) {
+				continue;
+			}
+
+			auto g = impl.impl.graph;
 			auto kg = createKernelGraph();
 			
 			buildKernelGraph(
@@ -49,8 +54,8 @@ void main() {
 			);
 
 			disposeKernelGraph(kg);
-		}+/
+		}
 	}
 
-	//Stdout.formatln("Test passed!");
+	Stdout.formatln("Test passed!");
 }
