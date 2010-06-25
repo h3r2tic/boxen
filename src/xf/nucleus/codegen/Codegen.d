@@ -162,6 +162,12 @@ void codegen(
 		}
 	}
 
+
+	/*
+	 * The inputs to consider are either the /output/ params of an Input node
+	 * or the /input/ params if anothes node type is passed as the vertex input.
+	 */
+
 	uword numVinputs = 0;
 	foreach (ref p; *vinputNodeParams) {
 		if (NT.Input == vinputNT || p.isInput) {
@@ -235,6 +241,11 @@ void codegen(
 
 	alias voutputs finputs;
 
+
+	/*
+	 * The outputs to consider are either the /input/ params of an Output node
+	 * or the /output/ params if anothes node type is passed as the fragment output.
+	 */
 
 	uword numFoutputs = 0;
 	foreach (i, ref p; *foutputNodeParams) {
