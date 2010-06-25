@@ -204,6 +204,19 @@ struct ParamList {
 		Allocator		_allocator;
 	}
 
+
+	static ParamList opCall(Allocator alloc, Param[] params = null) {
+		ParamList res;
+		res._allocator = alloc;
+
+		// TODO: optimize me
+		foreach (p; params) {
+			res.add(p);
+		}
+		
+		return res;
+	}
+
 	
 	uword length() {
 		return _params.length;
@@ -271,9 +284,10 @@ struct ParamList {
 	}
 
 	
-	void add(Param p) {
+	Param* add(Param p) {
 		assert (p.name.length > 0);
-		_params.pushBack(p.dup(_allocator));
+		final pidx = _params.pushBack(p.dup(_allocator));
+		return _params.ptr + pidx;
 	}
 	
 	
@@ -287,6 +301,16 @@ struct ParamList {
 		assert (false, name);
 	}
 	
+
+	void removeNoThrow(cstring name) {
+		foreach (i, ref p; _params) {
+			if (p.name == name) {
+				_params.removeKeepOrder(i);
+				return;
+			}
+		}
+	}
+
 	
 	void remove(bool delegate(ref Param) dg) {
 		_params.removeKeepOrder(dg);

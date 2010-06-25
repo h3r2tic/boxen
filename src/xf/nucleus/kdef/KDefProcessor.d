@@ -9,10 +9,15 @@ private {
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.quark.QuarkDef;
 
+	import xf.nucleus.TypeSystem;
 	import xf.nucleus.TypeConversion;
 	import xf.nucleus.Function;
+	import xf.nucleus.Param;
+	import xf.nucleus.Value;
 	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
 	//import xf.nucleus.CommonDef;
+
+	import xf.nucleus.Log : error = nucleusError;
 
 	import xf.utils.Graph : findTopologicalOrder, CycleHandlingMode;
 	import xf.utils.Memory : alloc, free, append;
@@ -79,55 +84,14 @@ class KDefProcessor {
 			dumpInfo(mod);
 		}
 	}
-	
-	
-	/+int kernels(int delegate(ref KernelDef) dg) {
-		foreach (name, mod; modules) {
-			foreach (ref kernel; mod.kernels) {
-				if (auto r = dg(kernel)) {
-					return r;
-				}
-			}
-		}
-		
-		return 0;
+
+
+	struct KernelInfo {
+		KernelImpl	impl;
+		KDefModule	mod;
 	}
 	
-	
-	int quarks(int delegate(ref QuarkDef) dg) {
-		foreach (name, mod; modules) {
-			foreach (ref impl; mod.kernelImpls) {
-				if (auto qdef = cast(QuarkDefValue)impl.impl) {
-					if (auto r = dg(qdef.quarkDef)) {
-						return r;
-					}
-				}
-			}
-		}
-		
-		return 0;
-	}
-	
-
-	int graphs(int delegate(ref GraphDef) dg) {
-		foreach (name, mod; modules) {
-			foreach (ref impl; mod.kernelImpls) {
-				if (auto gdef = cast(GraphDefValue)impl.impl) {
-					if (auto r = dg(gdef.graphDef)) {
-						return r;
-					}
-				}
-			}
-
-			foreach (ref gdef; mod.graphDefs) {
-				if (auto r = dg(gdef)) {
-					return r;
-				}
-			}
-		}
-		
-		return 0;
-	}+/
+	KernelInfo[string]	kernels;
 
 
 	int converters(int delegate(ref SemanticConverter) dg) {
@@ -143,73 +107,259 @@ class KDefProcessor {
 	}
 
 	
-	KernelDef getKernel(string name) {
-		assert (false, "TODO");
-		/+foreach (kernel; &kernels) {
-			if (kernel.name == name) {
-				return kernel;
-			}
+	KernelImpl getKernel(string name) {
+		if (auto impl = name in this.kernels) {
+			return impl.impl;
+		} else {
+			error("Unknown kernel: '{}'.", name);
+			assert (false);
 		}
-		
-		return null;+/
 	}
-	
-
-	/+QuarkDef getQuark(string name) {
-		foreach (quark; &quarks) {
-			if (quark.name == name) {
-				return quark;
-			}
-		}
-		
-		return null;
-	}+/
 
 	
 	private {
+		enum Processed {
+			Not,
+			InProgress,
+			Done
+		}
+
+
 		void doKernelSemantics(Allocator allocator) {
-			int[KernelDef] kernelToId;
-			int nextOrderGraphId = 0;
+			Processed[KernelImpl] processed;
+
+			foreach (name, mod; modules) {
+				foreach (kname, ref kimpl; mod.kernels) {
+					if (kname in this.kernels) {
+						error(
+							"Multiple definitions of kernel '{}' in:\n  {}\n  and\n  {}.",
+							kname,
+							mod.filePath,
+							this.kernels[kname].mod.filePath
+						);
+					} else {
+						this.kernels[kname] = KernelInfo(
+							kimpl,
+							mod
+						);
+					}
+				}
+			}
 			
-			void process(KernelDef k, Allocator allocator) {
-				if (k in kernelToId) {
-					return;
+
+			foreach (n, ref k; kernels) {
+				doKernelSemantics(k.impl, allocator, processed);
+			}
+		}
+
+		void inheritKernel(KernelDef sub, KernelImpl supr) {
+			iterKernelInputs(supr, (Param* p) {
+				sub.func.params.removeNoThrow(p.name);
+				sub.func.params.add(*p);
+			});
+
+			iterKernelOutputs(supr, (Param* p) {
+				sub.func.params.removeNoThrow(p.name);
+				sub.func.params.add(*p);
+			});
+		}
+
+		void getPlainSemanticForNode(Param* par, Semantic* plainSem, KernelImpl supr) {
+			findOutputSemantic(
+				par,
+
+				// getFormalParamSemantic
+				(string name) {
+					Semantic* res;
+					
+					iterKernelInputs(supr, (Param* p) {
+						if (p.isInput && p.name == name) {
+							res = p.semantic();
+						}
+					});
+					
+					if (res) {
+						return *res;
+					}
+					
+					error(
+						"simplifyParamSemantics: output param '{}' refers to a"
+						" nonexistent formal parameter '{}'.",
+						par.name,
+						name
+					);
+					assert (false);
+				},
+
+				// getActualParamSemantic
+				(string name) {
+					error(
+						"Cannot derive node params from {}: param {} has a semantic expression.",
+						supr.name,
+						par.name
+					);
+					return Semantic.init;
+				},
+				
+				plainSem
+			);
+		}
+
+		void inheritKernelInputs(GraphDefNode node, KernelImpl supr) {
+			iterKernelInputs(supr, (Param* p) {
+				node.params.removeNoThrow(p.name);
+				assert (p.hasPlainSemantic);
+				node.params.add(*p).dir = ParamDirection.Out;
+			});
+		}
+
+		void inheritKernelOutputs(GraphDefNode node, KernelImpl supr) {
+			iterKernelOutputs(supr, (Param* p) {
+				node.params.removeNoThrow(p.name);
+
+				if (!p.hasPlainSemantic) {
+					auto pnew = node.params.add(ParamDirection.In, p.name);
+					pnew.hasPlainSemantic = true;
+					getPlainSemanticForNode(p, pnew.semantic, supr);
 				}
 				
-				kernelToId[k] = nextOrderGraphId++;
+				node.params.add(*p).dir = ParamDirection.In;
+			});
+		}
+		
 
-				assert (false, "TODO");
-				/+foreach (sup; k.getInheritList) {
-					auto supk = getKernel(sup);
-					if (supk) {
-						process(supk, allocator);
-						
-						k.inherit(supk);
-					} else {
-						throw new Exception(Format("Unknown super kernel for {}: '{}'", k.name, sup));
-					}
-				}+/
-			}
-
-			assert (false, "TODO");
-			/+foreach (k; &kernels) {
-				process(k, allocator);
-			}
-
-			foreach (k; &kernels) {
-				if (auto ord = k in kernelToId) {
-					if (-1 == *ord) {
-						*ord = 0;
-						if (0 == nextOrderGraphId) {
-							nextOrderGraphId = 1;
+		void iterKernelParams(
+				KernelImpl impl,
+				bool wantInputs,
+				void delegate(Param*) sink
+		) {
+			switch (impl.type) {
+				case KernelImpl.Type.Kernel: {
+					foreach (ref p; impl.kernel.func.params) {
+						if (wantInputs == p.isInput) {
+							sink(&p);
 						}
 					}
+				} break;
+
+				case KernelImpl.Type.Graph: {
+					foreach (nodeName, node; impl.graph.nodes) {
+						if ((wantInputs ? "input" : "output") == node.type) {
+							foreach (ref p; node.params) {
+								sink(&p);
+							}
+						}
+					}
+				} break;
+
+				default: assert (false);
+			}
+		}
+
+		void iterKernelInputs(KernelImpl impl, void delegate(Param*) sink) {
+			iterKernelParams(impl, true, sink);
+		}
+
+		void iterKernelOutputs(KernelImpl impl, void delegate(Param*) sink) {
+			iterKernelParams(impl, false, sink);
+		}
+		
+
+		void doKernelSemantics(ref KernelDef k, Allocator allocator, ref Processed[KernelImpl] processed) {
+			if (k.superKernel.length > 0) {
+				auto superKernel = getKernel(k.superKernel);
+				doKernelSemantics(superKernel, allocator, processed);
+				inheritKernel(k, superKernel);
+			}
+		}
+
+
+		void doKernelSemantics(ref GraphDef graph, Allocator allocator, ref Processed[KernelImpl] processed) {
+			KernelImpl superKernel;
+			
+			if (graph.superKernel.length > 0) {
+				superKernel = getKernel(graph.superKernel);
+				doKernelSemantics(superKernel, allocator, processed);
+			}
+
+			foreach (nodeName, node; graph.nodes) {
+				switch (node.type) {
+					case "input": {
+						if (superKernel.valid) {
+							inheritKernelInputs(node, superKernel);
+						}
+					} break;
+
+					case "output": {
+						if (superKernel.valid) {
+							inheritKernelOutputs(node, superKernel);
+						}
+					} break;
+
+					case "kernel": {
+						auto kernelVar = node.vars["kernel"];
+						if (auto ident = cast(IdentifierValue)kernelVar) {
+							node.kernelImpl = getKernel(ident.value);
+						}
+						else if (auto liteal = cast(QuarkDefValue)kernelVar) {
+							doKernelSemantics(liteal.kernelDef, allocator, processed);
+							node.kernelImpl = KernelImpl(liteal.kernelDef);
+							node.kernelImpl.kernel.func.name = "literal";
+						}
+						else {
+							error(
+								"The 'kernel' var in a graph node must be"
+								" either an identifier or a quark literal,"
+								" not a '{}'", kernelVar.classinfo.name
+							);
+						}
+					} break;
+
+					default: break;
+				}
+			}
+		}
+
+		void doKernelSemantics(ref KernelImpl k, Allocator allocator, ref Processed[KernelImpl] processed) {
+			if (auto p = k in processed) {
+				switch (*p) {
+					case Processed.InProgress: {
+						char[] list;
+						foreach (ki, p2; processed) {
+							if (Processed.InProgress == p2) {
+								list ~= "  '"~ki.name~"'\n";
+							}
+						}
+
+						// TODO: keep track of the exact eval order
+						error(
+							"Recursive prosessing of a kernel '{}'. From:\n{}",
+							k.name,
+							list
+						);
+					} break;
+					
+					case Processed.Not: break;
+					case Processed.Done: return;
+					
+					default: assert (false);
 				}
 			}
 			
-			if (nextOrderGraphId > 0) {
-				findRenderingOrder(kernelToId, nextOrderGraphId);
-			}+/
+			processed[k] = Processed.InProgress;
+			scope (success) processed[k] = Processed.Done;
+
+			switch (k.type) {
+				case KernelImpl.Type.Kernel: {
+					doKernelSemantics(k.kernel, allocator, processed);
+				} break;
+
+				case KernelImpl.Type.Graph: {
+					doKernelSemantics(k.graph, allocator, processed);
+				} break;
+
+				default: assert (false);
+			}
 		}
 		
 		// --------------------------------------------------------------------------------------------------------------------------------
@@ -255,14 +405,9 @@ class KDefProcessor {
 			Stdout.formatln("* path: {}", mod.filePath);
 			Stdout.formatln("* kernel impls:");
 			
-			assert (false, "TODO");
-			/+foreach (impl; mod.kernelImpls) {
+			foreach (n, impl; mod.kernels) {
 				dumpInfo(impl);
 			}
-			Stdout.formatln("* kernels:");
-			foreach (kernel; mod.kernels) {
-				dumpInfo(kernel);
-			}+/
 		}
 		
 		
@@ -273,6 +418,17 @@ class KDefProcessor {
 			}
 			Stdout("}").newline;
 		}+/
+
+
+		void dumpInfo(KernelImpl kimpl) {
+			switch (kimpl.type) {
+				case KernelImpl.Type.Graph:
+					return dumpInfo(kimpl.graph);
+				case KernelImpl.Type.Kernel:
+					return dumpInfo(kimpl.kernel);
+				default: assert (false);
+			}
+		}
 		
 		
 		void dumpInfo(AbstractFunction func) {
@@ -308,12 +464,7 @@ class KDefProcessor {
 		
 		
 		void dumpInfo(KernelDef kernel) {
-			assert (false, "TODO");
-			/+Stdout.formatln("kernel {} {{", kernel.name);
-			foreach (func; kernel.functions) {
-				dumpInfo(func);
-			}
-			Stdout("}").newline;+/
+			dumpInfo(kernel.func);
 		}
 		
 				
@@ -333,19 +484,91 @@ class KDefProcessor {
 					if (auto kernelValue = cast(KernelDefValue)stmt.value) {
 						kernelValue.kernelDef.func.name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {
-							assert (false, "TODO");
-							//mod.kernels ~= kernelValue.kernelDef;
+							mod.kernels[stmt.name] = KernelImpl(kernelValue.kernelDef);
 						}
 					}
 					
+					if (auto quarkValue = cast(QuarkDefValue)stmt.value) {
+						quarkValue.kernelDef.func.name = stmt.name;
+						if (auto mod = cast(KDefModule)sc) {
+							mod.kernels[stmt.name] = KernelImpl(quarkValue.kernelDef);
+						}
+					}
+
 					if (auto graphValue = cast(GraphDefValue)stmt.value) {
 						graphValue.graphDef.name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {
-							assert (false, "TODO");
-							//mod.graphDefs ~= graphValue.graphDef;
+							mod.kernels[stmt.name] = KernelImpl(graphValue.graphDef);
 						}
 					}
 					
+					if (auto nodeValue = cast(GraphDefNodeValue)stmt.value) {
+						auto node = nodeValue.node;
+
+						switch (node.type) {
+							case "input": 
+							case "data":
+							case "output": {
+								node.params = ParamList(allocator);
+							}
+							default: break;
+						}
+
+						if (auto params_ = "params" in node.vars) {
+							ParamDirection pdir;
+							switch (node.type) {
+								case "input": 
+								case "data": pdir = ParamDirection.Out; break;
+								case "output": pdir = ParamDirection.In; break;
+								default: {
+									error("Only input, output and data nodes may have params.");
+								}
+							}
+							
+							if (!cast(ParamListValue)params_) {
+								// TODO: loc
+								error("The 'params' field of a graph node must be a ParamListValue.");
+							}
+
+							auto params = (cast(ParamListValue)params_).value;
+
+							foreach (d; params) {
+								auto p = node.params.add(
+									pdir,
+									d.name
+								);
+
+								p.hasPlainSemantic = true;
+								final psem = p.semantic();
+
+								if (d.type.length > 0) {
+									p.type = d.type;
+								}
+
+								void buildSemantic(ParamSemanticExp sem) {
+									if (sem is null) {
+										return;
+									}
+									
+									if (sem) {
+										if (ParamSemanticExp.Type.Sum == sem.type) {
+											buildSemantic(sem.exp1);
+											buildSemantic(sem.exp2);
+										} else if (ParamSemanticExp.Type.Trait == sem.type) {
+											psem.addTrait(sem.name, sem.value);
+											// TODO: check the type?
+										} else {
+											// TODO: err
+											assert (false, "Subtractive trait used in a node param.");
+										}
+									}
+								}
+								
+								buildSemantic(d.paramSemantic);
+							}
+						}
+					}
+
 					if (auto traitValue = cast(TraitDefValue)stmt.value) {
 						traitValue.value.name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {

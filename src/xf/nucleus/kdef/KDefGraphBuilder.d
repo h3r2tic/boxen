@@ -42,52 +42,7 @@ void buildKernelGraph(
 
 		void createParamData(NT type, GraphNodeId n) {
 			final nodeData = kg.getNode(n)._param();
-			
-			if (auto params_ = "params" in nodeDef.vars) {
-				if (auto params = cast(ParamListValue)*params_) {
-					foreach (d; params.value) {
-						auto p = nodeData.params.add(
-							(	NT.Output == type
-							?	ParamDirection.In	// output nodes contain flow _inputs_
-							:	ParamDirection.Out
-							),
-							d.name
-						);
-
-						p.hasPlainSemantic = true;
-						final psem = p.semantic();
-
-						if (d.type.length > 0) {
-							p.type = d.type;
-						}
-
-						void buildSemantic(ParamSemanticExp sem) {
-							if (sem is null) {
-								return;
-							}
-							
-							if (sem) {
-								if (ParamSemanticExp.Type.Sum == sem.type) {
-									buildSemantic(sem.exp1);
-									buildSemantic(sem.exp2);
-								} else if (ParamSemanticExp.Type.Trait == sem.type) {
-									psem.addTrait(sem.name, sem.value);
-									// TODO: check the type?
-								} else {
-									// TODO: err
-									assert (false, "Subtractive trait used in a graph param.");
-								}
-							}
-						}
-						
-						buildSemantic(d.paramSemantic);
-					}
-				} else {
-					throw new Exception("The 'params' variable in a node must be a ParamListValue, not a " ~ (*params_).classinfo.name);
-				}
-			} else {
-				throw new Exception("OH SHI-, didn't find any params in the '"~nodeName~"' node");
-			}
+			nodeData.params = nodeDef.params.dup(nodeData.params._allocator);
 		}
 
 		auto createData = &createParamData;

@@ -51,17 +51,6 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 		
 
-		/+KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs) {
-			auto kd = new KernelDef;
-			kd.functions = funcs;
-			return kd;
-			// TODO
-			//kd.attribs = attribs;
-			//kd.overrideOrdering(before.dupStringArray(), after.dupStringArray());
-			//return kd;
-		}+/
-		
-		
 		VarDef parseVarDef(string name, Value value) {
 			return VarDef(name.dup, value);
 		}
@@ -113,9 +102,9 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		QuarkDefValue createQuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
 			auto res = new QuarkDefValue;
-			res.superKernel = superKernel;
-			res.params = params;
-			res.code = code;
+			res.kernelDef = new KernelDef;
+			res.kernelDef.func = createFunction(null, tags, params, code);
+			res.kernelDef.superKernel = superKernel.dup;
 			return res;
 		}
 
@@ -131,19 +120,17 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags) {
 			auto res = new GraphDefValue;
-			assert(false, "TODO");
+			res.graphDef = new GraphDef(stmts);
+			res.graphDef.superKernel = superKernel.dup;
+			res.graphDef.tags = dupStringArray(tags);
 			return res;
-	//		Stdout.formatln("GraphDefValue('{}')", label);
-			/+this.graphDef = graphDef;
-			this.graphDef.label = label is null ? null : label.dup;+/
 		}
 
 
 		GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars) {
 			auto res = new GraphDefNodeValue;
-			assert(false, "TODO");
+			res.node = new GraphDefNode(vars);
 			return res;
-			//this.node = node;
 		}
 
 

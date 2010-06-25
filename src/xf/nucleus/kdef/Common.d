@@ -41,6 +41,41 @@ struct KernelImpl {
 	}
 	
 	Type type;
+
+
+	static KernelImpl opCall(GraphDef g) {
+		KernelImpl res = void;
+		res.graph = g;
+		res.type = Type.Graph;
+		return res;
+	}
+
+	static KernelImpl opCall(KernelDef k) {
+		KernelImpl res = void;
+		res.kernel = k;
+		res.type = Type.Kernel;
+		return res;
+	}
+
+
+	bool valid() {
+		return graph !is null;
+	}
+
+
+	char[] name() {
+		switch (type) {
+			case KernelImpl.Type.Graph: {
+				return graph.name;
+			}
+			
+			case KernelImpl.Type.Kernel: {
+				return kernel.func.name;
+			}
+			
+			default: assert (false);
+		}
+	}
 }
 
 
@@ -129,6 +164,9 @@ class KDefModule : Scope {
 
 
 class GraphDef : Scope {
+	string		superKernel;
+	string[]	tags;
+	
 	this (Statement[] statements) {
 		this.statements = statements;
 	}
@@ -228,6 +266,14 @@ class GraphDefNode : Scope {
 	override void importStatement(Statement st) {
 		// TODO
 	}
+
+	// after semantics for kernel nodes
+
+	KernelImpl	kernelImpl;
+
+	// after semantics for param nodes
+
+	ParamList	params;
 }
 
 
@@ -236,11 +282,12 @@ interface IScopeValue {
 }
 
 
-class QuarkDefValue : Value {
+/+class QuarkDefValue : Value {
 	string		superKernel;
 	ParamDef[]	params;
 	Code		code;
-}
+}+/
+
 
 
 class KernelDefValue : Value {
@@ -248,8 +295,11 @@ class KernelDefValue : Value {
 }
 
 
+alias KernelDefValue QuarkDefValue;
+
+
 class GraphDefValue : Value, IScopeValue {
-	GraphDef	graphDef;
+	GraphDef graphDef;
 	
 	// implements IScopeValue
 	Scope toScope() {
@@ -259,7 +309,7 @@ class GraphDefValue : Value, IScopeValue {
 
 
 class GraphDefNodeValue : Value, IScopeValue {
-	GraphDefNode	node;
+	GraphDefNode node;
 	
 	// implements IScopeValue
 	override Scope toScope() {
