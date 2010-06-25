@@ -15,12 +15,14 @@ private {
 }
 
 alias xf.nucleus.codegen.Codegen.CodeSink CodeSink;
+alias xf.nucleus.codegen.Codegen.CodegenSetup CodegenSetup;
 
 
 
 Effect compileKernelGraph(
 	cstring name,
 	KernelGraph kernel,
+	CodegenSetup setup,
 	IRenderer renderer,
 	void delegate(CodeSink) extraCodegen = null,
 	EffectCompilationOptions opts = EffectCompilationOptions.init
@@ -40,7 +42,7 @@ Effect compileKernelGraph(
 			extraCodegen(fmt);
 		}
 		
-		codegen(kernel, fmt);
+		codegen(kernel, setup, fmt);
 		fmt.flush();
 	}
 	

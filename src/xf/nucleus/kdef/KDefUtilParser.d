@@ -20,13 +20,14 @@ class KDefUtilParser : IKDefUtilParser {
 	
 	
 	VarDef[] parse_TemplateArgList(string source) {
-		auto parser = lex(source);
+		/+auto parser = lex(source);
 		if (!parser.parse_TemplateArgList()) {
 			throw new Exception("parser fail");
 		} else {
 			assert (parser.value_TemplateArgList.length > 0, source);
 			return parser.value_TemplateArgList;
-		}
+		}+/
+		assert (false);
 	}
 	
 	

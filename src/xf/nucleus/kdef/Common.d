@@ -11,12 +11,12 @@ private {
 	import xf.nucleus.KernelImpl;
 	
 	import xf.nucleus.kernel.KernelDef;
-	import xf.nucleus.kernel.KernelImplDef;
-	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.graph.GraphDef;
 
 	import TextUtil = tango.text.Util;
 	alias char[] string;
+
+	import xf.nucleus.Log : log = nucleusLog;
 }
 
 
@@ -176,6 +176,10 @@ class GraphDef : Scope, IGraphDef {
 	char[] name() {
 		return _name;
 	}
+
+	size_t numNodes() {
+		return nodes.length;
+	}
 	
 	
 	void doConnect(string from_, string to_) {
@@ -292,7 +296,9 @@ class ParamListValue : Value {
 	ParamDef[] value;
 	
 	this (ParamDef[] params) {
-		this.value = params;
+		assert (params.length > 0);
+		this.value = params.dup;
+		//log.info("ParamListValue @ {:x} has {} params", cast(void*)this, params.length);
 	}
 }
 

@@ -49,11 +49,32 @@ bool findSrcParam(
 }
 
 
+bool getOutputParamIndirect(
+	KernelGraph kg,
+	GraphNodeId dstNid,
+	cstring dstParam,
+	GraphNodeId* srcNid,
+	Param** srcParam
+) {
+	final node = kg.getNode(dstNid);
+	
+	if (KernelGraph.NodeType.Output == node.type) {
+		return findSrcParam(kg, dstNid, dstParam, srcNid, srcParam);
+	} else {
+		if ((*srcParam = node.getOutputParam(dstParam)) !is null) {
+			*srcNid = dstNid;
+			return true;
+		} else {
+			return false;
+		}
+	}
+}
+
+
 void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	input,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel,
 	GraphNodeId[] dstGraphTopological,
 	bool delegate(
 		cstring dstParam,
@@ -66,7 +87,6 @@ void fuseGraph(
 		graph,
 		input,
 		semanticConverters,
-		getKernel,
 		(int delegate(ref GraphNodeId) sink) {
 			foreach (nid; dstGraphTopological) {
 				if (int r = sink(nid)) {
@@ -85,7 +105,6 @@ void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	input,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel,
 	int delegate(int delegate(ref GraphNodeId)) dstGraphTopological,
 	bool delegate(
 		cstring dstParam,
@@ -96,12 +115,16 @@ void fuseGraph(
 ) {
 	scope stack = new StackBuffer;
 
+	alias KernelGraph.NodeType NT;
+
 	foreach (dummy; graph.flow.iterIncomingConnections(input)) {
 		error(
 			"The 'input' node may not have any incoming connections"
 			" prior to calling fuseGraph"
 		);
 	}
+
+	bool inputNodeIsFunc = KernelGraph.NodeType.Input != graph.getNode(input).type;
 
 	// A list of all output ports on the Input node, to be used in custom
 	// auto flow port generation
@@ -113,13 +136,55 @@ void fuseGraph(
 	}						
 
 	bool isOutputNode(GraphNodeId id) {
-		return KernelGraph.NodeType.Output == graph.getNode(id).type;
+		return NT.Output == graph.getNode(id).type;
 	}
 
 	// Do auto flow for the second graph, extending the incoming flow of the
 	// input node to the inputs of the output node from the first graph
 	foreach (id; dstGraphTopological) {
-		if (input == id) {
+		if (inputNodeIsFunc && input == id) {
+			doAutoFlow(
+				graph,
+				id,
+				semanticConverters,
+				OutputNodeConversion.Skip == outNodeConversion && isOutputNode(id)
+					? FlowGenMode.DirectConnection
+					: FlowGenMode.InsertConversionNodes,
+				(Param* intermediateParam, void delegate(NodeParam) incomingSink) {
+					GraphNodeId	fromNode;
+					Param*		fromParam;
+					
+					if (!_findSrcParam(
+						intermediateParam.name,
+						&fromNode,
+						&fromParam
+					)) {
+						assert (false,
+							"Could not find a source parameter"
+							" for the Output node twin to the"
+							" Func node used in graph fusion."
+							" This should have been triggered"
+							" earlier, when resolving the Output."
+							" The param was '" ~ intermediateParam.name ~ "'."
+						);
+					}
+
+					assert (!fromParam.isInput);
+
+					/* Finally, the original port from graph1
+					 * is added to the list of all connections
+					 * to consider for the auto flow resolving
+					 * process for the particular param we're
+					 * evaluating a few scopes higher :P
+					 */
+
+					incomingSink(NodeParam(fromNode, fromParam));
+				}
+			);
+
+			simplifyParamSemantics(graph, id);
+
+		} else if (input == id) {
 			foreach (outCon; graph.flow.iterOutgoingConnections(input)) {
 				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(outCon)) {
 					foreach (outFl; graph.flow.iterDataFlow(input, outCon)) {
@@ -138,8 +203,7 @@ void fuseGraph(
 							graph,
 							fromNode, outCon,
 							DataFlow(fromParam.name, outFl.to),
-							semanticConverters,
-							getKernel
+							semanticConverters
 						);
 					}
 				}
@@ -149,7 +213,6 @@ void fuseGraph(
 				graph,
 				id,
 				semanticConverters,
-				getKernel,
 				OutputNodeConversion.Skip == outNodeConversion && isOutputNode(id)
 					? FlowGenMode.DirectConnection
 					: FlowGenMode.InsertConversionNodes,
@@ -175,7 +238,7 @@ void fuseGraph(
 							/* Now, if this node has automatic flow from the
 							 * Input node, we will want to override it.
 							 */
-							if (input == fromId) {
+							if (!inputNodeIsFunc && input == fromId) {
 								/* First, we figure out to which port auto
 								 * flow would connect this param to, but we
 								 * don't connect to it and instead dig deeper
@@ -260,18 +323,16 @@ void fuseGraph(
 				}
 			);
 
+			simplifyParamSemantics(graph, id);
 
 			foreach (con; graph.flow.iterOutgoingConnections(id)) {
-				simplifyParamSemantics(graph, id, getKernel);
-
 				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(con)) {
 					foreach (fl; graph.flow.iterDataFlow(id, con)) {
 						doManualFlow(
 							graph,
 							id,
 							con, fl,
-							semanticConverters,
-							getKernel
+							semanticConverters
 						);
 					}
 				}
@@ -279,7 +340,9 @@ void fuseGraph(
 		}
 	}
 
-	graph.removeNode(input);
+	if (KernelGraph.NodeType.Input == graph.getNode(input).type) {
+		graph.removeNode(input);
+	}
 }
 
 
@@ -297,7 +360,6 @@ void fuseGraph(
 	int delegate(int delegate(ref GraphNodeId)) graph1NodeIter,
 	GraphNodeId	input,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel,
 	OutputNodeConversion outNodeConversion
 ) {
 	scope stack = new StackBuffer;
@@ -348,15 +410,15 @@ void fuseGraph(
 	convertGraphDataFlowExceptOutput(
 		graph,
 		semanticConverters,
-		getKernel,
 		&iterGraph1Nodes
 	);
+
+	bool outputNodeIsFunc = KernelGraph.NodeType.Output != graph.getNode(output).type;
 
 	fuseGraph(
 		graph,
 		input,
 		semanticConverters,
-		getKernel,
 		&iterGraph2Nodes,
 		(
 			cstring dstParam,
@@ -367,7 +429,7 @@ void fuseGraph(
 			 * We perform the lookup by name only (TODO?).
 			 */
 
-			return .findSrcParam(
+			return .getOutputParamIndirect(
 				graph,
 				output,
 				dstParam,
@@ -378,43 +440,12 @@ void fuseGraph(
 		outNodeConversion
 	);
 
-	graph.removeNode(output);
+	if (!outputNodeIsFunc) {
+		graph.removeNode(output);
+	}
+	
 	graph.flow.removeAllAutoFlow();
 }
-
-
-void convertKernelNodesToFuncNodes(
-	KernelGraph graph,
-	Function delegate(cstring kname, cstring fname) getFuncImpl,
-	bool delegate(cstring kname, cstring fname) filter = null
-) {
-	foreach (nid, ref node; graph.iterNodes(KernelGraph.NodeType.Kernel)) {
-		final ndata = node.kernel();
-
-		if (filter is null || filter(ndata.kernelName, ndata.funcName)) {
-			final func = getFuncImpl(ndata.kernelName, ndata.funcName);
-			
-			if (func is null) {
-				error(
-					"Could not find a kernel func '{}'::'{}'",
-					cast(char[])ndata.kernelName, cast(char[])ndata.funcName
-				);
-			}
-
-			log.info("Got a func for kernel {}'s function {}", cast(char[])ndata.kernelName, cast(char[])ndata.funcName);
-			foreach (p; func.params) {
-				log.info("   param: {}", p.toString);
-			}
-
-			graph.resetNode(nid, KernelGraph.NodeType.Func);
-			node.func.func = func;
-			node.func.params = func.params.dup(&graph._mem.pushBack);
-		}
-	}
-}
-
-
-alias KernelDef delegate(cstring) KernelLookup;
 
 
 enum FlowGenMode {
@@ -430,7 +461,7 @@ struct NodeParam {
 }
 
 
-void verifyDataFlowNames(KernelGraph graph, KernelLookup getKernel) {
+void verifyDataFlowNames(KernelGraph graph) {
 	final flow = graph.flow();
 	
 	foreach (fromId; graph.iterNodes) {
@@ -440,7 +471,7 @@ void verifyDataFlowNames(KernelGraph graph, KernelLookup getKernel) {
 			final toNode = graph.getNode(toId);
 			
 			foreach (fl; flow.iterDataFlow(fromId, toId)) {
-				final op = fromNode.getOutputParam(fl.from, getKernel);
+				final op = fromNode.getOutputParam(fl.from);
 				if (op is null) {
 					error(
 						"verifyDataFlowNames: The source node for flow {}->{}"
@@ -450,7 +481,7 @@ void verifyDataFlowNames(KernelGraph graph, KernelLookup getKernel) {
 				}
 				assert (ParamDirection.Out == op.dir);
 
-				final ip = toNode.getInputParam(fl.to, getKernel);
+				final ip = toNode.getInputParam(fl.to);
 				if (ip is null) {
 					error(
 						"verifyDataFlowNames: The target node for flow {}->{}"
@@ -471,8 +502,7 @@ void verifyDataFlowNames(KernelGraph graph, KernelLookup getKernel) {
 		ParamList* plist;
 		
 		if (KernelGraph.NodeType.Kernel == toNode.type) {
-			plist = &getKernel(toNode.kernel.kernelName)
-				.getFunction(toNode.kernel.funcName).params;
+			plist = &toNode.kernel.kernel.func.params;
 		} else {
 			plist = toNode.getParamList();
 		}
@@ -624,8 +654,8 @@ private void findAutoFlow(
 		int convCost = 0;
 
 		assert (toParam.isInput);
-		assert (fromParam.hasPlainSemantic);
-		assert (toParam.hasPlainSemantic);
+		assert (fromParam.hasPlainSemantic, fromParam.name);
+		assert (toParam.hasPlainSemantic, toParam.name);
 		
 		findConversion(
 			*fromParam.semantic,
@@ -713,12 +743,11 @@ private void findAutoFlow(
 }
 
 
-private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id, KernelLookup getKernel) {
+private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 	final node = graph.getNode(id);
 
 	if (KernelGraph.NodeType.Kernel == node.type) {
-		auto kernel = getKernel(node.kernel.kernelName);
-		foreach (ref Param par; kernel.getFunction(node.kernel.funcName).params) {
+		foreach (ref Param par; node.kernel.kernel.func.params) {
 			if (!par.hasPlainSemantic) {
 				error("Special Kernel-type nodes must only have plain semantics.");
 			}
@@ -781,7 +810,7 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id, KernelLoo
 
 					assert (fromName !is null, "No flow D:");
 					return *graph.getNode(fromId)
-						.getOutputParam(fromName, getKernel).semantic();
+						.getOutputParam(fromName).semantic();
 				},
 				
 				&plainSem
@@ -822,7 +851,7 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id, KernelLoo
 
 			assert (fromName !is null, "No flow D:");
 			final srcParam = graph.getNode(fromId)
-				.getOutputParam(fromName, getKernel);
+				.getOutputParam(fromName);
 
 			/+assert (srcParam.hasPlainSemantic);
 			*toParam.semantic() = srcParam.semantic().dup(&graph._mem.pushBack);+/
@@ -837,14 +866,12 @@ private void doAutoFlow(
 		KernelGraph graph,
 		GraphNodeId toId,
 		SemanticConverterIter semanticConverters,
-		KernelLookup getKernel,
 		FlowGenMode flowGenMode
 ) {
 	return doAutoFlow(
 		graph,
 		toId,
 		semanticConverters,
-		getKernel,
 		flowGenMode,
 		(Param*, void delegate(NodeParam) incomingSink) {
 			foreach (fromId; graph.flow.iterIncomingConnections(toId)) {
@@ -867,7 +894,6 @@ private void doAutoFlow(
 		KernelGraph graph,
 		GraphNodeId toId,
 		SemanticConverterIter semanticConverters,
-		KernelLookup getKernel,
 		FlowGenMode flowGenMode,
 		void delegate(Param*, void delegate(NodeParam)) incomingGen
 ) {
@@ -885,8 +911,7 @@ private void doAutoFlow(
 		} break;
 
 		case KernelGraph.NodeType.Kernel: {
-			plist = &getKernel(toNode.kernel.kernelName)
-				.getFunction(toNode.kernel.funcName).params;
+			plist = &toNode.kernel.kernel.func.params;
 		} break;
 
 		default: return;		// just outputs here
@@ -953,16 +978,15 @@ private void doManualFlow(
 		GraphNodeId fromId,
 		GraphNodeId toId,
 		DataFlow fl,
-		SemanticConverterIter semanticConverters,
-		KernelLookup getKernel
+		SemanticConverterIter semanticConverters
 ) {
 	scope stack = new StackBuffer;
 
-	final fromParam = graph.getNode(fromId).getOutputParam(fl.from, getKernel);
+	final fromParam = graph.getNode(fromId).getOutputParam(fl.from);
 	assert (fromParam !is null);
 	assert (fromParam.hasPlainSemantic);
 	
-	final toParam = graph.getNode(toId).getInputParam(fl.to, getKernel);
+	final toParam = graph.getNode(toId).getInputParam(fl.to);
 	assert (toParam !is null);
 	assert (toParam.hasPlainSemantic);
 
@@ -996,22 +1020,20 @@ private void doManualFlow(
 // Assumes the consists of param/calc nodes only
 void convertGraphDataFlow(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel
+	SemanticConverterIter semanticConverters
 ) {
 	scope stack = new StackBuffer;
 
 	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
 	findTopologicalOrder(graph.backend_readOnly, topological);
 
-	return convertGraphDataFlow(graph, semanticConverters, getKernel, topological);
+	return convertGraphDataFlow(graph, semanticConverters, topological);
 }
 
 
 void convertGraphDataFlow(
 	KernelGraph graph,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel,
 	GraphNodeId[] topological
 ) {
 	foreach (id; topological) {
@@ -1019,11 +1041,10 @@ void convertGraphDataFlow(
 			graph,
 			id,
 			semanticConverters,
-			getKernel,
 			FlowGenMode.InsertConversionNodes
 		);
 
-		simplifyParamSemantics(graph, id, getKernel);
+		simplifyParamSemantics(graph, id);
 		
 		foreach (con; graph.flow.iterOutgoingConnections(id)) {
 			foreach (fl; graph.flow.iterDataFlow(id, con)) {
@@ -1031,8 +1052,7 @@ void convertGraphDataFlow(
 					graph,
 					id,
 					con, fl,
-					semanticConverters,
-					getKernel
+					semanticConverters
 				);
 			}
 		}
@@ -1046,28 +1066,25 @@ void convertGraphDataFlow(
 
 void convertGraphDataFlowExceptOutput(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel
+	SemanticConverterIter semanticConverters
 ) {
 	scope stack = new StackBuffer;
 
 	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
 	findTopologicalOrder(graph.backend_readOnly, topological);
 
-	return convertGraphDataFlowExceptOutput(graph, semanticConverters, getKernel, topological);
+	return convertGraphDataFlowExceptOutput(graph, semanticConverters, topological);
 }
 
 
 void convertGraphDataFlowExceptOutput(
 	KernelGraph graph,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel,
 	GraphNodeId[] topological
 ) {
 	return convertGraphDataFlowExceptOutput(
 		graph,
 		semanticConverters,
-		getKernel,
 		(int delegate(ref GraphNodeId) sink) {
 			foreach (id; topological) {
 				if (int r = sink(id)) {
@@ -1082,7 +1099,6 @@ void convertGraphDataFlowExceptOutput(
 void convertGraphDataFlowExceptOutput(
 	KernelGraph graph,
 	SemanticConverterIter semanticConverters,
-	KernelLookup getKernel,
 	int delegate(int delegate(ref GraphNodeId)) topological
 ) {
 	bool isOutputNode(GraphNodeId id) {
@@ -1096,13 +1112,12 @@ void convertGraphDataFlowExceptOutput(
 			graph,
 			id,
 			semanticConverters,
-			getKernel,
 			isOutputNode(id)
 				? FlowGenMode.DirectConnection
 				: FlowGenMode.InsertConversionNodes
 		);
 		
-		simplifyParamSemantics(graph, id, getKernel);
+		simplifyParamSemantics(graph, id);
 
 		foreach (con; graph.flow.iterOutgoingConnections(id)) {
 			if (!isOutputNode(con)) {
@@ -1111,8 +1126,7 @@ void convertGraphDataFlowExceptOutput(
 						graph,
 						id,
 						con, fl,
-						semanticConverters,
-						getKernel
+						semanticConverters
 					);
 				}
 			}

@@ -22,26 +22,33 @@ private {
 alias FormatOutput!(char) CodeSink;
 
 
+struct CodegenSetup {
+	GraphNodeId	inputNode;
+	GraphNodeId	outputNode;
+}
+
+
 void codegen(
 	KernelGraph graph,
+	CodegenSetup setup,
 	CodeSink sink
 ) {
 	scope stack = new StackBuffer;
 	final graphBack = graph.backend_readOnly;
 
 	GraphNodeId rasterNode;
-	GraphNodeId	vinputNodeId;
-	GraphNodeId	foutputNodeId;
+	GraphNodeId	vinputNodeId = setup.inputNode;
+	GraphNodeId	foutputNodeId = setup.outputNode;
 
 	foreach (nid, node; graph.iterNodes) {
 		if (
 			KernelGraph.NodeType.Kernel == node.type
-		&&	"Rasterize" == cast(cstring)node.kernel.kernelName
+		&&	"Rasterize" == node.kernel.kernel.func.name
 		) {
 			rasterNode = nid;
 		}
 
-		if (KernelGraph.NodeType.Input == node.type) {
+		/+if (KernelGraph.NodeType.Input == node.type) {
 			assert (!vinputNodeId.valid, "There can be only one.");
 			vinputNodeId = nid;
 			assert (vinputNodeId.valid);
@@ -51,7 +58,7 @@ void codegen(
 			assert (!foutputNodeId.valid, "There can be only one.");
 			foutputNodeId = nid;
 			assert (foutputNodeId.valid);
-		}
+		}+/
 	}
 
 	assert (vinputNodeId.valid, "No Input node found. That should be resolved earlier");
@@ -76,8 +83,13 @@ void codegen(
 	assert (GPUDomain.Vertex == nodeDomains[vinputNodeId.id]);
 	assert (GPUDomain.Fragment == nodeDomains[foutputNodeId.id]);
 
-	auto vinputNode = graph.getNode(vinputNodeId).input();
-	auto foutputNode = graph.getNode(foutputNodeId).output();
+	alias KernelGraph.NodeType NT;
+
+	auto vinputNodeParams = graph.getNode(vinputNodeId).getParamList();
+	auto foutputNodeParams = graph.getNode(foutputNodeId).getParamList();
+
+	final vinputNT = graph.getNode(vinputNodeId).type;
+	final foutputNT = graph.getNode(foutputNodeId).type;
 
 	// note that there will be just one Input and one Output node,
 	// all the other should have been used for connecting kernels
@@ -150,13 +162,23 @@ void codegen(
 		}
 	}
 
+	uword numVinputs = 0;
+	foreach (ref p; *vinputNodeParams) {
+		if (NT.Input == vinputNT || p.isInput) {
+			++numVinputs;
+		}
+	}
 
-	CgParam[] vinputs = stack.allocArray!(CgParam)(vinputNode.params.length);
-	foreach (i, ref p; vinputNode.params) {
-		vinputs[i] = CgParam(
-			vinputNodeId,
-			&p
-		);
+
+	CgParam[] vinputs = stack.allocArray!(CgParam)(numVinputs);
+	numVinputs = 0;
+	foreach (ref p; *vinputNodeParams) {
+		if (NT.Input == vinputNT || p.isInput) {
+			vinputs[numVinputs++] = CgParam(
+				vinputNodeId,
+				&p
+			);
+		}
 	}
 
 	
@@ -212,30 +234,41 @@ void codegen(
 	graph.removeNode(rasterNode);
 
 	alias voutputs finputs;
-	
-	CgParam[] foutputs = stack.allocArray!(CgParam)(foutputNode.params.length);
-	foreach (i, ref p; foutputNode.params) {
-		GraphNodeId	srcNid;
-		Param*		srcParam;
 
-		if (!findSrcParam(
-			graph,
-			foutputNodeId,
-			p.name,
-			&srcNid,
-			&srcParam
-		)) {
-			error(
-				"No flow to {}.{}. Should have been caught earlier.",
-				foutputNodeId.id,
-				p.name
+
+	uword numFoutputs = 0;
+	foreach (i, ref p; *foutputNodeParams) {
+		if (NT.Output == foutputNT || !p.isInput) {
+			++numFoutputs;
+		}
+	}
+	
+	CgParam[] foutputs = stack.allocArray!(CgParam)(numFoutputs);
+	numFoutputs = 0;
+	foreach (ref p; *foutputNodeParams) {
+		if (NT.Output == foutputNT || !p.isInput) {
+			GraphNodeId	srcNid;
+			Param*		srcParam;
+
+			if (!getOutputParamIndirect(
+				graph,
+				foutputNodeId,
+				p.name,
+				&srcNid,
+				&srcParam
+			)) {
+				error(
+					"No flow to {}.{}. Should have been caught earlier.",
+					foutputNodeId.id,
+					p.name
+				);
+			}
+
+			foutputs[numFoutputs++] = CgParam(
+				srcNid,
+				srcParam
 			);
 		}
-
-		foutputs[i] = CgParam(
-			srcNid,
-			srcParam
-		);
 	}
 
 	// ---- figure out the binding semantics ----

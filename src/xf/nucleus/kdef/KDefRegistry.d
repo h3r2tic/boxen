@@ -7,10 +7,9 @@ private {
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefProcessor;
 	import xf.nucleus.kernel.KernelDef;
-	import xf.nucleus.quark.QuarkDef;
-	//import xf.nucleus.util.AbstractRegistry;
 	import xf.nucleus.kdef.model.IKDefFileParser;
 	import xf.nucleus.TypeConversion;
+	import xf.nucleus.KernelImpl;
 	
 	import tango.text.convert.Format;
 	import tango.io.Stdout;
@@ -38,15 +37,9 @@ class KDefRegistry : IKDefRegistry {
 	}
 	
 	
-	KernelDef getKernel(string name) {
+	KernelImpl getKernel(string name) {
 		return kdefProcessor.getKernel(name);
 	}
-	
-
-	QuarkDef getQuark(string name) {
-		return kdefProcessor.getQuark(name);
-	}
-	
 	
 	IKDefFileParser kdefFileParser() {
 		return _fileParser;
@@ -62,23 +55,8 @@ class KDefRegistry : IKDefRegistry {
 		_fileParser.setVFS(_vfs);
 		kdefProcessor.processFile(path, allocator);
 	}
-	
-	
-	int kernels(int delegate(ref KernelDef) dg) {
-		return kdefProcessor.kernels(dg);
-	}
-	
-
-	int quarks(int delegate(ref QuarkDef) dg) {
-		return kdefProcessor.quarks(dg);
-	}
 
 
-	int graphs(int delegate(ref GraphDef) dg) {
-		return kdefProcessor.graphs(dg);
-	}
-	
-	
 	int converters(int delegate(ref SemanticConverter) dg) {
 		return kdefProcessor.converters(dg);
 	}

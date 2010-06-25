@@ -8,7 +8,6 @@ private {
 	import xf.nucleus.kdef.KDefLexer;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kernel.KernelDef;
-	import xf.nucleus.kernel.KernelImplDef;
 	import xf.nucleus.TypeSystem;
 
 	import enkilib.d.Parser;
