@@ -9,6 +9,7 @@ private {
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefFileParser;
 	import xf.nucleus.kdef.KDefProcessor;
+	import xf.nucleus.KernelImpl;
 
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.kdef.KDefGraphBuilder;
