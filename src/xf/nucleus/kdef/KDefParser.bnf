@@ -24,10 +24,15 @@ Syntax
 	
 Statement
 	= Statement st
-	::= AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
+	::= AssignStatement:st | ImportStatement:st | ConnectStatement:st | ConverterDeclStatement:st;
 
 // ----------------------------------------------------------------------------------------------------------------
 // Statements
+	
+
+ConnectStatement
+	= new ConnectStatement(string from, string to)
+	::= "connect" Identifier:from Identifier:to ";";
 	
 AssignStatement
 	= new AssignStatement(string name, Value value)
@@ -52,33 +57,32 @@ ConverterDeclStatement
 // special Values
 
 QuarkDefValue
-	= new QuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags)
+	= QuarkDefValue createQuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags)
 	::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
-		ParamList:params
+		[ ParamList:params ]
 		Code:code;
 	
 KernelDefValue
-	= new KernelDefValue(string superKernel, ParamDef[] params, string[] tags)
+	= KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, string[] tags)
 	::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
-		ParamList:params
-		?!("semicolon expected") ";";
+		ParamList:params;
 
 GraphDefValue
-	= new GraphDefValue(string superKernel, Statement[] stmts, string[] tags)
+	= GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags)
 	::= "graph" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
 	"{"
 		Statement:~stmts*
 	"}";
 	
 GraphDefNodeValue
-	= new GraphDefNodeValue(VarDef[] vars)
+	= GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars)
 	::= "node"
 	"{"
 		VarDef:~vars*
 	"}";
 	
 TraitDefValue
-	= new TraitDefValue(string[] values, string defaultValue)
+	= TraitDefValue createTraitDefValue(string[] values, string defaultValue)
 	::= "trait"
 	"{"
 		Identifier:~values % ","

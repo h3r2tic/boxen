@@ -57,7 +57,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Statement
 		= Statement st
-		::= AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
+		::= AssignStatement:st | ImportStatement:st | ConnectStatement:st | ConverterDeclStatement:st;
 
 	*/
 	Statement value_Statement;
@@ -79,6 +79,12 @@ class KDefParser:KDefParserBase{
 			}
 		term3:
 			// Production
+			if(parse_ConnectStatement()){
+				smartAssign(var_st,value_ConnectStatement);
+				goto pass0;
+			}
+		term4:
+			// Production
 			if(!parse_ConverterDeclStatement()){
 				goto fail1;
 			}
@@ -91,6 +97,55 @@ class KDefParser:KDefParserBase{
 		fail1:
 			value_Statement = (Statement).init;
 			debug Stdout.format("\tparse_Statement failed").newline;
+			return false;
+	}
+
+	/*
+	ConnectStatement
+		= new ConnectStatement(string from,string to)
+		::= "connect" Identifier:from Identifier:to ";";
+
+	*/
+	ConnectStatement value_ConnectStatement;
+	bool parse_ConnectStatement(){
+		debug Stdout("parse_ConnectStatement").newline;
+		string var_from;
+		string var_to;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("connect")){
+					goto fail4;
+				}
+			term5:
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_from,value_Identifier);
+			term6:
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_to,value_Identifier);
+			term7:
+				// Terminal
+				if(match(";")){
+					goto pass0;
+				}
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_ConnectStatement = new ConnectStatement(var_from,var_to);
+			debug Stdout.format("\tparse_ConnectStatement passed: {0}",value_ConnectStatement).newline;
+			return true;
+		fail1:
+			value_ConnectStatement = (ConnectStatement).init;
+			debug Stdout.format("\tparse_ConnectStatement failed").newline;
 			return false;
 	}
 
@@ -371,8 +426,8 @@ class KDefParser:KDefParserBase{
 
 	/*
 	QuarkDefValue
-		= new QuarkDefValue(string superKernel,ParamDef[] params,Code code,string[] tags)
-		::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel] ParamList:params Code:code;
+		= QuarkDefValue createQuarkDefValue(string superKernel,ParamDef[] params,Code code,string[] tags)
+		::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel] [ParamList:params] Code:code;
 
 	*/
 	QuarkDefValue value_QuarkDefValue;
@@ -419,11 +474,12 @@ class KDefParser:KDefParserBase{
 					}
 					smartAssign(var_superKernel,value_Identifier);
 			term12:
-				// Production
-				if(!parse_ParamList()){
-					goto fail4;
-				}
-				smartAssign(var_params,value_ParamList);
+				// Optional
+					// Production
+					if(!parse_ParamList()){
+						goto term13;
+					}
+					smartAssign(var_params,value_ParamList);
 			term13:
 				// Production
 				if(parse_Code()){
@@ -435,7 +491,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_QuarkDefValue = new QuarkDefValue(var_superKernel,var_params,var_code,var_tags);
+			value_QuarkDefValue = createQuarkDefValue(var_superKernel,var_params,var_code,var_tags);
 			debug Stdout.format("\tparse_QuarkDefValue passed: {0}",value_QuarkDefValue).newline;
 			return true;
 		fail1:
@@ -446,8 +502,8 @@ class KDefParser:KDefParserBase{
 
 	/*
 	KernelDefValue
-		= new KernelDefValue(string superKernel,ParamDef[] params,string[] tags)
-		::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel] ParamList:params ?!("semicolon expected") ";";
+		= KernelDefValue createKernelDefValue(string superKernel,ParamDef[] params,string[] tags)
+		::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel] ParamList:params;
 
 	*/
 	KernelDefValue value_KernelDefValue;
@@ -494,24 +550,16 @@ class KDefParser:KDefParserBase{
 					smartAssign(var_superKernel,value_Identifier);
 			term12:
 				// Production
-				if(!parse_ParamList()){
-					goto fail4;
+				if(parse_ParamList()){
+					smartAssign(var_params,value_ParamList);
+					goto pass0;
 				}
-				smartAssign(var_params,value_ParamList);
-			term13:
-				// ErrorPoint
-					// Terminal
-					if(match(";")){
-						goto pass0;
-					}
-				fail14:
-					error("semicolon expected");
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_KernelDefValue = new KernelDefValue(var_superKernel,var_params,var_tags);
+			value_KernelDefValue = createKernelDefValue(var_superKernel,var_params,var_tags);
 			debug Stdout.format("\tparse_KernelDefValue passed: {0}",value_KernelDefValue).newline;
 			return true;
 		fail1:
@@ -522,7 +570,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	GraphDefValue
-		= new GraphDefValue(string superKernel,Statement[] stmts,string[] tags)
+		= GraphDefValue createGraphDefValue(string superKernel,Statement[] stmts,string[] tags)
 		::= "graph" ["<" KernelTagList:tags ">"] [Identifier:superKernel] "{" Statement:~stmts* "}";
 
 	*/
@@ -596,7 +644,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_GraphDefValue = new GraphDefValue(var_superKernel,var_stmts,var_tags);
+			value_GraphDefValue = createGraphDefValue(var_superKernel,var_stmts,var_tags);
 			debug Stdout.format("\tparse_GraphDefValue passed: {0}",value_GraphDefValue).newline;
 			return true;
 		fail1:
@@ -607,7 +655,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	GraphDefNodeValue
-		= new GraphDefNodeValue(VarDef[] vars)
+		= GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars)
 		::= "node" "{" VarDef:~vars* "}";
 
 	*/
@@ -650,7 +698,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_GraphDefNodeValue = new GraphDefNodeValue(var_vars);
+			value_GraphDefNodeValue = createGraphDefNodeValue(var_vars);
 			debug Stdout.format("\tparse_GraphDefNodeValue passed: {0}",value_GraphDefNodeValue).newline;
 			return true;
 		fail1:
@@ -661,7 +709,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	TraitDefValue
-		= new TraitDefValue(string[] values,string defaultValue)
+		= TraitDefValue createTraitDefValue(string[] values,string defaultValue)
 		::= "trait" "{" Identifier:~values % "," "}" ["=" ?!("default value identifier exptected") Identifier:defaultValue];
 
 	*/
@@ -736,7 +784,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_TraitDefValue = new TraitDefValue(var_values,var_defaultValue);
+			value_TraitDefValue = createTraitDefValue(var_values,var_defaultValue);
 			debug Stdout.format("\tparse_TraitDefValue passed: {0}",value_TraitDefValue).newline;
 			return true;
 		fail1:

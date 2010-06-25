@@ -1,7 +1,9 @@
 module xf.nucleus.kdef.Common;
 
 private {
+	import xf.nucleus.TypeSystem;
 	import xf.nucleus.Defs;
+	import xf.nucleus.Param;
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
@@ -41,9 +43,6 @@ struct KernelImpl {
 	Type type;
 }
 
-void ass() {
-	assert (false, "TODODODODODO");
-}
 
 
 abstract class Scope {
@@ -125,19 +124,6 @@ class KDefModule : Scope {
 	
 	override void importStatement(Statement st) {
 		// TODO
-	}
-}
-
-
-class QuarkDefValue : Value {
-	string		superKernel;
-	ParamDef[]	params;
-	Code		code;
-	
-	this (string superKernel, ParamDef[] params, Code code, string[] tags) {
-		this.superKernel = superKernel;
-		this.params = params;
-		this.code = code;
 	}
 }
 
@@ -250,17 +236,20 @@ interface IScopeValue {
 }
 
 
+class QuarkDefValue : Value {
+	string		superKernel;
+	ParamDef[]	params;
+	Code		code;
+}
+
+
+class KernelDefValue : Value {
+	KernelDef kernelDef;
+}
+
+
 class GraphDefValue : Value, IScopeValue {
 	GraphDef	graphDef;
-	
-
-	this (string superKernel, Statement[] stmts, string[] tags) {
-		ass;
-//		Stdout.formatln("GraphDefValue('{}')", label);
-		/+this.graphDef = graphDef;
-		this.graphDef.label = label is null ? null : label.dup;+/
-	}
-	
 	
 	// implements IScopeValue
 	Scope toScope() {
@@ -272,12 +261,6 @@ class GraphDefValue : Value, IScopeValue {
 class GraphDefNodeValue : Value, IScopeValue {
 	GraphDefNode	node;
 	
-	this (VarDef[] vars) {
-		ass;
-		//this.node = node;
-	}
-	
-	
 	// implements IScopeValue
 	override Scope toScope() {
 		assert (node !is null);
@@ -286,45 +269,8 @@ class GraphDefNodeValue : Value, IScopeValue {
 }
 
 
-class KernelDefValue : Value {
-	KernelDef kernelDef;
-	
-	this (string superKernel, ParamDef[] params, string[] tags) {
-		ass;
-
-		/+this.kernelDef = kernelDef;
-		
-		switch (domain) {
-			case "cpu": {
-				kernelDef.domain = Domain.CPU;
-			} break;
-
-			case "gpu": {
-				kernelDef.domain = Domain.GPU;
-			} break;
-			
-			case "any": {
-				kernelDef.domain = Domain.Any;
-			} break;
-			
-			default: {
-				throw new Exception("'"~domain~"' is not a valid kernel domain name");
-			}
-		}
-		
-		kernelDef.overrideInheritList(bases.dupStringArray());+/
-	}
-}
-
-
 class TraitDefValue : Value {
 	TraitDef value;
-	
-	this (string[] values, string defaultValue) {
-		value = new TraitDef;
-		value.values = values.dupStringArray();
-		value.defaultValue = defaultValue.dup;
-	}
 }
 
 
