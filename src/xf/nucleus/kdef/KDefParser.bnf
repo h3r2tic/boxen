@@ -24,24 +24,11 @@ Syntax
 	
 Statement
 	= Statement st
-	::= PreprocessStatement:st | ImplementStatement:st | ConnectStatement:st | AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
+	::= AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
 
 // ----------------------------------------------------------------------------------------------------------------
 // Statements
 	
-ImplementStatement
-	= new ImplementStatement(KernelImplDef[] impls, KernelImplementation impl)
-	::= "implement" ?!("kernel impl list expected") KernelImpl:~impls*%","
-	?!("uh, wanted a kernel implementation") KernelImplementation:impl;
-	
-	KernelImpl
-	= KernelImplDef parseKernelImpl(string name, double score)
-	::= Identifier:name "(" Number:score ")";
-
-ConnectStatement
-	= new ConnectStatement(string from, string to)
-	::= "connect" Identifier:from Identifier:to ";";
-
 AssignStatement
 	= new AssignStatement(string name, Value value)
 	::= Identifier:name "=" Value:value ?!("';' expected") ";";
@@ -54,60 +41,42 @@ ImportStatement
 	= string name
 	::= (Identifier "*"):name | Identifier:name;
 	
-PreprocessStatement
-	= new PreprocessStatement(string processor, string processorFunction)
-	::= "preprocess" Identifier:processorFunction Identifier:processor ";";
-	
 ConverterDeclStatement
 	= ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost)
 	::= "converter"
-	[ "<" FuncTagList:tags ">" ]
+	[ "<" KernelTagList:tags ">" ]
 	"(" Number:cost ")"
 	[Identifier:name] ParamList:params Code:code;
 	
 // ----------------------------------------------------------------------------------------------------------------
 // special Values
 
-KernelImplementation
-	= KernelImplementation impl
-	::= QuarkDefValue:impl | GraphDefValue:impl;
-		
 QuarkDefValue
-	= new QuarkDefValue(char[] name, Code[] inlineCode, Function[] quarkFunctions)
-	::= "quark" Identifier:name
-	"{"
-		(Code:~inlineCode | Function:~quarkFunctions)*
-	"}";
-	
-GraphDefValue
-	= new GraphDefValue(GraphDef graphDef, string label)
-	::= "graph" [Identifier:label]
-	"{"
-		GraphDefBody:graphDef
-	"}";
-	
-GraphDefBody
-	= new GraphDef(Statement[] statements)
-	::= Statement:~statements*;
+	= new QuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags)
+	::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
+		ParamList:params
+		Code:code;
 	
 KernelDefValue
-	= new KernelDefValue(string domain="any", KernelDef kernelDef, string[] bases)
-	::= [("gpu" | "cpu"):domain] "kernel" [KernelInheritList:bases]
-	?!("'{' expected") "{"
-		KernelDefBody:kernelDef
-	?!("'}' expected") "}";
-	
-GraphDefNodeValue
-	= new GraphDefNodeValue(GraphDefNode node)
-	::= "node"
+	= new KernelDefValue(string superKernel, ParamDef[] params, string[] tags)
+	::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
+		ParamList:params
+		?!("semicolon expected") ";";
+
+GraphDefValue
+	= new GraphDefValue(string superKernel, Statement[] stmts, string[] tags)
+	::= "graph" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
 	"{"
-		GraphDefNodeBody:node
+		Statement:~stmts*
 	"}";
 	
-GraphDefNodeBody
-	= new GraphDefNode(VarDef[] variables)
-	::= VarDef:~variables*;
-
+GraphDefNodeValue
+	= new GraphDefNodeValue(VarDef[] vars)
+	::= "node"
+	"{"
+		VarDef:~vars*
+	"}";
+	
 TraitDefValue
 	= new TraitDefValue(string[] values, string defaultValue)
 	::= "trait"
@@ -120,48 +89,13 @@ TraitDefValue
 // ----------------------------------------------------------------------------------------------------------------
 
 Code
-	= new Code(string language, Atom[] tokens)
-	::= ("D" | "Cg"):language "{" OpaqueCodeBlock:tokens "}";
+	= new Code(Atom[] tokens)
+	::= "{" OpaqueCodeBlock:tokens "}";
 
-
-KernelInheritList
-	= string[] bases
-	::= Identifier:~bases* % ",";
-
-KernelDefBody
-	= KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs)
-	$string errSemi = "';' expected"
-	$string errIdent = "kernel name expected"
-	::= (
-		AbstractFunction:~funcs |
-		"before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" |
-		"after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" |
-		"attribs" "=" ParamList:params ";"
-	)*;
-	
-AbstractFunction
-	= AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params)
-	$string semicolonExpected = "';' expected"
-	$string nameExpected = "kernel function name expected"
-	::=
-		"quark" [ "<" FuncTagList:tags ">" ]
-		?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
-
-Function
-	= Function createFunction(string name, string[] tags, ParamDef[] params, Code code)
-	$string semicolonExpected = "';' expected"
-	$string nameExpected = "quark function name expected"
-	::=
-		"quark" [ "<" FuncTagList:tags ">" ]
-		?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected)
-		Code:code;
-
-FuncTagList
+KernelTagList
 	= string[] tags
 	::= Identifier:~tags*;
 
-// ----------------------------------------------------------------------------------------------------------------	
-				
 OpaqueCodeBlock
 	= Atom[] tokens
 	::= (
@@ -186,7 +120,6 @@ Param
 		Value defaultValue
 	)
 	::= [ParamDirection:dir]
-	//ParamType:type
 	Identifier:name
 	[ "<" [ParamSemantic:semantic] ">" ]
 	[ "=" Value:defaultValue ];
@@ -227,14 +160,6 @@ VarDef
 	= VarDef parseVarDef(string name, Value value)
 	::= Identifier:name "=" Value:value ";";
 	
-TemplateArg
-	= VarDef parseVarDef(string name, Value value)
-	::= Identifier:name "=" Value:value;
-	
-TemplateArgList
-	= VarDef[] list
-	::= TemplateArg:~list ( "," TemplateArg:~list )*;
-
 Value
 	= Value value
 	::= StringValue:value |
@@ -294,4 +219,4 @@ Number
 String
 	= string value
 	::= &TOK_STRING:value;
-	
+

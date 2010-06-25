@@ -1,18 +1,18 @@
 module xf.nucleus.quark.QuarkDef;
 
-private {
+/+private {
 	import xf.Common;
 	import xf.nucleus.Defs;
 	import xf.nucleus.Param;
 	import xf.nucleus.Function;
 	import xf.nucleus.Code;
 
-	import xf.nucleus.kernel.KernelImplDef;
+	import xf.nucleus.kernel.KernelDef;
 }
 
 
 
-class QuarkDef {
+class QuarkDef : KernelDef {
 	cstring				name;
 	KernelImplDef[]		implList;
 	Code[]				code;
@@ -28,3 +28,4 @@ class QuarkDef {
 		return null;
 	}
 }
++/

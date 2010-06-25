@@ -33,13 +33,11 @@ void buildKernelGraph(
 		alias KernelGraph.NodeType NT;
 
 		void createKernelData(NT type, GraphNodeId n) {
-			cstring kname = (cast(StringValue)nodeDef.vars["kernelName"]).value;
-			cstring fname = (cast(StringValue)nodeDef.vars["funcName"]).value;
+			cstring kname = (cast(IdentifierValue)nodeDef.vars["kernel"]).value;
 
 			final nodeData = kg.getNode(n).kernel();
 			
-			nodeData.kernelName = kg.allocString(kname);
-			nodeData.funcName = kg.allocString(fname);
+			nodeData.name = kg.allocString(kname);
 		}
 
 		void createParamData(NT type, GraphNodeId n) {

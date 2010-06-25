@@ -26,20 +26,21 @@ void main() {
 		ScratchFIFO mem;
 		mem.initialize();
 
-		final allocator = (uword bytes) { return mem.pushBack(bytes); };
+		void* delegate(size_t) allocator = &mem.pushBack;
 
 		final vfs = new FileFolder(".");
 
 		final fparser = new KDefFileParser;
 		fparser.setVFS(vfs);
 
-		final processor = new KDefProcessor(fparser, allocator);
+		final processor = new KDefProcessor(fparser);
 
-		processor.processFile("sample.kdef");
-		processor.doSemantics();
+		processor.processFile("sample.kdef", allocator);
+		processor.doSemantics(allocator);
 		processor.dumpInfo();
 
-		foreach (g; &processor.graphs) {
+		assert (false, "TODO");
+		/+foreach (g; &processor.graphs) {
 			auto kg = createKernelGraph();
 			
 			buildKernelGraph(
@@ -48,8 +49,8 @@ void main() {
 			);
 
 			disposeKernelGraph(kg);
-		}
+		}+/
 	}
 
-	Stdout.formatln("Test passed!");
+	//Stdout.formatln("Test passed!");
 }

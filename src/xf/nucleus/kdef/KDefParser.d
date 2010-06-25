@@ -57,7 +57,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Statement
 		= Statement st
-		::= PreprocessStatement:st | ImplementStatement:st | ConnectStatement:st | AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
+		::= AssignStatement:st | ImportStatement:st | ConverterDeclStatement:st;
 
 	*/
 	Statement value_Statement;
@@ -67,35 +67,17 @@ class KDefParser:KDefParserBase{
 
 		// OrGroup pass0
 			// Production
-			if(parse_PreprocessStatement()){
-				smartAssign(var_st,value_PreprocessStatement);
-				goto pass0;
-			}
-		term2:
-			// Production
-			if(parse_ImplementStatement()){
-				smartAssign(var_st,value_ImplementStatement);
-				goto pass0;
-			}
-		term3:
-			// Production
-			if(parse_ConnectStatement()){
-				smartAssign(var_st,value_ConnectStatement);
-				goto pass0;
-			}
-		term4:
-			// Production
 			if(parse_AssignStatement()){
 				smartAssign(var_st,value_AssignStatement);
 				goto pass0;
 			}
-		term5:
+		term2:
 			// Production
 			if(parse_ImportStatement()){
 				smartAssign(var_st,value_ImportStatement);
 				goto pass0;
 			}
-		term6:
+		term3:
 			// Production
 			if(!parse_ConverterDeclStatement()){
 				goto fail1;
@@ -109,175 +91,6 @@ class KDefParser:KDefParserBase{
 		fail1:
 			value_Statement = (Statement).init;
 			debug Stdout.format("\tparse_Statement failed").newline;
-			return false;
-	}
-
-	/*
-	ImplementStatement
-		= new ImplementStatement(KernelImplDef[] impls,KernelImplementation impl)
-		::= "implement" ?!("kernel impl list expected") KernelImpl:~impls* % "," ?!("uh, wanted a kernel implementation") KernelImplementation:impl;
-
-	*/
-	ImplementStatement value_ImplementStatement;
-	bool parse_ImplementStatement(){
-		debug Stdout("parse_ImplementStatement").newline;
-		KernelImplDef[] var_impls;
-		KernelImplementation var_impl;
-
-		// AndGroup
-			auto position3 = pos;
-				// Terminal
-				if(!match("implement")){
-					goto fail4;
-				}
-			term5:
-				// ErrorPoint
-					// Iterator
-					size_t counter11 = 0;
-					start7:
-						// (terminator)
-						if(!hasMore()){
-							goto end8;
-						}
-						// (delimeter)
-						delim10:
-						if(counter11 > 0){
-							// Terminal
-							if(!match(",")){
-								goto end8;
-							}
-						}
-						// (expression)
-						expr9:
-							// Production
-							if(!parse_KernelImpl()){
-								goto end8;
-							}
-							smartAppend(var_impls,value_KernelImpl);
-						increment12:
-						// (increment expr count)
-							counter11 ++;
-						goto start7;
-					end8:
-						// ErrorPoint
-							// Production
-							if(parse_KernelImplementation()){
-								smartAssign(var_impl,value_KernelImplementation);
-								goto pass0;
-							}
-						fail13:
-							error("uh, wanted a kernel implementation");
-				fail6:
-					error("kernel impl list expected");
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_ImplementStatement = new ImplementStatement(var_impls,var_impl);
-			debug Stdout.format("\tparse_ImplementStatement passed: {0}",value_ImplementStatement).newline;
-			return true;
-		fail1:
-			value_ImplementStatement = (ImplementStatement).init;
-			debug Stdout.format("\tparse_ImplementStatement failed").newline;
-			return false;
-	}
-
-	/*
-	KernelImpl
-		= KernelImplDef parseKernelImpl(string name,double score)
-		::= Identifier:name "(" Number:score ")";
-
-	*/
-	KernelImplDef value_KernelImpl;
-	bool parse_KernelImpl(){
-		debug Stdout("parse_KernelImpl").newline;
-		string var_name;
-		double var_score;
-
-		// AndGroup
-			auto position3 = pos;
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_name,value_Identifier);
-			term5:
-				// Terminal
-				if(!match("(")){
-					goto fail4;
-				}
-			term6:
-				// Production
-				if(!parse_Number()){
-					goto fail4;
-				}
-				smartAssign(var_score,value_Number);
-			term7:
-				// Terminal
-				if(match(")")){
-					goto pass0;
-				}
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_KernelImpl = parseKernelImpl(var_name,var_score);
-			debug Stdout.format("\tparse_KernelImpl passed: {0}",value_KernelImpl).newline;
-			return true;
-		fail1:
-			value_KernelImpl = (KernelImplDef).init;
-			debug Stdout.format("\tparse_KernelImpl failed").newline;
-			return false;
-	}
-
-	/*
-	ConnectStatement
-		= new ConnectStatement(string from,string to)
-		::= "connect" Identifier:from Identifier:to ";";
-
-	*/
-	ConnectStatement value_ConnectStatement;
-	bool parse_ConnectStatement(){
-		debug Stdout("parse_ConnectStatement").newline;
-		string var_from;
-		string var_to;
-
-		// AndGroup
-			auto position3 = pos;
-				// Terminal
-				if(!match("connect")){
-					goto fail4;
-				}
-			term5:
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_from,value_Identifier);
-			term6:
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_to,value_Identifier);
-			term7:
-				// Terminal
-				if(match(";")){
-					goto pass0;
-				}
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_ConnectStatement = new ConnectStatement(var_from,var_to);
-			debug Stdout.format("\tparse_ConnectStatement passed: {0}",value_ConnectStatement).newline;
-			return true;
-		fail1:
-			value_ConnectStatement = (ConnectStatement).init;
-			debug Stdout.format("\tparse_ConnectStatement failed").newline;
 			return false;
 	}
 
@@ -465,58 +278,9 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	PreprocessStatement
-		= new PreprocessStatement(string processor,string processorFunction)
-		::= "preprocess" Identifier:processorFunction Identifier:processor ";";
-
-	*/
-	PreprocessStatement value_PreprocessStatement;
-	bool parse_PreprocessStatement(){
-		debug Stdout("parse_PreprocessStatement").newline;
-		string var_processor;
-		string var_processorFunction;
-
-		// AndGroup
-			auto position3 = pos;
-				// Terminal
-				if(!match("preprocess")){
-					goto fail4;
-				}
-			term5:
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_processorFunction,value_Identifier);
-			term6:
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_processor,value_Identifier);
-			term7:
-				// Terminal
-				if(match(";")){
-					goto pass0;
-				}
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_PreprocessStatement = new PreprocessStatement(var_processor,var_processorFunction);
-			debug Stdout.format("\tparse_PreprocessStatement passed: {0}",value_PreprocessStatement).newline;
-			return true;
-		fail1:
-			value_PreprocessStatement = (PreprocessStatement).init;
-			debug Stdout.format("\tparse_PreprocessStatement failed").newline;
-			return false;
-	}
-
-	/*
 	ConverterDeclStatement
 		= ConverterDeclStatement createConverter(string name,string[] tags,ParamDef[] params,Code code,double cost)
-		::= "converter" ["<" FuncTagList:tags ">"] "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
+		::= "converter" ["<" KernelTagList:tags ">"] "(" Number:cost ")" [Identifier:name] ParamList:params Code:code;
 
 	*/
 	ConverterDeclStatement value_ConverterDeclStatement;
@@ -544,10 +308,10 @@ class KDefParser:KDefParserBase{
 							}
 						term10:
 							// Production
-							if(!parse_FuncTagList()){
+							if(!parse_KernelTagList()){
 								goto fail9;
 							}
-							smartAssign(var_tags,value_FuncTagList);
+							smartAssign(var_tags,value_KernelTagList);
 						term11:
 							// Terminal
 							if(match(">")){
@@ -606,51 +370,18 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	KernelImplementation
-		= KernelImplementation impl
-		::= QuarkDefValue:impl | GraphDefValue:impl;
-
-	*/
-	KernelImplementation value_KernelImplementation;
-	bool parse_KernelImplementation(){
-		debug Stdout("parse_KernelImplementation").newline;
-		KernelImplementation var_impl;
-
-		// OrGroup pass0
-			// Production
-			if(parse_QuarkDefValue()){
-				smartAssign(var_impl,value_QuarkDefValue);
-				goto pass0;
-			}
-		term2:
-			// Production
-			if(!parse_GraphDefValue()){
-				goto fail1;
-			}
-			smartAssign(var_impl,value_GraphDefValue);
-		// Rule
-		pass0:
-			value_KernelImplementation = var_impl;
-			debug Stdout.format("\tparse_KernelImplementation passed: {0}",value_KernelImplementation).newline;
-			return true;
-		fail1:
-			value_KernelImplementation = (KernelImplementation).init;
-			debug Stdout.format("\tparse_KernelImplementation failed").newline;
-			return false;
-	}
-
-	/*
 	QuarkDefValue
-		= new QuarkDefValue(char[] name,Code[] inlineCode,Function[] quarkFunctions)
-		::= "quark" Identifier:name "{" (Code:~inlineCode | Function:~quarkFunctions)* "}";
+		= new QuarkDefValue(string superKernel,ParamDef[] params,Code code,string[] tags)
+		::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel] ParamList:params Code:code;
 
 	*/
 	QuarkDefValue value_QuarkDefValue;
 	bool parse_QuarkDefValue(){
 		debug Stdout("parse_QuarkDefValue").newline;
-		char[] var_name;
-		Function[] var_quarkFunctions;
-		Code[] var_inlineCode;
+		string[] var_tags;
+		ParamDef[] var_params;
+		string var_superKernel;
+		Code var_code;
 
 		// AndGroup
 			auto position3 = pos;
@@ -659,47 +390,52 @@ class KDefParser:KDefParserBase{
 					goto fail4;
 				}
 			term5:
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_name,value_Identifier);
-			term6:
-				// Terminal
-				if(!match("{")){
-					goto fail4;
-				}
-			term7:
-				// Iterator
-				start8:
-					// (terminator)
-						// Terminal
-						if(match("}")){
-							goto end9;
-						}
-					// (expression)
-					expr10:
-						// OrGroup start8
-							// Production
-							if(parse_Code()){
-								smartAppend(var_inlineCode,value_Code);
-								goto start8;
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("<")){
+								goto fail9;
 							}
+						term10:
+							// Production
+							if(!parse_KernelTagList()){
+								goto fail9;
+							}
+							smartAssign(var_tags,value_KernelTagList);
 						term11:
-							// Production
-							if(!parse_Function()){
-								goto fail4;
+							// Terminal
+							if(match(">")){
+								goto term6;
 							}
-							smartAppend(var_quarkFunctions,value_Function);
-					goto start8;
-				end9:
+						fail9:
+						pos = position8;
+						goto term6;
+			term6:
+				// Optional
+					// Production
+					if(!parse_Identifier()){
+						goto term12;
+					}
+					smartAssign(var_superKernel,value_Identifier);
+			term12:
+				// Production
+				if(!parse_ParamList()){
+					goto fail4;
+				}
+				smartAssign(var_params,value_ParamList);
+			term13:
+				// Production
+				if(parse_Code()){
+					smartAssign(var_code,value_Code);
 					goto pass0;
+				}
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_QuarkDefValue = new QuarkDefValue(var_name,var_inlineCode,var_quarkFunctions);
+			value_QuarkDefValue = new QuarkDefValue(var_superKernel,var_params,var_code,var_tags);
 			debug Stdout.format("\tparse_QuarkDefValue passed: {0}",value_QuarkDefValue).newline;
 			return true;
 		fail1:
@@ -709,168 +445,73 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	GraphDefValue
-		= new GraphDefValue(GraphDef graphDef,string label)
-		::= "graph" [Identifier:label] "{" GraphDefBody:graphDef "}";
-
-	*/
-	GraphDefValue value_GraphDefValue;
-	bool parse_GraphDefValue(){
-		debug Stdout("parse_GraphDefValue").newline;
-		GraphDef var_graphDef;
-		string var_label;
-
-		// AndGroup
-			auto position3 = pos;
-				// Terminal
-				if(!match("graph")){
-					goto fail4;
-				}
-			term5:
-				// Optional
-					// Production
-					if(!parse_Identifier()){
-						goto term6;
-					}
-					smartAssign(var_label,value_Identifier);
-			term6:
-				// Terminal
-				if(!match("{")){
-					goto fail4;
-				}
-			term7:
-				// Production
-				if(!parse_GraphDefBody()){
-					goto fail4;
-				}
-				smartAssign(var_graphDef,value_GraphDefBody);
-			term8:
-				// Terminal
-				if(match("}")){
-					goto pass0;
-				}
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_GraphDefValue = new GraphDefValue(var_graphDef,var_label);
-			debug Stdout.format("\tparse_GraphDefValue passed: {0}",value_GraphDefValue).newline;
-			return true;
-		fail1:
-			value_GraphDefValue = (GraphDefValue).init;
-			debug Stdout.format("\tparse_GraphDefValue failed").newline;
-			return false;
-	}
-
-	/*
-	GraphDefBody
-		= new GraphDef(Statement[] statements)
-		::= Statement:~statements*;
-
-	*/
-	GraphDef value_GraphDefBody;
-	bool parse_GraphDefBody(){
-		debug Stdout("parse_GraphDefBody").newline;
-		Statement[] var_statements;
-
-		// Iterator
-		start2:
-			// (terminator)
-			if(!hasMore()){
-				goto end3;
-			}
-			// (expression)
-			expr4:
-				// Production
-				if(!parse_Statement()){
-					goto end3;
-				}
-				smartAppend(var_statements,value_Statement);
-			goto start2;
-		end3:
-		// Rule
-		pass0:
-			value_GraphDefBody = new GraphDef(var_statements);
-			debug Stdout.format("\tparse_GraphDefBody passed: {0}",value_GraphDefBody).newline;
-			return true;
-		fail1:
-			value_GraphDefBody = (GraphDef).init;
-			debug Stdout.format("\tparse_GraphDefBody failed").newline;
-			return false;
-	}
-
-	/*
 	KernelDefValue
-		= new KernelDefValue(string domain="any",KernelDef kernelDef,string[] bases)
-		::= [("gpu" | "cpu"):domain] "kernel" [KernelInheritList:bases] ?!("\'{\' expected") "{" KernelDefBody:kernelDef ?!("\'}\' expected") "}";
+		= new KernelDefValue(string superKernel,ParamDef[] params,string[] tags)
+		::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel] ParamList:params ?!("semicolon expected") ";";
 
 	*/
 	KernelDefValue value_KernelDefValue;
 	bool parse_KernelDefValue(){
 		debug Stdout("parse_KernelDefValue").newline;
-		KernelDef var_kernelDef;
-		string[] var_bases;
-		string var_domain = "any";
+		string[] var_tags;
+		ParamDef[] var_params;
+		string var_superKernel;
 
 		// AndGroup
 			auto position3 = pos;
-				// Optional
-					// Group (w/binding)
-						auto position6 = pos;
-						// OrGroup pass7
-							// Terminal
-							if(match("gpu")){
-								goto pass7;
-							}
-						term8:
-							// Terminal
-							if(!match("cpu")){
-								goto term5;
-							}
-						pass7:
-						smartAssign(var_domain,slice(position6,pos));
-			term5:
 				// Terminal
 				if(!match("kernel")){
 					goto fail4;
 				}
-			term9:
+			term5:
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("<")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_KernelTagList()){
+								goto fail9;
+							}
+							smartAssign(var_tags,value_KernelTagList);
+						term11:
+							// Terminal
+							if(match(">")){
+								goto term6;
+							}
+						fail9:
+						pos = position8;
+						goto term6;
+			term6:
 				// Optional
 					// Production
-					if(!parse_KernelInheritList()){
-						goto term10;
+					if(!parse_Identifier()){
+						goto term12;
 					}
-					smartAssign(var_bases,value_KernelInheritList);
-			term10:
-				// ErrorPoint
-					// Terminal
-					if(match("{")){
-						goto term11;
-					}
-				fail12:
-					error("\'{\' expected");
-					goto fail4;
-			term11:
+					smartAssign(var_superKernel,value_Identifier);
+			term12:
 				// Production
-				if(!parse_KernelDefBody()){
+				if(!parse_ParamList()){
 					goto fail4;
 				}
-				smartAssign(var_kernelDef,value_KernelDefBody);
+				smartAssign(var_params,value_ParamList);
 			term13:
 				// ErrorPoint
 					// Terminal
-					if(match("}")){
+					if(match(";")){
 						goto pass0;
 					}
 				fail14:
-					error("\'}\' expected");
+					error("semicolon expected");
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_KernelDefValue = new KernelDefValue(var_domain,var_kernelDef,var_bases);
+			value_KernelDefValue = new KernelDefValue(var_superKernel,var_params,var_tags);
 			debug Stdout.format("\tparse_KernelDefValue passed: {0}",value_KernelDefValue).newline;
 			return true;
 		fail1:
@@ -880,15 +521,100 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
+	GraphDefValue
+		= new GraphDefValue(string superKernel,Statement[] stmts,string[] tags)
+		::= "graph" ["<" KernelTagList:tags ">"] [Identifier:superKernel] "{" Statement:~stmts* "}";
+
+	*/
+	GraphDefValue value_GraphDefValue;
+	bool parse_GraphDefValue(){
+		debug Stdout("parse_GraphDefValue").newline;
+		string[] var_tags;
+		Statement[] var_stmts;
+		string var_superKernel;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("graph")){
+					goto fail4;
+				}
+			term5:
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("<")){
+								goto fail9;
+							}
+						term10:
+							// Production
+							if(!parse_KernelTagList()){
+								goto fail9;
+							}
+							smartAssign(var_tags,value_KernelTagList);
+						term11:
+							// Terminal
+							if(match(">")){
+								goto term6;
+							}
+						fail9:
+						pos = position8;
+						goto term6;
+			term6:
+				// Optional
+					// Production
+					if(!parse_Identifier()){
+						goto term12;
+					}
+					smartAssign(var_superKernel,value_Identifier);
+			term12:
+				// Terminal
+				if(!match("{")){
+					goto fail4;
+				}
+			term13:
+				// Iterator
+				start14:
+					// (terminator)
+						// Terminal
+						if(match("}")){
+							goto end15;
+						}
+					// (expression)
+					expr16:
+						// Production
+						if(!parse_Statement()){
+							goto fail4;
+						}
+						smartAppend(var_stmts,value_Statement);
+					goto start14;
+				end15:
+					goto pass0;
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_GraphDefValue = new GraphDefValue(var_superKernel,var_stmts,var_tags);
+			debug Stdout.format("\tparse_GraphDefValue passed: {0}",value_GraphDefValue).newline;
+			return true;
+		fail1:
+			value_GraphDefValue = (GraphDefValue).init;
+			debug Stdout.format("\tparse_GraphDefValue failed").newline;
+			return false;
+	}
+
+	/*
 	GraphDefNodeValue
-		= new GraphDefNodeValue(GraphDefNode node)
-		::= "node" "{" GraphDefNodeBody:node "}";
+		= new GraphDefNodeValue(VarDef[] vars)
+		::= "node" "{" VarDef:~vars* "}";
 
 	*/
 	GraphDefNodeValue value_GraphDefNodeValue;
 	bool parse_GraphDefNodeValue(){
 		debug Stdout("parse_GraphDefNodeValue").newline;
-		GraphDefNode var_node;
+		VarDef[] var_vars;
 
 		// AndGroup
 			auto position3 = pos;
@@ -902,64 +628,34 @@ class KDefParser:KDefParserBase{
 					goto fail4;
 				}
 			term6:
-				// Production
-				if(!parse_GraphDefNodeBody()){
-					goto fail4;
-				}
-				smartAssign(var_node,value_GraphDefNodeBody);
-			term7:
-				// Terminal
-				if(match("}")){
+				// Iterator
+				start7:
+					// (terminator)
+						// Terminal
+						if(match("}")){
+							goto end8;
+						}
+					// (expression)
+					expr9:
+						// Production
+						if(!parse_VarDef()){
+							goto fail4;
+						}
+						smartAppend(var_vars,value_VarDef);
+					goto start7;
+				end8:
 					goto pass0;
-				}
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_GraphDefNodeValue = new GraphDefNodeValue(var_node);
+			value_GraphDefNodeValue = new GraphDefNodeValue(var_vars);
 			debug Stdout.format("\tparse_GraphDefNodeValue passed: {0}",value_GraphDefNodeValue).newline;
 			return true;
 		fail1:
 			value_GraphDefNodeValue = (GraphDefNodeValue).init;
 			debug Stdout.format("\tparse_GraphDefNodeValue failed").newline;
-			return false;
-	}
-
-	/*
-	GraphDefNodeBody
-		= new GraphDefNode(VarDef[] variables)
-		::= VarDef:~variables*;
-
-	*/
-	GraphDefNode value_GraphDefNodeBody;
-	bool parse_GraphDefNodeBody(){
-		debug Stdout("parse_GraphDefNodeBody").newline;
-		VarDef[] var_variables;
-
-		// Iterator
-		start2:
-			// (terminator)
-			if(!hasMore()){
-				goto end3;
-			}
-			// (expression)
-			expr4:
-				// Production
-				if(!parse_VarDef()){
-					goto end3;
-				}
-				smartAppend(var_variables,value_VarDef);
-			goto start2;
-		end3:
-		// Rule
-		pass0:
-			value_GraphDefNodeBody = new GraphDefNode(var_variables);
-			debug Stdout.format("\tparse_GraphDefNodeBody passed: {0}",value_GraphDefNodeBody).newline;
-			return true;
-		fail1:
-			value_GraphDefNodeBody = (GraphDefNode).init;
-			debug Stdout.format("\tparse_GraphDefNodeBody failed").newline;
 			return false;
 	}
 
@@ -1051,44 +747,28 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Code
-		= new Code(string language,Atom[] tokens)
-		::= ("D" | "Cg"):language "{" OpaqueCodeBlock:tokens "}";
+		= new Code(Atom[] tokens)
+		::= "{" OpaqueCodeBlock:tokens "}";
 
 	*/
 	Code value_Code;
 	bool parse_Code(){
 		debug Stdout("parse_Code").newline;
 		Atom[] var_tokens;
-		string var_language;
 
 		// AndGroup
 			auto position3 = pos;
-				// Group (w/binding)
-					auto position6 = pos;
-					// OrGroup pass7
-						// Terminal
-						if(match("D")){
-							goto pass7;
-						}
-					term8:
-						// Terminal
-						if(!match("Cg")){
-							goto fail4;
-						}
-					pass7:
-					smartAssign(var_language,slice(position6,pos));
-			term5:
 				// Terminal
 				if(!match("{")){
 					goto fail4;
 				}
-			term9:
+			term5:
 				// Production
 				if(!parse_OpaqueCodeBlock()){
 					goto fail4;
 				}
 				smartAssign(var_tokens,value_OpaqueCodeBlock);
-			term10:
+			term6:
 				// Terminal
 				if(match("}")){
 					goto pass0;
@@ -1098,7 +778,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Code = new Code(var_language,var_tokens);
+			value_Code = new Code(var_tokens);
 			debug Stdout.format("\tparse_Code passed: {0}",value_Code).newline;
 			return true;
 		fail1:
@@ -1108,357 +788,14 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	KernelInheritList
-		= string[] bases
-		::= Identifier:~bases* % ",";
-
-	*/
-	string[] value_KernelInheritList;
-	bool parse_KernelInheritList(){
-		debug Stdout("parse_KernelInheritList").newline;
-		string[] var_bases;
-
-		// Iterator
-		size_t counter6 = 0;
-		start2:
-			// (terminator)
-			if(!hasMore()){
-				goto end3;
-			}
-			// (delimeter)
-			delim5:
-			if(counter6 > 0){
-				// Terminal
-				if(!match(",")){
-					goto end3;
-				}
-			}
-			// (expression)
-			expr4:
-				// Production
-				if(!parse_Identifier()){
-					goto end3;
-				}
-				smartAppend(var_bases,value_Identifier);
-			increment7:
-			// (increment expr count)
-				counter6 ++;
-			goto start2;
-		end3:
-		// Rule
-		pass0:
-			value_KernelInheritList = var_bases;
-			debug Stdout.format("\tparse_KernelInheritList passed: {0}",value_KernelInheritList).newline;
-			return true;
-		fail1:
-			value_KernelInheritList = (string[]).init;
-			debug Stdout.format("\tparse_KernelInheritList failed").newline;
-			return false;
-	}
-
-	/*
-	KernelDefBody
-		= KernelDef parseKernelDef(AbstractFunction[] funcs,string[] before,string[] after,ParamDef[] attribs)
-		$string errSemi="\';\' expected"
-		$string errIdent="kernel name expected"
-		::= (AbstractFunction:~funcs | "before" ?!(errIdent) Identifier:~before ?!(errSemi) ";" | "after" ?!(errIdent) Identifier:~after ?!(errSemi) ";" | "attribs" "=" ParamList:params ";")*;
-
-	*/
-	KernelDef value_KernelDefBody;
-	bool parse_KernelDefBody(){
-		debug Stdout("parse_KernelDefBody").newline;
-		string var_errSemi = "\';\' expected";
-		string[] var_before;
-		ParamDef[] var_attribs;
-		ParamDef[] var_params;
-		AbstractFunction[] var_funcs;
-		string[] var_after;
-		string var_errIdent = "kernel name expected";
-
-		// Iterator
-		start2:
-			// (terminator)
-			if(!hasMore()){
-				goto end3;
-			}
-			// (expression)
-			expr4:
-				// OrGroup start2
-					// Production
-					if(parse_AbstractFunction()){
-						smartAppend(var_funcs,value_AbstractFunction);
-						goto start2;
-					}
-				term5:
-					// AndGroup
-						auto position8 = pos;
-							// Terminal
-							if(!match("before")){
-								goto fail9;
-							}
-						term10:
-							// ErrorPoint
-								// Production
-								if(parse_Identifier()){
-									smartAppend(var_before,value_Identifier);
-									goto term11;
-								}
-							fail12:
-								error(var_errIdent);
-								goto fail9;
-						term11:
-							// ErrorPoint
-								// Terminal
-								if(match(";")){
-									goto start2;
-								}
-							fail13:
-								error(var_errSemi);
-						fail9:
-						pos = position8;
-				term6:
-					// AndGroup
-						auto position16 = pos;
-							// Terminal
-							if(!match("after")){
-								goto fail17;
-							}
-						term18:
-							// ErrorPoint
-								// Production
-								if(parse_Identifier()){
-									smartAppend(var_after,value_Identifier);
-									goto term19;
-								}
-							fail20:
-								error(var_errIdent);
-								goto fail17;
-						term19:
-							// ErrorPoint
-								// Terminal
-								if(match(";")){
-									goto start2;
-								}
-							fail21:
-								error(var_errSemi);
-						fail17:
-						pos = position16;
-				term14:
-					// AndGroup
-						auto position23 = pos;
-							// Terminal
-							if(!match("attribs")){
-								goto fail24;
-							}
-						term25:
-							// Terminal
-							if(!match("=")){
-								goto fail24;
-							}
-						term26:
-							// Production
-							if(!parse_ParamList()){
-								goto fail24;
-							}
-							smartAssign(var_params,value_ParamList);
-						term27:
-							// Terminal
-							if(match(";")){
-								goto start2;
-							}
-						fail24:
-						pos = position23;
-						goto end3;
-			goto start2;
-		end3:
-		// Rule
-		pass0:
-			value_KernelDefBody = parseKernelDef(var_funcs,var_before,var_after,var_attribs);
-			debug Stdout.format("\tparse_KernelDefBody passed: {0}",value_KernelDefBody).newline;
-			return true;
-		fail1:
-			value_KernelDefBody = (KernelDef).init;
-			debug Stdout.format("\tparse_KernelDefBody failed").newline;
-			return false;
-	}
-
-	/*
-	AbstractFunction
-		= AbstractFunction createAbstractFunction(string name,string[] tags,ParamDef[] params)
-		$string semicolonExpected="\';\' expected"
-		$string nameExpected="kernel function name expected"
-		::= "quark" ["<" FuncTagList:tags ">"] ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) ";";
-
-	*/
-	AbstractFunction value_AbstractFunction;
-	bool parse_AbstractFunction(){
-		debug Stdout("parse_AbstractFunction").newline;
-		string var_name;
-		string var_nameExpected = "kernel function name expected";
-		string[] var_tags;
-		string var_semicolonExpected = "\';\' expected";
-		ParamDef[] var_params;
-
-		// AndGroup
-			auto position3 = pos;
-				// Terminal
-				if(!match("quark")){
-					goto fail4;
-				}
-			term5:
-				// Optional
-					// AndGroup
-						auto position8 = pos;
-							// Terminal
-							if(!match("<")){
-								goto fail9;
-							}
-						term10:
-							// Production
-							if(!parse_FuncTagList()){
-								goto fail9;
-							}
-							smartAssign(var_tags,value_FuncTagList);
-						term11:
-							// Terminal
-							if(match(">")){
-								goto term6;
-							}
-						fail9:
-						pos = position8;
-						goto term6;
-			term6:
-				// ErrorPoint
-					// Production
-					if(parse_Identifier()){
-						smartAssign(var_name,value_Identifier);
-						goto term12;
-					}
-				fail13:
-					error(var_nameExpected);
-					goto fail4;
-			term12:
-				// Production
-				if(!parse_ParamList()){
-					goto fail4;
-				}
-				smartAssign(var_params,value_ParamList);
-			term14:
-				// ErrorPoint
-					// Terminal
-					if(match(";")){
-						goto pass0;
-					}
-				fail15:
-					error(var_semicolonExpected);
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_AbstractFunction = createAbstractFunction(var_name,var_tags,var_params);
-			debug Stdout.format("\tparse_AbstractFunction passed: {0}",value_AbstractFunction).newline;
-			return true;
-		fail1:
-			value_AbstractFunction = (AbstractFunction).init;
-			debug Stdout.format("\tparse_AbstractFunction failed").newline;
-			return false;
-	}
-
-	/*
-	Function
-		= Function createFunction(string name,string[] tags,ParamDef[] params,Code code)
-		$string semicolonExpected="\';\' expected"
-		$string nameExpected="quark function name expected"
-		::= "quark" ["<" FuncTagList:tags ">"] ?!(nameExpected) Identifier:name ParamList:params ?!(semicolonExpected) Code:code;
-
-	*/
-	Function value_Function;
-	bool parse_Function(){
-		debug Stdout("parse_Function").newline;
-		string var_name;
-		string var_nameExpected = "quark function name expected";
-		string[] var_tags;
-		string var_semicolonExpected = "\';\' expected";
-		ParamDef[] var_params;
-		Code var_code;
-
-		// AndGroup
-			auto position3 = pos;
-				// Terminal
-				if(!match("quark")){
-					goto fail4;
-				}
-			term5:
-				// Optional
-					// AndGroup
-						auto position8 = pos;
-							// Terminal
-							if(!match("<")){
-								goto fail9;
-							}
-						term10:
-							// Production
-							if(!parse_FuncTagList()){
-								goto fail9;
-							}
-							smartAssign(var_tags,value_FuncTagList);
-						term11:
-							// Terminal
-							if(match(">")){
-								goto term6;
-							}
-						fail9:
-						pos = position8;
-						goto term6;
-			term6:
-				// ErrorPoint
-					// Production
-					if(parse_Identifier()){
-						smartAssign(var_name,value_Identifier);
-						goto term12;
-					}
-				fail13:
-					error(var_nameExpected);
-					goto fail4;
-			term12:
-				// Production
-				if(!parse_ParamList()){
-					goto fail4;
-				}
-				smartAssign(var_params,value_ParamList);
-			term14:
-				// ErrorPoint
-					// Production
-					if(parse_Code()){
-						smartAssign(var_code,value_Code);
-						goto pass0;
-					}
-				fail15:
-					error(var_semicolonExpected);
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_Function = createFunction(var_name,var_tags,var_params,var_code);
-			debug Stdout.format("\tparse_Function passed: {0}",value_Function).newline;
-			return true;
-		fail1:
-			value_Function = (Function).init;
-			debug Stdout.format("\tparse_Function failed").newline;
-			return false;
-	}
-
-	/*
-	FuncTagList
+	KernelTagList
 		= string[] tags
 		::= Identifier:~tags*;
 
 	*/
-	string[] value_FuncTagList;
-	bool parse_FuncTagList(){
-		debug Stdout("parse_FuncTagList").newline;
+	string[] value_KernelTagList;
+	bool parse_KernelTagList(){
+		debug Stdout("parse_KernelTagList").newline;
 		string[] var_tags;
 
 		// Iterator
@@ -1478,12 +815,12 @@ class KDefParser:KDefParserBase{
 		end3:
 		// Rule
 		pass0:
-			value_FuncTagList = var_tags;
-			debug Stdout.format("\tparse_FuncTagList passed: {0}",value_FuncTagList).newline;
+			value_KernelTagList = var_tags;
+			debug Stdout.format("\tparse_KernelTagList passed: {0}",value_KernelTagList).newline;
 			return true;
 		fail1:
-			value_FuncTagList = (string[]).init;
-			debug Stdout.format("\tparse_FuncTagList failed").newline;
+			value_KernelTagList = (string[]).init;
+			debug Stdout.format("\tparse_KernelTagList failed").newline;
 			return false;
 	}
 
@@ -2168,109 +1505,6 @@ class KDefParser:KDefParserBase{
 		fail1:
 			value_VarDef = (VarDef).init;
 			debug Stdout.format("\tparse_VarDef failed").newline;
-			return false;
-	}
-
-	/*
-	TemplateArg
-		= VarDef parseVarDef(string name,Value value)
-		::= Identifier:name "=" Value:value;
-
-	*/
-	VarDef value_TemplateArg;
-	bool parse_TemplateArg(){
-		debug Stdout("parse_TemplateArg").newline;
-		Value var_value;
-		string var_name;
-
-		// AndGroup
-			auto position3 = pos;
-				// Production
-				if(!parse_Identifier()){
-					goto fail4;
-				}
-				smartAssign(var_name,value_Identifier);
-			term5:
-				// Terminal
-				if(!match("=")){
-					goto fail4;
-				}
-			term6:
-				// Production
-				if(parse_Value()){
-					smartAssign(var_value,value_Value);
-					goto pass0;
-				}
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_TemplateArg = parseVarDef(var_name,var_value);
-			debug Stdout.format("\tparse_TemplateArg passed: {0}",value_TemplateArg).newline;
-			return true;
-		fail1:
-			value_TemplateArg = (VarDef).init;
-			debug Stdout.format("\tparse_TemplateArg failed").newline;
-			return false;
-	}
-
-	/*
-	TemplateArgList
-		= VarDef[] list
-		::= TemplateArg:~list ("," TemplateArg:~list)*;
-
-	*/
-	VarDef[] value_TemplateArgList;
-	bool parse_TemplateArgList(){
-		debug Stdout("parse_TemplateArgList").newline;
-		VarDef[] var_list;
-
-		// AndGroup
-			auto position3 = pos;
-				// Production
-				if(!parse_TemplateArg()){
-					goto fail4;
-				}
-				smartAppend(var_list,value_TemplateArg);
-			term5:
-				// Iterator
-				start6:
-					// (terminator)
-					if(!hasMore()){
-						goto end7;
-					}
-					// (expression)
-					expr8:
-						// AndGroup
-							auto position10 = pos;
-								// Terminal
-								if(!match(",")){
-									goto fail11;
-								}
-							term12:
-								// Production
-								if(parse_TemplateArg()){
-									smartAppend(var_list,value_TemplateArg);
-									goto start6;
-								}
-							fail11:
-							pos = position10;
-							goto end7;
-					goto start6;
-				end7:
-					goto pass0;
-			fail4:
-			pos = position3;
-			goto fail1;
-		// Rule
-		pass0:
-			value_TemplateArgList = var_list;
-			debug Stdout.format("\tparse_TemplateArgList passed: {0}",value_TemplateArgList).newline;
-			return true;
-		fail1:
-			value_TemplateArgList = (VarDef[]).init;
-			debug Stdout.format("\tparse_TemplateArgList failed").newline;
 			return false;
 	}
 
