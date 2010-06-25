@@ -28,14 +28,13 @@ public {
 
 
 
-class KDefParserBase : Parser!(KDefToken){
+class KDefParserBase : Parser!(KDefToken) {
 	public {
+		abstract bool	parse_Syntax();
+		Statement[]		statements;
+
 		alias void* delegate(size_t) Allocator;
 		Allocator	allocator;
-
-		
-		abstract bool	parse_Syntax();
-		Statement[]	statements;
 	}
 	
 
@@ -89,6 +88,73 @@ class KDefParserBase : Parser!(KDefToken){
 			return res;
 		}
 
+		// --------------------------------------------------------------------
+
+
+		char[] concatTokens(KDefToken[] tokens){
+			return KDefToken.concat(tokens);
+		}
+		
+
+		override void error(char[] message) {
+			auto tok = data[pos];
+			throw ParserException("{} ({}): {} (got '{}' instead)", tok.filename, tok.line, message, data[pos]);
+		}
+		
+
+		void semanticError(char[] fmt, ...) {
+			char[512] buf;
+			char[] message = Format.vprint(buf, fmt, _arguments, _argptr);
+			auto tok = data[pos > 0 ? pos-1 : 0];
+			throw ParserException("{} ({}): {}", tok.filename, tok.line, message);
+		}
+
+
+
+		QuarkDefValue createQuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
+			auto res = new QuarkDefValue;
+			res.superKernel = superKernel;
+			res.params = params;
+			res.code = code;
+			return res;
+		}
+
+
+		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, string[] tags) {
+			auto res = new KernelDefValue;
+			res.kernelDef = new KernelDef;
+			res.kernelDef.func = createAbstractFunction(null, tags, params);
+			res.kernelDef.superKernel = superKernel.dup;
+			return res;
+		}
+
+
+		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags) {
+			auto res = new GraphDefValue;
+			assert(false, "TODO");
+			return res;
+	//		Stdout.formatln("GraphDefValue('{}')", label);
+			/+this.graphDef = graphDef;
+			this.graphDef.label = label is null ? null : label.dup;+/
+		}
+
+
+		GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars) {
+			auto res = new GraphDefNodeValue;
+			assert(false, "TODO");
+			return res;
+			//this.node = node;
+		}
+
+
+		TraitDefValue createTraitDefValue(string[] values, string defaultValue) {
+			auto res = new TraitDefValue;
+			res.value = new TraitDef;
+			res.value.values = values.dupStringArray();
+			res.value.defaultValue = defaultValue.dup;
+			return res;
+		}
+
 
 		AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params) {
 			auto res = new AbstractFunction(name, tags, allocator);
@@ -102,16 +168,8 @@ class KDefParserBase : Parser!(KDefToken){
 			return res;
 		}
 
-		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
-			auto func = new Function(name, tags, code, allocator);
-			_createFunctionParams(params, func);
-			auto res = new ConverterDeclStatement;
-			res.func = func;
-			res.cost = cast(int)cost;		// HACK
-			return res;
-		}
 
-		private void _createFunctionParams(
+		void _createFunctionParams(
 				ParamDef[] defs,
 				AbstractFunction func
 		) {
@@ -188,25 +246,13 @@ class KDefParserBase : Parser!(KDefToken){
 			}
 		}
 
-		// --------------------------------------------------------------------
-
-
-		char[] concatTokens(KDefToken[] tokens){
-			return KDefToken.concat(tokens);
-		}
-		
-
-		override void error(char[] message) {
-			auto tok = data[pos];
-			throw ParserException("{} ({}): {} (got '{}' instead)", tok.filename, tok.line, message, data[pos]);
-		}
-		
-
-		void semanticError(char[] fmt, ...) {
-			char[512] buf;
-			char[] message = Format.vprint(buf, fmt, _arguments, _argptr);
-			auto tok = data[pos > 0 ? pos-1 : 0];
-			throw ParserException("{} ({}): {}", tok.filename, tok.line, message);
+		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
+			auto func = new Function(name, tags, code, allocator);
+			_createFunctionParams(params, func);
+			auto res = new ConverterDeclStatement;
+			res.func = func;
+			res.cost = cast(int)cost;		// HACK
+			return res;
 		}
 	}
 }
