@@ -7,7 +7,6 @@ private {
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.model.IKDefFileParser;
 	import xf.nucleus.kernel.KernelDef;
-	import xf.nucleus.quark.QuarkDef;
 
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.TypeConversion;
@@ -155,13 +154,15 @@ class KDefProcessor {
 
 		void inheritKernel(KernelDef sub, KernelImpl supr) {
 			iterKernelInputs(supr, (Param* p) {
-				sub.func.params.removeNoThrow(p.name);
-				sub.func.params.add(*p);
+				if (!sub.func.params.get(p.name)) {
+					sub.func.params.add(*p);
+				}
 			});
 
 			iterKernelOutputs(supr, (Param* p) {
-				sub.func.params.removeNoThrow(p.name);
-				sub.func.params.add(*p);
+				if (!sub.func.params.get(p.name)) {
+					sub.func.params.add(*p);
+				}
 			});
 		}
 
@@ -208,23 +209,24 @@ class KDefProcessor {
 
 		void inheritKernelInputs(GraphDefNode node, KernelImpl supr) {
 			iterKernelInputs(supr, (Param* p) {
-				node.params.removeNoThrow(p.name);
-				assert (p.hasPlainSemantic);
-				node.params.add(*p).dir = ParamDirection.Out;
+				if (!node.params.get(p.name)) {
+					assert (p.hasPlainSemantic);
+					node.params.add(*p).dir = ParamDirection.Out;
+				}
 			});
 		}
 
 		void inheritKernelOutputs(GraphDefNode node, KernelImpl supr) {
 			iterKernelOutputs(supr, (Param* p) {
-				node.params.removeNoThrow(p.name);
-
-				if (!p.hasPlainSemantic) {
-					auto pnew = node.params.add(ParamDirection.In, p.name);
-					pnew.hasPlainSemantic = true;
-					getPlainSemanticForNode(p, pnew.semantic, supr);
+				if (!node.params.get(p.name)) {
+					if (!p.hasPlainSemantic) {
+						auto pnew = node.params.add(ParamDirection.In, p.name);
+						pnew.hasPlainSemantic = true;
+						getPlainSemanticForNode(p, pnew.semantic, supr);
+					} else {
+						node.params.add(*p).dir = ParamDirection.In;
+					}
 				}
-				
-				node.params.add(*p).dir = ParamDirection.In;
 			});
 		}
 		
@@ -515,7 +517,9 @@ class KDefProcessor {
 							default: break;
 						}
 
-						if (auto params_ = "params" in node.vars) {
+						if (auto params__ = "params" in node.vars) {
+							auto params_ = *params__;
+							
 							ParamDirection pdir;
 							switch (node.type) {
 								case "input": 
@@ -532,6 +536,9 @@ class KDefProcessor {
 							}
 
 							auto params = (cast(ParamListValue)params_).value;
+							if (0 == params.length) {
+								error("ParamListValue @ {:x} has no params :<", cast(void*)cast(ParamListValue)params_);
+							}
 
 							foreach (d; params) {
 								auto p = node.params.add(

@@ -8,4 +8,5 @@ private {
 
 interface IGraphDef {
 	cstring	name();
+	uword	numNodes();
 }

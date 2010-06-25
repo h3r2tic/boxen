@@ -9,6 +9,7 @@ private {
 	import xf.nucleus.Light;
 	import xf.nucleus.Renderer;
 	import xf.nucleus.RenderList;
+	import xf.nucleus.KernelImpl;
 	import xf.nucleus.KernelParamInterface;
 	import xf.nucleus.KernelCompiler;
 	import xf.nucleus.kdef.Common;
@@ -18,7 +19,6 @@ private {
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.KernelGraphOps;
 	import xf.nucleus.graph.GraphMisc;
-	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
 
 	import xf.gfx.EffectHelper;		// TODO: get rid of this
@@ -42,6 +42,74 @@ private {
 
 
 
+private struct SubgraphInfo {
+	GraphNodeId[]	nodes;
+	GraphNodeId		input;
+	GraphNodeId		output;
+
+	bool singleNode() {
+		return 1 == nodes.length;
+	}
+}
+
+
+struct GraphBuilder {
+	SourceKernelType	sourceKernelType;
+	uword				sourceLightIndex;
+	bool				spawnDataNodes = true;
+	GraphNodeId[]		dataNodeSource;
+
+
+	void build(
+			KernelGraph kg,
+			KernelImpl kernel,
+			SubgraphInfo* info,
+			StackBufferUnsafe stack
+	) {
+		if (KernelImpl.Type.Kernel == kernel.type) {
+			if (!kernel.kernel.isConcrete) {
+				error("Trying to use an abstract function for a kernel in a graph");
+			}
+			
+			info.nodes = stack.allocArrayNoInit!(GraphNodeId)(1);
+			
+			info.nodes[0] = info.input = info.output
+				= kg.addFuncNode(cast(Function)kernel.kernel.func);
+		} else {
+			info.nodes = stack.allocArrayNoInit!(GraphNodeId)(kernel.graph.numNodes);
+			
+			buildKernelGraph(
+				kernel.graph,
+				kg,
+				(uint nidx, cstring, GraphDefNode def, GraphNodeId delegate() getNid) {
+					if (!spawnDataNodes && "data" == def.type) {
+						return info.nodes[nidx] = dataNodeSource[nidx];
+					} else {
+						final nid = getNid();
+						final n = kg.getNode(nid);
+
+						info.nodes[nidx] = nid;
+
+						if (KernelGraph.NodeType.Input == n.type) {
+							info.input = nid;
+						}
+						if (KernelGraph.NodeType.Output == n.type) {
+							info.output = nid;
+						}
+						if (KernelGraph.NodeType.Data == n.type) {
+							n.data.sourceKernelType = sourceKernelType;
+							n.data.sourceLightIndex = sourceLightIndex;
+						}
+						
+						return nid;
+					}
+				}
+			);
+		}
+	}
+}
+
+
 class ForwardRenderer : Renderer {
 	mixin MRenderer!("Foward");
 
@@ -52,103 +120,55 @@ class ForwardRenderer : Renderer {
 	}
 
 
-	private Function getFuncForKernel(cstring kname, cstring fname) {
-		final kernel = _kdefRegistry.getKernel(kname);
-		
-		if (kernel is null) {
-			error(
-				"convertKernelNodesToFuncNodes requested a nonexistent"
-				" kernel '{}'", kname
-			);
-		}
-
-		if (kernel.bestImpl is null) {
-			error(
-				"The '{}' kernel requested by convertKernelNodesToFuncNodes"
-				" has no implemenation.", kname
-			);
-		}
-
-		final quark = cast(QuarkDef)kernel.bestImpl;
-		
-		return quark.getFunction(fname);
-	}
-
-
 	private Effect buildEffectForRenderable(RenderableId rid) {
-		final structureKernelName	= renderables.structureKernel[rid];
-		final pigmentKernelName		= renderables.pigmentKernel[rid];
-		final illumKernelName		= "BlinnPhong";//renderables.illuminationKernel[rid];
+		scope stack = new StackBuffer;
 
-		GraphDef[char[]] graphs;
+		final structureKernel		= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
+		final pigmentKernel			= _kdefRegistry.getKernel(renderables.pigmentKernel[rid]);
+		final illumKernel			= _kdefRegistry.getKernel("BlinnPhong");//renderables.illuminationKernel[rid];
 
-		foreach (g; &_kdefRegistry.graphs) {
-			graphs[g.label] = g;
-		}
+		alias KernelGraph.NodeType NT;
 
 		// ---- Build the Structure kernel graph
 
-		GraphNodeId structureOutput, pigmentInput;
+		SubgraphInfo structureInfo;
+		SubgraphInfo pigmentInfo;
 		
 		auto kg = createKernelGraph();
-		buildKernelGraph(
-			graphs[structureKernelName],
-			kg,
-			(uint, cstring, GraphDefNode, GraphNodeId delegate() getNid) {
-				final nid = getNid();
-				final n = kg.getNode(nid);
-				if (KernelGraph.NodeType.Output == n.type) {
-					structureOutput = nid;
-				}
-				if (KernelGraph.NodeType.Data == n.type) {
-					n.data.sourceKernelType = SourceKernelType.Structure;
-				}
-				return nid;
-			}
-		);
-		assert (structureOutput.valid);
+
+		{
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Structure;
+			builder.build(kg, structureKernel, &structureInfo, stack);
+		}
+
+		assert (structureInfo.output.valid);
 
 		// Compute all flow and conversions within the Structure graph,
 		// skipping conversions to the Output node
 
+		File.set("graph.dot", toGraphviz(kg));
+
 		convertGraphDataFlowExceptOutput(
 			kg,
-			&_kdefRegistry.converters,
-			&_kdefRegistry.getKernel
+			&_kdefRegistry.converters
 		);
 
-		void buildPigmentGraph(GraphNodeId[] nodes = null) {
-			buildKernelGraph(
-				graphs[pigmentKernelName],
-				kg,
-				(uint nidx, cstring, GraphDefNode, GraphNodeId delegate() getNid) {
-					final nid = getNid();
-					final n = kg.getNode(nid);
-					if (KernelGraph.NodeType.Input == n.type) {
-						pigmentInput = nid;
-					}
-					if (KernelGraph.NodeType.Data == n.type) {
-						n.data.sourceKernelType = SourceKernelType.Pigment;
-					}
-					if (nodes) {
-						nodes[nidx] = nid;
-					}
-					return nid;
-				}
-			);
-			assert (pigmentInput.valid);
+		void buildPigmentGraph() {
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Pigment;
+			builder.build(kg, pigmentKernel, &pigmentInfo, stack);
 
-			foreach (n; nodes) {
-				assert (n.valid);
+			assert (pigmentInfo.input.valid);
+		}
+
+		bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
+			if (type == kg.getNode(id).type) {
+				kg.removeNode(id);
+				return true;
+			} else {
+				return false;
 			}
-
-			convertKernelNodesToFuncNodes(
-				kg,
-				&getFuncForKernel,
-				(cstring kname, cstring fname) {
-					return kname != "Rasterize";
-				}
-			);
 		}
 
 		// --- Find the lights affecting this renderable
@@ -157,14 +177,6 @@ class ForwardRenderer : Renderer {
 		Light[] affectingLights = .lights;
 
 		if (affectingLights.length > 0) {
-			scope stack = new StackBuffer;
-
-			struct SubgraphInfo {
-				GraphNodeId[]	nodes;
-				GraphNodeId		input;
-				GraphNodeId		output;
-			}
-
 			// ---- Build the graphs for lights and illumination
 
 			auto lightGraphs = stack.allocArray!(SubgraphInfo)(affectingLights.length);
@@ -176,76 +188,25 @@ class ForwardRenderer : Renderer {
 
 				// Build light kernel graphs
 
-				final lightGraphDef = graphs[light.kernelName];
-				lightGraph.nodes = stack.allocArray!(GraphNodeId)(lightGraphDef.nodes.length);
+				final lightKernel = _kdefRegistry.getKernel(light.kernelName);
 
-				buildKernelGraph(
-					lightGraphDef,
-					kg,
-					(uint nidx, cstring, GraphDefNode, GraphNodeId delegate() getNid) {
-						final nid = getNid();
-						final n = kg.getNode(nid);
-						lightGraph.nodes[nidx] = nid;
-						if (KernelGraph.NodeType.Input == n.type) {
-							lightGraph.input = nid;
-						}
-						if (KernelGraph.NodeType.Output == n.type) {
-							lightGraph.output = nid;
-						}
-						if (KernelGraph.NodeType.Data == n.type) {
-							n.data.sourceKernelType = SourceKernelType.Light;
-							n.data.sourceLightIndex = lightI;
-						}
-						return nid;
-					}
-				);
-
-				foreach (_lightI, ref _lightGraph; lightGraphs) {
-					log.info("lightI: {}, _lightI: {}", lightI, _lightI);
-					scope stack2 = new StackBuffer;
-					auto lightNodesTopo = stack2.allocArray!(GraphNodeId)(_lightGraph.nodes.length);
-					findTopologicalOrder(kg.backend_readOnly, _lightGraph.nodes, lightNodesTopo);
+				{
+					GraphBuilder builder;
+					builder.sourceKernelType = SourceKernelType.Light;
+					builder.sourceLightIndex = lightI;
+					builder.build(kg, lightKernel, lightGraph, stack);
 				}
 
 				// Build illumination kernel graphs
 
-				final illumGraphDef = graphs[illumKernelName];
-				illumGraph.nodes = stack.allocArray!(GraphNodeId)(illumGraphDef.nodes.length);
-
-				buildKernelGraph(
-					illumGraphDef,
-					kg,
-					(uint nidx, cstring, GraphDefNode def, GraphNodeId delegate() getNid) {
-						if ("data" == def.type && lightI > 0) {
-							// Data nodes are shared among all illum graph instances
-							return illumGraph.nodes[nidx] = illumGraphs[0].nodes[nidx];
-						} else {
-							final nid = getNid();
-							final n = kg.getNode(nid);
-							illumGraph.nodes[nidx] = nid;
-							if (KernelGraph.NodeType.Input == n.type) {
-								illumGraph.input = nid;
-							}
-							if (KernelGraph.NodeType.Output == n.type) {
-								illumGraph.output = nid;
-							}
-							if (KernelGraph.NodeType.Data == n.type) {
-								n.data.sourceKernelType = SourceKernelType.Illumination;
-							}
-							return nid;
-						}
-					}
-				);
-			}
-			
-
-			convertKernelNodesToFuncNodes(
-				kg,
-				&getFuncForKernel,
-				(cstring kname, cstring fname) {
-					return kname != "Rasterize";
+				{
+					GraphBuilder builder;
+					builder.sourceKernelType = SourceKernelType.Illumination;
+					builder.spawnDataNodes = 0 == lightI;
+					builder.dataNodeSource = illumGraphs[0].nodes;
+					builder.build(kg, illumKernel, illumGraph, stack);
 				}
-			);
+			}
 			
 
 			// ---- Connect the subgraphs
@@ -261,7 +222,6 @@ class ForwardRenderer : Renderer {
 					kg,
 					lightGraph.input,
 					&_kdefRegistry.converters,
-					&_kdefRegistry.getKernel,
 					lightNodesTopo,
 					
 					// _findSrcParam
@@ -277,9 +237,9 @@ class ForwardRenderer : Renderer {
 							);
 						}
 						
-						return findSrcParam(
+						return getOutputParamIndirect(
 							kg,
-							structureOutput,
+							structureInfo.output,
 							dstParam,
 							srcNid,
 							srcParam
@@ -301,7 +261,6 @@ class ForwardRenderer : Renderer {
 					kg,
 					illumGraph.input,
 					&_kdefRegistry.converters,
-					&_kdefRegistry.getKernel,
 					illumNodesTopo,
 					
 					// _findSrcParam
@@ -313,16 +272,16 @@ class ForwardRenderer : Renderer {
 						switch (dstParam) {
 							case "position":
 							case "normal":
-								return findSrcParam(
+								return getOutputParamIndirect(
 									kg,
-									structureOutput,
+									structureInfo.output,
 									dstParam,
 									srcNid,
 									srcParam
 								);
 
 							default:
-								return findSrcParam(
+								return getOutputParamIndirect(
 									kg,
 									lightGraphs[lightI].output,
 									dstParam,
@@ -335,12 +294,17 @@ class ForwardRenderer : Renderer {
 					OutputNodeConversion.Skip
 				);
 
-				kg.removeNode(lightGraphs[lightI].output);
+				removeNodeIfTypeMatches(lightGraphs[lightI].output, NT.Output);
 			}
 
 
 			// ---- Sum the diffuse and specular illumination
-			final addFunc = getFuncForKernel("Add", "main");
+			Function addFunc; {
+				final addKernel = _kdefRegistry.getKernel("Add");
+				assert (KernelImpl.Type.Kernel == addKernel.type);
+				assert (addKernel.kernel.isConcrete);
+				addFunc = cast(Function)addKernel.kernel.func;
+			}
 
 			GraphNodeId	diffuseSumNid;
 			cstring		diffuseSumPName;
@@ -352,7 +316,7 @@ class ForwardRenderer : Renderer {
 						GraphNodeId srcNid;
 						Param* srcParam;
 						
-						if (!findSrcParam(
+						if (!getOutputParamIndirect(
 							kg,
 							ig.output,
 							"diffuse",
@@ -383,7 +347,7 @@ class ForwardRenderer : Renderer {
 						GraphNodeId srcNid;
 						Param* srcParam;
 						
-						if (!findSrcParam(
+						if (!getOutputParamIndirect(
 							kg,
 							ig.output,
 							"specular",
@@ -409,32 +373,29 @@ class ForwardRenderer : Renderer {
 			// Not needed anymore, the flow has been reduced and the source params
 			// have been located.
 			foreach (ref ig; illumGraphs) {
-				kg.removeNode(ig.output);
+				removeNodeIfTypeMatches(ig.output, NT.Output);
 			}
 
 			// ---
 
-			verifyDataFlowNames(kg, &_kdefRegistry.getKernel);
+			verifyDataFlowNames(kg);
 
 			// --- Conversions
 
 			convertGraphDataFlowExceptOutput(
 				kg,
-				&_kdefRegistry.converters,
-				&_kdefRegistry.getKernel
+				&_kdefRegistry.converters
 			);
 
-			final pigmentNodes = stack.allocArray!(GraphNodeId)(graphs[pigmentKernelName].nodes.length);
-			final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentNodes.length);
+			buildPigmentGraph();
 
-			buildPigmentGraph(pigmentNodes);
-			findTopologicalOrder(kg.backend_readOnly, pigmentNodes, pigmentNodesTopo);
+			final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
+			findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
 
 			fuseGraph(
 				kg,
-				pigmentInput,
+				pigmentInfo.input,
 				&_kdefRegistry.converters,
-				&_kdefRegistry.getKernel,
 				pigmentNodesTopo,
 				
 				// _findSrcParam
@@ -464,9 +425,9 @@ class ForwardRenderer : Renderer {
 						}
 
 						default:
-							return findSrcParam(
+							return getOutputParamIndirect(
 								kg,
-								structureOutput,
+								structureInfo.output,
 								dstParam,
 								srcNid,
 								srcParam
@@ -477,32 +438,25 @@ class ForwardRenderer : Renderer {
 				OutputNodeConversion.Perform
 			);
 
-			kg.removeNode(structureOutput);
+			if (!structureInfo.singleNode) {
+				removeNodeIfTypeMatches(structureInfo.output, NT.Output);
+			}
 		} else {
 			// No affecting lights
 			// TODO: zero the diffuse and specular contribs
 			// ... or don't draw the object
 
-			scope stack = new StackBuffer;
-			final structureNodes = stack.allocArray!(GraphNodeId)(kg.numNodes);
-			{
-				uword i = 0;
-				foreach (nid, dummy; kg.iterNodes) {
-					structureNodes[i++] = nid;
-				}
-			}
-
 			buildPigmentGraph();
 
-			verifyDataFlowNames(kg, &_kdefRegistry.getKernel);
+			verifyDataFlowNames(kg);
 
 			fuseGraph(
 				kg,
-				structureOutput,
+				structureInfo.output,
 
 				// graph1NodeIter
 				(int delegate(ref GraphNodeId) sink) {
-					foreach (nid; structureNodes) {
+					foreach (nid; structureInfo.nodes) {
 						if (int r = sink(nid)) {
 							return r;
 						}
@@ -510,22 +464,26 @@ class ForwardRenderer : Renderer {
 					return 0;
 				},
 
-				pigmentInput,
+				pigmentInfo.input,
 				&_kdefRegistry.converters,
-				&_kdefRegistry.getKernel,
 				OutputNodeConversion.Perform
 			);
 		}
 
-		verifyDataFlowNames(kg, &_kdefRegistry.getKernel);
+		verifyDataFlowNames(kg);
 
 		File.set("graph.dot", toGraphviz(kg));
 
 		// ----
 
+		CodegenSetup cgSetup;
+		cgSetup.inputNode = structureInfo.input;
+		cgSetup.outputNode = pigmentInfo.output;
+
 		return compileKernelGraph(
 			null,
 			kg,
+			cgSetup,
 			_backend,
 			(CodeSink fmt) {
 				fmt(`

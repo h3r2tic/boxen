@@ -63,7 +63,7 @@ class KernelGraph {
 
 
 	struct KernelNode {
-		_cstring name;
+		KernelDef	kernel;
 	}
 
 
@@ -133,15 +133,14 @@ class KernelGraph {
 
 
 		Param* getOutputParam(
-				cstring name,
-				KernelDef delegate(cstring) kernelLookup = null
+				cstring name
 		) {
 			switch (_type) {
 				case NodeType.Output:	return null;
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return _inputOutputData.params.get(name);
 				default: {
-					final p = getParamList(kernelLookup).get(name);
+					final p = getParamList().get(name);
 					if (p.isInput) {
 						error(
 							"Trying to access a function's input parameter '{}'"
@@ -157,15 +156,14 @@ class KernelGraph {
 
 
 		Param* getInputParam(
-				cstring name,
-				KernelDef delegate(cstring) kernelLookup = null
+				cstring name
 		) {
 			switch (_type) {
 				case NodeType.Output:	return _inputOutputData.params.get(name);
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return null;
 				default: {
-					final p = getParamList(kernelLookup).get(name);
+					final p = getParamList().get(name);
 					if (false == p.isInput) {
 						error(
 							"Trying to access a function's output parameter '{}'"
@@ -180,7 +178,7 @@ class KernelGraph {
 		}
 
 
-		ParamList* getParamList(KernelDef delegate(cstring) kernelLookup = null) {
+		ParamList* getParamList() {
 			switch (_type) {
 				case NodeType.Output:	// fall through
 				case NodeType.Input:	// fall through
@@ -188,25 +186,17 @@ class KernelGraph {
 				case NodeType.Func:		return &_func.params;
 				
 				case NodeType.Kernel: {
-					if (kernelLookup !is null) {
-						auto k = kernelLookup(_kernel.name);
-						if (k is null) {
-							error("Unknown kernel: '{}'", _kernel.name);
-						}
-						if (k.func is null) {
-							error(
-								"WTF, Kernel '{}' doesn't have a function.",
-								_kernel.name
-							);
-						}
-						return &k.func.params;
+					auto k = _kernel.kernel;
+					if (k is null) {
+						error("Unknown kernel: '{}'", k.func.name);
 					}
-					
-					error(
-						"Trying to access a param list of a Kernel node."
-						" Kernel nodes must be converted to Func nodes first."
-					);
-					assert (false);
+					if (k.func is null) {
+						error(
+							"WTF, Kernel '{}' doesn't have a function.",
+							k.func.name
+						);
+					}
+					return &k.func.params;
 				}
 				
 				default: assert (false);
@@ -256,6 +246,15 @@ class KernelGraph {
 			node._param._allocator = &_mem.pushBack;
 		}
 		
+		return id;
+	}
+
+
+	GraphNodeId addFuncNode(Function func) {
+		final id = addNode(NodeType.Func);
+		final node = getNode(id).func();
+		node.func = func;
+		node.params = func.params.dup(&_mem.pushBack);
 		return id;
 	}
 

@@ -4,6 +4,8 @@ private {
 	import xf.Common;
 	import xf.nucleus.Param;
 	import xf.nucleus.Value;
+	import xf.nucleus.Function;
+	import xf.nucleus.KernelImpl;
 	import xf.nucleus.graph.Graph;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.GraphDef;
@@ -36,11 +38,18 @@ void buildKernelGraph(
 		alias KernelGraph.NodeType NT;
 
 		void createKernelData(NT type, GraphNodeId n) {
-			cstring kname = (cast(IdentifierValue)nodeDef.vars["kernel"]).value;
-
-			final nodeData = kg.getNode(n).kernel();
-			
-			nodeData.name = kg.allocString(kname);
+			// TODO ^ subgraphs
+			assert (KernelImpl.Type.Kernel == nodeDef.kernelImpl.type);
+			if (NT.Kernel == type) {
+				final nodeData = kg.getNode(n).kernel();
+				final kernel = nodeDef.kernelImpl.kernel;
+				nodeData.kernel = kernel;
+			} else if (NT.Func == type) {
+				final nodeData = kg.getNode(n).func();
+				final kernel = nodeDef.kernelImpl.kernel;
+				nodeData.func = cast(Function)kernel.func;
+				nodeData.params = kernel.func.params.dup(&kg._mem.pushBack);
+			}
 		}
 
 		void createParamData(NT type, GraphNodeId n) {
@@ -55,7 +64,17 @@ void buildKernelGraph(
 				case "input":	type = NT.Input; break;
 				case "output":	type = NT.Output; break;
 				case "data":	type = NT.Data; break;
-				case "kernel":	type = NT.Kernel; createData = &createKernelData; break;
+				case "kernel": {
+					createData = &createKernelData;
+
+					// TODO ^ subgraphs
+					assert (KernelImpl.Type.Kernel == nodeDef.kernelImpl.type);
+					if (nodeDef.kernelImpl.kernel.isConcrete) {
+						type = NT.Func;
+					} else {
+						type = NT.Kernel;
+					}
+				} break;
 				default: assert (false, nodeDef.type);
 			}
 		}

@@ -19,7 +19,6 @@ private {
 	import xf.nucleus.KernelParamInterface;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.kernel.KernelDef;
 	import tango.io.vfs.FileFolder;
 	import xf.mem.ChunkQueue;
@@ -167,39 +166,6 @@ cstring defaultStructureKernel(cstring structureTypeName) {
 }
 
 
-// ----
-
-void findBestKernelImpls(
-	int			delegate(int delegate(ref QuarkDef) dg)
-			quarks,
-			
-	KernelDef	delegate(cstring name)
-			getKernel
-) {
-	foreach (q; quarks) {
-		static assert (is(typeof(q) == QuarkDef));
-		
-		foreach (impl; q.implList) {
-			if (auto kernel = getKernel(impl.name)) {
-				if (impl.score > kernel.bestImplScore) {
-					kernel.bestImplScore = impl.score;
-					kernel.bestImpl = cast(Object)q;
-				}
-			}
-		}
-	}
-}
-
-
-void findBestKernelImpls(IKDefRegistry reg) {
-	return findBestKernelImpls(
-		&reg.quarks,
-		&reg.getKernel
-	);
-}
-
-
-// ----
 
 import xf.mem.MainHeap;
 T mallocObject(T)() {
@@ -230,8 +196,6 @@ class TestApp : GfxApp {
 		kdefRegistry.registerFolder(".", allocator);
 		kdefRegistry.doSemantics(allocator);
 		kdefRegistry.dumpInfo();
-
-		findBestKernelImpls(kdefRegistry);
 
 		// ----
 

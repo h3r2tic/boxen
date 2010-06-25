@@ -7,7 +7,6 @@ private {{
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefParserBase;
 	import xf.nucleus.kernel.KernelDef;
-	import xf.nucleus.kernel.KernelImplDef;
 	
 	alias char[] string;
 }";
