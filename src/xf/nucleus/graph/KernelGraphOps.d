@@ -22,12 +22,25 @@ private {
 
 
 
+/**
+ * Whether to insert converters between regular graph nodes and an Output.
+ * It's useful not to perform the conversion when fusing graphs together, so
+ * that a conversion forth and back may be avoided without an opitimization step.
+ * In such a case, Skip would be selected.
+ *
+ * Conversely, the data must be fully converted for nodes that escape the graph,
+ * that is, Output (or Rasterize) nodes. In this case, go with Perform
+ */
 enum OutputNodeConversion {
 	Perform,
 	Skip
 }
 
 
+/**
+ * Finds the output parameter which is connected to a given /input/
+ * parameter in the graph. Essentially - the source of data flow
+ */
 bool findSrcParam(
 	KernelGraph kg,
 	GraphNodeId dstNid,
@@ -49,6 +62,15 @@ bool findSrcParam(
 }
 
 
+/**
+ * Acquires an output parameter from the node if it's a regular one,
+ * or tracks it in the graph and returns the connected one if it's an
+ * Output node.
+ *
+ * Use it to obtain an output param of a node to which you may want to
+ * connect something. Or basically to get the 'real' output when
+ * Output nodes are involved
+ */
 bool getOutputParamIndirect(
 	KernelGraph kg,
 	GraphNodeId dstNid,
@@ -71,6 +93,23 @@ bool getOutputParamIndirect(
 }
 
 
+/**
+ * Connect two disjoint subgraphs by the means of an explicitly marked input node
+ * 
+ * Auto flow is performed as if the two graphs were auto-connected in separation,
+ * yet some conversions are potentially avoided.
+ *
+ * This operation removes the input node if it's of the Input type or leaves it be
+ * if it's a different node. This makes it possible e.g. to connect a complete graph
+ * with designated Input and Output nodes to an existing graph, or just tack a single
+ * note into one.
+ *
+ * The _findSrcParam callback will have to provide the parameters on the input side
+ * of the Output node in the existing (connected, converted) graph.
+ * 
+ * Note: currently the callback is queried via the names of the /Input/ node
+ * in the destination graph
+ */
 void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	input,
@@ -101,6 +140,7 @@ void fuseGraph(
 }
 
 
+/// ditto
 void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	input,
@@ -143,6 +183,14 @@ void fuseGraph(
 	// input node to the inputs of the output node from the first graph
 	foreach (id; dstGraphTopological) {
 		if (inputNodeIsFunc && input == id) {
+			/*
+			 * This is a special case for when the destination graph's /input/
+			 * node it not of the Input type but e.g. a Func node. If this wasn't
+			 * the case, we'd be connecting the Input node's /successors/ to the
+			 * source graph in a more involved operation. This case is simpler
+			 * and only involves connecting the input node directly to what's
+			 * in the source graph.
+			 */
 			doAutoFlow(
 				graph,
 				id,
@@ -171,17 +219,19 @@ void fuseGraph(
 
 					assert (!fromParam.isInput);
 
-					/* Finally, the original port from graph1
-					 * is added to the list of all connections
-					 * to consider for the auto flow resolving
-					 * process for the particular param we're
-					 * evaluating a few scopes higher :P
+					/*
+					 * Add the param returned by the user to the list of nodes
+					 * for which we're considering auto conversion. This will
+					 * usually be just one node that the user supplies, however
+					 * it could happen that there's e.g. a Data node connected
+					 * to the input on the destination side, so we cover that
+					 * case by using AutoFlow instead of a direct connection
 					 */
-
 					incomingSink(NodeParam(fromNode, fromParam));
 				}
 			);
 
+			// Convert SemanticExp to Semantic, nuff said
 			simplifyParamSemantics(graph, id);
 
 		} else if (input == id) {
@@ -236,7 +286,10 @@ void fuseGraph(
 						if (graph.flow.hasAutoFlow(fromId, id)) {
 
 							/* Now, if this node has automatic flow from the
-							 * Input node, we will want to override it.
+							 * Input node, we will want to override it. Only in case
+							 * that the input node is of the Input type. The other
+							 * case is done for in the first clause of the top-most
+							 * conditional in this function.
 							 */
 							if (!inputNodeIsFunc && input == fromId) {
 								/* First, we figure out to which port auto
@@ -323,6 +376,7 @@ void fuseGraph(
 				}
 			);
 
+			// Convert SemanticExp to Semantic, nuff said
 			simplifyParamSemantics(graph, id);
 
 			foreach (con; graph.flow.iterOutgoingConnections(id)) {
@@ -340,6 +394,7 @@ void fuseGraph(
 		}
 	}
 
+	// The Input node is useless now, but don't remove any other node types
 	if (KernelGraph.NodeType.Input == graph.getNode(input).type) {
 		graph.removeNode(input);
 	}
@@ -440,6 +495,7 @@ void fuseGraph(
 		outNodeConversion
 	);
 
+	// The Output node is useless now, but don't remove any other node types
 	if (!outputNodeIsFunc) {
 		graph.removeNode(output);
 	}
