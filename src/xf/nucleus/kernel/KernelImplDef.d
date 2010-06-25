@@ -1,6 +1,6 @@
 module xf.nucleus.kernel.KernelImplDef;
 
-private {
+/+private {
 	import xf.Common;
 }
 
@@ -10,3 +10,4 @@ struct KernelImplDef {
 	cstring	name;
 	word	score;
 }
++/

@@ -27,6 +27,25 @@ string[] dupStringArray(string[] arr) {
 }
 
 
+struct KernelImpl {
+	enum Type {
+		Kernel,
+		Graph
+	}
+
+	union {
+		GraphDef	graph;
+		KernelDef	kernel;
+	}
+	
+	Type type;
+}
+
+void ass() {
+	assert (false, "TODODODODODO");
+}
+
+
 abstract class Scope {
 	Statement[]	statements;
 
@@ -94,13 +113,13 @@ class TraitDef {
 
 class KDefModule : Scope {
 	string	filePath;
-	bool		processing;
+	bool	processing;
 	
 	// after semantic analysis:
-	ImplementStatement[]	kernelImpls;
-	KernelDef[]				kernels;
+	KernelImpl[string]		kernels;
+
 	TraitDef[]				traitDefs;
-	GraphDef[]				graphDefs;
+
 	SemanticConverter[]		converters;
 	
 	
@@ -110,38 +129,20 @@ class KDefModule : Scope {
 }
 
 
-abstract class KernelImplementation : Value {
-	void doSemantics(void delegate(Scope) dg) {
-		// nothing
-	}
-}
-
-
-class QuarkDefValue : KernelImplementation {
-	/+Code[]		code;
-	Function[]	functions;
+class QuarkDefValue : Value {
+	string		superKernel;
+	ParamDef[]	params;
+	Code		code;
 	
-	this (Code[] code, Function[] functions) {
+	this (string superKernel, ParamDef[] params, Code code, string[] tags) {
+		this.superKernel = superKernel;
+		this.params = params;
 		this.code = code;
-		this.functions = functions;
-	}+/
-	
-	
-	QuarkDef	quarkDef;
-	
-	
-	this (char[] name, Code[] code, Function[] functions) {
-		quarkDef = new QuarkDef;
-		quarkDef.name = name.dup;
-		quarkDef.code = code;
-		quarkDef.functions = functions;
 	}
 }
 
 
 class GraphDef : Scope {
-	string label;
-	
 	this (Statement[] statements) {
 		this.statements = statements;
 	}
@@ -152,7 +153,6 @@ class GraphDef : Scope {
 		
 		if (auto nodeValue = cast(GraphDefNodeValue)value) {
 			nodes[name] = nodeValue.node;
-			nodeValue.node.label = name;
 			
 			if (name in graphs) {
 				graphs.remove(name);
@@ -169,13 +169,12 @@ class GraphDef : Scope {
 
 	
 	// after semantic analysis:
-	
-	KernelImplDef[]			implList;
+
+	string					name;
 	GraphDefNode[string]	nodes;
 	GraphDef[string]		graphs;
 	NodeConnection[]		nodeConnections;
 	NodeFieldConnection[]	nodeFieldConnections;
-	PreprocessCmd[]			preprocessCmds;
 	
 	struct NodeConnection {
 		GraphDefNode from, to;
@@ -186,12 +185,6 @@ class GraphDef : Scope {
 		string from, to;
 	}
 	
-	struct PreprocessCmd {
-		string	processor;
-		string	processorFunction;
-	}
-
-
 	override void importStatement(Statement st) {
 		// TODO
 	}
@@ -234,9 +227,6 @@ class GraphDef : Scope {
 
 
 class GraphDefNode : Scope {
-	string label;
-	
-	
 	this (VarDef[] vars_) {
 		foreach (var; vars_) {
 			this.vars[var.name] = var.value;
@@ -260,19 +250,15 @@ interface IScopeValue {
 }
 
 
-class GraphDefValue : KernelImplementation, IScopeValue {
+class GraphDefValue : Value, IScopeValue {
 	GraphDef	graphDef;
-
-
-	override void doSemantics(void delegate(Scope) dg) {
-		dg(graphDef);
-	}
-
 	
-	this (GraphDef graphDef, string label) {
+
+	this (string superKernel, Statement[] stmts, string[] tags) {
+		ass;
 //		Stdout.formatln("GraphDefValue('{}')", label);
-		this.graphDef = graphDef;
-		this.graphDef.label = label is null ? null : label.dup;
+		/+this.graphDef = graphDef;
+		this.graphDef.label = label is null ? null : label.dup;+/
 	}
 	
 	
@@ -286,8 +272,9 @@ class GraphDefValue : KernelImplementation, IScopeValue {
 class GraphDefNodeValue : Value, IScopeValue {
 	GraphDefNode	node;
 	
-	this (GraphDefNode node) {
-		this.node = node;
+	this (VarDef[] vars) {
+		ass;
+		//this.node = node;
 	}
 	
 	
@@ -302,8 +289,10 @@ class GraphDefNodeValue : Value, IScopeValue {
 class KernelDefValue : Value {
 	KernelDef kernelDef;
 	
-	this (string domain, KernelDef kernelDef, string[] bases) {
-		this.kernelDef = kernelDef;
+	this (string superKernel, ParamDef[] params, string[] tags) {
+		ass;
+
+		/+this.kernelDef = kernelDef;
 		
 		switch (domain) {
 			case "cpu": {
@@ -323,7 +312,7 @@ class KernelDefValue : Value {
 			}
 		}
 		
-		kernelDef.overrideInheritList(bases.dupStringArray());
+		kernelDef.overrideInheritList(bases.dupStringArray());+/
 	}
 }
 
@@ -349,17 +338,6 @@ class ParamListValue : Value {
 
 
 abstract class Statement {
-}
-
-
-class ImplementStatement : Statement {
-	KernelImplDef[] impls;
-	KernelImplementation impl;
-	
-	this (KernelImplDef[] impls, KernelImplementation impl) {
-		this.impls = impls;
-		this.impl = impl;
-	}
 }
 
 
@@ -399,17 +377,6 @@ class ImportStatement : Statement {
 class ConverterDeclStatement : Statement {
 	Function	func;
 	int			cost;
-}
-
-
-class PreprocessStatement : Statement {
-	string processor;
-	string processorFunction;
-	
-	this (string processor, string processorFunction) {
-		this.processor = processor;
-		this.processorFunction = processorFunction;
-	}
 }
 
 

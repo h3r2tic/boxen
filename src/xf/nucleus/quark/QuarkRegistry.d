@@ -1,6 +1,6 @@
 module xf.nucleus.quark.QuarkRegistry;
 
-private {
+/+private {
 	import xf.nucleus.quark.QuarkDef;
 	import tango.io.Stdout;
 }
@@ -41,3 +41,4 @@ abstract class QuarkRegistry {
 		QuarkDef[]	_quarks;
 	}+/
 }
++/

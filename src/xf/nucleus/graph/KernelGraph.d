@@ -63,8 +63,7 @@ class KernelGraph {
 
 
 	struct KernelNode {
-		_cstring kernelName;
-		_cstring funcName;
+		_cstring name;
 	}
 
 
@@ -190,19 +189,17 @@ class KernelGraph {
 				
 				case NodeType.Kernel: {
 					if (kernelLookup !is null) {
-						auto k = kernelLookup(_kernel.kernelName);
+						auto k = kernelLookup(_kernel.name);
 						if (k is null) {
-							error("Unknown kernel: '{}'", _kernel.kernelName);
+							error("Unknown kernel: '{}'", _kernel.name);
 						}
-						auto f = k.getFunction(_kernel.funcName);
-						if (f is null) {
+						if (k.func is null) {
 							error(
-								"Unknown function: '{}' in kernel: '{}'",
-								_kernel.funcName,
-								_kernel.kernelName
+								"WTF, Kernel '{}' doesn't have a function.",
+								_kernel.name
 							);
 						}
-						return &f.params;
+						return &k.func.params;
 					}
 					
 					error(

@@ -52,16 +52,7 @@ class KDefParserBase : Parser!(KDefToken){
 		}
 		
 
-		KernelImplDef parseKernelImpl(string name, double score) {
-			double frac = tango.stdc.math.fmod(score, 1.0);
-			if (frac != 0) {
-				semanticError("Kernel implementation score must be integral. Got: {}", score);
-			}			
-			return KernelImplDef(name.dup, cast(int)score);
-		}
-		
-		
-		KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs) {
+		/+KernelDef parseKernelDef(AbstractFunction[] funcs, string[] before, string[] after, ParamDef[] attribs) {
 			auto kd = new KernelDef;
 			kd.functions = funcs;
 			return kd;
@@ -69,7 +60,7 @@ class KDefParserBase : Parser!(KDefToken){
 			//kd.attribs = attribs;
 			//kd.overrideOrdering(before.dupStringArray(), after.dupStringArray());
 			//return kd;
-		}
+		}+/
 		
 		
 		VarDef parseVarDef(string name, Value value) {

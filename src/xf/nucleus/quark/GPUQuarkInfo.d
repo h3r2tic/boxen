@@ -1,6 +1,6 @@
 module xf.nucleus.quark.GPUQuarkInfo;
 
-private {
+/+private {
 	import xf.dog.Cg;
 	import tango.stdc.stringz;
 	import tango.io.Stdout;
@@ -35,3 +35,4 @@ void doStuff(char[] source) {
 		program = cgGetNextProgram(program);
 	}
 }
++/

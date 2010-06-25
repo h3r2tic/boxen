@@ -1,196 +1,151 @@
-implement Transparent(50), Lul(10)
-quark TransparentLul {
-	D {
-		void somefunc() {
-			++i;
-			--j;
-			case poop:
-				break;
-		}
-	}
-	
-	quark<stuff> zomg(in int foo, out char[] bar, out vec3 baz)
-	D {
-		int x;
-		++x;
-		throw new Exception("lololol");
-		`omg heh`
-	}
-}
+Structure = kernel(
+	out outPosition <type vec3 + basis model + use position>,
+	out outNormal <type vec3 + basis model + use normal>
+);
+
+Light = kernel(
+	in position <type vec3 + use position + basis world>,
+	out intensity <type vec4 + use color>,
+	out toLight <type vec3 + basis world + use toLight>
+);
+
+Illumination = kernel(
+	in normal <type vec3 + use normal + basis world>,
+	in intensity <type vec4 + use color>,
+	in toLight <type vec3 + basis world + use toLight>,
+	out diffuse <type vec4 + use diffuse>,
+	out specular <type vec4 + use specular>
+);
+
+Pigment = kernel(
+	in position <type vec3 + basis model + use position>,
+	in normal <type vec3 + basis model + use normal>,
+	in diffuse <type vec4 + use diffuse>,
+	in specular <type vec4 + use specular>,
+	out radiance <type vec4 + use color>
+);
+
+Rasterize = kernel(
+	in inPos <type vec4 + use position + basis clip>
+);
 
 
-implement Poop(10)
-quark ConcretePoop {
-	Cg {
-		...
-	}
-}
+// ----
 
 
-BasicExtrudedParticleSystem = kernel Something, SomethingElse {
-	after Poop;
-	before Omg;
-	
-	quark zomg(
-		in int foo <
-			heh "lol"
-		+	blah 123
-		+	maxValue 10
-		>,
-		out char[] bar <
-			meh 1.23
-		+	blah 1 2 3
-		> = 123.456,
-		out vec3 baz
-	);
-};
-
-
-Poop = kernel {
-	attribs = (
-		kernel heh <super blah>,
-		kernel zomg <super lol>
-	);
-};
-
-
-Omg = kernel {
-};
-
-
-Something = kernel {
-};
-
-
-SomethingElse = kernel {
-};
-
-
-converter(20) normalizer(in vec3 a, out vec3 b <unit true>)
-D {
-	b = a.normalized;
-}
-
-
-converter<linear>(10) (
-	in vec3 a <basis object>,
-	out vec3 b <basis world>
-) Cg {
-	b = mul(context.someMat, a);
-}
-
-
-implement BasicExtrudedParticleSystem(100)
-graph {
-	/+import "foo/bar.baz" : SomeGraph.Blah;
-	//import "zomg" : *;
-	import "zomg" : poop.*;+/
-
-	SomeNode = graph {
-		foo = node {
-			type = "lol";
-		};
-	};
-
-	SomeNode.foo.zomg = 3.14159;
-
-	dupa = node {
-		type = "kernel";
-		kernelName = "BasicExtrudedParticleSystemGPUWrap";
-		funcName = "main";
-		center = 579.50 520.50;
-		size = 343.00 72.00;
-		primLevel = "cpu";
+DefaultMeshStructure = graph Structure {
+	node_0 = node {
+		type = "input";
 		params = (
-			int foobar = 0,
-			float4x4 blah,
-			float3 omg <unit true>
+			position <type vec3 + basis model + use position>,
+			normal <type vec3 + basis model + use normal>
 		);
 	};
-	
-	jasia = node {
+	node_1 = node {
 		type = "kernel";
-		kernelName = "BasicExtrudedParticleSystemGPUWrap";
-		funcName = "main";
+		kernel = Rasterize;
+	};
+	node_2 = node {
+		type = "output";
 	};
 
-	connect dupa.a jasia.b;
+	connect node_0 node_1;
+	connect node_0 node_2;
+};
+
+
+// ----
+
+
+use = trait {
+	color,
+	position,
+	normal
+};
+
+unit = trait {
+	true,
+	false
+} = false;
+
+basis = trait {
+	model,
+	world,
+	view,
+	clip
+};
+
+
+// ----
+
+
+Add = quark(in a, in b,	out c <in.a.actual>) {
+	c = a + b;
+};
+
+
+// ----
+
+
+TestLight = quark Light {
+	vec3 lightPos = vec3(1, 2, 2);
+	toLight = lightPos - position;
+	intensity = float4(1.0f, 1.0f, 1.0f, 1.0f) / dot(toLight, toLight).xxxx;
+	toLight = normalize(toLight);
+};
+
+BlinnPhong = quark Illumination {
+	float NdotL = dot(normal, toLight).x;
+	diffuse = intensity * saturate(NdotL);
+	specular = 0;
+};
+
+
+TestPigment = quark Pigment {
+	radiance = diffuse + specular;
+};
+
+
+// ----
+
+
+converter(20) normalizer(in a <type vec3>, out b <type vec3 + unit true>) {
+	b = normalize(a);
+}
+
+converter(20) normal2color(
+	in a <type vec3 + use normal>,
+	out b <type vec4 + use color>
+) {
+	b = float4((a + 1.0f) * 0.5f, 1.0f);
 }
 
 
-zomg = trait {
-	Foo,
-	Bar,
-	Baz
-};
-
-blehlol = trait {
-	One,
-	Two,
-	Three
-} = One;
-
-
-implement RenderViewport(100)
-graph default {
-node_0 = node {
-	type = "kernel";
-	kernelName = "ClearBuffer";
-	funcName = "main";
-	center = 251.00 266.00;
-	size = 130.00 78.00;
-	primLevel = "cpu";
-};
-node_1 = node {
-	type = "input";
-	params = (
-		out vec3 pos<>,
-		out quat rot<>
-	);
-	center = 133.00 116.00;
-	size = 105.00 80.00;
-	primLevel = "cpu";
-};
-node_2 = node {
-	type = "kernel";
-	kernelName = "DeferredDrawScene";
-	funcName = "main";
-	center = 512.50 159.00;
-	size = 173.00 102.00;
-	primLevel = "cpu";
-};
-node_3 = node {
-	type = "kernel";
-	kernelName = "Bloom";
-	funcName = "main";
-	center = 1099.00 366.00;
-	size = 105.00 78.00;
-	primLevel = "cpu";
-};
-node_4 = node {
-	type = "kernel";
-	kernelName = "GetBuffer";
-	funcName = "main";
-	center = 15.00 268.00;
-	size = 121.00 78.00;
-	primLevel = "cpu";
-};
-node_5 = node {
-	type = "kernel";
-	kernelName = "DisplayBuffer";
-	funcName = "main";
-	center = 1335.00 266.00;
-	size = 141.00 78.00;
-	primLevel = "cpu";
-};
-connect node_0 node_2;
-
-connect node_1 node_2;
-
-connect node_2.outfb node_3.infb;
-
-connect node_3.outfb node_5.infb;
-
-connect node_4 node_0;
-
+converter(20) model2world_p(
+	in a <type vec3 + basis model + use position>,
+	out b <in.a.actual + basis world>
+) {
+	b = mul(modelToWorld, float4(a, 1)).xyz;
 }
+
+converter(20) model2world_n(
+	in a <type vec3 + basis model + use normal>,
+	out b <in.a.actual + basis world>
+) {
+	b = mul(modelToWorld, float4(a, 0)).xyz;
+}
+
+converter(20) world2view(
+	in a <type vec3 + basis world + use position>,
+	out b <in.a.actual + basis view>
+) {
+	b = mul(worldToView, float4(a, 1.0));
+}
+
+converter(20) view2clip(
+	in a <type vec3 + basis view + use position>,
+	out b <in.a.actual + basis clip + type vec4>
+) {
+	b = mul(viewToClip, float4(a, 1.0));
+}
+

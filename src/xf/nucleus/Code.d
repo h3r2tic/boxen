@@ -98,12 +98,12 @@ struct KDefToken {
 
 class Code {
 	KDefToken[]	tokens;
-	cstring		language;
+	//cstring		language;
 	
 	
-	this (cstring language, KDefToken[] tokens) {
+	this (/+cstring language, +/KDefToken[] tokens) {
 		this.tokens = tokens;
-		this.language = language;
+		//this.language = language;
 	}
 
 
