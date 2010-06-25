@@ -8,10 +8,12 @@ private {
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
 	import xf.nucleus.TypeConversion;
+	import xf.nucleus.KernelImpl;
 	
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.kernel.KernelImplDef;
 	import xf.nucleus.quark.QuarkDef;
+	import xf.nucleus.graph.GraphDef;
 
 	import TextUtil = tango.text.Util;
 	alias char[] string;
@@ -26,56 +28,6 @@ string[] dupStringArray(string[] arr) {
 		res[i] = s.dup;
 	}
 	return res;
-}
-
-
-struct KernelImpl {
-	enum Type {
-		Kernel,
-		Graph
-	}
-
-	union {
-		GraphDef	graph;
-		KernelDef	kernel;
-	}
-	
-	Type type;
-
-
-	static KernelImpl opCall(GraphDef g) {
-		KernelImpl res = void;
-		res.graph = g;
-		res.type = Type.Graph;
-		return res;
-	}
-
-	static KernelImpl opCall(KernelDef k) {
-		KernelImpl res = void;
-		res.kernel = k;
-		res.type = Type.Kernel;
-		return res;
-	}
-
-
-	bool valid() {
-		return graph !is null;
-	}
-
-
-	char[] name() {
-		switch (type) {
-			case KernelImpl.Type.Graph: {
-				return graph.name;
-			}
-			
-			case KernelImpl.Type.Kernel: {
-				return kernel.func.name;
-			}
-			
-			default: assert (false);
-		}
-	}
 }
 
 
@@ -163,12 +115,18 @@ class KDefModule : Scope {
 }
 
 
-class GraphDef : Scope {
+class GraphDef : Scope, IGraphDef {
 	string		superKernel;
 	string[]	tags;
 	
 	this (Statement[] statements) {
 		this.statements = statements;
+	}
+
+	static GraphDef opCall(IGraphDef i) {
+		final res = cast(GraphDef)i;
+		assert (res !is null);
+		return res;
 	}
 	
 
@@ -194,7 +152,7 @@ class GraphDef : Scope {
 	
 	// after semantic analysis:
 
-	string					name;
+	string					_name;
 	GraphDefNode[string]	nodes;
 	GraphDef[string]		graphs;
 	NodeConnection[]		nodeConnections;
@@ -211,6 +169,12 @@ class GraphDef : Scope {
 	
 	override void importStatement(Statement st) {
 		// TODO
+	}
+
+
+	// For the silly interface
+	char[] name() {
+		return _name;
 	}
 	
 	

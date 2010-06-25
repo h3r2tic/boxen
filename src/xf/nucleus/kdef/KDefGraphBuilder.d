@@ -6,6 +6,7 @@ private {
 	import xf.nucleus.Value;
 	import xf.nucleus.graph.Graph;
 	import xf.nucleus.graph.KernelGraph;
+	import xf.nucleus.graph.GraphDef;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.Log : log = nucleusLog;
 	import xf.mem.StackBuffer;
@@ -14,7 +15,7 @@ private {
 
 
 void buildKernelGraph(
-		GraphDef def,
+		IGraphDef def_,
 		KernelGraph kg,
 		GraphNodeId delegate(
 			uword			i,
@@ -23,6 +24,8 @@ void buildKernelGraph(
 			GraphNodeId delegate() defaultBuilder
 		) nodeBuilder = null
 ) {
+	GraphDef def = GraphDef(def_);
+	
 	scope stack = new StackBuffer;
 	final nodeIds = stack.allocArray!(GraphNodeId)(def.nodes.length);
 	final nodeDefs = stack.allocArray!(GraphDefNode)(def.nodes.length);

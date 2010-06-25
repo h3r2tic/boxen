@@ -14,6 +14,7 @@ private {
 	import xf.nucleus.Function;
 	import xf.nucleus.Param;
 	import xf.nucleus.Value;
+	import xf.nucleus.KernelImpl;
 	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
 	//import xf.nucleus.CommonDef;
 
@@ -243,7 +244,7 @@ class KDefProcessor {
 				} break;
 
 				case KernelImpl.Type.Graph: {
-					foreach (nodeName, node; impl.graph.nodes) {
+					foreach (nodeName, node; GraphDef(impl.graph).nodes) {
 						if ((wantInputs ? "input" : "output") == node.type) {
 							foreach (ref p; node.params) {
 								sink(&p);
@@ -274,7 +275,7 @@ class KDefProcessor {
 		}
 
 
-		void doKernelSemantics(ref GraphDef graph, Allocator allocator, ref Processed[KernelImpl] processed) {
+		void doKernelSemantics(GraphDef graph, Allocator allocator, ref Processed[KernelImpl] processed) {
 			KernelImpl superKernel;
 			
 			if (graph.superKernel.length > 0) {
@@ -355,7 +356,7 @@ class KDefProcessor {
 				} break;
 
 				case KernelImpl.Type.Graph: {
-					doKernelSemantics(k.graph, allocator, processed);
+					doKernelSemantics(GraphDef(k.graph), allocator, processed);
 				} break;
 
 				default: assert (false);
@@ -423,7 +424,7 @@ class KDefProcessor {
 		void dumpInfo(KernelImpl kimpl) {
 			switch (kimpl.type) {
 				case KernelImpl.Type.Graph:
-					return dumpInfo(kimpl.graph);
+					return dumpInfo(GraphDef(kimpl.graph));
 				case KernelImpl.Type.Kernel:
 					return dumpInfo(kimpl.kernel);
 				default: assert (false);
@@ -496,7 +497,7 @@ class KDefProcessor {
 					}
 
 					if (auto graphValue = cast(GraphDefValue)stmt.value) {
-						graphValue.graphDef.name = stmt.name;
+						GraphDef(graphValue.graphDef)._name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {
 							mod.kernels[stmt.name] = KernelImpl(graphValue.graphDef);
 						}
