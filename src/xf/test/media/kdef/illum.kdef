@@ -1,0 +1,14 @@
+BlinnPhong = quark Illumination {
+	float NdotL = dot(normal, toLight).x;
+	float3 toEye = normalize(eyePosition - position);
+	float3 H = normalize(toEye + toLight);
+	diffuse = intensity * saturate(NdotL);
+	specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
+};
+
+
+Lambert = quark Illumination {
+	float NdotL = dot(normal, toLight).x;
+	diffuse = intensity * saturate(NdotL);
+	specular = 0;
+};

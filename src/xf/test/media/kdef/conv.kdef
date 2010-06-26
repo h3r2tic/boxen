@@ -1,0 +1,47 @@
+converter(20) normalizer(in a <type vec3>, out b <in.a.actual + unit true>) {
+	b = normalize(a);
+}
+
+converter(20) normal2color(
+	in a <type vec3 + use normal>,
+	out b <type vec4 + use color>
+) {
+	b = float4((a + 1.0f) * 0.5f, 1.0f);
+}
+
+
+converter(20) model2world_p(
+	in a <type vec3 + basis model + use position>,
+	out b <in.a.actual + basis world>
+) {
+	b = mul(modelToWorld, float4(a, 1)).xyz;
+}
+
+converter(20) model2world_n(
+	in a <type vec3 + basis model + use normal>,
+	out b <in.a.actual + basis world>
+) {
+	b = mul(modelToWorld, float4(a, 0)).xyz;
+}
+
+converter(20) world2view(
+	in a <type vec3 + basis world + use position>,
+	out b <in.a.actual + type vec3 + basis view>
+) {
+	b = mul(worldToView, float4(a, 1.0)).xyz;
+}
+
+converter(20) view2clip(
+	in a <type vec3 + basis view + use position>,
+	out b <in.a.actual + type vec4 + basis clip + type vec4>
+) {
+	b = mul(viewToClip, float4(a, 1.0));
+}
+/+
+converter(20) computeToEye(
+	in position <type vec3 + basis world + use position>,
+	out toEye <type vec3 + basis world + use toEye>
+) {
+	toEye = .eyePosition - position;
+}
++/
