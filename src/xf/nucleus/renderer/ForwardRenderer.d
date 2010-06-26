@@ -490,6 +490,9 @@ class ForwardRenderer : Renderer {
 					float4x4 viewToClip <
 						string scope = "effect";
 					>;
+					float3 eyePosition <
+						string scope = "effect";
+					>;
 					`
 				);
 			}
@@ -535,6 +538,7 @@ class ForwardRenderer : Renderer {
 				if (uniforms) {
 					setUniform("worldToView", &worldToView);
 					setUniform("viewToClip", &viewToClip);
+					setUniform("eyePosition", &eyePosition);
 				}
 
 				// ----
@@ -636,6 +640,7 @@ class ForwardRenderer : Renderer {
 	override void render(ViewSettings vs, RenderList* rlist) {
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.worldToView = vs.computeViewMatrix();
+		this.eyePosition = vec3.from(vs.eyeCS.origin);
 
 		final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileEffectsForRenderables(rids);
@@ -668,5 +673,6 @@ class ForwardRenderer : Renderer {
 
 		mat4	worldToView;
 		mat4	viewToClip;
+		vec3	eyePosition;
 	}
 }
