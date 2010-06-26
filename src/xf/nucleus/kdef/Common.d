@@ -227,8 +227,8 @@ class GraphDefNode : Scope {
 
 	char[] type() {
 		auto typeVar = vars["type"];
-		assert (cast(StringValue)typeVar);
-		return (cast(StringValue)typeVar).value;
+		assert (cast(IdentifierValue)typeVar);
+		return (cast(IdentifierValue)typeVar).value;
 	}
 
 	override void importStatement(Statement st) {

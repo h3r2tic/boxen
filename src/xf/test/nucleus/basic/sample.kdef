@@ -36,18 +36,18 @@ Rasterize = kernel(
 
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
-		type = "input";
+		type = input;
 		params = (
 			position <type vec3 + basis model + use position>,
 			normal <type vec3 + basis model + use normal>
 		);
 	};
 	node_1 = node {
-		type = "kernel";
+		type = kernel;
 		kernel = Rasterize;
 	};
 	node_2 = node {
-		type = "output";
+		type = output;
 	};
 
 	connect node_0 node_1;
@@ -92,17 +92,17 @@ Add = quark(in a, in b,	out c <in.a.actual>) {
 
 TestLight = graph Light {
 	n0 = node {
-		type = "input";
+		type = input;
 	};
 	n1 = node {
-		type = "data";
+		type = data;
 		params = (
 			lightPos <type vec3 + use lightPos>,
 			lumIntens <type vec4 + use lumIntens>
 		);
 	};
 	n2 = node {
-		type = "kernel";
+		type = kernel;
 		kernel = quark Light(
 			lightPos <type vec3 + use lightPos>,
 			lumIntens <type vec4 + use lumIntens>
@@ -114,7 +114,7 @@ TestLight = graph Light {
 		};
 	};
 	n3 = node {
-		type = "output";
+		type = output;
 	};
 
 	connect n0 n2;
