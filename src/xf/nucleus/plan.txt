@@ -57,14 +57,12 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- proper memory management
 	* later - the hack works for now and has more than originally intended anyway :P
 
-~	implement kernel graphs
++	implement kernel graphs
 	+ adding, removing, substituting nodes
 	+ node connections with manual and automatic data flow
 	+ topological sorting with peeling/layers
 	+ unreachable flow trimming
-	- pluggable simplification
-		* delayed until it's actually required
-		* time reduction due to a consuming outside real-world event
+	+ simplification
 
 +	semantic type system
 	+ Semantic class with good mem management
