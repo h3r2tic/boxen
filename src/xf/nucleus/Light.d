@@ -15,6 +15,7 @@ private {
 
 abstract class Light {
 	CoordSys	transform;
+	vec4		lumIntens = vec4.one;		// uh oh, luminous intensity
 
 	abstract cstring kernelName();
 	abstract void setKernelData(KernelParamInterface);

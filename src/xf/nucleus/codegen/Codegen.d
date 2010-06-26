@@ -407,6 +407,7 @@ void codegen(
 
 				sink("uniform ");
 				sink(param.type);
+				sink(" ");
 				
 				emitSourceParamName(
 					CodegenContext(

@@ -355,7 +355,16 @@ void fuseGraph(
 												intermediateParam
 											));
 										}
-									}
+									},
+
+									/*
+									 * This call to findAutoFlow doesn't need to find
+									 * sources for flow into all of the inputs, as
+									 * the outer doAutoFlow may decide to use other
+									 * nodes as well, say when using Data nodes
+									 * in addition to external input
+									 */
+									ErrorHandlingMode.Ignore
 								);
 							} else {
 								/* Data flow from a node different than the
@@ -673,6 +682,12 @@ private void _insertConversionNodes(
 }
 
 
+private enum ErrorHandlingMode {
+	Throw,
+	Ignore
+}
+
+
 private void findAutoFlow(
 	KernelGraph graph,
 	NodeParam[] fromParams,
@@ -683,7 +698,8 @@ private void findAutoFlow(
 			ConvSinkItem[] convChain,
 			GraphNodeId fromId,
 			Param* fromParam
-	) result
+	) result,
+	ErrorHandlingMode errorHandlingMode = ErrorHandlingMode.Throw
 ) {
 	scope stack = new StackBuffer;
 
@@ -774,7 +790,7 @@ private void findAutoFlow(
 				bestConvs.fromId, bestConvs.fromParam
 			);
 		}
-	} else {
+	} else if (ErrorHandlingMode.Throw == errorHandlingMode) {
 		// Conversion path not found
 
 		uword numConv = 0;

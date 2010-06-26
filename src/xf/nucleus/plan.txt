@@ -107,6 +107,14 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 +	streamline DSL and kernel/quark/graph semantics
 
+-	figure out a way of naming or renaming func params so that kernels may
+	be connected without issues
+		like input position -> structure output 'position'
+
+-	handling of Data nodes
+
+-	materials
+
 -	monitor quark files for changes, recompile shaders when needed
 
 +	light kernel instantiation (in the Forward renderer)
