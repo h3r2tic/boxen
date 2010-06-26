@@ -251,7 +251,10 @@ class TestApp : GfxApp {
 		iterAssetMeshes((int, ref LoaderMesh m) {
 			// This should be a part of the content pipeline
 
-			final compiledMesh = compileMeshAsset(m);
+			MeshAssetCompilationOptions opts;
+			//opts.scale = 0.02f;
+
+			final compiledMesh = compileMeshAsset(m, opts);
 			
 			final ms = mallocObject!(MeshStructure);
 			ms._ctor(compiledMesh, rendererBackend);
@@ -261,7 +264,7 @@ class TestApp : GfxApp {
 			renderables.structureData[rid] = ms;
 			renderables.pigmentKernel[rid] = "TestPigment";
 			renderables.pigmentData[rid] = null;	// TODO
-			renderables.illumKernel[rid] = "BlinnPhong";
+			renderables.illumKernel[rid] = "CookTorrance";
 			renderables.transform[rid] = CoordSys.identity;
 			renderables.localHalfSize[rid] = compiledMesh.halfSize;
 		});

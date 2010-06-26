@@ -1,8 +1,105 @@
+AshikhminShirley = quark Illumination {
+	float roughness = 0.3f;
+	float fresnelR0 = 0.1f;
+
+	float3 H	= normalize( toLight + toEye );
+ 
+	// Generate any useful aliases
+	float VdotN	= saturate(dot( toEye, normal ).x);
+	float LdotN	= saturate(dot( toLight, normal ).x);
+	float HdotN	= saturate(dot( H, normal ).x);
+	float HdotL	= saturate(dot( H, toLight ).x);
+ 
+	float specExp = 3.0f / roughness;	// from the Strauss model
+ 
+	// Compute the diffuse term
+	float Pd = 28.0f / 23.0f;
+	Pd *= (1.0f - pow(1.0f - (LdotN / 2.0f), 5.0f));
+	Pd *= (1.0f - pow(1.0f - (VdotN / 2.0f), 5.0f));
+	Pd *= (1.0f - fresnelR0);
+ 
+	float Ps_num = specExp + 1;
+	Ps_num *= pow(HdotN, specExp);
+ 
+	float Ps_den = 8.0f;// * HdotL;
+	const float k1n = LdotN;
+	const float k2n = VdotN;
+	// Ps_den *= max( k1n, k2n );	// regular A&S
+	Ps_den *= k1n + k2n - k1n*k2n;	// modified per Michael's d-BRDF paper
+	Ps_den += 0.001f;		// to avoid div by zero
+ 
+	float Ps = Ps_num / Ps_den;
+	Ps *= ( fresnelR0 + (1.0f - fresnelR0) * pow( 1.0f - HdotL, 5.0f ) ).x;
+	
+	Pd *= LdotN;
+	Ps *= LdotN;
+	
+	diffuse = intensity * Pd;
+	specular = intensity * Ps;
+};
+
+
+CookTorrance = quark Illumination {
+	float roughness = 0.3f;
+	float fresnelR0 = 0.1f;
+
+
+	// Compute any aliases and intermediary values
+	// -------------------------------------------
+	float3 H		= normalize( toLight + toEye );
+	float NdotL		= dot( normal, toLight );
+	float NdotH		= dot( normal, H );
+	float NdotHpos	= max(0.f, NdotH);
+	float NdotV		= dot( normal, toEye );
+	float VdotH		= dot( toEye, H );
+	float r_sq		= roughness * roughness;
+ 
+	// Evaluate the geometric term
+	// ---------------------------
+
+	float geoTerm; {
+		float geo_numerator = 2.0f * NdotH;
+	 
+		float geo_b	= geo_numerator * NdotV / VdotH;
+		float geo_c	= geo_numerator * NdotL / VdotH;
+		geoTerm		= saturate((min(geo_b, geo_c)));
+	} 
+ 
+	// Now evaluate the roughness term
+	// -------------------------------
+	
+	float roughnessTerm; {
+		float roughness_a = 1.0f / ( 4.0f * r_sq * pow( NdotHpos, 4 ) );
+		float roughness_b = NdotHpos * NdotHpos - 1.0f;
+		float roughness_c = r_sq * NdotHpos * NdotHpos;
+ 
+		roughnessTerm = roughness_a * exp( roughness_b / roughness_c );
+	}
+ 
+	// Next evaluate the Fresnel value
+	// -------------------------------
+	float fresnel = pow(1.0f - VdotH, 5.0f);
+	fresnel *= (1.0f - fresnelR0);
+	fresnel += fresnelR0;
+ 
+ 	// Put all the terms together to compute
+	// the specular term in the equation
+	// -------------------------------------
+	float Rs = ( fresnel * geoTerm * roughnessTerm ) / NdotV;
+
+	float lambert = max(0.0f, NdotL);
+	
+	specular = intensity * max(0.0f, Rs);
+	diffuse = intensity * lambert;
+};
+
+
 BlinnPhong = quark Illumination {
 	float NdotL = dot(normal, toLight).x;
 	float3 H = normalize(toEye + toLight);
-	diffuse = intensity * saturate(NdotL);
+	diffuse = 0.0f;//intensity * saturate(NdotL);
 	specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
+	specular = NdotL > 0 ? specular : float4(0, 0, 0, 0);
 };
 
 
