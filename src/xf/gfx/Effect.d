@@ -133,6 +133,23 @@ struct UniformParamGroup {
 
 
 template MUniformParamGroupInstance() {
+	void** getUniformPtrPtr(UniformParamIndex i) {
+		final up = getUniformParamGroup();
+
+		if (-1 != i) {
+			return getUniformPtrsDataPtr() + i;
+		} else {
+			return null;
+		}
+	}
+
+
+	void** getUniformPtrPtr(cstring name) {
+		final up = getUniformParamGroup();
+		return getUniformPtrPtr(up.getUniformIndex(name));
+	}
+	
+	
 	bool setUniform(T)(UniformParamIndex i, T value) {
 		final up = getUniformParamGroup();
 

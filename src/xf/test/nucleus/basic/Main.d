@@ -126,14 +126,9 @@ class TestLight : Light {
 		return "TestLight";
 	}
 	
-	override void setKernelData(KernelParamInterface) {
-		/+final param = kpi.getUniformParam(name);
-		if (param !is null) {
-			param.buffer = &vertexBuffer;
-			param.attrib = &attr;
-		} else {
-			gfxLog.warn("No param named '{}' in the kernel.", name);
-		}+/
+	override void setKernelData(KernelParamInterface kpi) {
+		kpi.bindUniform("lightPos", &position);
+		kpi.bindUniform("lumIntens", &lumIntens);
 	}
 	
 	override void determineInfluenced(
@@ -153,7 +148,7 @@ class TestLight : Light {
 		);
 	}
 
-	vec3	position = { x: 0, y: 0, z: 2 };
+	vec3	position = { x: 0, y: 1, z: 2 };
 }
 
 
@@ -179,7 +174,9 @@ class TestApp : GfxApp {
 	alias renderer rendererBackend;
 	Renderer nr;
 	VSDRoot vsd;
-	SimpleCamera camera;
+	SimpleCamera	camera;
+
+	TestLight[]		lights;
 
 	IKDefRegistry	kdefRegistry;
 	ScratchFIFO		mem;
@@ -239,16 +236,10 @@ class TestApp : GfxApp {
 		assert (1 == scene.nodes.length);
 		final root = scene.nodes[0];
 
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
-		createLight(new TestLight);
+		const numLights = 3;
+		for (int i = 0; i < numLights; ++i) {
+			createLight((lights ~= new TestLight)[$-1]);
+		}
 
 		void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
 			foreach (i, ref m; loader.meshes) {
@@ -276,6 +267,17 @@ class TestApp : GfxApp {
 
 
 	override void render() {
+		static float lightRot = 0.0f;
+		lightRot += 0.1f;
+		
+		lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, -2));
+		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 2));
+		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 1));
+
+		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0);
+		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0);
+		lights[2].lumIntens = vec4(0.3, 1.0, 0.6, 0);
+		
 		// move some objects
 
 		// The various arrays for VSD must be updated as they may have been

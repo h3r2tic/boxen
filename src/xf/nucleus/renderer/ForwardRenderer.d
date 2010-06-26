@@ -120,7 +120,7 @@ class ForwardRenderer : Renderer {
 	}
 
 
-	private Effect buildEffectForRenderable(RenderableId rid) {
+	private Effect buildEffectForRenderable(RenderableId rid, Light[] affectingLights) {
 		scope stack = new StackBuffer;
 
 		final structureKernel		= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
@@ -170,11 +170,6 @@ class ForwardRenderer : Renderer {
 				return false;
 			}
 		}
-
-		// --- Find the lights affecting this renderable
-		
-		// HACK
-		Light[] affectingLights = .lights;
 
 		if (affectingLights.length > 0) {
 			// ---- Build the graphs for lights and illumination
@@ -505,9 +500,14 @@ class ForwardRenderer : Renderer {
 	private void compileEffectsForRenderables(RenderableId[] rids) {
 		foreach (idx, rid; rids) {
 			if (!this._renderableValid.isSet(rid)) {
+				// --- Find the lights affecting this renderable
+				
+				// HACK
+				Light[] affectingLights = .lights;
+
 				// compile the kernels, create an EffectInstance
 				// TODO: cache Effects and only create new EffectInstances
-				final effect = buildEffectForRenderable(rid);
+				final effect = buildEffectForRenderable(rid, affectingLights);
 
 				// ----
 
@@ -515,14 +515,24 @@ class ForwardRenderer : Renderer {
 				allocateDefaultUniformStorage(effect);
 
 				void** uniforms = effect.getUniformPtrsDataPtr();
-				if (uniforms) {
-					void setUniform(cstring name, void* ptr) {
+
+				void** getUniformPtrPtr(cstring name) {
+					if (uniforms) {
 						final idx = effect.effectUniformParams.getUniformIndex(name);
 						if (idx != -1) {
-							uniforms[idx] = ptr;
+							return uniforms + idx;
 						}
 					}
+					return null;
+				}
+				
+				void setUniform(cstring name, void* ptr) {
+					if (auto upp = getUniformPtrPtr(name)) {
+						*upp = ptr;
+					}
+				}
 
+				if (uniforms) {
 					setUniform("worldToView", &worldToView);
 					setUniform("viewToClip", &viewToClip);
 				}
@@ -532,6 +542,43 @@ class ForwardRenderer : Renderer {
 				EffectInstance efInst = _backend.instantiateEffect(effect);
 				allocateDefaultUniformStorage(efInst);
 				allocateDefaultVaryingStorage(efInst);
+
+				void** instUniforms = efInst.getUniformPtrsDataPtr();
+
+				void** getInstUniformPtrPtr(cstring name) {
+					if (instUniforms) {
+						final idx = efInst.getUniformParamGroup.getUniformIndex(name);
+						if (idx != -1) {
+							return instUniforms + idx;
+						}
+					}
+					return null;
+				}
+
+
+				foreach (uint lightI, light; affectingLights) {
+					light.setKernelData(
+						KernelParamInterface(
+						
+							// getVaryingParam
+							null,
+
+							// getUniformParam
+							(cstring name) {
+								char[256] fqn;
+								sprintf(fqn.ptr, "light%u__%.*s", lightI, name);
+
+								if (auto p = getInstUniformPtrPtr(fromStringz(fqn.ptr))) {
+									return p;
+								} else {
+									return cast(void**)null;
+								}
+							},
+
+							// setIndexData
+							null
+					));
+				}
 
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
@@ -552,12 +599,24 @@ class ForwardRenderer : Renderer {
 							}
 						},
 
+						// getUniformParam
+						(cstring name) {
+							char[256] fqn;
+							sprintf(fqn.ptr, "structure__%.*s", name);
+
+							if (auto p = getInstUniformPtrPtr(fromStringz(fqn.ptr))) {
+								return p;
+							} else {
+								return cast(void**)null;
+							}
+						},
+
 						// setIndexData
 						(IndexData* id) {
 							log.info("_renderableIndexData[{}] = {};", rid, id);
 							_renderableIndexData[rid] = id;
 						}
-				));				
+				));
 
 				_renderableEI[rid] = efInst;
 				
