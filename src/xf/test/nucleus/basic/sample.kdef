@@ -10,7 +10,8 @@ Light = kernel(
 );
 
 Illumination = kernel(
-	in normal <type vec3 + use normal + basis world>,
+	in normal <type vec3 + use normal + basis world + unit true>,
+	in position <type vec3 + use position + basis world>,
 	in intensity <type vec4 + use color>,
 	in toLight <type vec3 + basis world + use toLight>,
 	out diffuse <type vec4 + use diffuse>,
@@ -130,8 +131,10 @@ BlinnPhong = graph Illumination {
 		type = "kernel";
 		kernel = quark Illumination {
 			float NdotL = dot(normal, toLight).x;
+			float3 toEye = normalize(eyePosition - position);
+			float3 H = normalize(toEye + toLight);
 			diffuse = intensity * saturate(NdotL);
-			specular = 0;
+			specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
 		};
 	};
 	n2 = node {
@@ -151,7 +154,7 @@ TestPigment = quark Pigment {
 // ----
 
 
-converter(20) normalizer(in a <type vec3>, out b <type vec3 + unit true>) {
+converter(20) normalizer(in a <type vec3>, out b <in.a.actual + unit true>) {
 	b = normalize(a);
 }
 
@@ -179,15 +182,22 @@ converter(20) model2world_n(
 
 converter(20) world2view(
 	in a <type vec3 + basis world + use position>,
-	out b <in.a.actual + basis view>
+	out b <in.a.actual + type vec3 + basis view>
 ) {
-	b = mul(worldToView, float4(a, 1.0));
+	b = mul(worldToView, float4(a, 1.0)).xyz;
 }
 
 converter(20) view2clip(
 	in a <type vec3 + basis view + use position>,
-	out b <in.a.actual + basis clip + type vec4>
+	out b <in.a.actual + type vec4 + basis clip + type vec4>
 ) {
 	b = mul(viewToClip, float4(a, 1.0));
 }
-
+/+
+converter(20) computeToEye(
+	in position <type vec3 + basis world + use position>,
+	out toEye <type vec3 + basis world + use toEye>
+) {
+	toEye = .eyePosition - position;
+}
++/
