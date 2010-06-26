@@ -5,8 +5,10 @@ private {
 	import xf.nucleus.Param;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.Graph;
+	import xf.nucleus.graph.GraphMisc;
 	import xf.nucleus.graph.GraphOps;
 	import xf.nucleus.graph.KernelGraphOps;
+	import xf.nucleus.graph.Simplify;
 	import xf.gfx.Defs : GPUDomain;
 	import xf.utils.BitSet;
 	import xf.mem.StackBuffer;
@@ -15,6 +17,7 @@ private {
 	import Integer = tango.text.convert.Integer;
 	import tango.io.stream.Format;
 	import tango.text.convert.Format;
+	import tango.io.device.File;
 }
 
 
@@ -33,6 +36,8 @@ void codegen(
 	CodegenSetup setup,
 	CodeSink sink
 ) {
+	alias KernelGraph.NodeType NT;
+
 	scope stack = new StackBuffer;
 	final graphBack = graph.backend_readOnly;
 
@@ -42,19 +47,19 @@ void codegen(
 
 	foreach (nid, node; graph.iterNodes) {
 		if (
-			KernelGraph.NodeType.Kernel == node.type
+			NT.Kernel == node.type
 		&&	"Rasterize" == node.kernel.kernel.func.name
 		) {
 			rasterNode = nid;
 		}
 
-		/+if (KernelGraph.NodeType.Input == node.type) {
+		/+if (NT.Input == node.type) {
 			assert (!vinputNodeId.valid, "There can be only one.");
 			vinputNodeId = nid;
 			assert (vinputNodeId.valid);
 		}
 
-		if (KernelGraph.NodeType.Output == node.type) {
+		if (NT.Output == node.type) {
 			assert (!foutputNodeId.valid, "There can be only one.");
 			foutputNodeId = nid;
 			assert (foutputNodeId.valid);
@@ -68,6 +73,17 @@ void codegen(
 	if (!rasterNode.valid) {
 		error("'Rasterize' node not found, can't codegen :(");
 	}
+
+	// ---- Simplify the graph by removing redundant Func nodes
+
+	auto topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
+	findTopologicalOrder(graphBack, topological);
+
+	simplifyKernelGraph(graph, topological);
+
+	File.set("graph.dot", toGraphviz(graph));
+
+	// ---- Find the GPU domains for nodes
 
 	final nodeDomains = stack.allocArray!(GPUDomain)(graph.capacity);
 	nodeDomains[] = GPUDomain.Fragment;
@@ -83,7 +99,31 @@ void codegen(
 	assert (GPUDomain.Vertex == nodeDomains[vinputNodeId.id]);
 	assert (GPUDomain.Fragment == nodeDomains[foutputNodeId.id]);
 
-	alias KernelGraph.NodeType NT;
+	// move nodes into the vertex stage, if possible
+	
+	moveToVertexIter: foreach (nid; topological) {
+		if (!nid.valid || GPUDomain.Vertex == nodeDomains[nid.id]) {
+			continue;
+		}
+
+		assert (GPUDomain.Fragment == nodeDomains[nid.id]);
+
+		final node = graph.getNode(nid);
+		if (NT.Func == node.type) {
+			foreach (pred; graphBack.iterIncomingConnections(nid)) {
+				if (GPUDomain.Vertex != nodeDomains[pred.id]) {
+					continue moveToVertexIter;
+				}
+			}
+
+			if (node.func.func.hasTag("linear")) {
+				nodeDomains[nid.id] = GPUDomain.Vertex;
+			}
+			// TODO: anything /else/ ?
+		}
+	}
+
+	// ----
 
 	auto vinputNodeParams = graph.getNode(vinputNodeId).getParamList();
 	auto foutputNodeParams = graph.getNode(foutputNodeId).getParamList();
@@ -239,6 +279,10 @@ void codegen(
 
 	graph.removeNode(rasterNode);
 
+	// Need to recalc it after the simplification and removal of the Rasterize node
+	topological = topological[0..graph.numNodes];
+	findTopologicalOrder(graphBack, topological);
+
 	alias voutputs finputs;
 
 
@@ -317,7 +361,7 @@ void codegen(
 	auto node2funcName = stack.allocArray!(cstring)(graph.capacity);
 
 	funcDumpIter: foreach (nid, node; graph.iterNodes) {
-		if (KernelGraph.NodeType.Func != node.type) {
+		if (NT.Func != node.type) {
 			continue;
 		}
 
@@ -401,7 +445,7 @@ void codegen(
 	// ---- dump all uniforms ----
 
 	foreach (nid, node; graph.iterNodes) {
-		if (KernelGraph.NodeType.Data == node.type) {
+		if (NT.Data == node.type) {
 			foreach (param; node.data.params) {
 				assert (param.hasTypeConstraint);
 
@@ -425,11 +469,6 @@ void codegen(
 		}
 	}
 	
-	// ----
-
-	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
-	findTopologicalOrder(graphBack, topological);
-
 	// ---- codegen the vertex shader ----
 
 	domainCodegen(
@@ -491,16 +530,19 @@ void emitSourceParamName(
 	GraphNodeId nid,
 	cstring pname
 ) {
+	alias KernelGraph.NodeType NT;
+
+
 	final node = ctx.graph.getNode(nid);
 	
 	if (
-			KernelGraph.NodeType.Input == node.type
+			NT.Input == node.type
 		&&	ctx.nodeDomains[nid.id] == ctx.domain
 	) {
 		// Can only have Input nodes for structure kernels
 		ctx.sink("structure__");
 	} else if (
-		KernelGraph.NodeType.Data == node.type
+		NT.Data == node.type
 	) {
 		final pnode = node._param();
 		switch (pnode.sourceKernelType) {
@@ -637,11 +679,14 @@ void domainCodegenBody(
 	void delegate(void delegate(GraphNodeId)) nodesTopo,
 	cstring[] node2funcName
 ) {
+	alias KernelGraph.NodeType NT;
+
+
 	auto sink = ctx.sink;
 
 	nodesTopo((GraphNodeId nid) {
 		auto node = ctx.graph.getNode(nid);
-		if (KernelGraph.NodeType.Func != node.type) {
+		if (NT.Func != node.type) {
 			return;
 		}
 

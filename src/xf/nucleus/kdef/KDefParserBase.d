@@ -237,7 +237,7 @@ class KDefParserBase : Parser!(KDefToken) {
 			_createFunctionParams(params, func);
 			auto res = new ConverterDeclStatement;
 			res.func = func;
-			res.cost = cast(int)cost;		// HACK
+			res.cost = cast(int)cost;
 			return res;
 		}
 	}

@@ -116,7 +116,7 @@ void fuseGraph(
 	SemanticConverterIter semanticConverters,
 	GraphNodeId[] dstGraphTopological,
 	bool delegate(
-		cstring dstParam,
+		Param* dstParam,
 		GraphNodeId* srcNid,
 		Param** srcParam
 	) _findSrcParam,
@@ -147,7 +147,7 @@ void fuseGraph(
 	SemanticConverterIter semanticConverters,
 	int delegate(int delegate(ref GraphNodeId)) dstGraphTopological,
 	bool delegate(
-		cstring dstParam,
+		Param* dstParam,
 		GraphNodeId* srcNid,
 		Param** srcParam
 	) _findSrcParam,
@@ -198,12 +198,12 @@ void fuseGraph(
 				OutputNodeConversion.Skip == outNodeConversion && isOutputNode(id)
 					? FlowGenMode.DirectConnection
 					: FlowGenMode.InsertConversionNodes,
-				(Param* intermediateParam, void delegate(NodeParam) incomingSink) {
+				(Param* dstParam, void delegate(NodeParam) incomingSink) {
 					GraphNodeId	fromNode;
 					Param*		fromParam;
 					
 					if (!_findSrcParam(
-						intermediateParam.name,
+						dstParam,
 						&fromNode,
 						&fromParam
 					)) {
@@ -213,7 +213,7 @@ void fuseGraph(
 							" Func node used in graph fusion."
 							" This should have been triggered"
 							" earlier, when resolving the Output."
-							" The param was '" ~ intermediateParam.name ~ "'."
+							" The param was '" ~ dstParam.name ~ "'."
 						);
 					}
 
@@ -242,7 +242,7 @@ void fuseGraph(
 						Param*		fromParam;
 						
 						if (!_findSrcParam(
-							outFl.from,
+							graph.getNode(input).getInputParam(outFl.from),
 							&fromNode,
 							&fromParam
 						)) {
@@ -326,7 +326,7 @@ void fuseGraph(
 											Param*		fromParam;
 											
 											if (!_findSrcParam(
-												intermediateParam.name,
+												toParam,
 												&fromNode,
 												&fromParam
 											)) {
@@ -485,7 +485,7 @@ void fuseGraph(
 		semanticConverters,
 		&iterGraph2Nodes,
 		(
-			cstring dstParam,
+			Param* dstParam,
 			GraphNodeId* srcNid,
 			Param** srcParam
 		) {
@@ -496,7 +496,7 @@ void fuseGraph(
 			return .getOutputParamIndirect(
 				graph,
 				output,
-				dstParam,
+				dstParam.name,
 				srcNid,
 				srcParam
 			);

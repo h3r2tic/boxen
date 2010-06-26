@@ -111,7 +111,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	be connected without issues
 		like input position -> structure output 'position'
 
--	handling of Data nodes
++	handling of Data nodes
 
 -	materials
 

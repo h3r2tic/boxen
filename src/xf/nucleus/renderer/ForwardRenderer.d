@@ -221,21 +221,21 @@ class ForwardRenderer : Renderer {
 					
 					// _findSrcParam
 					delegate bool(
-						cstring dstParam,
+						Param* dstParam,
 						GraphNodeId* srcNid,
 						Param** srcParam
 					) {
-						if (dstParam != "position" && dstParam != "normal") {
+						if (dstParam.name != "position" && dstParam.name != "normal") {
 							error(
 								"Expected position or normal input from a"
-								" light kernel. Got: '{}'", dstParam
+								" light kernel. Got: '{}'", dstParam.name
 							);
 						}
 						
 						return getOutputParamIndirect(
 							kg,
 							structureInfo.output,
-							dstParam,
+							dstParam.name,
 							srcNid,
 							srcParam
 						);
@@ -260,17 +260,25 @@ class ForwardRenderer : Renderer {
 					
 					// _findSrcParam
 					delegate bool(
-						cstring dstParam,
+						Param* dstParam,
 						GraphNodeId* srcNid,
 						Param** srcParam
 					) {
-						switch (dstParam) {
-							case "position":
+						switch (dstParam.name) {
+							case "toEye":
+								return getOutputParamIndirect(
+									kg,
+									structureInfo.output,
+									"position",
+									srcNid,
+									srcParam
+								);
+
 							case "normal":
 								return getOutputParamIndirect(
 									kg,
 									structureInfo.output,
-									dstParam,
+									dstParam.name,
 									srcNid,
 									srcParam
 								);
@@ -279,7 +287,7 @@ class ForwardRenderer : Renderer {
 								return getOutputParamIndirect(
 									kg,
 									lightGraphs[lightI].output,
-									dstParam,
+									dstParam.name,
 									srcNid,
 									srcParam
 								);
@@ -395,11 +403,11 @@ class ForwardRenderer : Renderer {
 				
 				// _findSrcParam
 				delegate bool(
-					cstring dstParam,
+					Param* dstParam,
 					GraphNodeId* srcNid,
 					Param** srcParam
 				) {
-					switch (dstParam) {
+					switch (dstParam.name) {
 						case "diffuse": {
 							final param = kg.getNode(diffuseSumNid)
 								.getOutputParam(diffuseSumPName);
@@ -423,7 +431,7 @@ class ForwardRenderer : Renderer {
 							return getOutputParamIndirect(
 								kg,
 								structureInfo.output,
-								dstParam,
+								dstParam.name,
 								srcNid,
 								srcParam
 							);
@@ -466,8 +474,6 @@ class ForwardRenderer : Renderer {
 		}
 
 		verifyDataFlowNames(kg);
-
-		File.set("graph.dot", toGraphviz(kg));
 
 		// ----
 

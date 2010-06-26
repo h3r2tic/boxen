@@ -261,7 +261,7 @@ class TestApp : GfxApp {
 			renderables.structureData[rid] = ms;
 			renderables.pigmentKernel[rid] = "TestPigment";
 			renderables.pigmentData[rid] = null;	// TODO
-			renderables.illumKernel[rid] = "Lambert";
+			renderables.illumKernel[rid] = "BlinnPhong";
 			renderables.transform[rid] = CoordSys.identity;
 			renderables.localHalfSize[rid] = compiledMesh.halfSize;
 		});
