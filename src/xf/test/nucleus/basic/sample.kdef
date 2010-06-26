@@ -122,27 +122,20 @@ TestLight = graph Light {
 	connect n2 n3;
 };
 
-// Messy in order to test stuff
-BlinnPhong = graph Illumination {
-	n0 = node {
-		type = "input";
-	};
-	n1 = node {
-		type = "kernel";
-		kernel = quark Illumination {
-			float NdotL = dot(normal, toLight).x;
-			float3 toEye = normalize(eyePosition - position);
-			float3 H = normalize(toEye + toLight);
-			diffuse = intensity * saturate(NdotL);
-			specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
-		};
-	};
-	n2 = node {
-		type = "output";
-	};
 
-	connect n0 n1;
-	connect n1 n2;
+BlinnPhong = quark Illumination {
+	float NdotL = dot(normal, toLight).x;
+	float3 toEye = normalize(eyePosition - position);
+	float3 H = normalize(toEye + toLight);
+	diffuse = intensity * saturate(NdotL);
+	specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
+};
+
+
+Lambert = quark Illumination {
+	float NdotL = dot(normal, toLight).x;
+	diffuse = intensity * saturate(NdotL);
+	specular = 0;
 };
 
 

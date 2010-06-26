@@ -125,7 +125,7 @@ class ForwardRenderer : Renderer {
 
 		final structureKernel		= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final pigmentKernel			= _kdefRegistry.getKernel(renderables.pigmentKernel[rid]);
-		final illumKernel			= _kdefRegistry.getKernel("BlinnPhong");//renderables.illuminationKernel[rid];
+		final illumKernel			= _kdefRegistry.getKernel(renderables.illumKernel[rid]);
 
 		alias KernelGraph.NodeType NT;
 

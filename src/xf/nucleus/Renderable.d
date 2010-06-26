@@ -20,6 +20,7 @@ mixin(multiArray(`renderables`, `
 	IStructureData		structureData
 	cstring				pigmentKernel
 	IPigmentData		pigmentData
+	cstring				illumKernel
 	CoordSys			transform
 	vec3				localHalfSize		// half-size of the local bounding box (OBB)
 `));
@@ -46,6 +47,7 @@ RenderableId createRenderable() {
 	renderables.structureData[res] = null;
 	renderables.pigmentKernel[res] = null;
 	renderables.pigmentData[res] = null;
+	renderables.illumKernel[res] = null;
 	renderables.transform[res] = CoordSys.identity;
 	renderables.localHalfSize[res] = vec3.zero;
 
