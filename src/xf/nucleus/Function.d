@@ -24,6 +24,16 @@ class AbstractFunction {
 	cstring[] tags() {
 		return _tags;
 	}
+
+	bool hasTag(cstring tag) {
+		foreach (t; _tags) {
+			if (t == tag) {
+				return true;
+			}
+		}
+
+		return false;
+	}
 	
 	this (cstring name, cstring[] tags, void* delegate(uword) allocator) {
 		_allocator = allocator;

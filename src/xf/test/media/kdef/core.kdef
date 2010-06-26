@@ -11,16 +11,16 @@ Light = kernel(
 
 Illumination = kernel(
 	in normal <type vec3 + use normal + basis world + unit true>,
-	in position <type vec3 + use position + basis world>,
 	in intensity <type vec4 + use color>,
 	in toLight <type vec3 + basis world + use toLight>,
+	in toEye <type vec3 + use toEye + basis world + unit true>,
 	out diffuse <type vec4 + use diffuse>,
 	out specular <type vec4 + use specular>
 );
 
 Pigment = kernel(
-	in position <type vec3 + basis model + use position>,
-	in normal <type vec3 + basis model + use normal>,
+	in position <type vec3 + basis world + use position>,
+	in normal <type vec3 + basis world + use normal>,
 	in diffuse <type vec4 + use diffuse>,
 	in specular <type vec4 + use specular>,
 	out radiance <type vec4 + use color>
