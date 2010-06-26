@@ -190,6 +190,7 @@ class TestApp : GfxApp {
 
 		kdefRegistry = create!(IKDefRegistry)();
 		kdefRegistry.setVFS(vfs);
+		kdefRegistry.registerFolder("../../media/kdef", allocator);
 		kdefRegistry.registerFolder(".", allocator);
 		kdefRegistry.doSemantics(allocator);
 		kdefRegistry.dumpInfo();

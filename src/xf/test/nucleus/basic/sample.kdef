@@ -1,39 +1,3 @@
-Structure = kernel(
-	out position <type vec3 + basis model + use position>,
-	out normal <type vec3 + basis model + use normal>
-);
-
-Light = kernel(
-	in position <type vec3 + use position + basis world>,
-	out intensity <type vec4 + use color>,
-	out toLight <type vec3 + basis world + use toLight>
-);
-
-Illumination = kernel(
-	in normal <type vec3 + use normal + basis world + unit true>,
-	in position <type vec3 + use position + basis world>,
-	in intensity <type vec4 + use color>,
-	in toLight <type vec3 + basis world + use toLight>,
-	out diffuse <type vec4 + use diffuse>,
-	out specular <type vec4 + use specular>
-);
-
-Pigment = kernel(
-	in position <type vec3 + basis model + use position>,
-	in normal <type vec3 + basis model + use normal>,
-	in diffuse <type vec4 + use diffuse>,
-	in specular <type vec4 + use specular>,
-	out radiance <type vec4 + use color>
-);
-
-Rasterize = kernel(
-	in inPos <type vec4 + use position + basis clip>
-);
-
-
-// ----
-
-
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
@@ -53,41 +17,6 @@ DefaultMeshStructure = graph Structure {
 	connect node_0 node_1;
 	connect node_0 node_2;
 };
-
-
-// ----
-
-
-use = trait {
-	color,
-	position,
-	normal,
-	lumIntens,
-	lightPos
-};
-
-unit = trait {
-	true,
-	false
-} = false;
-
-basis = trait {
-	model,
-	world,
-	view,
-	clip
-};
-
-
-// ----
-
-
-Add = quark(in a, in b,	out c <in.a.actual>) {
-	c = a + b;
-};
-
-
-// ----
 
 
 TestLight = graph Light {
@@ -123,74 +52,6 @@ TestLight = graph Light {
 };
 
 
-BlinnPhong = quark Illumination {
-	float NdotL = dot(normal, toLight).x;
-	float3 toEye = normalize(eyePosition - position);
-	float3 H = normalize(toEye + toLight);
-	diffuse = intensity * saturate(NdotL);
-	specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
-};
-
-
-Lambert = quark Illumination {
-	float NdotL = dot(normal, toLight).x;
-	diffuse = intensity * saturate(NdotL);
-	specular = 0;
-};
-
-
 TestPigment = quark Pigment {
 	radiance = diffuse + specular;
 };
-
-
-// ----
-
-
-converter(20) normalizer(in a <type vec3>, out b <in.a.actual + unit true>) {
-	b = normalize(a);
-}
-
-converter(20) normal2color(
-	in a <type vec3 + use normal>,
-	out b <type vec4 + use color>
-) {
-	b = float4((a + 1.0f) * 0.5f, 1.0f);
-}
-
-
-converter(20) model2world_p(
-	in a <type vec3 + basis model + use position>,
-	out b <in.a.actual + basis world>
-) {
-	b = mul(modelToWorld, float4(a, 1)).xyz;
-}
-
-converter(20) model2world_n(
-	in a <type vec3 + basis model + use normal>,
-	out b <in.a.actual + basis world>
-) {
-	b = mul(modelToWorld, float4(a, 0)).xyz;
-}
-
-converter(20) world2view(
-	in a <type vec3 + basis world + use position>,
-	out b <in.a.actual + type vec3 + basis view>
-) {
-	b = mul(worldToView, float4(a, 1.0)).xyz;
-}
-
-converter(20) view2clip(
-	in a <type vec3 + basis view + use position>,
-	out b <in.a.actual + type vec4 + basis clip + type vec4>
-) {
-	b = mul(viewToClip, float4(a, 1.0));
-}
-/+
-converter(20) computeToEye(
-	in position <type vec3 + basis world + use position>,
-	out toEye <type vec3 + basis world + use toEye>
-) {
-	toEye = .eyePosition - position;
-}
-+/

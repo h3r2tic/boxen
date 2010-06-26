@@ -1,0 +1,19 @@
+use = trait {
+	color,
+	position,
+	normal,
+	lumIntens,
+	lightPos
+};
+
+unit = trait {
+	true,
+	false
+} = false;
+
+basis = trait {
+	model,
+	world,
+	view,
+	clip
+};
