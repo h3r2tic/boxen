@@ -107,54 +107,42 @@ class Code {
 	}
 
 
+	// holy shit, Enki2...
 	void writeOut(void delegate(char[]) sink) {
 		if (0 != tokens.length) {
 			int lin = tokens[0].line;
 			int col = 0;
 			
-			cstring value = null;
 			foreach (tok; tokens) {
-				while (tok.line > lin) {
-					++lin;
-					sink("\n");
-					col = 0;
-				}
 				cstring val = tok.verbatim;
 				col += val.length;
 				while (tok.column > col) {
 					++col;
 					sink(" ");
-					value ~= ' ';
 				}
 				sink(val);
+
+				while (tok.line > lin) {
+					++lin;
+					sink("\n");
+					col = 0;
+				}
 			}
 		}
 	}
 	
 	
 	cstring toString() {
-		if (0 == tokens.length) {
-			return null;
-		} else {
-			int lin = tokens[0].line;
-			int col = 0;
-			
-			cstring value = null;
-			foreach (tok; tokens) {
-				while (tok.line > lin) {
-					++lin;
-					value ~= '\n';
-					col = 0;
-				}
-				cstring val = tok.verbatim;
-				col += val.length;
-				while (tok.column > col) {
-					++col;
-					value ~= ' ';
-				}
-				value ~= val;
-			}
-			return value;
-		}
+		size_t resLen = 0;
+		writeOut((char[] meh) { resLen += meh.length; });
+
+		char[] res = new char[resLen];
+		resLen = 0;
+		writeOut((char[] meh) {
+			res[resLen..resLen+meh.length] = meh;
+			resLen += meh.length;
+		});
+
+		return res;
 	}
 }
