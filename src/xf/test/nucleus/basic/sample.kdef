@@ -36,7 +36,6 @@ TestLight = graph Light {
 			lightPos <type vec3 + use lightPos>,
 			lumIntens <type vec4 + use lumIntens>
 		) {
-			//vec3 lightPos = vec3(1, 2, 2);
 			toLight = lightPos - position;
 			intensity = lumIntens / dot(toLight, toLight).xxxx;
 			toLight = normalize(toLight);

@@ -224,7 +224,7 @@ class TestApp : GfxApp {
 
 		// ----
 
-		cstring path = `../../media/mesh/soldier.hsf`;
+		cstring path = `../../media/mesh/masha.hsf`;
 		path = Path.normalize(path);
 		
 		scope loader = new HsfLoader;
@@ -252,7 +252,7 @@ class TestApp : GfxApp {
 			// This should be a part of the content pipeline
 
 			MeshAssetCompilationOptions opts;
-			//opts.scale = 0.02f;
+			opts.scale = 0.02f;
 
 			final compiledMesh = compileMeshAsset(m, opts);
 			

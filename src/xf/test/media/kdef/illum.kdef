@@ -1,6 +1,6 @@
 AshikhminShirley = quark Illumination {
-	float roughness = 0.3f;
-	float fresnelR0 = 0.1f;
+	float roughness = 0.1f;
+	float fresnelR0 = 0.3f;
 
 	float3 H	= normalize( toLight + toEye );
  
@@ -41,24 +41,23 @@ AshikhminShirley = quark Illumination {
 
 CookTorrance = quark Illumination {
 	float roughness = 0.3f;
-	float fresnelR0 = 0.1f;
+	float fresnelR0 = 0.4f;
 
 
 	// Compute any aliases and intermediary values
 	// -------------------------------------------
-	float3 H		= normalize( toLight + toEye );
-	float NdotL		= dot( normal, toLight );
-	float NdotH		= dot( normal, H );
-	float NdotHpos	= max(0.f, NdotH);
-	float NdotV		= dot( normal, toEye );
-	float VdotH		= dot( toEye, H );
+	float3 H		= normalize(toLight + toEye);
+	float NdotL		= max(0.000f, dot(normal, toLight));
+	float NdotHpos	= max(0.001f, dot(normal, H));
+	float NdotV		= max(0.001f, dot(normal, toEye));
+	float VdotH		= max(0.001f, dot(toEye, H));
 	float r_sq		= roughness * roughness;
  
 	// Evaluate the geometric term
 	// ---------------------------
 
 	float geoTerm; {
-		float geo_numerator = 2.0f * NdotH;
+		float geo_numerator = 2.0f * NdotHpos;
 	 
 		float geo_b	= geo_numerator * NdotV / VdotH;
 		float geo_c	= geo_numerator * NdotL / VdotH;
@@ -69,11 +68,17 @@ CookTorrance = quark Illumination {
 	// -------------------------------
 	
 	float roughnessTerm; {
-		float roughness_a = 1.0f / ( 4.0f * r_sq * pow( NdotHpos, 4 ) );
+		float roughness_a = 1.0f / (4.0f * r_sq * pow(NdotHpos, 4));
 		float roughness_b = NdotHpos * NdotHpos - 1.0f;
 		float roughness_c = r_sq * NdotHpos * NdotHpos;
- 
-		roughnessTerm = roughness_a * exp( roughness_b / roughness_c );
+
+		float roughness_exp = roughness_b / roughness_c;
+
+		// lolNaN
+		roughnessTerm =
+			roughness_exp > -85.0f
+			? roughness_a * exp(roughness_exp)
+			: 0.0f;
 	}
  
 	// Next evaluate the Fresnel value
@@ -87,17 +92,15 @@ CookTorrance = quark Illumination {
 	// -------------------------------------
 	float Rs = ( fresnel * geoTerm * roughnessTerm ) / NdotV;
 
-	float lambert = max(0.0f, NdotL);
-	
-	specular = intensity * max(0.0f, Rs);
-	diffuse = intensity * lambert;
+	specular = intensity * Rs;
+	diffuse = intensity * NdotL;
 };
 
 
 BlinnPhong = quark Illumination {
 	float NdotL = dot(normal, toLight).x;
 	float3 H = normalize(toEye + toLight);
-	diffuse = 0.0f;//intensity * saturate(NdotL);
+	diffuse = intensity * saturate(NdotL);
 	specular = intensity * pow(saturate(dot(H, normal)), 30).xxxx;
 	specular = NdotL > 0 ? specular : float4(0, 0, 0, 0);
 };
@@ -106,5 +109,13 @@ BlinnPhong = quark Illumination {
 Lambert = quark Illumination {
 	float NdotL = dot(normal, toLight).x;
 	diffuse = intensity * saturate(NdotL);
+	specular = 0;
+};
+
+
+HalfLambert = quark Illumination {
+	float NdotL = dot(normal, toLight).x;
+	diffuse = NdotL * 0.5f + 0.5f;
+	diffuse *= diffuse * intensity;
 	specular = 0;
 };
