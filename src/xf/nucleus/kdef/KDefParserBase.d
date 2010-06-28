@@ -99,19 +99,14 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 
-		QuarkDefValue createQuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
-			auto res = new QuarkDefValue;
-			res.kernelDef = new KernelDef;
-			res.kernelDef.func = createFunction(null, tags, params, code);
-			res.kernelDef.superKernel = superKernel.dup;
-			return res;
-		}
-
-
-		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, string[] tags) {
+		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
 			auto res = new KernelDefValue;
 			res.kernelDef = new KernelDef;
-			res.kernelDef.func = createAbstractFunction(null, tags, params);
+			if (code) {
+				res.kernelDef.func = createFunction(null, tags, params, code);
+			} else {
+				res.kernelDef.func = createAbstractFunction(null, tags, params);
+			}
 			res.kernelDef.superKernel = superKernel.dup;
 			return res;
 		}

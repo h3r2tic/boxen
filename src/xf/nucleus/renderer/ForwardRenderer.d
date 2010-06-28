@@ -120,6 +120,15 @@ class ForwardRenderer : Renderer {
 	}
 
 
+	private bool findEffectForRenderable(RenderableId rid, Light[] affectingLights, Effect* effect) {
+		return false;
+	}
+
+
+	private void cacheEffectForRenderable(RenderableId rid, Light[] affectingLights, Effect) {
+	}
+
+
 	private Effect buildEffectForRenderable(RenderableId rid, Light[] affectingLights) {
 		scope stack = new StackBuffer;
 
@@ -516,7 +525,11 @@ class ForwardRenderer : Renderer {
 
 				// compile the kernels, create an EffectInstance
 				// TODO: cache Effects and only create new EffectInstances
-				final effect = buildEffectForRenderable(rid, affectingLights);
+				Effect effect;
+				if (!findEffectForRenderable(rid, affectingLights, &effect)) {
+					effect = buildEffectForRenderable(rid, affectingLights);
+					cacheEffectForRenderable(rid, affectingLights, effect);
+				}
 
 				// ----
 

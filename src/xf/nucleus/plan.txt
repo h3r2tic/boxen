@@ -113,7 +113,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	be connected without issues
 		like input position -> structure output 'position'
 
--	materials
+-	surfaces and materials
 	-	make like a class and shit
 	-	the abilititty to set them for renderables (by index)
 

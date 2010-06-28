@@ -250,20 +250,9 @@ interface IScopeValue {
 }
 
 
-/+class QuarkDefValue : Value {
-	string		superKernel;
-	ParamDef[]	params;
-	Code		code;
-}+/
-
-
-
 class KernelDefValue : Value {
 	KernelDef kernelDef;
 }
-
-
-alias KernelDefValue QuarkDefValue;
 
 
 class GraphDefValue : Value, IScopeValue {

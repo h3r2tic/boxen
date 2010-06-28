@@ -46,13 +46,6 @@ cstring toGraphviz(Graph graph) {
 		cstring prefix;// = n.primLevelStr ~ domainToString(n.domain) ~ ' ';
 		cstring label = prefix ~ nodeName(n);
 		
-		/+if (auto calc = cast(CalcNode)n) {
-			label = prefix ~ Format("{}:{}", calc.quark.kernelName, n.id);
-		} else if (auto calc = cast(DemuxNode)n) {
-			label = prefix ~ Format("{}:{}", calc.quark.kernelName, n.id);
-		}+/
-//			Stdout.formatln(label);
-		
 		res ~= Format(
 			`
 			subgraph "cluster_{0}" {{
@@ -180,13 +173,6 @@ cstring toGraphviz(KernelGraph kgraph) {
 		
 		cstring prefix;// = n.primLevelStr ~ domainToString(n.domain) ~ ' ';
 		cstring label = prefix ~ nodeName(n);
-		
-		/+if (auto calc = cast(CalcNode)n) {
-			label = prefix ~ Format("{}:{}", calc.quark.kernelName, n.id);
-		} else if (auto calc = cast(DemuxNode)n) {
-			label = prefix ~ Format("{}:{}", calc.quark.kernelName, n.id);
-		}+/
-//			Stdout.formatln(label);
 		
 		res ~= Format(
 			`
