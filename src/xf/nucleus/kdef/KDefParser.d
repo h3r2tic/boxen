@@ -424,14 +424,48 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
-	QuarkDefValue
-		= QuarkDefValue createQuarkDefValue(string superKernel,ParamDef[] params,Code code,string[] tags)
-		::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel] [ParamList:params] Code:code;
+	KernelDefValue
+		= KernelDefValue value
+		::= ConcreteKernelDefValue:value | AbstractKernelDefValue:value;
 
 	*/
-	QuarkDefValue value_QuarkDefValue;
-	bool parse_QuarkDefValue(){
-		debug Stdout("parse_QuarkDefValue").newline;
+	KernelDefValue value_KernelDefValue;
+	bool parse_KernelDefValue(){
+		debug Stdout("parse_KernelDefValue").newline;
+		KernelDefValue var_value;
+
+		// OrGroup pass0
+			// Production
+			if(parse_ConcreteKernelDefValue()){
+				smartAssign(var_value,value_ConcreteKernelDefValue);
+				goto pass0;
+			}
+		term2:
+			// Production
+			if(!parse_AbstractKernelDefValue()){
+				goto fail1;
+			}
+			smartAssign(var_value,value_AbstractKernelDefValue);
+		// Rule
+		pass0:
+			value_KernelDefValue = var_value;
+			debug Stdout.format("\tparse_KernelDefValue passed: {0}",value_KernelDefValue).newline;
+			return true;
+		fail1:
+			value_KernelDefValue = (KernelDefValue).init;
+			debug Stdout.format("\tparse_KernelDefValue failed").newline;
+			return false;
+	}
+
+	/*
+	ConcreteKernelDefValue
+		= KernelDefValue createKernelDefValue(string superKernel,ParamDef[] params,Code code,string[] tags)
+		::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel] [ParamList:params] Code:code;
+
+	*/
+	KernelDefValue value_ConcreteKernelDefValue;
+	bool parse_ConcreteKernelDefValue(){
+		debug Stdout("parse_ConcreteKernelDefValue").newline;
 		string[] var_tags;
 		ParamDef[] var_params;
 		string var_superKernel;
@@ -440,7 +474,7 @@ class KDefParser:KDefParserBase{
 		// AndGroup
 			auto position3 = pos;
 				// Terminal
-				if(!match("quark")){
+				if(!match("kernel")){
 					goto fail4;
 				}
 			term5:
@@ -490,27 +524,28 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_QuarkDefValue = createQuarkDefValue(var_superKernel,var_params,var_code,var_tags);
-			debug Stdout.format("\tparse_QuarkDefValue passed: {0}",value_QuarkDefValue).newline;
+			value_ConcreteKernelDefValue = createKernelDefValue(var_superKernel,var_params,var_code,var_tags);
+			debug Stdout.format("\tparse_ConcreteKernelDefValue passed: {0}",value_ConcreteKernelDefValue).newline;
 			return true;
 		fail1:
-			value_QuarkDefValue = (QuarkDefValue).init;
-			debug Stdout.format("\tparse_QuarkDefValue failed").newline;
+			value_ConcreteKernelDefValue = (KernelDefValue).init;
+			debug Stdout.format("\tparse_ConcreteKernelDefValue failed").newline;
 			return false;
 	}
 
 	/*
-	KernelDefValue
-		= KernelDefValue createKernelDefValue(string superKernel,ParamDef[] params,string[] tags)
+	AbstractKernelDefValue
+		= KernelDefValue createKernelDefValue(string superKernel,ParamDef[] params,Code code,string[] tags)
 		::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel] ParamList:params;
 
 	*/
-	KernelDefValue value_KernelDefValue;
-	bool parse_KernelDefValue(){
-		debug Stdout("parse_KernelDefValue").newline;
+	KernelDefValue value_AbstractKernelDefValue;
+	bool parse_AbstractKernelDefValue(){
+		debug Stdout("parse_AbstractKernelDefValue").newline;
 		string[] var_tags;
 		ParamDef[] var_params;
 		string var_superKernel;
+		Code var_code;
 
 		// AndGroup
 			auto position3 = pos;
@@ -558,12 +593,12 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_KernelDefValue = createKernelDefValue(var_superKernel,var_params,var_tags);
-			debug Stdout.format("\tparse_KernelDefValue passed: {0}",value_KernelDefValue).newline;
+			value_AbstractKernelDefValue = createKernelDefValue(var_superKernel,var_params,var_code,var_tags);
+			debug Stdout.format("\tparse_AbstractKernelDefValue passed: {0}",value_AbstractKernelDefValue).newline;
 			return true;
 		fail1:
-			value_KernelDefValue = (KernelDefValue).init;
-			debug Stdout.format("\tparse_KernelDefValue failed").newline;
+			value_AbstractKernelDefValue = (KernelDefValue).init;
+			debug Stdout.format("\tparse_AbstractKernelDefValue failed").newline;
 			return false;
 	}
 
@@ -1558,7 +1593,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Value
 		= Value value
-		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | QuarkDefValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | ParamListValue:value | IdentifierValue:value;
+		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | ParamListValue:value | IdentifierValue:value;
 
 	*/
 	Value value_Value;
@@ -1604,41 +1639,35 @@ class KDefParser:KDefParserBase{
 			}
 		term7:
 			// Production
-			if(parse_QuarkDefValue()){
-				smartAssign(var_value,value_QuarkDefValue);
-				goto pass0;
-			}
-		term8:
-			// Production
 			if(parse_KernelDefValue()){
 				smartAssign(var_value,value_KernelDefValue);
 				goto pass0;
 			}
-		term9:
+		term8:
 			// Production
 			if(parse_GraphDefValue()){
 				smartAssign(var_value,value_GraphDefValue);
 				goto pass0;
 			}
-		term10:
+		term9:
 			// Production
 			if(parse_GraphDefNodeValue()){
 				smartAssign(var_value,value_GraphDefNodeValue);
 				goto pass0;
 			}
-		term11:
+		term10:
 			// Production
 			if(parse_TraitDefValue()){
 				smartAssign(var_value,value_TraitDefValue);
 				goto pass0;
 			}
-		term12:
+		term11:
 			// Production
 			if(parse_ParamListValue()){
 				smartAssign(var_value,value_ParamListValue);
 				goto pass0;
 			}
-		term13:
+		term12:
 			// Production
 			if(!parse_IdentifierValue()){
 				goto fail1;

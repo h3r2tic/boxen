@@ -55,14 +55,19 @@ ConverterDeclStatement
 // ----------------------------------------------------------------------------------------------------------------
 // special Values
 
-QuarkDefValue
-	= QuarkDefValue createQuarkDefValue(string superKernel, ParamDef[] params, Code code, string[] tags)
-	::= "quark" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
+KernelDefValue
+	= KernelDefValue value
+	::= ConcreteKernelDefValue:value | AbstractKernelDefValue:value;
+
+
+ConcreteKernelDefValue
+	= KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags)
+	::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
 		[ ParamList:params ]
 		Code:code;
-	
-KernelDefValue
-	= KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, string[] tags)
+
+AbstractKernelDefValue
+	= KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags)
 	::= "kernel" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
 		ParamList:params;
 
@@ -171,7 +176,6 @@ Value
 	Vector3Value:value |
 	Vector2Value:value |
 	NumberValue:value |
-	QuarkDefValue:value |
 	KernelDefValue:value |
 	GraphDefValue:value |
 	GraphDefNodeValue:value |

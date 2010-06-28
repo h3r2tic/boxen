@@ -32,7 +32,7 @@ TestLight = graph Light {
 	};
 	n2 = node {
 		type = kernel;
-		kernel = quark Light(
+		kernel = kernel Light(
 			lightPos <type vec3 + use lightPos>,
 			lumIntens <type vec4 + use lumIntens>
 		) {
@@ -51,6 +51,6 @@ TestLight = graph Light {
 };
 
 
-TestPigment = quark Pigment {
+TestPigment = kernel Pigment {
 	radiance = diffuse + specular;
 };

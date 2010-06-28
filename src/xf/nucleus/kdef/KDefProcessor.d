@@ -304,15 +304,22 @@ class KDefProcessor {
 						if (auto ident = cast(IdentifierValue)kernelVar) {
 							node.kernelImpl = getKernel(ident.value);
 						}
-						else if (auto liteal = cast(QuarkDefValue)kernelVar) {
-							doKernelSemantics(liteal.kernelDef, allocator, processed);
-							node.kernelImpl = KernelImpl(liteal.kernelDef);
+						else if (auto literal = cast(KernelDefValue)kernelVar) {
+							if (!cast(Function)literal.kernelDef.func) {
+								// TODO: err
+								error(
+									"Graph nodes must use concrete kernel literals."
+								);
+							}
+							
+							doKernelSemantics(literal.kernelDef, allocator, processed);
+							node.kernelImpl = KernelImpl(literal.kernelDef);
 							node.kernelImpl.kernel.func.name = "literal";
 						}
 						else {
 							error(
 								"The 'kernel' var in a graph node must be"
-								" either an identifier or a quark literal,"
+								" either an identifier or a concrete kernel literal,"
 								" not a '{}'", kernelVar.classinfo.name
 							);
 						}
@@ -414,15 +421,6 @@ class KDefProcessor {
 		}
 		
 		
-		/+void dumpInfo(QuarkDef quark) {
-			Stdout.formatln("quark {} {{", quark.name);
-			foreach (func; quark.functions) {
-				dumpInfo(func);
-			}
-			Stdout("}").newline;
-		}+/
-
-
 		void dumpInfo(KernelImpl kimpl) {
 			switch (kimpl.type) {
 				case KernelImpl.Type.Graph:
@@ -491,13 +489,6 @@ class KDefProcessor {
 						}
 					}
 					
-					if (auto quarkValue = cast(QuarkDefValue)stmt.value) {
-						quarkValue.kernelDef.func.name = stmt.name;
-						if (auto mod = cast(KDefModule)sc) {
-							mod.kernels[stmt.name] = KernelImpl(quarkValue.kernelDef);
-						}
-					}
-
 					if (auto graphValue = cast(GraphDefValue)stmt.value) {
 						GraphDef(graphValue.graphDef)._name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {

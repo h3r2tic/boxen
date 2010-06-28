@@ -347,7 +347,7 @@ void codegen(
 	assignTexcoords(vinputs);
 	assignTexcoords(voutputs);
 
-	// ---- dump all quark funcs ----
+	// ---- dump all funcs ----
 
 	auto _emittedFuncs = stack.allocArray!(GraphNodeId)(
 		graph.numNodes
