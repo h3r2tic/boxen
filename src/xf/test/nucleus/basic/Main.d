@@ -17,6 +17,7 @@ private {
 	import xf.nucleus.Kernel;
 	import xf.nucleus.CompiledMeshAsset;
 	import xf.nucleus.KernelParamInterface;
+	import xf.nucleus.SurfaceDef;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kernel.KernelDef;
@@ -197,7 +198,16 @@ class TestApp : GfxApp {
 
 		// ----
 
+		SurfaceId[cstring]	surfaces;
+		SurfaceId			nextSurfaceId;
+
 		nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+		foreach (surfName, surf; &kdefRegistry.surfaces) {
+			surf.id = nextSurfaceId++;
+			surf.illumKernel = kdefRegistry.getKernel(surf.illumKernelName);
+			nr.registerSurface(surf);
+			surfaces[surfName] = surf.id;
+		}
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
@@ -221,53 +231,77 @@ class TestApp : GfxApp {
 			}
 		});
 
-
 		// ----
-
-		cstring path = `../../media/mesh/masha.hsf`;
-		path = Path.normalize(path);
-		
-		scope loader = new HsfLoader;
-		loader.load(path);
-		
-		final scene = loader.scene;
-		assert (scene !is null);
-		assert (loader.meshes.length > 0);
-		
-		assert (1 == scene.nodes.length);
-		final root = scene.nodes[0];
 
 		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
 			createLight((lights ~= new TestLight)[$-1]);
 		}
 
-		void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
-			foreach (i, ref m; loader.meshes) {
-				dg(i, m);
-			}
-		}
-		
-		iterAssetMeshes((int, ref LoaderMesh m) {
-			// This should be a part of the content pipeline
+		// ----
 
-			MeshAssetCompilationOptions opts;
-			opts.scale = 0.02f;
-
-			final compiledMesh = compileMeshAsset(m, opts);
+		void loadScene(cstring path, float scale, CoordSys cs, cstring illum, cstring pigment) {
+			path = Path.normalize(path);
 			
-			final ms = mallocObject!(MeshStructure);
-			ms._ctor(compiledMesh, rendererBackend);
+			scope loader = new HsfLoader;
+			loader.load(path);
+			
+			final scene = loader.scene;
+			assert (scene !is null);
+			assert (loader.meshes.length > 0);
+			
+			assert (1 == scene.nodes.length);
+			final root = scene.nodes[0];
 
-			final rid = createRenderable();	
-			renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
-			renderables.structureData[rid] = ms;
-			renderables.pigmentKernel[rid] = "TestPigment";
-			renderables.pigmentData[rid] = null;	// TODO
-			renderables.illumKernel[rid] = "CookTorrance";
-			renderables.transform[rid] = CoordSys.identity;
-			renderables.localHalfSize[rid] = compiledMesh.halfSize;
-		});
+			void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
+				foreach (i, ref m; loader.meshes) {
+					dg(i, m);
+				}
+			}
+			
+			iterAssetMeshes((int, ref LoaderMesh m) {
+				// This should be a part of the content pipeline
+
+				MeshAssetCompilationOptions opts;
+				opts.scale = scale;
+
+				final compiledMesh = compileMeshAsset(m, opts);
+				
+				final ms = mallocObject!(MeshStructure);
+				ms._ctor(compiledMesh, rendererBackend);
+
+				final rid = createRenderable();	
+				renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
+				renderables.structureData[rid] = ms;
+				renderables.pigmentKernel[rid] = pigment;
+				renderables.pigmentData[rid] = null;	// TODO
+				renderables.surface[rid] = surfaces[illum];
+				renderables.transform[rid] = cs;
+				renderables.localHalfSize[rid] = compiledMesh.halfSize;
+			});
+		}
+
+		//loadScene(`../../media/mesh/masha.hsf`, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
+
+		loadScene(
+			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[-2, 0, 0]),
+			"TestSurface1", "TestPigment"
+		);
+		
+		loadScene(
+			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
+			"TestSurface2", "TestPigment"
+		);
+
+		loadScene(
+			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
+			"TestSurface3", "TestPigment"
+		);
+
+		loadScene(
+			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
+			"TestSurface4", "TestPigment"
+		);
 	}
 
 

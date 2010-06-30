@@ -113,9 +113,24 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	be connected without issues
 		like input position -> structure output 'position'
 
+-	default values for params
+	* restrict to Data nodes only for now
+
+	* after graph fusion, iter all data nodes
+		* for each param with a default value, store its name, type and value (e.g. in a ParamList)
+		* potentially load textures (one reference per compiled graph)
+
+		* inspect materials and surfaces for overrides, store these as well  ?????????????????
+
 -	surfaces and materials
 	-	make like a class and shit
 	-	the abilititty to set them for renderables (by index)
+
+	* for each kernel, find all static params (in Data nodes)
+		* keep track of the name of the param as well as its type
+	* create a block of data for all of its static params
+		* duplicate the block for each Surface, but overriding params according to the Surface values
+		* for each Surface, remember whether it overrides the value or not
 
 -	monitor quark files for changes, recompile shaders when needed
 

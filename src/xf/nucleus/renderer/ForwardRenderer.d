@@ -3,6 +3,7 @@ module xf.nucleus.renderer.ForwardRenderer;
 private {
 	import xf.Common;
 	import xf.nucleus.Defs;
+	import xf.nucleus.Value;
 	import xf.nucleus.Param;
 	import xf.nucleus.Function;
 	import xf.nucleus.Renderable;
@@ -12,9 +13,11 @@ private {
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.KernelParamInterface;
 	import xf.nucleus.KernelCompiler;
+	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.KDefGraphBuilder;
+	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.GraphOps;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.KernelGraphOps;
@@ -32,6 +35,7 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 	import xf.mem.StackBuffer;
+	import xf.mem.MainHeap;
 	
 	import tango.stdc.stdio : sprintf;
 
@@ -119,6 +123,50 @@ class ForwardRenderer : Renderer {
 		super(backend);
 	}
 
+	private {
+		struct SurfaceData {
+			struct Info {
+				cstring	name;
+				word	offset;
+			}
+			
+			Info[]		info;
+			void*		data;
+			KernelImpl	illumKernel;
+		}
+		
+		SurfaceData[256] _surfaces;
+	}
+
+
+	// TODO: mem
+	// TODO: textures
+	override void registerSurface(SurfaceDef def) {
+		auto surf = &_surfaces[def.id];
+		surf.info.length = def.params.length;
+
+		//assert (def.illumKernel !is null);
+		surf.illumKernel = def.illumKernel;
+
+		uword sizeReq = 0;
+		
+		foreach (i, p; def.params) {
+			surf.info[i].name = (cast(cstring)p.name).dup;
+			surf.info[i].offset = sizeReq;
+			sizeReq += p.valueSize;
+			sizeReq += 3;
+			sizeReq &= ~3;
+		}
+
+		surf.data = mainHeap.allocRaw(sizeReq);
+		memset(surf.data, 0, sizeReq);
+
+		foreach (i, p; def.params) {
+			void* dst = surf.data + surf.info[i].offset;
+			memcpy(dst, p.value, p.valueSize);
+		}
+	}
+
 
 	private bool findEffectForRenderable(RenderableId rid, Light[] affectingLights, Effect* effect) {
 		return false;
@@ -132,9 +180,12 @@ class ForwardRenderer : Renderer {
 	private Effect buildEffectForRenderable(RenderableId rid, Light[] affectingLights) {
 		scope stack = new StackBuffer;
 
+		SurfaceId surfaceId = renderables.surface[rid];
+		auto surface = &_surfaces[surfaceId];
+
 		final structureKernel		= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final pigmentKernel			= _kdefRegistry.getKernel(renderables.pigmentKernel[rid]);
-		final illumKernel			= _kdefRegistry.getKernel(renderables.illumKernel[rid]);
+		final illumKernel			= surface.illumKernel;
 
 		alias KernelGraph.NodeType NT;
 
@@ -256,10 +307,28 @@ class ForwardRenderer : Renderer {
 
 			// Connect the illumination graph to light and structure output
 
+			uword numIllumDataNodes = 0;
+			foreach (n; illumGraphs[0].nodes) {
+				if (NT.Data == kg.getNode(n).type) {
+					++numIllumDataNodes;
+				}
+			}
+
 			foreach (lightI, ref illumGraph; illumGraphs) {
 				scope stack2 = new StackBuffer;
-				auto illumNodesTopo = stack2.allocArray!(GraphNodeId)(illumGraph.nodes.length);
-				findTopologicalOrder(kg.backend_readOnly, illumGraph.nodes, illumNodesTopo);
+
+				uword numIllumNoData = illumGraph.nodes.length - numIllumDataNodes;
+				auto illumNoData = stack2.allocArray!(GraphNodeId)(numIllumNoData); {
+					uword i = 0;
+					foreach (n; illumGraph.nodes) {
+						if (NT.Data != kg.getNode(n).type) {
+							illumNoData[i++] = n;
+						}
+					}
+				}
+				
+				auto illumNodesTopo = stack2.allocArray!(GraphNodeId)(numIllumNoData);
+				findTopologicalOrder(kg.backend_readOnly, illumNoData, illumNodesTopo);
 
 				fuseGraph(
 					kg,
@@ -561,7 +630,7 @@ class ForwardRenderer : Renderer {
 				}
 
 				// ----
-				
+
 				EffectInstance efInst = _backend.instantiateEffect(effect);
 				allocateDefaultUniformStorage(efInst);
 				allocateDefaultVaryingStorage(efInst);
@@ -577,6 +646,21 @@ class ForwardRenderer : Renderer {
 					}
 					return null;
 				}
+
+				// ----
+
+				auto surface = &_surfaces[renderables.surface[rid]];
+				foreach (ref info; surface.info) {
+					char[256] fqn;
+					sprintf(fqn.ptr, "illumination__%.*s", info.name);
+					auto name = fromStringz(fqn.ptr);
+					void** ptr = getInstUniformPtrPtr(name);
+					if (ptr) {
+						*ptr = surface.data + info.offset;
+					}
+				}
+				
+				// ----
 
 
 				foreach (uint lightI, light; affectingLights) {

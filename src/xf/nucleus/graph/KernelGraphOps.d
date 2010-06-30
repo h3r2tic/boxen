@@ -668,6 +668,7 @@ private void _insertConversionNodes(
 		auto p = cnode.params.add(ParamDirection.Out, cnode.func.params[1].name);
 		p.hasPlainSemantic = true;
 		*p.semantic() = c.afterConversion.dup(mem);
+		// No need to care about the default value here
 
 		srcId = cnodeId;
 		srcParam = cnode.params[1];

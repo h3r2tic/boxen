@@ -6,12 +6,22 @@ private {
 	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 	import xf.mem.Array;
 	import xf.mem.ArrayAllocator;
+
+	extern (C) extern size_t strlen(char*);
 }
 
 
 
-enum ParamDirection {
+enum ParamDirection : ubyte {
 	In, Out, InOut
+}
+
+enum ParamValueType : ubyte {
+	Float,
+	Float2,
+	Float3,
+	Float4,
+	String
 }
 
 
@@ -44,16 +54,115 @@ struct Param {
 		Allocator	_allocator;
 	}
 
-	ParamDirection	dir;
-	bool			hasPlainSemantic = false;
 	private cstring	_name;
+	
+	void*			value;
 
+	ParamDirection	dir;
+	ParamValueType	valueType;
+	bool			hasPlainSemantic = false;
+
+
+	uword valueSize() {
+		if (value) {
+			switch (valueType) {
+				case ParamValueType.Float:	return 4;
+				case ParamValueType.Float2: return 8;
+				case ParamValueType.Float3: return 12;
+				case ParamValueType.Float4: return 16;
+				case ParamValueType.String: return 1+strlen(cast(char*)value);
+				default: assert (false);
+			}
+		} else return 0;
+	}
 
 
 	static Param opCall(Allocator allocator) {
 		Param res;
 		res._allocator = allocator;
 		return res;
+	}
+
+
+	void copyValueFrom(Param* p) {
+		if (p.value) {
+			uword size = p.valueSize;
+			value = _allocator(size);
+			memcpy(value, p.value, size);
+			valueType = p.valueType;
+		} else {
+			value = null;
+		}
+	}
+
+
+	void setValue(float val) {
+		valueType = ParamValueType.Float;
+		value = _allocator(4);
+		*(cast(float*)value) = val;
+	}
+
+	void setValue(float a, float b) {
+		valueType = ParamValueType.Float2;
+		value = _allocator(8);
+		*(cast(float*)value+0) = a;
+		*(cast(float*)value+4) = b;
+	}
+
+	void setValue(float a, float b, float c) {
+		valueType = ParamValueType.Float3;
+		value = _allocator(12);
+		*(cast(float*)value+0) = a;
+		*(cast(float*)value+4) = b;
+		*(cast(float*)value+8) = c;
+	}
+
+	void setValue(float a, float b, float c, float d) {
+		valueType = ParamValueType.Float4;
+		value = _allocator(16);
+		*(cast(float*)value+0) = a;
+		*(cast(float*)value+4) = b;
+		*(cast(float*)value+8) = c;
+		*(cast(float*)value+12) = d;
+	}
+
+	void setValue(cstring val) {
+		valueType = ParamValueType.String;
+		value = _allocator(val.length+1);
+		memcpy(value, val.ptr, val.length);
+		*cast(char*)(value+val.length) = 0;
+	}
+
+
+	void getValue(float* val) {
+		assert (ParamValueType.Float == valueType);
+		*val = *cast(float*)value;
+	}
+
+	void getValue(float* a, float* b) {
+		assert (ParamValueType.Float2 == valueType);
+		*a = *cast(float*)(value+0);
+		*b = *cast(float*)(value+4);
+	}
+
+	void getValue(float* a, float* b, float* c) {
+		assert (ParamValueType.Float3 == valueType);
+		*a = *cast(float*)(value+0);
+		*b = *cast(float*)(value+4);
+		*c = *cast(float*)(value+8);
+	}
+
+	void getValue(float* a, float* b, float* c, float* d) {
+		assert (ParamValueType.Float4 == valueType);
+		*a = *cast(float*)(value+0);
+		*b = *cast(float*)(value+4);
+		*c = *cast(float*)(value+8);
+		*d = *cast(float*)(value+12);
+	}
+
+	void getValue(cstring* val) {
+		assert (ParamValueType.String == valueType);
+		*val = fromStringz(cast(char*)value);
 	}
 
 
@@ -67,6 +176,7 @@ struct Param {
 		res.hasPlainSemantic = hasPlainSemantic;
 		res.dir = this.dir;
 		res.name = this._name;
+		res.copyValueFrom(this);
 		return res;
 	}
 

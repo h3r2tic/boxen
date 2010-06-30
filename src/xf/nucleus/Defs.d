@@ -7,8 +7,10 @@ private {
 
 
 
-typedef u32 RenderableId;
-typedef u32 LightId;
+typedef u32	RenderableId;
+typedef u32	LightId;
+typedef u8	SurfaceId;
+
 
 
 enum Domain {

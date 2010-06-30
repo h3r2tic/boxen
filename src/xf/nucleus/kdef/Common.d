@@ -9,6 +9,7 @@ private {
 	import xf.nucleus.Function;
 	import xf.nucleus.TypeConversion;
 	import xf.nucleus.KernelImpl;
+	import xf.nucleus.SurfaceDef;
 	
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.GraphDef;
@@ -103,6 +104,7 @@ class KDefModule : Scope {
 	
 	// after semantic analysis:
 	KernelImpl[string]		kernels;
+	SurfaceDef[string]		surfaces;
 
 	TraitDef[]				traitDefs;
 
@@ -273,6 +275,11 @@ class GraphDefNodeValue : Value, IScopeValue {
 		assert (node !is null);
 		return node;
 	}
+}
+
+
+class SurfaceDefValue : Value {
+	SurfaceDef surface;
 }
 
 
