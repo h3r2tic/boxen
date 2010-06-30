@@ -7,6 +7,7 @@ public {
 	import tango.stdc.string : memset, strcmp, memcpy, memcmp, memmove;
 	import tango.stdc.stringz : fromStringz, toStringz;
 	import tango.core.Thread : Thread;
+	import tango.core.Traits;
 	import intrinsic = std.intrinsic;
 }
 

@@ -93,6 +93,13 @@ TraitDefValue
 	"}"
 	[ "=" ?!("default value identifier exptected") Identifier:defaultValue ];
 
+SurfaceDefValue
+	= SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars)
+	::= "surface" Identifier:illumKernel
+	"{"
+		VarDef:~vars*
+	"}";
+
 
 // ----------------------------------------------------------------------------------------------------------------
 
@@ -180,6 +187,7 @@ Value
 	GraphDefValue:value |
 	GraphDefNodeValue:value |
 	TraitDefValue:value |
+	SurfaceDefValue:value |
 	ParamListValue:value |
 	IdentifierValue:value;
 	

@@ -6,6 +6,8 @@ private {
 	import xf.nucleus.kdef.KDefParserBase;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.model.IKDefFileParser;
+	import xf.nucleus.kdef.ParamUtils;
+
 	import xf.nucleus.kernel.KernelDef;
 
 	import xf.nucleus.TypeSystem;
@@ -14,6 +16,7 @@ private {
 	import xf.nucleus.Param;
 	import xf.nucleus.Value;
 	import xf.nucleus.KernelImpl;
+	import xf.nucleus.SurfaceDef;
 	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
 	//import xf.nucleus.CommonDef;
 
@@ -114,6 +117,20 @@ class KDefProcessor {
 			error("Unknown kernel: '{}'.", name);
 			assert (false);
 		}
+	}
+
+
+	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
+		foreach (name, mod; modules) {
+			foreach (name, ref surf; mod.surfaces) {
+				string meh = name;
+				if (auto r = dg(meh, surf)) {
+					return r;
+				}
+			}
+		}
+		
+		return 0;
 	}
 
 	
@@ -223,6 +240,7 @@ class KDefProcessor {
 						auto pnew = node.params.add(ParamDirection.In, p.name);
 						pnew.hasPlainSemantic = true;
 						getPlainSemanticForNode(p, pnew.semantic, supr);
+						pnew.copyValueFrom(p);
 					} else {
 						node.params.add(*p).dir = ParamDirection.In;
 					}
@@ -496,6 +514,13 @@ class KDefProcessor {
 						}
 					}
 					
+					if (auto surfValue = cast(SurfaceDefValue)stmt.value) {
+						surfValue.surface.name = stmt.name;
+						if (auto mod = cast(KDefModule)sc) {
+							mod.surfaces[stmt.name] = surfValue.surface;
+						}
+					}
+
 					if (auto nodeValue = cast(GraphDefNodeValue)stmt.value) {
 						auto node = nodeValue.node;
 
@@ -536,6 +561,8 @@ class KDefProcessor {
 									pdir,
 									d.name
 								);
+
+								setParamValue(p, d.defaultValue);
 
 								p.hasPlainSemantic = true;
 								final psem = p.semantic();

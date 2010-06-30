@@ -9,6 +9,7 @@ private {
 	import xf.nucleus.util.AbstractRegistry;
 	import xf.nucleus.TypeConversion;
 	import xf.nucleus.KernelImpl;
+	import xf.nucleus.SurfaceDef;
 
 	alias char[] string;
 }
@@ -26,6 +27,7 @@ abstract class IKDefRegistry : AbstractRegistry {
 	abstract IKDefFileParser kdefFileParser();
 	abstract KDefModule getModuleForPath(string path);
 	abstract int converters(int delegate(ref SemanticConverter) dg);
+	abstract int surfaces(int delegate(ref string, ref SurfaceDef) dg);
 	abstract void doSemantics(Allocator);
 	abstract void clear();
 }

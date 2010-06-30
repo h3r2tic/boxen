@@ -828,6 +828,67 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
+	SurfaceDefValue
+		= SurfaceDefValue createSurfaceDefValue(string illumKernel,VarDef[] vars)
+		::= "surface" Identifier:illumKernel "{" VarDef:~vars* "}";
+
+	*/
+	SurfaceDefValue value_SurfaceDefValue;
+	bool parse_SurfaceDefValue(){
+		debug Stdout("parse_SurfaceDefValue").newline;
+		string var_illumKernel;
+		VarDef[] var_vars;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("surface")){
+					goto fail4;
+				}
+			term5:
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_illumKernel,value_Identifier);
+			term6:
+				// Terminal
+				if(!match("{")){
+					goto fail4;
+				}
+			term7:
+				// Iterator
+				start8:
+					// (terminator)
+						// Terminal
+						if(match("}")){
+							goto end9;
+						}
+					// (expression)
+					expr10:
+						// Production
+						if(!parse_VarDef()){
+							goto fail4;
+						}
+						smartAppend(var_vars,value_VarDef);
+					goto start8;
+				end9:
+					goto pass0;
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_SurfaceDefValue = createSurfaceDefValue(var_illumKernel,var_vars);
+			debug Stdout.format("\tparse_SurfaceDefValue passed: {0}",value_SurfaceDefValue).newline;
+			return true;
+		fail1:
+			value_SurfaceDefValue = (SurfaceDefValue).init;
+			debug Stdout.format("\tparse_SurfaceDefValue failed").newline;
+			return false;
+	}
+
+	/*
 	Code
 		= new Code(Atom[] tokens)
 		::= "{" OpaqueCodeBlock:tokens "}";
@@ -1593,7 +1654,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Value
 		= Value value
-		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | ParamListValue:value | IdentifierValue:value;
+		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | SurfaceDefValue:value | ParamListValue:value | IdentifierValue:value;
 
 	*/
 	Value value_Value;
@@ -1663,11 +1724,17 @@ class KDefParser:KDefParserBase{
 			}
 		term11:
 			// Production
+			if(parse_SurfaceDefValue()){
+				smartAssign(var_value,value_SurfaceDefValue);
+				goto pass0;
+			}
+		term12:
+			// Production
 			if(parse_ParamListValue()){
 				smartAssign(var_value,value_ParamListValue);
 				goto pass0;
 			}
-		term12:
+		term13:
 			// Production
 			if(!parse_IdentifierValue()){
 				goto fail1;

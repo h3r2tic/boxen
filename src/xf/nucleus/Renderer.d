@@ -1,9 +1,11 @@
 module xf.nucleus.Renderer;
 
 private {
+	import xf.Common;
 	import xf.nucleus.Defs;
 	import xf.nucleus.Renderable;
 	import xf.nucleus.RenderList;
+	import xf.nucleus.SurfaceDef;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import xf.utils.BitSet;
 	import xf.mem.FreeList;
@@ -62,6 +64,12 @@ abstract class Renderer : IRenderableObserver {
 			_renderableValid.clear(id);
 		}
 	// ----
+
+
+	// TODO: updateSurface
+	abstract void registerSurface(SurfaceDef def);
+	
+	static assert (isReferenceType!(SurfaceDef));
 
 
 	protected {

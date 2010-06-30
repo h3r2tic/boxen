@@ -16,13 +16,13 @@ private {
 
 // Renderables as a 'Struct of Arrays'
 mixin(multiArray(`renderables`, `
-	cstring				structureKernel
-	IStructureData		structureData
-	cstring				pigmentKernel
-	IPigmentData		pigmentData
-	cstring				illumKernel
-	CoordSys			transform
-	vec3				localHalfSize		// half-size of the local bounding box (OBB)
+	cstring			structureKernel
+	IStructureData	structureData
+	cstring			pigmentKernel
+	IPigmentData	pigmentData
+	SurfaceId		surface
+	CoordSys		transform
+	vec3			localHalfSize		// half-size of the local bounding box (OBB)
 `));
 
 
@@ -47,7 +47,7 @@ RenderableId createRenderable() {
 	renderables.structureData[res] = null;
 	renderables.pigmentKernel[res] = null;
 	renderables.pigmentData[res] = null;
-	renderables.illumKernel[res] = null;
+	renderables.surface[res] = 0;
 	renderables.transform[res] = CoordSys.identity;
 	renderables.localHalfSize[res] = vec3.zero;
 

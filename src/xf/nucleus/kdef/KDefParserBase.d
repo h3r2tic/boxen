@@ -5,10 +5,12 @@ private {
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
+	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.kdef.KDefLexer;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.TypeSystem;
+	import xf.nucleus.kdef.ParamUtils;
 
 	import enkilib.d.Parser;
 	import enkilib.d.ParserException;
@@ -137,6 +139,19 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
+		SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars) {
+			auto res = new SurfaceDefValue;
+			auto surf = res.surface = new SurfaceDef(illumKernel, allocator);
+			foreach (var; vars) {
+				setParamValue(
+					surf.params.add(ParamDirection.Out, var.name),
+					var.value
+				);
+			}
+			return res;
+		}
+
+
 		AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params) {
 			auto res = new AbstractFunction(name, tags, allocator);
 			_createFunctionParams(params, res);
@@ -161,6 +176,8 @@ class KDefParserBase : Parser!(KDefToken) {
 					dir,
 					d.name
 				);
+
+				setParamValue(p, d.defaultValue);
 
 				if (ParamDirection.In == dir) {
 					p.hasPlainSemantic = true;

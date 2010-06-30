@@ -1,99 +1,142 @@
-AshikhminShirley = kernel Illumination {
-	float roughness = 0.1f;
-	float fresnelR0 = 0.3f;
+AshikhminShirley = graph Illumination {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			roughness <type float>
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Illumination(
+			in roughness <type float>
+		) {
+			float fresnelR0 = 0.3f;
 
-	float3 H	= normalize( toLight + toEye );
- 
-	// Generate any useful aliases
-	float VdotN	= saturate(dot( toEye, normal ).x);
-	float LdotN	= saturate(dot( toLight, normal ).x);
-	float HdotN	= saturate(dot( H, normal ).x);
-	float HdotL	= saturate(dot( H, toLight ).x);
- 
-	float specExp = 3.0f / roughness;	// from the Strauss model
- 
-	// Compute the diffuse term
-	float Pd = 28.0f / 23.0f;
-	Pd *= (1.0f - pow(1.0f - (LdotN / 2.0f), 5.0f));
-	Pd *= (1.0f - pow(1.0f - (VdotN / 2.0f), 5.0f));
-	Pd *= (1.0f - fresnelR0);
- 
-	float Ps_num = specExp + 1;
-	Ps_num *= pow(HdotN, specExp);
- 
-	float Ps_den = 8.0f;// * HdotL;
-	const float k1n = LdotN;
-	const float k2n = VdotN;
-	// Ps_den *= max( k1n, k2n );	// regular A&S
-	Ps_den *= k1n + k2n - k1n*k2n;	// modified per Michael's d-BRDF paper
-	Ps_den += 0.001f;		// to avoid div by zero
- 
-	float Ps = Ps_num / Ps_den;
-	Ps *= ( fresnelR0 + (1.0f - fresnelR0) * pow( 1.0f - HdotL, 5.0f ) ).x;
-	
-	Pd *= LdotN;
-	Ps *= LdotN;
-	
-	diffuse = intensity * Pd;
-	specular = intensity * Ps;
+			float3 H	= normalize( toLight + toEye );
+		 
+			// Generate any useful aliases
+			float VdotN	= saturate(dot( toEye, normal ).x);
+			float LdotN	= saturate(dot( toLight, normal ).x);
+			float HdotN	= saturate(dot( H, normal ).x);
+			float HdotL	= saturate(dot( H, toLight ).x);
+		 
+			float specExp = 3.0f / roughness;	// from the Strauss model
+		 
+			// Compute the diffuse term
+			float Pd = 28.0f / 23.0f;
+			Pd *= (1.0f - pow(1.0f - (LdotN / 2.0f), 5.0f));
+			Pd *= (1.0f - pow(1.0f - (VdotN / 2.0f), 5.0f));
+			Pd *= (1.0f - fresnelR0);
+		 
+			float Ps_num = specExp + 1;
+			Ps_num *= pow(HdotN, specExp);
+		 
+			float Ps_den = 8.0f;// * HdotL;
+			const float k1n = LdotN;
+			const float k2n = VdotN;
+			// Ps_den *= max( k1n, k2n );	// regular A&S
+			Ps_den *= k1n + k2n - k1n*k2n;	// modified per Michael's d-BRDF paper
+			Ps_den += 0.001f;		// to avoid div by zero
+		 
+			float Ps = Ps_num / Ps_den;
+			Ps *= ( fresnelR0 + (1.0f - fresnelR0) * pow( 1.0f - HdotL, 5.0f ) ).x;
+			
+			Pd *= LdotN;
+			Ps *= LdotN;
+			
+			diffuse = intensity * Pd;
+			specular = intensity * Ps;
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n0 n2;
+	connect n1.roughness n2.roughness;
+	connect n2 n3;
 };
 
 
-CookTorrance = kernel Illumination {
-	float roughness = 0.3f;
-	float fresnelR0 = 0.4f;
+CookTorrance = graph Illumination {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			roughness <type float>
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Illumination(
+			in roughness <type float>
+		) {
+			float fresnelR0 = 0.4f;
 
+			// Compute any aliases and intermediary values
+			// -------------------------------------------
+			float3 H	= normalize(toLight + toEye);
+			float NdotL	= max(0.000f, dot(normal, toLight));
+			float NdotH	= max(0.001f, dot(normal, H));
+			float NdotV	= max(0.001f, dot(normal, toEye));
+			float VdotH	= max(0.001f, dot(toEye, H));
+			float r_sq	= roughness * roughness;
+		 
+			// Evaluate the geometric term
+			// ---------------------------
 
-	// Compute any aliases and intermediary values
-	// -------------------------------------------
-	float3 H	= normalize(toLight + toEye);
-	float NdotL	= max(0.000f, dot(normal, toLight));
-	float NdotH	= max(0.001f, dot(normal, H));
-	float NdotV	= max(0.001f, dot(normal, toEye));
-	float VdotH	= max(0.001f, dot(toEye, H));
-	float r_sq	= roughness * roughness;
- 
-	// Evaluate the geometric term
-	// ---------------------------
+			float geoTerm; {
+				float geo_numerator = 2.0f * NdotH;
+			 
+				float geo_b	= geo_numerator * NdotV / VdotH;
+				float geo_c	= geo_numerator * NdotL / VdotH;
+				geoTerm		= saturate((min(geo_b, geo_c)));
+			} 
+		 
+			// Now evaluate the roughness term
+			// -------------------------------
+			
+			float roughnessTerm; {
+				float roughness_a = 1.0f / (4.0f * r_sq * pow(NdotH, 4));
+				float roughness_b = NdotH * NdotH - 1.0f;
+				float roughness_c = r_sq * NdotH * NdotH;
 
-	float geoTerm; {
-		float geo_numerator = 2.0f * NdotH;
-	 
-		float geo_b	= geo_numerator * NdotV / VdotH;
-		float geo_c	= geo_numerator * NdotL / VdotH;
-		geoTerm		= saturate((min(geo_b, geo_c)));
-	} 
- 
-	// Now evaluate the roughness term
-	// -------------------------------
-	
-	float roughnessTerm; {
-		float roughness_a = 1.0f / (4.0f * r_sq * pow(NdotH, 4));
-		float roughness_b = NdotH * NdotH - 1.0f;
-		float roughness_c = r_sq * NdotH * NdotH;
+				float roughness_exp = roughness_b / roughness_c;
 
-		float roughness_exp = roughness_b / roughness_c;
+				// lolNaN
+				roughnessTerm =
+					roughness_exp > -85.0f
+					? roughness_a * exp(roughness_exp)
+					: 0.0f;
+			}
+		 
+			// Next evaluate the Fresnel value
+			// -------------------------------
+			float fresnel = pow(1.0f - VdotH, 5.0f);
+			fresnel *= (1.0f - fresnelR0);
+			fresnel += fresnelR0;
+		 
+			// Put all the terms together to compute
+			// the specular term in the equation
+			// -------------------------------------
+			float Rs = ( fresnel * geoTerm * roughnessTerm ) / NdotV;
 
-		// lolNaN
-		roughnessTerm =
-			roughness_exp > -85.0f
-			? roughness_a * exp(roughness_exp)
-			: 0.0f;
-	}
- 
-	// Next evaluate the Fresnel value
-	// -------------------------------
-	float fresnel = pow(1.0f - VdotH, 5.0f);
-	fresnel *= (1.0f - fresnelR0);
-	fresnel += fresnelR0;
- 
- 	// Put all the terms together to compute
-	// the specular term in the equation
-	// -------------------------------------
-	float Rs = ( fresnel * geoTerm * roughnessTerm ) / NdotV;
+			specular = intensity * Rs;
+			diffuse = intensity * NdotL;
+		};
+	};
+	n3 = node {
+		type = output;
+	};
 
-	specular = intensity * Rs;
-	diffuse = intensity * NdotL;
+	connect n0 n2;
+	connect n1.roughness n2.roughness;
+	connect n2 n3;
 };
 
 

@@ -62,7 +62,8 @@ int findTopologicalOrder(
 	nodeIter((int ni) {
 		idValid[ni] = true;
 		nodeSuccIter(ni, (int succ) {
-			++numIncoming[succ];
+			assert (succ > 0 && succ < numIncoming.length, "nodeSuccIter returned a node outside of a the subgraph defined by nodeIter");
+			++numIncoming.ptr[succ];
 		});
 	});
 	

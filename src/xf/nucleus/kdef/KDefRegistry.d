@@ -10,6 +10,7 @@ private {
 	import xf.nucleus.kdef.model.IKDefFileParser;
 	import xf.nucleus.TypeConversion;
 	import xf.nucleus.KernelImpl;
+	import xf.nucleus.SurfaceDef;
 	
 	import tango.text.convert.Format;
 	import tango.io.Stdout;
@@ -59,6 +60,11 @@ class KDefRegistry : IKDefRegistry {
 
 	int converters(int delegate(ref SemanticConverter) dg) {
 		return kdefProcessor.converters(dg);
+	}
+
+
+	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
+		return kdefProcessor.surfaces(dg);
 	}
 
 	
