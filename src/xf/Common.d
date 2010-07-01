@@ -4,6 +4,7 @@
 module xf.Common;
 
 public {
+	import tango.stdc.stdlib : alloca;
 	import tango.stdc.string : memset, strcmp, memcpy, memcmp, memmove;
 	import tango.stdc.stringz : fromStringz, toStringz;
 	import tango.core.Thread : Thread;

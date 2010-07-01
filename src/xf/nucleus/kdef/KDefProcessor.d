@@ -17,6 +17,7 @@ private {
 	import xf.nucleus.Value;
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
 	//import xf.nucleus.CommonDef;
 
@@ -123,6 +124,21 @@ class KDefProcessor {
 	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
 		foreach (name, mod; modules) {
 			foreach (name, ref surf; mod.surfaces) {
+				string meh = name;
+				if (auto r = dg(meh, surf)) {
+					return r;
+				}
+			}
+		}
+		
+		return 0;
+	}
+
+
+
+	int materials(int delegate(ref string, ref MaterialDef) dg) {
+		foreach (name, mod; modules) {
+			foreach (name, ref surf; mod.materials) {
 				string meh = name;
 				if (auto r = dg(meh, surf)) {
 					return r;
@@ -518,6 +534,13 @@ class KDefProcessor {
 						surfValue.surface.name = stmt.name;
 						if (auto mod = cast(KDefModule)sc) {
 							mod.surfaces[stmt.name] = surfValue.surface;
+						}
+					}
+
+					if (auto matValue = cast(MaterialDefValue)stmt.value) {
+						matValue.material.name = stmt.name;
+						if (auto mod = cast(KDefModule)sc) {
+							mod.materials[stmt.name] = matValue.material;
 						}
 					}
 

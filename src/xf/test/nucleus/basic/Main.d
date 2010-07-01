@@ -18,6 +18,7 @@ private {
 	import xf.nucleus.CompiledMeshAsset;
 	import xf.nucleus.KernelParamInterface;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kernel.KernelDef;
@@ -201,12 +202,23 @@ class TestApp : GfxApp {
 		SurfaceId[cstring]	surfaces;
 		SurfaceId			nextSurfaceId;
 
+		MaterialId[cstring]	materials;
+		MaterialId			nextMaterialId;
+
 		nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+
 		foreach (surfName, surf; &kdefRegistry.surfaces) {
 			surf.id = nextSurfaceId++;
 			surf.illumKernel = kdefRegistry.getKernel(surf.illumKernelName);
 			nr.registerSurface(surf);
 			surfaces[surfName] = surf.id;
+		}
+
+		foreach (matName, mat; &kdefRegistry.materials) {
+			mat.id = nextMaterialId++;
+			mat.pigmentKernel = kdefRegistry.getKernel(mat.pigmentKernelName);
+			nr.registerMaterial(mat);
+			materials[matName] = mat.id;
 		}
 
 		// TODO: configure the VSD spatial subdivision
@@ -240,7 +252,7 @@ class TestApp : GfxApp {
 
 		// ----
 
-		void loadScene(cstring path, float scale, CoordSys cs, cstring illum, cstring pigment) {
+		void loadScene(cstring path, float scale, CoordSys cs, cstring surface, cstring material) {
 			path = Path.normalize(path);
 			
 			scope loader = new HsfLoader;
@@ -273,9 +285,8 @@ class TestApp : GfxApp {
 				final rid = createRenderable();	
 				renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 				renderables.structureData[rid] = ms;
-				renderables.pigmentKernel[rid] = pigment;
-				renderables.pigmentData[rid] = null;	// TODO
-				renderables.surface[rid] = surfaces[illum];
+				renderables.material[rid] = materials[material];
+				renderables.surface[rid] = surfaces[surface];
 				renderables.transform[rid] = cs;
 				renderables.localHalfSize[rid] = compiledMesh.halfSize;
 			});
@@ -285,22 +296,22 @@ class TestApp : GfxApp {
 
 		loadScene(
 			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[-2, 0, 0]),
-			"TestSurface1", "TestPigment"
+			"TestSurface1", "TestMaterial"
 		);
 		
 		loadScene(
 			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
-			"TestSurface2", "TestPigment"
+			"TestSurface2", "TestMaterial"
 		);
 
 		loadScene(
 			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
-			"TestSurface3", "TestPigment"
+			"TestSurface3", "TestMaterial"
 		);
 
 		loadScene(
 			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
-			"TestSurface4", "TestPigment"
+			"TestSurface4", "TestMaterial"
 		);
 	}
 

@@ -6,6 +6,7 @@ private {
 	import xf.nucleus.Renderable;
 	import xf.nucleus.RenderList;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import xf.utils.BitSet;
 	import xf.mem.FreeList;
@@ -69,7 +70,11 @@ abstract class Renderer : IRenderableObserver {
 	// TODO: updateSurface
 	abstract void registerSurface(SurfaceDef def);
 	
+	// TODO: updateMaterial
+	abstract void registerMaterial(MaterialDef def);
+
 	static assert (isReferenceType!(SurfaceDef));
+	static assert (isReferenceType!(MaterialDef));
 
 
 	protected {

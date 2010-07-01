@@ -2,6 +2,8 @@ module xf.nucleus.codegen.Codegen;
 
 private {
 	import xf.Common;
+	import xf.nucleus.codegen.Defs;
+	import xf.nucleus.codegen.Rename;
 	import xf.nucleus.Param;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.Graph;
@@ -20,9 +22,6 @@ private {
 	import tango.io.device.File;
 }
 
-
-
-alias FormatOutput!(char) CodeSink;
 
 
 struct CodegenSetup {
@@ -514,66 +513,6 @@ void codegen(
 	);
 }
 
-
-
-struct CodegenContext {
-	CodeSink	sink;
-	GPUDomain	domain;
-	KernelGraph	graph;
-	GPUDomain[]	nodeDomains;
-}
-
-
-
-void emitSourceParamName(
-	CodegenContext ctx,
-	GraphNodeId nid,
-	cstring pname
-) {
-	alias KernelGraph.NodeType NT;
-
-
-	final node = ctx.graph.getNode(nid);
-	
-	if (
-			NT.Input == node.type
-		&&	ctx.nodeDomains[nid.id] == ctx.domain
-	) {
-		// Can only have Input nodes for structure kernels
-		ctx.sink("structure__");
-	} else if (
-		NT.Data == node.type
-	) {
-		final pnode = node._param();
-		switch (pnode.sourceKernelType) {
-			case SourceKernelType.Undefined: {
-				error("Data node without a source kernel type :(");
-			} break;
-
-			case SourceKernelType.Structure: {
-				ctx.sink("structure__");
-			} break;
-
-			case SourceKernelType.Pigment: {
-				ctx.sink("pigment__");
-			} break;
-
-			case SourceKernelType.Illumination: {
-				ctx.sink("illumination__");
-			} break;
-
-			case SourceKernelType.Light: {
-				ctx.sink("light")(pnode.sourceLightIndex)("__");
-			} break;
-
-			default: assert (false);
-		}
-	} else {
-		ctx.sink('n')(nid.id)("__");
-	}
-
-	ctx.sink(pname);
-}
 
 
 void domainCodegen(

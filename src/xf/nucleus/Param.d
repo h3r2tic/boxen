@@ -105,25 +105,25 @@ struct Param {
 	void setValue(float a, float b) {
 		valueType = ParamValueType.Float2;
 		value = _allocator(8);
-		*(cast(float*)value+0) = a;
-		*(cast(float*)value+4) = b;
+		*cast(float*)(value+0) = a;
+		*cast(float*)(value+4) = b;
 	}
 
 	void setValue(float a, float b, float c) {
 		valueType = ParamValueType.Float3;
 		value = _allocator(12);
-		*(cast(float*)value+0) = a;
-		*(cast(float*)value+4) = b;
-		*(cast(float*)value+8) = c;
+		*cast(float*)(value+0) = a;
+		*cast(float*)(value+4) = b;
+		*cast(float*)(value+8) = c;
 	}
 
 	void setValue(float a, float b, float c, float d) {
 		valueType = ParamValueType.Float4;
 		value = _allocator(16);
-		*(cast(float*)value+0) = a;
-		*(cast(float*)value+4) = b;
-		*(cast(float*)value+8) = c;
-		*(cast(float*)value+12) = d;
+		*cast(float*)(value+0) = a;
+		*cast(float*)(value+4) = b;
+		*cast(float*)(value+8) = c;
+		*cast(float*)(value+12) = d;
 	}
 
 	void setValue(cstring val) {
@@ -448,128 +448,6 @@ struct ParamList {
 		return res;
 	}
 }
-
-
-// TODO: mem
-/+template MParamSupport() {
-	static assert (
-		is(typeof(this) == class)
-		|| is(typeof(this.ThisStructHasReferenceSemantics))
-	);
-
-	private import xf.nucleus.TypeSystem : Semantic;
-	private import xf.Common;
-	
-	
-	protected Param[]	_params;
-	bool				_paramsOwner = true;
-	
-	Param[] params() {
-		return _params;
-	}
-	
-	uint numParams() {
-		return _params.length;
-	}
-	
-	int iterParams(int delegate(ref Param) dg) {
-		foreach (ref p; _params) {
-			if (auto r = dg(p)) {
-				return r;
-			}
-		}
-		return 0;
-	}
-	
-	bool getInputParam(cstring name, ref Param res) {
-		foreach (ref p; _params) {
-			if (p.isInput && p.name == name) {
-				res = p;
-				return true;
-			}
-		}
-		return false;
-	}
-
-	bool getOutputParam(cstring name, ref Param res) {
-		foreach (ref p; _params) {
-			if (!p.isInput && p.name == name) {
-				res = p;
-				return true;
-			}
-		}
-		return false;
-	}
-
-
-	Param* addParam(ParamDirection dir, cstring type, cstring name) {
-		/+assert (name.length > 0);
-		if (!_paramsOwner) {
-			_params = _params.dup;
-			_paramsOwner = true;
-		}
-		_params ~= xf.nucleus.CommonDef.Param(dir, type, name, sem);+/
-		assert (false, "TODO");
-	}
-
-	
-	void addParam(Param p) {
-		/+assert (p.name.length > 0, p.toString);
-		if (!_paramsOwner) {
-			_params = _params.dup;
-			_paramsOwner = true;
-		}
-		_params ~= p;+/
-		assert (false, "TODO");
-	}
-	
-	
-	void removeParamKeepOrder(cstring name) {
-		foreach (i, ref p; _params) {
-			if (p.name == name) {
-				for (; i+1 < _params.length; ++i) {
-					_params[i] = _params[i+1];
-				}
-				_params = _params[0..$-1];
-				return;
-			}
-		}
-		assert (false, name);
-	}
-	
-	
-	void removeParams(bool delegate(ref Param) dg) {
-		int dst = 0;
-		foreach (i, ref p; _params) {
-			if (!dg(p)) {
-				if (i != dst) {
-					_params[dst++] = p;
-				} else {
-					++dst;
-				}
-			}
-		}
-		_params = _params[0..dst];
-	}
-
-
-	Param* getParam(cstring name) {
-		foreach (ref p; _params) {
-			if (p.name == name) {
-				return &p;
-			}
-		}
-		return null;
-	}
-
-
-	int paramIndex(Param* p) {
-		final res = p - _params.ptr;
-		assert (&_params[res] is p);
-		return res;
-	}
-}+/
-
 
 
 /**

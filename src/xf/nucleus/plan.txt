@@ -122,15 +122,19 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 		* inspect materials and surfaces for overrides, store these as well  ?????????????????
 
--	surfaces and materials
-	-	make like a class and shit
-	-	the abilititty to set them for renderables (by index)
++	surfaces
+	+ make like a class and shit
+	+ the abilititty to set them for renderables (by index)
+	* the surface must have a valid ID before it's passed to the renderer (registered in it)
+	* must register surfaces before using them for objects
+	
 
-	* for each kernel, find all static params (in Data nodes)
-		* keep track of the name of the param as well as its type
-	* create a block of data for all of its static params
-		* duplicate the block for each Surface, but overriding params according to the Surface values
-		* for each Surface, remember whether it overrides the value or not
+~	materials
+	+ make like a class and shit
+	+ the abilititty to set them for renderables (by index)
+	- textures
+	* the surface must have a valid ID before it's passed to the renderer (registered in it)
+	* must register surfaces before using them for objects
 
 -	monitor quark files for changes, recompile shaders when needed
 
