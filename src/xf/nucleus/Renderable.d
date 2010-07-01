@@ -5,7 +5,6 @@ private {
 	import xf.nucleus.Defs;
 	import xf.nucleus.Kernel;
 	import xf.nucleus.IStructureData;
-	import xf.nucleus.IPigmentData;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.mem.MultiArray;
