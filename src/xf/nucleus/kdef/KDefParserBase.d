@@ -6,6 +6,7 @@ private {
 	import xf.nucleus.Code;
 	import xf.nucleus.Function;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 	import xf.nucleus.kdef.KDefLexer;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kernel.KernelDef;
@@ -145,6 +146,19 @@ class KDefParserBase : Parser!(KDefToken) {
 			foreach (var; vars) {
 				setParamValue(
 					surf.params.add(ParamDirection.Out, var.name),
+					var.value
+				);
+			}
+			return res;
+		}
+
+
+		MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars) {
+			auto res = new MaterialDefValue;
+			auto mat = res.material = new MaterialDef(pigmentKernel, allocator);
+			foreach (var; vars) {
+				setParamValue(
+					mat.params.add(ParamDirection.Out, var.name),
 					var.value
 				);
 			}

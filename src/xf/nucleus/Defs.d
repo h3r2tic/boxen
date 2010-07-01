@@ -10,6 +10,7 @@ private {
 typedef u32	RenderableId;
 typedef u32	LightId;
 typedef u8	SurfaceId;
+typedef u16	MaterialId;		// the indices should be kept low (reused)
 
 
 

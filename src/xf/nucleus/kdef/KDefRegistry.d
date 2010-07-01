@@ -11,6 +11,7 @@ private {
 	import xf.nucleus.TypeConversion;
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 	
 	import tango.text.convert.Format;
 	import tango.io.Stdout;
@@ -65,6 +66,11 @@ class KDefRegistry : IKDefRegistry {
 
 	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
 		return kdefProcessor.surfaces(dg);
+	}
+
+
+	int materials(int delegate(ref string, ref MaterialDef) dg) {
+		return kdefProcessor.materials(dg);
 	}
 
 	

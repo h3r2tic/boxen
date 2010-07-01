@@ -10,6 +10,7 @@ private {
 	import xf.nucleus.TypeConversion;
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 
 	alias char[] string;
 }
@@ -28,6 +29,7 @@ abstract class IKDefRegistry : AbstractRegistry {
 	abstract KDefModule getModuleForPath(string path);
 	abstract int converters(int delegate(ref SemanticConverter) dg);
 	abstract int surfaces(int delegate(ref string, ref SurfaceDef) dg);
+	abstract int materials(int delegate(ref string, ref MaterialDef) dg);
 	abstract void doSemantics(Allocator);
 	abstract void clear();
 }

@@ -14,10 +14,12 @@ private {
 	import xf.nucleus.KernelParamInterface;
 	import xf.nucleus.KernelCompiler;
 	import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.KDefGraphBuilder;
 	import xf.nucleus.kernel.KernelDef;
+	static import xf.nucleus.codegen.Rename;
 	import xf.nucleus.graph.GraphOps;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.KernelGraphOps;
@@ -36,7 +38,12 @@ private {
 	import xf.omg.util.ViewSettings;
 	import xf.mem.StackBuffer;
 	import xf.mem.MainHeap;
-	
+	import xf.mem.ScratchAlloc;
+
+	import xf.mem.Array;
+	import MemUtils = xf.utils.Memory;
+	import xf.utils.FormatTmp;
+
 	import tango.stdc.stdio : sprintf;
 
 	// TMP
@@ -135,7 +142,19 @@ class ForwardRenderer : Renderer {
 			KernelImpl	illumKernel;
 		}
 		
-		SurfaceData[256] _surfaces;
+		struct MaterialData {
+			struct Info {
+				cstring	name;		// not owned here
+				word	offset;
+			}
+			
+			Info[]		info;
+			void*		data;
+			KernelImpl	pigmentKernel;
+		}
+
+		SurfaceData[256]		_surfaces;
+		Array!(MaterialData)	_materials;
 	}
 
 
@@ -168,23 +187,135 @@ class ForwardRenderer : Renderer {
 	}
 
 
-	private bool findEffectForRenderable(RenderableId rid, Light[] affectingLights, Effect* effect) {
+	// TODO: mem
+	// TODO: textures
+	override void registerMaterial(MaterialDef def) {
+		if (def.id >= _materials.length) {
+			_materials.growBy(def.id - _materials.length + 1);
+		}
+		
+		auto mat = _materials[def.id];
+		MemUtils.alloc(mat.info, def.params.length);
+
+		//assert (def.illumKernel !is null);
+		mat.pigmentKernel = def.pigmentKernel;
+
+		uword sizeReq = 0;
+		
+		foreach (i, p; def.params) {
+			// TODO: get clear ownership rules here
+			mat.info[i].name = cast(cstring)p.name;
+			mat.info[i].offset = sizeReq;
+			sizeReq += p.valueSize;
+			sizeReq += 3;
+			sizeReq &= ~3;
+		}
+
+		mat.data = mainHeap.allocRaw(sizeReq);
+		memset(mat.data, 0, sizeReq);
+
+		foreach (i, p; def.params) {
+			void* dst = mat.data + mat.info[i].offset;
+			memcpy(dst, p.value, p.valueSize);
+		}
+	}
+
+
+	// TODO: mem
+	struct EffectInfo {
+		struct UniformDefaults {
+			char[]	name;		// zero-terminated
+			void[]	value;
+		}
+
+		UniformDefaults[]	uniformDefaults;
+		Effect				effect;
+
+
+		void dispose() {
+			// TODO: dispose the effect
+		}
+	}
+
+
+	private bool findEffectForRenderable(RenderableId rid, Light[] affectingLights, EffectInfo* effect) {
 		return false;
 	}
 
 
-	private void cacheEffectForRenderable(RenderableId rid, Light[] affectingLights, Effect) {
+	private void cacheEffectForRenderable(RenderableId rid, Light[] affectingLights, EffectInfo) {
 	}
 
 
-	private Effect buildEffectForRenderable(RenderableId rid, Light[] affectingLights) {
+	private void findEffectInfo(KernelGraph kg, EffectInfo* effectInfo) {
+		assert (effectInfo !is null);
+
+		void iterDataParams(void delegate(cstring name, Param* param) sink) {
+			foreach (nid; kg.iterNodes) {
+				final node = kg.getNode(nid);
+				if (KernelGraph.NodeType.Data != node.type) {
+					continue;
+				}
+				final pnode = node.data();
+
+				foreach (ref p; pnode.params) {
+					if (p.value) {
+						formatTmp((Fmt fmt) {
+							xf.nucleus.codegen.Rename.renameDataNodeParam(
+								fmt,
+								pnode,
+								p.name
+							);
+						},
+						(cstring s) {
+							sink(s, &p);
+						});
+					}
+				}
+			}
+		}
+
+		uword numParams = 0;
+		uword sizeReq = 0;
+
+		iterDataParams((cstring name, Param* param) {
+			sizeReq += name.length+1;	// stringz
+			sizeReq += param.valueSize;
+			sizeReq += EffectInfo.UniformDefaults.sizeof;
+			++numParams;
+		});
+
+		final pool = PoolScratchAlloc(mainHeap.allocRaw(sizeReq)[0..sizeReq]);
+		
+		effectInfo.uniformDefaults = pool.allocArray
+			!(EffectInfo.UniformDefaults)(numParams);
+
+		numParams = 0;
+		iterDataParams((cstring name, Param* param) {
+			final ud = &effectInfo.uniformDefaults[numParams];
+			assert (param.valueType != ParamValueType.String, "TODO");
+			ud.name = pool.dupStringz(name);
+			ud.value = pool.dupArray(param.value[0..param.valueSize]);
+			++numParams;
+		});
+
+		assert (pool.isFull());
+	}
+
+
+	private EffectInfo buildEffectForRenderable(RenderableId rid, Light[] affectingLights) {
 		scope stack = new StackBuffer;
+
+		EffectInfo effectInfo;
 
 		SurfaceId surfaceId = renderables.surface[rid];
 		auto surface = &_surfaces[surfaceId];
 
+		MaterialId materialId = renderables.material[rid];
+		auto material = _materials[materialId];
+
 		final structureKernel		= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel			= _kdefRegistry.getKernel(renderables.pigmentKernel[rid]);
+		final pigmentKernel			= material.pigmentKernel;
 		final illumKernel			= surface.illumKernel;
 
 		alias KernelGraph.NodeType NT;
@@ -317,6 +448,15 @@ class ForwardRenderer : Renderer {
 			foreach (lightI, ref illumGraph; illumGraphs) {
 				scope stack2 = new StackBuffer;
 
+				/*
+				 * We collect only the non-data nodes here for fusion, as
+				 * Data nodes are shared between illumination kernel nodes.
+				 * Having them in the list would make findTopologicalOrder
+				 * traverse outward from them and find the connected non-shared
+				 * nodes of other illum graph instances. The Data nodes are not
+				 * used in fusion anyway - it's mostly concerned about Input
+				 * and Output nodes, plus whatever might be connected to them.
+				 */
 				uword numIllumNoData = illumGraph.nodes.length - numIllumDataNodes;
 				auto illumNoData = stack2.allocArray!(GraphNodeId)(numIllumNoData); {
 					uword i = 0;
@@ -559,7 +699,7 @@ class ForwardRenderer : Renderer {
 		cgSetup.inputNode = structureInfo.input;
 		cgSetup.outputNode = pigmentInfo.output;
 
-		return compileKernelGraph(
+		effectInfo.effect = compileKernelGraph(
 			null,
 			kg,
 			cgSetup,
@@ -581,6 +721,10 @@ class ForwardRenderer : Renderer {
 				);
 			}
 		);
+
+		findEffectInfo(kg, &effectInfo);
+
+		return effectInfo;
 	}
 
 
@@ -594,15 +738,19 @@ class ForwardRenderer : Renderer {
 
 				// compile the kernels, create an EffectInstance
 				// TODO: cache Effects and only create new EffectInstances
-				Effect effect;
-				if (!findEffectForRenderable(rid, affectingLights, &effect)) {
-					effect = buildEffectForRenderable(rid, affectingLights);
-					cacheEffectForRenderable(rid, affectingLights, effect);
+				EffectInfo effectInfo;
+				if (!findEffectForRenderable(rid, affectingLights, &effectInfo)) {
+					effectInfo = buildEffectForRenderable(rid, affectingLights);
+					cacheEffectForRenderable(rid, affectingLights, effectInfo);
 				}
+
+				Effect effect = effectInfo.effect;
 
 				// ----
 
 				effect.compile();
+
+				// HACK
 				allocateDefaultUniformStorage(effect);
 
 				void** uniforms = effect.getUniformPtrsDataPtr();
@@ -632,8 +780,14 @@ class ForwardRenderer : Renderer {
 				// ----
 
 				EffectInstance efInst = _backend.instantiateEffect(effect);
+
+				// HACK
+				// all structure params should come from the asset
+				// all illumination params - from the surface
+				// all light params - from light
+				// all pigmeht params - from materials
+				// hence there should be no need for 'default' storage
 				allocateDefaultUniformStorage(efInst);
-				allocateDefaultVaryingStorage(efInst);
 
 				void** instUniforms = efInst.getUniformPtrsDataPtr();
 
@@ -649,6 +803,28 @@ class ForwardRenderer : Renderer {
 
 				// ----
 
+				/*
+				 * HACK: Bah, now this is kind of tricky. On on hand, kernel graphs
+				 * may come with defauls for Data node parameters, which need to be
+				 * set for new effects. On the other hand, parameters are supposed
+				 * to be owned by materials/surfaces but they don't need to specify
+				 * them all. In such a case there doesn't seem to be a location
+				 * for these parameters which materials/surfaces don't set.
+				 *
+				 * The proper solution will be to inspect all illum and pigment
+				 * kernels, match them to mats/surfs and create the default param
+				 * values directly inside mats/surfs. This could also be done on
+				 * the level of Nucled, so that mats/surfs always define all values,
+				 * even if they're not set in the GUI
+				 */
+				foreach (ud; effectInfo.uniformDefaults) {
+					void** ptr = getInstUniformPtrPtr(ud.name);
+					assert (ptr && *ptr, ud.name);
+					memcpy(*ptr, ud.value.ptr, ud.value.length);
+				}				
+
+				// ----
+
 				auto surface = &_surfaces[renderables.surface[rid]];
 				foreach (ref info; surface.info) {
 					char[256] fqn;
@@ -660,6 +836,17 @@ class ForwardRenderer : Renderer {
 					}
 				}
 				
+				auto material = _materials[renderables.material[rid]];
+				foreach (ref info; material.info) {
+					char[256] fqn;
+					sprintf(fqn.ptr, "pigment__%.*s", info.name);
+					auto name = fromStringz(fqn.ptr);
+					void** ptr = getInstUniformPtrPtr(name);
+					if (ptr) {
+						*ptr = material.data + info.offset;
+					}
+				}
+
 				// ----
 
 

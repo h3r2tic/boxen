@@ -20,14 +20,15 @@ DefaultMeshStructure = graph Structure {
 
 
 TestSurface1 = surface CookTorrance {
-	roughness = 0.05;
+	roughness = 0.1;
 };
 
-TestSurface2 = surface CookTorrance {
-	roughness = 0.3;
+TestSurface2 = surface BlinnPhong {
+	//roughness = 0.3;
+	specularPower = 60;
 };
 
-TestSurface3 = surface CookTorrance {
+TestSurface3 = surface AshikhminShirley {
 	roughness = 0.7;
 };
 
@@ -36,9 +37,9 @@ TestSurface4 = surface CookTorrance {
 };
 
 
-/+TestMat = material TestPigment {
-	albedo = 1 0 0 1;
-};+/
+TestMaterial = material TestPigment {
+	//albedoTint = 1 1 1 1;
+};
 
 
 TestLight = graph Light {
@@ -73,9 +74,33 @@ TestLight = graph Light {
 };
 
 
-TestPigment = kernel Pigment {
-	radiance = diffuse + specular;
+TestPigment = graph Pigment {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type vec4 + use color> = 1 1 1 1
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Pigment(
+			albedoTint <type vec4 + use color>
+		) {
+			radiance = (diffuse + specular) * albedoTint;
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n0 n2;
+	connect n1.albedoTint n2.albedoTint;
+	connect n2 n3;
 };
+
 
 SpecularOnly = kernel Pigment {
 	radiance = specular;

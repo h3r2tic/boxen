@@ -889,6 +889,67 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
+	MaterialDefValue
+		= MaterialDefValue createMaterialDefValue(string pigmentKernel,VarDef[] vars)
+		::= "material" Identifier:pigmentKernel "{" VarDef:~vars* "}";
+
+	*/
+	MaterialDefValue value_MaterialDefValue;
+	bool parse_MaterialDefValue(){
+		debug Stdout("parse_MaterialDefValue").newline;
+		string var_pigmentKernel;
+		VarDef[] var_vars;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("material")){
+					goto fail4;
+				}
+			term5:
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_pigmentKernel,value_Identifier);
+			term6:
+				// Terminal
+				if(!match("{")){
+					goto fail4;
+				}
+			term7:
+				// Iterator
+				start8:
+					// (terminator)
+						// Terminal
+						if(match("}")){
+							goto end9;
+						}
+					// (expression)
+					expr10:
+						// Production
+						if(!parse_VarDef()){
+							goto fail4;
+						}
+						smartAppend(var_vars,value_VarDef);
+					goto start8;
+				end9:
+					goto pass0;
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_MaterialDefValue = createMaterialDefValue(var_pigmentKernel,var_vars);
+			debug Stdout.format("\tparse_MaterialDefValue passed: {0}",value_MaterialDefValue).newline;
+			return true;
+		fail1:
+			value_MaterialDefValue = (MaterialDefValue).init;
+			debug Stdout.format("\tparse_MaterialDefValue failed").newline;
+			return false;
+	}
+
+	/*
 	Code
 		= new Code(Atom[] tokens)
 		::= "{" OpaqueCodeBlock:tokens "}";
@@ -1654,7 +1715,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Value
 		= Value value
-		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | SurfaceDefValue:value | ParamListValue:value | IdentifierValue:value;
+		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | SurfaceDefValue:value | MaterialDefValue:value | ParamListValue:value | IdentifierValue:value;
 
 	*/
 	Value value_Value;
@@ -1730,11 +1791,17 @@ class KDefParser:KDefParserBase{
 			}
 		term12:
 			// Production
+			if(parse_MaterialDefValue()){
+				smartAssign(var_value,value_MaterialDefValue);
+				goto pass0;
+			}
+		term13:
+			// Production
 			if(parse_ParamListValue()){
 				smartAssign(var_value,value_ParamListValue);
 				goto pass0;
 			}
-		term13:
+		term14:
 			// Production
 			if(!parse_IdentifierValue()){
 				goto fail1;
