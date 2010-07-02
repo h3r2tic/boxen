@@ -87,7 +87,9 @@ struct GraphBuilder {
 			info.nodes[0] = info.input = info.output
 				= kg.addFuncNode(cast(Function)kernel.kernel.func);
 		} else {
-			info.nodes = stack.allocArrayNoInit!(GraphNodeId)(kernel.graph.numNodes);
+			info.nodes = stack.allocArrayNoInit!(GraphNodeId)(
+				numGraphFlattenedNodes(kernel.graph)
+			);
 			
 			buildKernelGraph(
 				kernel.graph,
@@ -613,6 +615,8 @@ class ForwardRenderer : Renderer {
 			final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
 			findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
 
+			//File.set("graph.dot", toGraphviz(kg));
+
 			fuseGraph(
 				kg,
 				pigmentInfo.input,
@@ -805,7 +809,7 @@ class ForwardRenderer : Renderer {
 
 				/*
 				 * HACK: Bah, now this is kind of tricky. On on hand, kernel graphs
-				 * may come with defauls for Data node parameters, which need to be
+				 * may come with defaults for Data node parameters, which need to be
 				 * set for new effects. On the other hand, parameters are supposed
 				 * to be owned by materials/surfaces but they don't need to specify
 				 * them all. In such a case there doesn't seem to be a location

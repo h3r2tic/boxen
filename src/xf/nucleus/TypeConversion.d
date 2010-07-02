@@ -37,7 +37,7 @@ struct SemanticConverter {
 		assert (iPar.hasPlainSemantic);
 
 		assert (iPar.isInput);
-		assert (!oPar.isInput);
+		assert (oPar.isOutput);
 		
 		if (oPar.hasPlainSemantic) {
 			*output = *oPar.semantic();

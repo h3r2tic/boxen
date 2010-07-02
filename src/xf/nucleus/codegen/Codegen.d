@@ -108,14 +108,14 @@ void codegen(
 		assert (GPUDomain.Fragment == nodeDomains[nid.id]);
 
 		final node = graph.getNode(nid);
-		if (NT.Func == node.type) {
+		if (NT.Func == node.type || NT.Bridge == node.type) {
 			foreach (pred; graphBack.iterIncomingConnections(nid)) {
 				if (GPUDomain.Vertex != nodeDomains[pred.id]) {
 					continue moveToVertexIter;
 				}
 			}
 
-			if (node.func.func.hasTag("linear")) {
+			if (NT.Bridge == node.type || node.func.func.hasTag("linear")) {
 				nodeDomains[nid.id] = GPUDomain.Vertex;
 			}
 			// TODO: anything /else/ ?
@@ -292,7 +292,7 @@ void codegen(
 
 	uword numFoutputs = 0;
 	foreach (i, ref p; *foutputNodeParams) {
-		if (NT.Output == foutputNT || !p.isInput) {
+		if (NT.Output == foutputNT || p.isOutput) {
 			++numFoutputs;
 		}
 	}
@@ -300,7 +300,7 @@ void codegen(
 	CgParam[] foutputs = stack.allocArray!(CgParam)(numFoutputs);
 	numFoutputs = 0;
 	foreach (ref p; *foutputNodeParams) {
-		if (NT.Output == foutputNT || !p.isInput) {
+		if (NT.Output == foutputNT || p.isOutput) {
 			GraphNodeId	srcNid;
 			Param*		srcParam;
 
@@ -625,32 +625,19 @@ void domainCodegenBody(
 
 	nodesTopo((GraphNodeId nid) {
 		auto node = ctx.graph.getNode(nid);
-		if (NT.Func != node.type) {
-			return;
-		}
 
-		auto funcNode = node.func();
-		
-		foreach (par; funcNode.params) {
-			assert (par.hasTypeConstraint);
+		// TODO: remove Bridge nodes and redirect their flow after auto conversion
+		// have been carried out, so that this step doen't have to be done
+		if (NT.Bridge == node.type) {
+			auto params = &node.bridge().params;
 			
-			if (!par.isInput) {
+			foreach (par; *params) {
+				assert (par.hasTypeConstraint);
 				sink('\t');
 				sink(par.type)(' ');
 				emitSourceParamName(ctx, nid, par.name);
-				sink(';').newline();
-			}
-		}
+				sink(" = ");
 
-		auto funcName = node2funcName[nid.id];
-		assert (funcName !is null);
-		
-		sink('\t')(funcName)('(').newline;
-		foreach (i, par; funcNode.params) {
-			sink('\t');
-			sink('\t');
-
-			if (par.isInput) {
 				GraphNodeId	srcNid;
 				Param*		srcParam;
 
@@ -669,16 +656,61 @@ void domainCodegenBody(
 				}
 
 				emitSourceParamName(ctx, srcNid, srcParam.name);
-			} else {
-				emitSourceParamName(ctx, nid, par.name);
+
+				sink(';').newline();
 			}
+		} else if (NT.Func == node.type) {
+			auto params = &node.func().params;
 			
-			if (i+1 != funcNode.params.length) {
-				sink(',');
+			foreach (par; *params) {
+				assert (par.hasTypeConstraint);
+				
+				if (par.isOutput) {
+					sink('\t');
+					sink(par.type)(' ');
+					emitSourceParamName(ctx, nid, par.name);
+					sink(';').newline();
+				}
 			}
-			sink.newline();
+
+			auto funcName = node2funcName[nid.id];
+			assert (funcName !is null);
+			
+			sink('\t')(funcName)('(').newline;
+			foreach (i, par; *params) {
+				sink('\t');
+				sink('\t');
+
+				if (par.isInput) {
+					GraphNodeId	srcNid;
+					Param*		srcParam;
+
+					if (!findSrcParam(
+						ctx.graph,
+						nid,
+						par.name,
+						&srcNid,
+						&srcParam
+					)) {
+						error(
+							"No flow to {}.{}. Should have been caught earlier.",
+							nid.id,
+							par.name
+						);
+					}
+
+					emitSourceParamName(ctx, srcNid, srcParam.name);
+				} else {
+					emitSourceParamName(ctx, nid, par.name);
+				}
+				
+				if (i+1 != params.length) {
+					sink(',');
+				}
+				sink.newline();
+			}
+			sink("\t);").newline;
 		}
-		sink("\t);").newline;
 	});
 }
 
