@@ -170,7 +170,7 @@ void fuseGraph(
 	// auto flow port generation
 	final outputPorts = LocalDynArray!(NodeParam)(stack);
 	foreach (ref fromParam; *graph.getNode(input).getParamList()) {
-		if (!fromParam.isInput) {
+		if (fromParam.isOutput) {
 			outputPorts.pushBack(NodeParam(input, &fromParam));
 		}
 	}						
@@ -217,7 +217,7 @@ void fuseGraph(
 						);
 					}
 
-					assert (!fromParam.isInput);
+					assert (fromParam.isOutput);
 
 					/*
 					 * Add the param returned by the user to the list of nodes
@@ -339,7 +339,7 @@ void fuseGraph(
 												);
 											}
 
-											assert (!fromParam.isInput);
+											assert (fromParam.isOutput);
 
 											/* Finally, the original port from graph1
 											 * is added to the list of all connections
@@ -375,7 +375,7 @@ void fuseGraph(
 								ParamList* fromParams = fromNode.getParamList();
 
 								foreach (ref fromParam; *fromParams) {
-									if (!fromParam.isInput) {
+									if (fromParam.isOutput) {
 										incomingSink(NodeParam(fromId, &fromParam));
 									}
 								}
@@ -544,7 +544,7 @@ void verifyDataFlowNames(KernelGraph graph) {
 						fromId.id, toId.id, fl.from
 					);
 				}
-				assert (ParamDirection.Out == op.dir);
+				assert (op.isOutput);
 
 				final ip = toNode.getInputParam(fl.to);
 				if (ip is null) {
@@ -554,7 +554,7 @@ void verifyDataFlowNames(KernelGraph graph) {
 						fromId.id, toId.id, fl.to
 					);
 				}
-				assert (ParamDirection.In == ip.dir);
+				assert (ip.isInput);
 				assert (ip.hasPlainSemantic);
 			}
 		}
@@ -652,7 +652,7 @@ private void _insertConversionNodes(
 		assert (2 == cnode.func.params.length);
 		assert (cnode.func.params[0].isInput);
 		assert (cnode.func.params[0].hasPlainSemantic);
-		assert (!cnode.func.params[1].isInput);
+		assert (cnode.func.params[1].isOutput);
 		
 		graph.flow.addDataFlow(
 			srcId,
@@ -722,7 +722,7 @@ private void findAutoFlow(
 
 		scope stack2 = new StackBuffer;
 		
-		assert (!fromParam.isInput);
+		assert (fromParam.isOutput);
 		
 		int convCost = 0;
 
@@ -894,7 +894,7 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 		}
 
 		foreach (ref Param par; *params) {
-			if (!par.isInput) {
+			if (par.isOutput) {
 				continue;
 			}
 
@@ -953,7 +953,7 @@ private void doAutoFlow(
 					ParamList* fromParams = fromNode.getParamList();
 
 					foreach (ref fromParam; *fromParams) {
-						if (!fromParam.isInput) {
+						if (fromParam.isOutput) {
 							incomingSink(NodeParam(fromId, &fromParam));
 						}
 					}						
@@ -985,6 +985,10 @@ private void doAutoFlow(
 
 		case KernelGraph.NodeType.Kernel: {
 			plist = &toNode.kernel.kernel.func.params;
+		} break;
+
+		case KernelGraph.NodeType.Bridge: {
+			plist = &toNode.bridge.params;
 		} break;
 
 		default: return;		// just outputs here
@@ -1042,7 +1046,7 @@ private void doAutoFlow(
 				}
 			);
 		}
-	}		
+	}
 }
 
 
@@ -1056,11 +1060,11 @@ private void doManualFlow(
 	scope stack = new StackBuffer;
 
 	final fromParam = graph.getNode(fromId).getOutputParam(fl.from);
-	assert (fromParam !is null);
+	assert (fromParam !is null, fl.from);
 	assert (fromParam.hasPlainSemantic);
 	
 	final toParam = graph.getNode(toId).getInputParam(fl.to);
-	assert (toParam !is null);
+	assert (toParam !is null, fl.to);
 	assert (toParam.hasPlainSemantic);
 
 	if (!findConversion(
@@ -1227,14 +1231,14 @@ void reduceGraphData(
 	cstring		reductionPName;
 
 	foreach (i, p; reductionFunc.params) {
-		if (i > 3 || (i <= 1 && !p.isInput) || (2 == i && p.isInput)) {
+		if (i > 3 || (i <= 1 && p.isOutput) || (2 == i && p.isInput)) {
 			error(
 				"reduceGraphData: '{}' is not a valid reduction func.",
 				reductionFunc.name
 			);
 		}
 		
-		if (!p.isInput) {
+		if (p.isOutput) {
 			if (reductionPName is null) {
 				reductionPName = p.name;
 			} else {

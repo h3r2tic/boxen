@@ -226,9 +226,14 @@ struct Param {
 
 
 	bool isInput() {
-		return ParamDirection.In == dir;
+		return dir != ParamDirection.Out;
 	}
+
 	
+	bool isOutput() {
+		return dir != ParamDirection.In;
+	}
+
 
 	// TODO: default value
 	// TODO: tags / non-trait semantics
@@ -375,7 +380,7 @@ struct ParamList {
 
 	bool getOutput(cstring name, Param** res) {
 		foreach (ref p; _params) {
-			if (!p.isInput && p.name == name) {
+			if (p.isOutput && p.name == name) {
 				*res = &p;
 				return true;
 			}
@@ -467,7 +472,7 @@ void findOutputSemantic(
 	Semantic delegate(cstring name) getActualParamSemantic,
 	Semantic* result
 ) {
-	assert (!outputParam.isInput);
+	assert (outputParam.isOutput);
 	
 	if (outputParam.hasPlainSemantic) {
 		*result = *outputParam.semantic();

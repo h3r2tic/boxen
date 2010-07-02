@@ -16,101 +16,205 @@ private {
 
 
 
-void buildKernelGraph(
+uword numGraphFlattenedNodes(IGraphDef def_) {
+	GraphDef def = GraphDef(def_);
+	uword num = def.nodes.length;
+	
+	foreach (nodeName, nodeDef; def.nodes) {
+		alias KernelGraph.NodeType NT;
+
+		if ("kernel" == nodeDef.type) {
+			switch (nodeDef.kernelImpl.type) {
+				case KernelImpl.Type.Kernel: break;
+
+				case KernelImpl.Type.Graph: {
+					num += numGraphFlattenedNodes(nodeDef.kernelImpl.graph);
+					--num;
+				} break;
+
+				default: assert (false);
+			}
+		}
+	}
+
+	return num;
+}
+
+
+private void buildKernelSubGraph(
 		IGraphDef def_,
 		KernelGraph kg,
+		uword* nodeI,
 		GraphNodeId delegate(
 			uword			i,
 			cstring			nodeName,
 			GraphDefNode	nodeDef,
 			GraphNodeId delegate() defaultBuilder
-		) nodeBuilder = null
+		) nodeBuilder,
+		bool genBridge,
+		GraphNodeId* inputBridgeId,
+		GraphNodeId* outputBridgeId,
+		GraphNodeId[] nodeIds,
+		GraphNodeId[] nodeInputIds,
+		GraphNodeId[] nodeOutputIds,
+		GraphDefNode[] nodeDefs,
 ) {
 	GraphDef def = GraphDef(def_);
 	
-	scope stack = new StackBuffer;
-	final nodeIds = stack.allocArray!(GraphNodeId)(def.nodes.length);
-	final nodeDefs = stack.allocArray!(GraphDefNode)(def.nodes.length);
-	// TODO: handle sub-graphs
-
-	uword i = 0;
 	foreach (nodeName, nodeDef; def.nodes) {
 		alias KernelGraph.NodeType NT;
 
-		void createKernelData(NT type, GraphNodeId n) {
-			// TODO ^ subgraphs
-			assert (KernelImpl.Type.Kernel == nodeDef.kernelImpl.type);
-			if (NT.Kernel == type) {
-				final nodeData = kg.getNode(n).kernel();
-				final kernel = nodeDef.kernelImpl.kernel;
-				nodeData.kernel = kernel;
-			} else if (NT.Func == type) {
-				final nodeData = kg.getNode(n).func();
-				final kernel = nodeDef.kernelImpl.kernel;
-				nodeData.func = cast(Function)kernel.func;
-				nodeData.params = kernel.func.params.dup(&kg._mem.pushBack);
+		if (nodeDef.type != "kernel" || KernelImpl.Type.Kernel == nodeDef.kernelImpl.type) {
+			void createKernelData(NT type, GraphNodeId n) {
+				if (NT.Kernel == type) {
+					final nodeData = kg.getNode(n).kernel();
+					final kernel = nodeDef.kernelImpl.kernel;
+					nodeData.kernel = kernel;
+				} else if (NT.Func == type) {
+					final nodeData = kg.getNode(n).func();
+					final kernel = nodeDef.kernelImpl.kernel;
+					nodeData.func = cast(Function)kernel.func;
+					nodeData.params = kernel.func.params.dup(&kg._mem.pushBack);
+				}
 			}
-		}
 
-		void createParamData(NT type, GraphNodeId n) {
-			final nodeData = kg.getNode(n)._param();
-			nodeData.params = nodeDef.params.dup(nodeData.params._allocator);
-		}
-
-		auto createData = &createParamData;
-		
-		NT type; {
-			switch (nodeDef.type) {
-				case "input":	type = NT.Input; break;
-				case "output":	type = NT.Output; break;
-				case "data":	type = NT.Data; break;
-				case "kernel": {
-					createData = &createKernelData;
-
-					// TODO ^ subgraphs
-					assert (KernelImpl.Type.Kernel == nodeDef.kernelImpl.type);
-					if (nodeDef.kernelImpl.kernel.isConcrete) {
-						type = NT.Func;
-					} else {
-						type = NT.Kernel;
-					}
-				} break;
-				default: assert (false, nodeDef.type);
+			void createParamData(NT type, GraphNodeId n) {
+				final nodeData = kg.getNode(n)._param();
+				nodeData.params = nodeDef.params.dup(nodeData.params._allocator);
 			}
-		}
 
-		nodeDefs[i] = nodeDef;
+			void createBridgeData(NT type, GraphNodeId n) {
+				final nodeData = kg.getNode(n).bridge();
+				nodeData.params = nodeDef.params.dup(nodeData.params._allocator);
+				foreach (ref p; nodeData.params) {
+					p.dir = ParamDirection.InOut;
+				}
+			}
 
-		GraphNodeId defaultNodeBuilder() {
-			final n = kg.addNode(type);
+			auto createData = &createParamData;
 
-			log.trace(
-				"Created a graph node '{}'. Id = {}.",
-				nodeName, n.id
-			);
+			GraphNodeId* rememberId = null;
+			
+			NT type; {
+				switch (nodeDef.type) {
+					case "data": type = NT.Data; break;
 
-			createData(type, n);
+					case "input": {
+						if (genBridge) {
+							rememberId = inputBridgeId;
+							createData = &createBridgeData;
+							type = NT.Bridge;
+						} else {
+							type = NT.Input;
+						}
+					} break;
+					
+					case "output": {
+						if (genBridge) {
+							rememberId = outputBridgeId;
+							createData = &createBridgeData;
+							type = NT.Bridge;
+						} else {
+							type = NT.Output;
+						}
+					} break;
+					
+					case "kernel": {
+						createData = &createKernelData;
 
-			return n;
-		}
+						if (nodeDef.kernelImpl.kernel.isConcrete) {
+							type = NT.Func;
+						} else {
+							type = NT.Kernel;
+						}
+					} break;
+					default: assert (false, nodeDef.type);
+				}
+			}
 
-		if (nodeBuilder !is null) {
-			nodeIds[i] = nodeBuilder(
-				i,
-				nodeName,
-				nodeDef,
-				&defaultNodeBuilder
-			);
+			nodeDefs[*nodeI] = nodeDef;
+
+			GraphNodeId defaultNodeBuilder() {
+				final n = kg.addNode(type);
+
+				log.trace(
+					"Created a graph node '{}'. Id = {}.",
+					nodeName, n.id
+				);
+
+				createData(type, n);
+
+				return n;
+			}
+
+			if (nodeBuilder !is null) {
+				nodeIds[*nodeI] = nodeBuilder(
+					*nodeI,
+					nodeName,
+					nodeDef,
+					&defaultNodeBuilder
+				);
+			} else {
+				nodeIds[*nodeI] = defaultNodeBuilder();
+			}
+
+			if (rememberId) {
+				*rememberId = nodeIds[*nodeI];
+			}
+
+			// The nodes for input and output flow for non-subgraphs are the nodes themselves
+			nodeOutputIds[*nodeI] = nodeInputIds[*nodeI] = nodeIds[*nodeI];
+
+			++*nodeI;
 		} else {
-			nodeIds[i] = defaultNodeBuilder();
-		}
+			assert (
+					nodeDef.type == "kernel"
+				&&	KernelImpl.Type.Graph == nodeDef.kernelImpl.type
+			);
 
-		++i;
+			GraphNodeId bridgeIn, bridgeOut;
+
+			// nodeI will be modified by the recursive call, hence remember it
+			// so that the input and output bridge nodes may be associated with
+			// the subgraph for data and auto flow at the end of this func.
+			uword subgraphDefIdx = *nodeI;
+
+			buildKernelSubGraph(
+				nodeDef.kernelImpl.graph,
+				kg,
+				nodeI,
+				nodeBuilder,
+				true,
+				&bridgeIn,
+				&bridgeOut,
+				nodeIds,
+				nodeInputIds,
+				nodeOutputIds,
+				nodeDefs
+			);
+
+			assert (bridgeIn.valid);
+			assert (bridgeOut.valid);
+
+			// Got the input and output bridge nodes for the subgraph now, store
+			// these as the idx associated with the GraphNodeDef of the subgraph.
+			nodeInputIds[subgraphDefIdx] = bridgeIn;
+			nodeOutputIds[subgraphDefIdx] = bridgeOut;
+			
+			nodeDefs[subgraphDefIdx] = nodeDef;
+		}
 	}
 
-	GraphNodeId findId(GraphDefNode g) {
+	GraphNodeId findInputId(GraphDefNode g) {
 		foreach (i, d; nodeDefs) {
-			if (d is g) return nodeIds[i];
+			if (d is g) return nodeInputIds[i];
+		}
+		assert (false);
+	}
+
+	GraphNodeId findOutputId(GraphDefNode g) {
+		foreach (i, d; nodeDefs) {
+			if (d is g) return nodeOutputIds[i];
 		}
 		assert (false);
 	}
@@ -118,11 +222,11 @@ void buildKernelGraph(
 	final flow = kg.flow();
 
 	foreach (con; def.nodeConnections) {
-		flow.addAutoFlow(findId(con.from), findId(con.to));
+		flow.addAutoFlow(findOutputId(con.from), findInputId(con.to));
 	}
 
 	foreach (con; def.nodeFieldConnections) {
-		flow.addDataFlow(findId(con.fromNode), con.from, findId(con.toNode), con.to);
+		flow.addDataFlow(findOutputId(con.fromNode), con.from, findInputId(con.toNode), con.to);
 	}
 
 
@@ -143,4 +247,45 @@ void buildKernelGraph(
 			}
 		}
 	}
+}
+
+
+void buildKernelGraph(
+		IGraphDef def_,
+		KernelGraph kg,
+		GraphNodeId delegate(
+			uword			i,
+			cstring			nodeName,
+			GraphDefNode	nodeDef,
+			GraphNodeId delegate() defaultBuilder
+		) nodeBuilder = null
+) {
+	uword nodeI = 0;
+	GraphDef def = GraphDef(def_);
+
+	scope stack = new StackBuffer;
+
+	final uword totalNodes = numGraphFlattenedNodes(def);
+
+	final nodeIds = stack.allocArray!(GraphNodeId)(totalNodes);
+	final nodeDefs = stack.allocArray!(GraphDefNode)(totalNodes);
+
+	final nodeInputIds = stack.allocArray!(GraphNodeId)(totalNodes);
+	final nodeOutputIds = stack.allocArray!(GraphNodeId)(totalNodes);
+	
+	buildKernelSubGraph(
+		def_,
+		kg,
+		&nodeI,
+		nodeBuilder,
+		false,
+		null,
+		null,
+		nodeIds,
+		nodeInputIds,
+		nodeOutputIds,
+		nodeDefs
+	);
+
+	assert (totalNodes == nodeI);
 }

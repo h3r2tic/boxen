@@ -37,7 +37,7 @@ TestSurface4 = surface CookTorrance {
 };
 
 
-TestMaterial = material TestPigment {
+TestMaterial = material TestPigmentNestNest {
 	//albedoTint = 1 1 1 1;
 };
 
@@ -74,7 +74,58 @@ TestLight = graph Light {
 };
 
 
+
+/*
+ * Messy in order to test graph flattening
+ */
+
 TestPigment = graph Pigment {
+	n0 = node {
+		type = input;
+		params = (
+			albedoTint <type vec4 + use color>
+		);
+	};
+	n1 = node {
+		type = kernel;
+		kernel = kernel Pigment(
+			albedoTint <type vec4 + use color>
+		) {
+			radiance = (diffuse + specular) * albedoTint;
+		};
+	};
+	n2 = node {
+		type = output;
+	};
+
+	connect n0 n1;
+	connect n0.albedoTint n1.albedoTint;
+	connect n1 n2;
+};
+
+
+TestPigmentNest = graph Pigment {
+	n0 = node {
+		type = input;
+		params = (
+			albedoTint <type vec4 + use color>
+		);
+	};
+	n1 = node {
+		type = kernel;
+		kernel = TestPigment;
+	};
+	n2 = node {
+		type = output;
+	};
+
+	connect n0 n1;
+	connect n0.albedoTint n1.albedoTint;
+	connect n1 n2;
+};
+
+
+TestPigmentNestNest = graph Pigment {
 	n0 = node {
 		type = input;
 	};
@@ -86,11 +137,7 @@ TestPigment = graph Pigment {
 	};
 	n2 = node {
 		type = kernel;
-		kernel = kernel Pigment(
-			albedoTint <type vec4 + use color>
-		) {
-			radiance = (diffuse + specular) * albedoTint;
-		};
+		kernel = TestPigmentNest;
 	};
 	n3 = node {
 		type = output;

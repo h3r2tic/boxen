@@ -128,6 +128,16 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	* the surface must have a valid ID before it's passed to the renderer (registered in it)
 	* must register surfaces before using them for objects
 	
++	kernel graph substitution for single nodes
+	* shittt, now this is a tricky one. Touches namespaces for uniforms, code generation,
+	  and auto conversions.
+	* perhaps it should be made so that each Graph can be codegen'd separately, then subgraphs
+	  will simply become functions. Yet then there is the possibilty of doing conversions back and forth
+	  and a disparity between what can be done with funcs (semantic exprs possible) and graps (fixed in stone)
+	* there's a possibility of turning subgraph Input and Output into Func nodes with signatures resembling:
+		void inputPassThrough(in input <from the Input node>, out output <in.input.actual>)
+		void outputPassThrough(in input <from the Output node>, out output <in.input.actual>)
+	+ done that via special Bridge nodes with similar treatment as Func nodes, but with InOut params
 
 ~	materials
 	+ make like a class and shit
@@ -137,8 +147,6 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	* must register surfaces before using them for objects
 
 -	monitor quark files for changes, recompile shaders when needed
-
--	kernel graph flattening (composite kernels -> quarks)
 
 -	heavy and ugly CPU quarks for post-proc and the pipeline
 	* no fancy runtime fixups

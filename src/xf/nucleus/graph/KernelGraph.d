@@ -46,6 +46,7 @@ class KernelGraph {
 		Data	= (3 << 1) | _Param,
 		Kernel	= (4 << 1),
 		Func	= (5 << 1),
+		Bridge	= (6 << 1),
 	}
 
 
@@ -59,6 +60,16 @@ class KernelGraph {
 
 		SourceKernelType	sourceKernelType;
 		uint				sourceLightIndex;
+	}
+
+
+	struct BridgeNode {
+		alias void* delegate(size_t) Allocator;
+
+		union {
+			ParamList	params;
+			Allocator	_allocator;
+		}
 	}
 
 
@@ -81,6 +92,7 @@ class KernelGraph {
 				ParamNode	_inputOutputData;
 				KernelNode	_kernel;
 				FuncNode	_func;
+				BridgeNode	_bridge;
 				Node*		_freeListNext;
 			}
 		}
@@ -97,6 +109,7 @@ class KernelGraph {
 				case NodeType.Data: return "Data";
 				case NodeType.Kernel: return "Kernel";
 				case NodeType.Func: return "Func";
+				case NodeType.Bridge: return "Bridge";
 				default: assert (false);
 			}
 		}
@@ -126,6 +139,11 @@ class KernelGraph {
 			return &_func;
 		}
 
+		BridgeNode* bridge() {
+			assert (NodeType.Bridge == type);
+			return &_bridge;
+		}
+
 		ParamNode* _param() {
 			assert(NodeType._Param & type);
 			return &_inputOutputData;
@@ -139,6 +157,7 @@ class KernelGraph {
 				case NodeType.Output:	return null;
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return _inputOutputData.params.get(name);
+				case NodeType.Bridge:	return _bridge.params.get(name);
 				default: {
 					final p = getParamList().get(name);
 					if (p.isInput) {
@@ -162,6 +181,7 @@ class KernelGraph {
 				case NodeType.Output:	return _inputOutputData.params.get(name);
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return null;
+				case NodeType.Bridge:	return _bridge.params.get(name);
 				default: {
 					final p = getParamList().get(name);
 					if (false == p.isInput) {
@@ -184,6 +204,7 @@ class KernelGraph {
 				case NodeType.Input:	// fall through
 				case NodeType.Data:		return &_inputOutputData.params;
 				case NodeType.Func:		return &_func.params;
+				case NodeType.Bridge:	return &_bridge.params;
 				
 				case NodeType.Kernel: {
 					auto k = _kernel.kernel;
@@ -244,6 +265,10 @@ class KernelGraph {
 
 		if (t & NodeType._Param) {
 			node._param._allocator = &_mem.pushBack;
+		}
+
+		if (NodeType.Bridge == t) {
+			node.bridge._allocator = &_mem.pushBack;
 		}
 		
 		return id;
