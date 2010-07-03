@@ -59,6 +59,8 @@ private {
 	import MemUtils = xf.utils.Memory;
 	import xf.utils.FormatTmp;
 
+	import tango.util.container.HashMap;
+
 	import tango.stdc.stdio : sprintf;
 
 	// TMP
@@ -145,6 +147,7 @@ class ForwardRenderer : Renderer {
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
 		_kdefRegistry = kdefRegistry;
 		_imgLoader = new Img.CachedLoader(new Img.FreeImageLoader);
+		_effectCache = new typeof(_effectCache);
 		super(backend);
 	}
 
@@ -345,12 +348,68 @@ class ForwardRenderer : Renderer {
 	}
 
 
-	private bool findEffectForRenderable(RenderableId rid, Light[] affectingLights, EffectInfo* effect) {
-		return false;
+	// TODO: mem, indices instead of names (?)
+	struct EffectCacheKey {
+		cstring		pigmentKernel;
+		cstring		illumKernel;
+		cstring		structureKernel;
+		cstring[]	lightKernels;
+		hash_t		hash;
+
+		hash_t toHash() {
+			return hash;
+		}
+
+		bool opEquals(ref EffectCacheKey other) {
+			return
+					pigmentKernel == other.pigmentKernel
+				&&	illumKernel == other.illumKernel
+				&&	structureKernel == other.structureKernel
+				&&	lightKernels == other.lightKernels;
+		}
+	}
+
+	private {
+		HashMap!(EffectCacheKey, EffectInfo) _effectCache;
 	}
 
 
-	private void cacheEffectForRenderable(RenderableId rid, Light[] affectingLights, EffectInfo) {
+	private EffectCacheKey createEffectCacheKey(RenderableId rid, Light[] affectingLights) {
+		EffectCacheKey key;
+
+		SurfaceId surfaceId = renderables.surface[rid];
+		auto surface = &_surfaces[surfaceId];
+
+		MaterialId materialId = renderables.material[rid];
+		auto material = _materials[materialId];
+
+		key.pigmentKernel = material.pigmentKernel.name;
+		key.illumKernel = surface.illumKernel.name;
+		key.structureKernel = renderables.structureKernel[rid];
+
+		key.lightKernels.length = affectingLights.length;
+
+		foreach (lightI, light; affectingLights) {
+			key.lightKernels[lightI] = light.kernelName;
+		}
+
+		key.lightKernels.sort;
+
+		hash_t hash = 0;
+		hash += typeid(cstring).getHash(&key.pigmentKernel);
+		hash *= 7;
+		hash += typeid(cstring).getHash(&key.illumKernel);
+		hash *= 7;
+		hash += typeid(cstring).getHash(&key.structureKernel);
+
+		foreach (ref lightKernel; key.lightKernels) {
+			hash *= 7;
+			hash += typeid(cstring).getHash(&lightKernel);
+		}
+
+		key.hash = hash;
+
+		return key;
 	}
 
 
@@ -816,7 +875,7 @@ class ForwardRenderer : Renderer {
 		cgSetup.inputNode = structureInfo.input;
 		cgSetup.outputNode = pigmentInfo.output;
 
-		effectInfo.effect = compileKernelGraph(
+		final effect = effectInfo.effect = compileKernelGraph(
 			null,
 			kg,
 			cgSetup,
@@ -839,6 +898,39 @@ class ForwardRenderer : Renderer {
 			}
 		);
 
+		// ----
+
+		effect.compile();
+
+		// HACK
+		allocateDefaultUniformStorage(effect);
+
+		void** uniforms = effect.getUniformPtrsDataPtr();
+
+		void** getUniformPtrPtr(cstring name) {
+			if (uniforms) {
+				final idx = effect.effectUniformParams.getUniformIndex(name);
+				if (idx != -1) {
+					return uniforms + idx;
+				}
+			}
+			return null;
+		}
+		
+		void setUniform(cstring name, void* ptr) {
+			if (auto upp = getUniformPtrPtr(name)) {
+				*upp = ptr;
+			}
+		}
+
+		if (uniforms) {
+			setUniform("worldToView", &worldToView);
+			setUniform("viewToClip", &viewToClip);
+			setUniform("eyePosition", &eyePosition);
+		}
+
+		// ----
+
 		findEffectInfo(kg, &effectInfo);
 
 		return effectInfo;
@@ -856,43 +948,20 @@ class ForwardRenderer : Renderer {
 				// compile the kernels, create an EffectInstance
 				// TODO: cache Effects and only create new EffectInstances
 				EffectInfo effectInfo;
-				if (!findEffectForRenderable(rid, affectingLights, &effectInfo)) {
+
+				auto cacheKey = createEffectCacheKey(
+					rid,
+					affectingLights
+				);
+
+				if (auto info = cacheKey in _effectCache) {
+					effectInfo = *info;
+				} else {
 					effectInfo = buildEffectForRenderable(rid, affectingLights);
-					cacheEffectForRenderable(rid, affectingLights, effectInfo);
+					_effectCache[cacheKey] = effectInfo;
 				}
 
 				Effect effect = effectInfo.effect;
-
-				// ----
-
-				effect.compile();
-
-				// HACK
-				allocateDefaultUniformStorage(effect);
-
-				void** uniforms = effect.getUniformPtrsDataPtr();
-
-				void** getUniformPtrPtr(cstring name) {
-					if (uniforms) {
-						final idx = effect.effectUniformParams.getUniformIndex(name);
-						if (idx != -1) {
-							return uniforms + idx;
-						}
-					}
-					return null;
-				}
-				
-				void setUniform(cstring name, void* ptr) {
-					if (auto upp = getUniformPtrPtr(name)) {
-						*upp = ptr;
-					}
-				}
-
-				if (uniforms) {
-					setUniform("worldToView", &worldToView);
-					setUniform("viewToClip", &viewToClip);
-					setUniform("eyePosition", &eyePosition);
-				}
 
 				// ----
 
