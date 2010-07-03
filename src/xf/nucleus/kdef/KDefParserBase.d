@@ -89,8 +89,8 @@ class KDefParserBase : Parser!(KDefToken) {
 		
 
 		override void error(char[] message) {
-			auto tok = data[pos];
-			throw ParserException("{} ({}): {} (got '{}' instead)", tok.filename, tok.line, message, data[pos]);
+			auto tok = data[pos < $ ? pos : ($-1)];
+			throw ParserException("{} ({}): {} (got '{}' instead)", tok.filename, tok.line, message, tok);
 		}
 		
 

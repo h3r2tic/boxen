@@ -71,6 +71,7 @@ template MSmallTempArray(T) {
 			_items[idx] = _items[_length-1];
 		}
 		_items[_length-1] = T.init;
+		--_length;
 	}
 
 	void removeMatching(bool delegate(T) pred) {
@@ -121,7 +122,8 @@ interface IGraphFlow {
 	GraphNodeFruct	iterNodes();
 	DataFlow*		addDataFlow(
 			GraphNodeId from, cstring fromPort,
-			GraphNodeId to, cstring toPort
+			GraphNodeId to, cstring toPort,
+			bool* newFlow = null
 	);
 	void			removeDataFlow(
 			GraphNodeId from, cstring fromPort,
@@ -129,7 +131,7 @@ interface IGraphFlow {
 	);
 	void			removeDataFlow(
 			GraphNodeId from, GraphNodeId to,
-			bool delegate(cstring, cstring) pred
+			bool delegate(cstring, cstring) pred = null
 	);
 	FlowFruct		iterDataFlow(GraphNodeId from, GraphNodeId to);
 	OutgoingConnectionFruct	iterOutgoingConnections(GraphNodeId id);
@@ -164,6 +166,7 @@ final class Graph : IGraphFlow {
 			// aww, must reallocate
 			res = GraphNodeId(cast(ushort)_capacity, 0);
 			_reallocateNodes(_getNewCapacity());
+			// do not clear the old stuff. something could be still iterating over it
 		}
 
 	gotNodeId:		// <----
@@ -292,7 +295,8 @@ final class Graph : IGraphFlow {
 
 	DataFlow*		addDataFlow(
 			GraphNodeId from, cstring fromPort,
-			GraphNodeId to, cstring toPort
+			GraphNodeId to, cstring toPort,
+			bool* newFlow = null
 	) {
 		_verifyNodeId(from);
 		_verifyNodeId(to);
@@ -319,6 +323,7 @@ final class Graph : IGraphFlow {
 			}
 
 			if (auto fl = con.containsFlow(fromPort, toPort)) {
+				if (newFlow) *newFlow = false;
 				return fl;
 			}
 		} else {
@@ -344,6 +349,8 @@ final class Graph : IGraphFlow {
 			),
 			_mem
 		);
+
+		if (newFlow) *newFlow = true;
 
 		return &con.items[con.length-1];
 	}
@@ -393,7 +400,7 @@ final class Graph : IGraphFlow {
 	
 	void			removeDataFlow(
 			GraphNodeId from, GraphNodeId to,
-			bool delegate(cstring, cstring) pred
+			bool delegate(cstring, cstring) pred = null
 	) {
 		_verifyNodeId(from);
 		_verifyNodeId(to);
@@ -413,7 +420,7 @@ final class Graph : IGraphFlow {
 
 		if (con !is null) {
 			con.removeMatching((DataFlow fl) {
-				return pred(fl.from, fl.to);
+				return pred ? pred(fl.from, fl.to) : true;
 			});
 
 			if (0 == con.length) {
@@ -554,6 +561,20 @@ final class Graph : IGraphFlow {
 	}
 
 
+	version (DebugGraphConnections) {
+		void sanityCheck() {
+			foreach (n; iterNodes) {
+				foreach (con; iterOutgoingConnections(n)) {
+					foreach (fl; iterDataFlow(n, con)) {}
+				}
+				foreach (con; iterIncomingConnections(n)) {
+					foreach (fl; iterDataFlow(con, n)) {}
+				}
+			}
+		}
+	}
+
+
 
 	private {
 		ScratchFIFO	_mem;
@@ -592,6 +613,11 @@ final class Graph : IGraphFlow {
 			
 			ConnectionList* outList = &_outgoingConnections[from.id];
 			Connection* con;
+
+			version (DebugGraphConnections) {
+				ConnectionList* incList = &_incomingConnections[to.id];
+				Connection* con2;
+			}
 			
 			foreach (item; outList.items) {
 				version (DebugGraphConnections) {
@@ -607,8 +633,30 @@ final class Graph : IGraphFlow {
 				}
 			}
 
+			version (DebugGraphConnections) {
+				foreach (item; incList.items) {
+					version (DebugGraphConnections) {
+						assert (item.alive);
+					}
+
+					if (item.from.id is from.id) {
+						assert (item.from.reuseCnt is from.reuseCnt);
+						if (item.to.id is to.id) {
+							assert (item.to.reuseCnt is to.reuseCnt);
+							con2 = item;
+						}
+					}
+				}
+
+				if (con !is con2) {
+					error("con == {:x}, con2 == {:x}", con, con2);
+				}
+			}
+
+
 			if (con !is null) {
-				foreach (ref fl; con.items) {
+				auto items = con.items();
+				foreach (ref fl; items) {
 					cstring fb = fl.from;
 					cstring tb = fl.to;
 					int r = sink(fl);
@@ -730,6 +778,9 @@ final class Graph : IGraphFlow {
 				version (DebugGraphConnections) {
 					bool alive = false;
 				}
+
+				// used to track the new/real connection when reallocating the graph
+				Connection* _reallocReal;
 			}
 
 			DataFlow* containsFlow(cstring from, cstring to) {
@@ -811,6 +862,8 @@ final class Graph : IGraphFlow {
 
 		void _reallocateNodes(int num) {
 			log.trace("Graph._reallocateNodes()");
+
+			version (DebugGraphConnections) sanityCheck();
 			
 			uword*			presentFlags;
 			ushort*			idReuseCounts;
@@ -879,11 +932,30 @@ final class Graph : IGraphFlow {
 							dstFlow.from = _allocString(srcFlow.from);
 							dstFlow.to = _allocString(srcFlow.to);
 						}
+
+						src._items[conI]._reallocReal = dstCon;
 					}
 				}
-				
+
 				copyConnections(incomingConnections[i], _incomingConnections[i]);
-				copyConnections(outgoingConnections[i], _outgoingConnections[i]);
+			}
+
+			for (int i = 0; i < _capacity; ++i) {
+				// the node didn't even exist
+				if (!_readFlag(_presentFlags, i)) {
+					continue;
+				}
+
+				void shallowCopyConnections(ref ConnectionList dst, ref ConnectionList src) {
+					dst.alloc(src.length, _mem);
+					foreach (conI, ref dstCon; dst.items) {
+						assert (dstCon is null);
+						dstCon = src._items[conI]._reallocReal;
+						assert (dstCon !is null);
+					}
+				}
+
+				shallowCopyConnections(outgoingConnections[i], _outgoingConnections[i]);
 			}
 
 			// replace the currently set data
@@ -896,6 +968,8 @@ final class Graph : IGraphFlow {
 			_autoFlowFlags = autoFlowFlags;
 			_incomingConnections = incomingConnections;
 			_outgoingConnections = outgoingConnections;
+
+			version (DebugGraphConnections) sanityCheck();
 		}
 
 		uword _getNewCapacity() {

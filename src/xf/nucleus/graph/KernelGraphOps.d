@@ -235,28 +235,48 @@ void fuseGraph(
 			simplifyParamSemantics(graph, id);
 
 		} else if (input == id) {
+			scope stack2 = new StackBuffer;
+			final toRemove = LocalDynArray!(ConFlow)(stack2);
+			
 			foreach (outCon; graph.flow.iterOutgoingConnections(input)) {
 				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(outCon)) {
 					foreach (outFl; graph.flow.iterDataFlow(input, outCon)) {
 						GraphNodeId	fromNode;
 						Param*		fromParam;
-						
-						if (!_findSrcParam(
-							graph.getNode(input).getInputParam(outFl.from),
-							&fromNode,
-							&fromParam
-						)) {
-							assert (false);
-						}
 
-						doManualFlow(
-							graph,
-							fromNode, outCon,
-							DataFlow(fromParam.name, outFl.to),
-							semanticConverters
-						);
+						if (Param* fromTmp = graph.getNode(input).getOutputParam(outFl.from)) {
+							if (!_findSrcParam(
+								fromTmp,
+								&fromNode,
+								&fromParam
+							)) {
+								assert (false);
+							}
+
+							if (doManualFlow(
+								graph,
+								fromNode, outCon,
+								DataFlow(fromParam.name, outFl.to),
+								semanticConverters
+							)) {
+								toRemove.pushBack(ConFlow(
+									input, outFl.from,
+									outCon, outFl.to
+								));
+							}
+						} else {
+							error(
+								"Src param '{}' not found in node {}.",
+								outFl.from,
+								input.id
+							);
+						}
 					}
 				}
+			}
+
+			foreach (rem; toRemove) {
+				graph.flow.removeDataFlow(rem.fromNode, rem.fromParam, rem.toNode, rem.toParam);
 			}
 		} else {
 			doAutoFlow(
@@ -388,16 +408,30 @@ void fuseGraph(
 			// Convert SemanticExp to Semantic, nuff said
 			simplifyParamSemantics(graph, id);
 
-			foreach (con; graph.flow.iterOutgoingConnections(id)) {
-				if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(con)) {
-					foreach (fl; graph.flow.iterDataFlow(id, con)) {
-						doManualFlow(
-							graph,
-							id,
-							con, fl,
-							semanticConverters
-						);
+			{
+				scope stack2 = new StackBuffer;
+				final toRemove = LocalDynArray!(ConFlow)(stack2);
+
+				foreach (con; graph.flow.iterOutgoingConnections(id)) {
+					if (OutputNodeConversion.Perform == outNodeConversion || !isOutputNode(con)) {
+						foreach (fl; graph.flow.iterDataFlow(id, con)) {
+							if (doManualFlow(
+								graph,
+								id,
+								con, fl,
+								semanticConverters
+							)) {
+								toRemove.pushBack(ConFlow(
+									id, fl.from,
+									con, fl.to
+								));
+							}
+						}
 					}
+				}
+
+				foreach (rem; toRemove) {
+					graph.flow.removeDataFlow(rem.fromNode, rem.fromParam, rem.toNode, rem.toParam);
 				}
 			}
 		}
@@ -526,6 +560,14 @@ struct NodeParam {
 }
 
 
+private struct ConFlow {
+	GraphNodeId	fromNode;
+	cstring		fromParam;
+	GraphNodeId	toNode;
+	cstring		toParam;
+}
+
+
 void verifyDataFlowNames(KernelGraph graph) {
 	final flow = graph.flow();
 	
@@ -633,7 +675,8 @@ private cstring _fmtChain(ConvSinkItem[] chain) {
 }
 
 
-private void _insertConversionNodes(
+// returns true if any new connections were inserted
+private bool _insertConversionNodes(
 	KernelGraph graph,
 	ConvSinkItem[] chain,
 	GraphNodeId fromId,
@@ -674,12 +717,17 @@ private void _insertConversionNodes(
 		srcParam = cnode.params[1];
 	}
 
+	bool newFlow;
+
 	graph.flow.addDataFlow(
 		srcId,
 		srcParam.name,
 		toId,
-		toParam.name
+		toParam.name,
+		&newFlow
 	);
+
+	return newFlow || chain.length > 0;
 }
 
 
@@ -1050,7 +1098,8 @@ private void doAutoFlow(
 }
 
 
-private void doManualFlow(
+// returns true if any new connections were inserted
+private bool doManualFlow(
 		KernelGraph graph,
 		GraphNodeId fromId,
 		GraphNodeId toId,
@@ -1067,13 +1116,15 @@ private void doManualFlow(
 	assert (toParam !is null, fl.to);
 	assert (toParam.hasPlainSemantic);
 
+	bool anyNewCons = false;
+
 	if (!findConversion(
 		*fromParam.semantic,
 		*toParam.semantic,
 		semanticConverters,
 		stack,
 		(ConvSinkItem[] convChain) {
-			_insertConversionNodes(
+			anyNewCons = _insertConversionNodes(
 				graph,
 				convChain,
 				fromId,
@@ -1090,6 +1141,8 @@ private void doManualFlow(
 			toId.id, toParam.toString
 		);
 	}
+
+	return anyNewCons;
 }
 
 
@@ -1123,15 +1176,27 @@ void convertGraphDataFlow(
 
 		simplifyParamSemantics(graph, id);
 		
+		scope stack2 = new StackBuffer;
+		final toRemove = LocalDynArray!(ConFlow)(stack2);
+
 		foreach (con; graph.flow.iterOutgoingConnections(id)) {
 			foreach (fl; graph.flow.iterDataFlow(id, con)) {
-				doManualFlow(
+				if (doManualFlow(
 					graph,
 					id,
 					con, fl,
 					semanticConverters
-				);
+				)) {
+					toRemove.pushBack(ConFlow(
+						id, fl.from,
+						con, fl.to
+					));
+				}
 			}
+		}
+
+		foreach (rem; toRemove) {
+			graph.flow.removeDataFlow(rem.fromNode, rem.fromParam, rem.toNode, rem.toParam);
 		}
 	}
 
@@ -1196,17 +1261,31 @@ void convertGraphDataFlowExceptOutput(
 		
 		simplifyParamSemantics(graph, id);
 
+		scope stack2 = new StackBuffer;
+		final toRemove = LocalDynArray!(ConFlow)(stack2);
+
 		foreach (con; graph.flow.iterOutgoingConnections(id)) {
+			bool markedForRemoval = false;
+			
 			if (!isOutputNode(con)) {
 				foreach (fl; graph.flow.iterDataFlow(id, con)) {
-					doManualFlow(
+					if (doManualFlow(
 						graph,
 						id,
 						con, fl,
 						semanticConverters
-					);
+					)) {
+						toRemove.pushBack(ConFlow(
+							id, fl.from,
+							con, fl.to
+						));
+					}
 				}
 			}
+		}
+
+		foreach (rem; toRemove) {
+			graph.flow.removeDataFlow(rem.fromNode, rem.fromParam, rem.toNode, rem.toParam);
 		}
 	}
 

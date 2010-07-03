@@ -1,3 +1,11 @@
 Add = kernel <linear> (in a, in b,	out c <in.a.actual>) {
 	c = a + b;
 };
+
+Tex2D = kernel (
+	in texture <type sampler2D>,
+	in texCoord <type float2 + use texCoord>,
+	out color <in.texture.actual + type float4>
+) {
+	color = tex2D(texture, texCoord);
+};

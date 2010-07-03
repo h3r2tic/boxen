@@ -80,8 +80,6 @@ void codegen(
 
 	simplifyKernelGraph(graph, topological);
 
-	File.set("graph.dot", toGraphviz(graph));
-
 	// ---- Find the GPU domains for nodes
 
 	final nodeDomains = stack.allocArray!(GPUDomain)(graph.capacity);
@@ -121,6 +119,14 @@ void codegen(
 			// TODO: anything /else/ ?
 		}
 	}
+
+	File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
+		switch (nodeDomains[nid.id]) {
+			case GPUDomain.Vertex: return " : vert"[];
+			case GPUDomain.Fragment: return " : frag"[];
+			default: assert (false);
+		}
+	}));
 
 	// ----
 
