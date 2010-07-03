@@ -433,6 +433,9 @@ class ForwardRenderer : Renderer {
 		SubgraphInfo pigmentInfo;
 		
 		auto kg = createKernelGraph();
+		scope (exit) {
+			disposeKernelGraph(kg);
+		}
 
 		{
 			GraphBuilder builder;
@@ -445,7 +448,10 @@ class ForwardRenderer : Renderer {
 		// Compute all flow and conversions within the Structure graph,
 		// skipping conversions to the Output node
 
-		File.set("graph.dot", toGraphviz(kg));
+		/+File.set("graph.dot", toGraphviz(kg));
+		scope (failure) {
+			File.set("graph.dot", toGraphviz(kg));
+		}+/
 
 		convertGraphDataFlowExceptOutput(
 			kg,
@@ -799,6 +805,8 @@ class ForwardRenderer : Renderer {
 				OutputNodeConversion.Perform
 			);
 		}
+
+		kg.flow.removeAllAutoFlow();
 
 		verifyDataFlowNames(kg);
 

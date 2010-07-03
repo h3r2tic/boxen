@@ -4,9 +4,16 @@ converter(30) normalizer(in a <type float3>, out b <in.a.actual + unit true>) {
 
 converter<linear>(20) normal2color (
 	in a <type float3 + use normal>,
-	out b <type float4 + use color>
+	out b <in.a.actual + type float4 + use color>
 ) {
 	b = float4((a + 1.0f) * 0.5f, 1.0f);
+}
+
+converter<linear>(10) vec4to3 (
+	in a <type float4>,
+	out b <in.a.actual + type float3>
+) {
+	b = a.xyz;
 }
 
 

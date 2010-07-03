@@ -56,24 +56,30 @@ cstring toGraphviz(Graph graph) {
 		);
 
 		bool[cstring] outp, inp;
+
+		bool needsAutoPort = false;
 		
 		foreach (n2; graph.iterOutgoingConnections(n)) {
+			needsAutoPort = needsAutoPort || graph.hasAutoFlow(n, n2);
 			foreach (fl; graph.iterDataFlow(n, n2)) {
 				outp[fl.from] = true;
 			}
 		}
 
 		foreach (n2; graph.iterIncomingConnections(n)) {
+			needsAutoPort = needsAutoPort || graph.hasAutoFlow(n2, n);
 			foreach (fl; graph.iterDataFlow(n2, n)) {
 				inp[fl.to] = true;
 			}
 		}
 
-		res ~= Format(
-			`
-			"{0}.auto" [label="auto", fillcolor="#c0c0c0", fontname="Verdana Bold"];`\n,
-			nodeName(n)
-		);
+		if (needsAutoPort) {
+			res ~= Format(
+				`
+				"{0}.auto" [label="auto", fillcolor="#c0c0c0", fontname="Verdana Bold"];`\n,
+				nodeName(n)
+			);
+		}
 
 		foreach (inParam; inp.keys) {
 			res ~= Format(
@@ -121,7 +127,7 @@ cstring toGraphviz(Graph graph) {
 
 
 
-cstring toGraphviz(KernelGraph kgraph) {
+cstring toGraphviz(KernelGraph kgraph, cstring delegate(GraphNodeId) annotGen) {
 	auto graph = kgraph.flow;
 	
 	char[] res;
@@ -150,7 +156,7 @@ cstring toGraphviz(KernelGraph kgraph) {
 		];
 	`;
 	
-	cstring nodeName(GraphNodeId n) {
+	cstring nodeName_(GraphNodeId n) {
 		final node = kgraph.getNode(n);
 		if (KernelGraph.NodeType.Func == node.type) {
 			return Format(
@@ -165,6 +171,14 @@ cstring toGraphviz(KernelGraph kgraph) {
 			);
 		} else {
 			return Format("{} - {}", n.id, node.typeString);
+		}
+	}
+	
+	cstring nodeName(GraphNodeId n) {
+		if (annotGen) {
+			return nodeName_(n) ~ annotGen(n);
+		} else {
+			return nodeName_(n);
 		}
 	}
 
@@ -184,24 +198,30 @@ cstring toGraphviz(KernelGraph kgraph) {
 		);
 
 		bool[cstring] outp, inp;
+
+		bool needsAutoPort = false;
 		
 		foreach (n2; graph.iterOutgoingConnections(n)) {
+			needsAutoPort = needsAutoPort || graph.hasAutoFlow(n, n2);
 			foreach (fl; graph.iterDataFlow(n, n2)) {
 				outp[fl.from] = true;
 			}
 		}
 
 		foreach (n2; graph.iterIncomingConnections(n)) {
+			needsAutoPort = needsAutoPort || graph.hasAutoFlow(n2, n);
 			foreach (fl; graph.iterDataFlow(n2, n)) {
 				inp[fl.to] = true;
 			}
 		}
 
-		res ~= Format(
-			`
-			"{0}.auto" [label="auto", fillcolor="#c0c0c0", fontname="Verdana Bold"];`\n,
-			nodeName(n)
-		);
+		if (needsAutoPort) {
+			res ~= Format(
+				`
+				"{0}.auto" [label="auto", fillcolor="#c0c0c0", fontname="Verdana Bold"];`\n,
+				nodeName(n)
+			);
+		}
 
 		foreach (inParam; inp.keys) {
 			res ~= Format(

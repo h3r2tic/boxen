@@ -145,7 +145,8 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 ~	materials
 	+ make like a class and shit
 	+ the abilititty to set them for renderables (by index)
-	- textures
+	+ textures
+	- samplers (via ARB_sampler_objects)
 	* the surface must have a valid ID before it's passed to the renderer (registered in it)
 	* must register surfaces before using them for objects
 

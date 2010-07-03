@@ -38,8 +38,8 @@ TestSurface4 = surface CookTorrance {
 };
 
 
-TestMaterial = material TestPigmentNestNest {
-	//albedoTint = 1 1 1 1;
+TestMaterial = material TestPigment {
+	albedoTint = 1 1 1 1;
 	albedoTex = sampler {
 		texture = "../../media/img/testgrid.png";
 		minFilter = mipmapLinear;
@@ -80,63 +80,7 @@ TestLight = graph Light {
 };
 
 
-
-/*
- * Messy in order to test graph flattening
- */
-
 TestPigment = graph Pigment {
-	n0 = node {
-		type = input;
-		params = (
-			albedoTint <type float4 + use color>,
-			albedoTex <type sampler2D>
-		);
-	};
-	n1 = node {
-		type = kernel;
-		kernel = kernel Pigment(
-			albedoTint <type float4 + use color>,
-			albedoTex <type sampler2D>
-		) {
-			radiance = diffuse * albedoTint * tex2D(albedoTex, texCoord) + specular;
-		};
-	};
-	n2 = node {
-		type = output;
-	};
-
-	connect n0 n1;
-	connect n0.albedoTint n1.albedoTint;
-	connect n0.albedoTex n1.albedoTex;
-	connect n1 n2;
-};
-
-
-TestPigmentNest = graph Pigment {
-	n0 = node {
-		type = input;
-		params = (
-			albedoTint <type float4 + use color>,
-			albedoTex <type sampler2D>
-		);
-	};
-	n1 = node {
-		type = kernel;
-		kernel = TestPigment;
-	};
-	n2 = node {
-		type = output;
-	};
-
-	connect n0 n1;
-	connect n0.albedoTint n1.albedoTint;
-	connect n0.albedoTex n1.albedoTex;
-	connect n1 n2;
-};
-
-
-TestPigmentNestNest = graph Pigment {
 	n0 = node {
 		type = input;
 	};
@@ -144,12 +88,21 @@ TestPigmentNestNest = graph Pigment {
 		type = data;
 		params = (
 			albedoTint <type float4 + use color> = 1 1 1 1,
-			albedoTex <type sampler2D>
+			albedoTex <type sampler2D + use color>
 		);
+	};
+	nt = node {
+		type = kernel;
+		kernel = Tex2D;
 	};
 	n2 = node {
 		type = kernel;
-		kernel = TestPigmentNest;
+		kernel = kernel Pigment(
+			albedoTint <type float4 + use color>,
+			albedoTexColor <type float4 + use color>
+		) {
+			radiance = diffuse * albedoTint * albedoTexColor + specular;
+		};
 	};
 	n3 = node {
 		type = output;
@@ -157,7 +110,9 @@ TestPigmentNestNest = graph Pigment {
 
 	connect n0 n2;
 	connect n1.albedoTint n2.albedoTint;
-	connect n1.albedoTex n2.albedoTex;
+	connect n1 nt;
+	connect n0.texCoord nt.texCoord;
+	connect nt.color n2.albedoTexColor;
 	connect n2 n3;
 };
 
