@@ -292,25 +292,30 @@ class TestApp : GfxApp {
 			});
 		}
 
-		//loadScene(`../../media/mesh/masha.hsf`, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
+		cstring model = `../../media/mesh/soldier.hsf`;
+		float scale = 1.0f;
+		//cstring model = `../../media/mesh/masha.hsf`;
+		//float scale = 0.02f;
+
+		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
 
 		loadScene(
-			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[-2, 0, 0]),
+			model, scale, CoordSys(vec3fi[-2, 0, 0]),
 			"TestSurface1", "TestMaterial"
 		);
 		
 		loadScene(
-			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
+			model, scale, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
 			"TestSurface2", "TestMaterial"
 		);
 
 		loadScene(
-			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
+			model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
 			"TestSurface3", "TestMaterial"
 		);
 
 		loadScene(
-			`../../media/mesh/soldier.hsf`, 1.0f, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
+			model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 			"TestSurface4", "TestMaterial"
 		);
 	}
@@ -324,9 +329,11 @@ class TestApp : GfxApp {
 		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 2));
 		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 1));
 
-		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0);
-		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0);
-		lights[2].lumIntens = vec4(0.3, 1.0, 0.6, 0);
+		float lightScale = 5.0f;
+
+		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0) * lightScale;
+		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0) * lightScale;
+		lights[2].lumIntens = vec4(0.3, 1.0, 0.6, 0) * lightScale;
 		
 		// move some objects
 

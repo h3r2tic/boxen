@@ -101,26 +101,12 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ create the Cg Effect
 	+ instantiate the Effect
 	+ bind params
-	- caching
+	~ caching
+		- one that doesn't suck
 
 +	light kernel instantiation (in the Forward renderer)
 
 +	streamline DSL and kernel/quark/graph semantics
-
-+	handling of Data nodes
-
--	figure out a way of naming or renaming func params so that kernels may
-	be connected without issues
-		like input position -> structure output 'position'
-
--	default values for params
-	* restrict to Data nodes only for now
-
-	* after graph fusion, iter all data nodes
-		* for each param with a default value, store its name, type and value (e.g. in a ParamList)
-		* potentially load textures (one reference per compiled graph)
-
-		* inspect materials and surfaces for overrides, store these as well  ?????????????????
 
 +	surfaces
 	+ make like a class and shit
@@ -139,8 +125,23 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		void outputPassThrough(in input <from the Output node>, out output <in.input.actual>)
 	+ done that via special Bridge nodes with similar treatment as Func nodes, but with InOut params
 
--	memory management for the kdef parser
-	* one ScratchFIFO per module, allocated automatically instead of by the user
+-	default values for params
+	* restrict to Data nodes only for now
+
+~	handling of Data nodes
+	* after graph fusion, iter all data nodes
+		* for each param with a default value, store its name, type and value (e.g. in a ParamList)
+		* potentially load textures (one reference per compiled graph)
+		* inspect materials and surfaces for overrides, store these as well
+	+ fetch the defaults
+	+ fetch material data
+		+ load textures
+	- eliminate all 'default' effect data storage, instead keeping it all in relevant materials,
+	  surfaces, lights and assets
+
+-	figure out a way of naming or renaming func params so that kernels may
+	be connected without issues
+		like input position -> structure output 'position'
 
 ~	materials
 	+ make like a class and shit
@@ -149,6 +150,10 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- samplers (via ARB_sampler_objects)
 	* the surface must have a valid ID before it's passed to the renderer (registered in it)
 	* must register surfaces before using them for objects
+
+
+-	memory management for the kdef parser
+	* one ScratchFIFO per module, allocated automatically instead of by the user
 
 -	monitor quark files for changes, recompile shaders when needed
 
