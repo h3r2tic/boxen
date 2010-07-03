@@ -11,6 +11,7 @@ private {
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
+	import xf.nucleus.SamplerDef;
 	
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.GraphDef;
@@ -287,6 +288,10 @@ class SurfaceDefValue : Value {
 
 class MaterialDefValue : Value {
 	MaterialDef material;
+}
+
+class SamplerDefValue : Value {
+	SamplerDef value;
 }
 
 

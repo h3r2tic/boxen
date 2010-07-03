@@ -2,8 +2,9 @@ DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
 		params = (
-			position <type vec3 + basis model + use position>,
-			normal <type vec3 + basis model + use normal>
+			position <type float3 + basis model + use position>,
+			normal <type float3 + basis model + use normal>,
+			texCoord <type float2 + use texCoord>
 		);
 	};
 	node_1 = node {
@@ -39,6 +40,11 @@ TestSurface4 = surface CookTorrance {
 
 TestMaterial = material TestPigmentNestNest {
 	//albedoTint = 1 1 1 1;
+	albedoTex = sampler {
+		texture = "../../media/img/testgrid.png";
+		minFilter = mipmapLinear;
+		magFilter = linear;
+	};
 };
 
 
@@ -49,15 +55,15 @@ TestLight = graph Light {
 	n1 = node {
 		type = data;
 		params = (
-			lightPos <type vec3 + use lightPos> = 0 1 -2,
-			lumIntens <type vec4 + use lumIntens> = 1 1 1 1
+			lightPos <type float3 + use lightPos> = 0 1 -2,
+			lumIntens <type float4 + use lumIntens> = 1 1 1 1
 		);
 	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Light(
-			lightPos <type vec3 + use lightPos>,
-			lumIntens <type vec4 + use lumIntens>
+			lightPos <type float3 + use lightPos>,
+			lumIntens <type float4 + use lumIntens>
 		) {
 			toLight = lightPos - position;
 			intensity = lumIntens / dot(toLight, toLight).xxxx;
@@ -83,15 +89,17 @@ TestPigment = graph Pigment {
 	n0 = node {
 		type = input;
 		params = (
-			albedoTint <type vec4 + use color>
+			albedoTint <type float4 + use color>,
+			albedoTex <type sampler2D>
 		);
 	};
 	n1 = node {
 		type = kernel;
 		kernel = kernel Pigment(
-			albedoTint <type vec4 + use color>
+			albedoTint <type float4 + use color>,
+			albedoTex <type sampler2D>
 		) {
-			radiance = (diffuse + specular) * albedoTint;
+			radiance = diffuse * albedoTint * tex2D(albedoTex, texCoord) + specular;
 		};
 	};
 	n2 = node {
@@ -100,6 +108,7 @@ TestPigment = graph Pigment {
 
 	connect n0 n1;
 	connect n0.albedoTint n1.albedoTint;
+	connect n0.albedoTex n1.albedoTex;
 	connect n1 n2;
 };
 
@@ -108,7 +117,8 @@ TestPigmentNest = graph Pigment {
 	n0 = node {
 		type = input;
 		params = (
-			albedoTint <type vec4 + use color>
+			albedoTint <type float4 + use color>,
+			albedoTex <type sampler2D>
 		);
 	};
 	n1 = node {
@@ -121,6 +131,7 @@ TestPigmentNest = graph Pigment {
 
 	connect n0 n1;
 	connect n0.albedoTint n1.albedoTint;
+	connect n0.albedoTex n1.albedoTex;
 	connect n1 n2;
 };
 
@@ -132,7 +143,8 @@ TestPigmentNestNest = graph Pigment {
 	n1 = node {
 		type = data;
 		params = (
-			albedoTint <type vec4 + use color> = 1 1 1 1
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D>
 		);
 	};
 	n2 = node {
@@ -145,6 +157,7 @@ TestPigmentNestNest = graph Pigment {
 
 	connect n0 n2;
 	connect n1.albedoTint n2.albedoTint;
+	connect n1.albedoTex n2.albedoTex;
 	connect n2 n3;
 };
 

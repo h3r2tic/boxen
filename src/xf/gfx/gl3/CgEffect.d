@@ -507,7 +507,17 @@ class CgEffect : Effect {
 						}
 						
 						usedAnywhere = true;
-						
+
+						if (CG_PARAMETERCLASS_SAMPLER == cgGetParameterClass(p)) {
+							p = p2;
+							log.warn(
+								"Restricting a shared sampler parameter to just one"
+								" domain ({}), since Cg can't handle it othewise :(",
+								GPUDomainName(domain)
+							);
+							break;
+						}
+
 						cgConnectParameter(p, p2);
 						auto err = cgGetError();
 						switch (err) {

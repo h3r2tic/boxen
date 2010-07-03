@@ -7,6 +7,7 @@ private {
 	import xf.nucleus.Function;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
+	import xf.nucleus.SamplerDef;
 	import xf.nucleus.kdef.KDefLexer;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kernel.KernelDef;
@@ -159,6 +160,24 @@ class KDefParserBase : Parser!(KDefToken) {
 			foreach (var; vars) {
 				setParamValue(
 					mat.params.add(ParamDirection.Out, var.name),
+					var.value
+				);
+			}
+			return res;
+		}
+
+
+		SamplerDefValue createSamplerDefValue(VarDef[] vars) {
+			auto res = new SamplerDefValue;
+			auto meh = res.value = new SamplerDef(allocator);
+
+			// HACK until proper memory management in the parser is done
+			static SamplerDef[] allSamplersHACK;
+			allSamplersHACK ~= meh;
+			
+			foreach (var; vars) {
+				setParamValue(
+					meh.params.add(ParamDirection.Out, var.name),
 					var.value
 				);
 			}
