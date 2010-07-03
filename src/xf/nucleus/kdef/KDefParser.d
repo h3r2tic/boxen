@@ -950,6 +950,60 @@ class KDefParser:KDefParserBase{
 	}
 
 	/*
+	SamplerDefValue
+		= SamplerDefValue createSamplerDefValue(VarDef[] vars)
+		::= "sampler" "{" VarDef:~vars* "}";
+
+	*/
+	SamplerDefValue value_SamplerDefValue;
+	bool parse_SamplerDefValue(){
+		debug Stdout("parse_SamplerDefValue").newline;
+		VarDef[] var_vars;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("sampler")){
+					goto fail4;
+				}
+			term5:
+				// Terminal
+				if(!match("{")){
+					goto fail4;
+				}
+			term6:
+				// Iterator
+				start7:
+					// (terminator)
+						// Terminal
+						if(match("}")){
+							goto end8;
+						}
+					// (expression)
+					expr9:
+						// Production
+						if(!parse_VarDef()){
+							goto fail4;
+						}
+						smartAppend(var_vars,value_VarDef);
+					goto start7;
+				end8:
+					goto pass0;
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_SamplerDefValue = createSamplerDefValue(var_vars);
+			debug Stdout.format("\tparse_SamplerDefValue passed: {0}",value_SamplerDefValue).newline;
+			return true;
+		fail1:
+			value_SamplerDefValue = (SamplerDefValue).init;
+			debug Stdout.format("\tparse_SamplerDefValue failed").newline;
+			return false;
+	}
+
+	/*
 	Code
 		= new Code(Atom[] tokens)
 		::= "{" OpaqueCodeBlock:tokens "}";
@@ -1116,7 +1170,7 @@ class KDefParser:KDefParserBase{
 	/*
 	ParamList
 		= ParamDef[] params
-		::= "(" Param:~params* % "," ")";
+		::= "(" (Param:~params* % ",") [","] ")";
 
 	*/
 	ParamDef[] value_ParamList;
@@ -1132,34 +1186,43 @@ class KDefParser:KDefParserBase{
 				}
 			term5:
 				// Iterator
-				size_t counter10 = 0;
-				start6:
+				size_t counter11 = 0;
+				start7:
 					// (terminator)
-						// Terminal
-						if(match(")")){
-							goto end7;
-						}
+					if(!hasMore()){
+						goto end8;
+					}
 					// (delimeter)
-					delim9:
-					if(counter10 > 0){
+					delim10:
+					if(counter11 > 0){
 						// Terminal
 						if(!match(",")){
-							goto fail4;
+							goto end8;
 						}
 					}
 					// (expression)
-					expr8:
+					expr9:
 						// Production
 						if(!parse_Param()){
-							goto fail4;
+							goto end8;
 						}
 						smartAppend(var_params,value_Param);
-					increment11:
+					increment12:
 					// (increment expr count)
-						counter10 ++;
-					goto start6;
-				end7:
+						counter11 ++;
+					goto start7;
+				end8:
+			term6:
+				// Optional
+					// Terminal
+					if(!match(",")){
+						goto term13;
+					}
+			term13:
+				// Terminal
+				if(match(")")){
 					goto pass0;
+				}
 			fail4:
 			pos = position3;
 			goto fail1;
@@ -1715,7 +1778,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Value
 		= Value value
-		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | SurfaceDefValue:value | MaterialDefValue:value | ParamListValue:value | IdentifierValue:value;
+		::= StringValue:value | BooleanValue:value | Vector4Value:value | Vector3Value:value | Vector2Value:value | NumberValue:value | KernelDefValue:value | GraphDefValue:value | GraphDefNodeValue:value | TraitDefValue:value | SurfaceDefValue:value | MaterialDefValue:value | SamplerDefValue:value | ParamListValue:value | IdentifierValue:value;
 
 	*/
 	Value value_Value;
@@ -1797,11 +1860,17 @@ class KDefParser:KDefParserBase{
 			}
 		term13:
 			// Production
+			if(parse_SamplerDefValue()){
+				smartAssign(var_value,value_SamplerDefValue);
+				goto pass0;
+			}
+		term14:
+			// Production
 			if(parse_ParamListValue()){
 				smartAssign(var_value,value_ParamListValue);
 				goto pass0;
 			}
-		term14:
+		term15:
 			// Production
 			if(!parse_IdentifierValue()){
 				goto fail1;

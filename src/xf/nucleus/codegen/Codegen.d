@@ -346,6 +346,34 @@ void codegen(
 	assignTexcoords(vinputs);
 	assignTexcoords(voutputs);
 
+	// ---- dump all uniforms ----
+
+	foreach (nid, node; graph.iterNodes) {
+		if (NT.Data == node.type) {
+			foreach (param; node.data.params) {
+				assert (param.hasTypeConstraint);
+
+				sink("uniform ");
+				sink(param.type);
+				sink(" ");
+				
+				emitSourceParamName(
+					CodegenContext(
+						sink,
+						GPUDomain.Unresolved,
+						graph,
+						nodeDomains
+					),
+					nid,
+					param.name
+				);
+
+				sink(";").newline;
+			}
+		}
+	}
+	
+
 	// ---- dump all funcs ----
 
 	auto _emittedFuncs = stack.allocArray!(GraphNodeId)(
@@ -439,33 +467,6 @@ void codegen(
 		});
 		sink.newline();
 		sink("}").newline();
-	}
-	
-	// ---- dump all uniforms ----
-
-	foreach (nid, node; graph.iterNodes) {
-		if (NT.Data == node.type) {
-			foreach (param; node.data.params) {
-				assert (param.hasTypeConstraint);
-
-				sink("uniform ");
-				sink(param.type);
-				sink(" ");
-				
-				emitSourceParamName(
-					CodegenContext(
-						sink,
-						GPUDomain.Unresolved,
-						graph,
-						nodeDomains
-					),
-					nid,
-					param.name
-				);
-
-				sink(";").newline;
-			}
-		}
 	}
 	
 	// ---- codegen the vertex shader ----

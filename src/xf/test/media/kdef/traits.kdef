@@ -2,6 +2,7 @@ use = trait {
 	color,
 	position,
 	normal,
+	texCoord,
 	lumIntens,
 	lightPos
 };

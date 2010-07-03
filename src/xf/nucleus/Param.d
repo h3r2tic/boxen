@@ -21,7 +21,9 @@ enum ParamValueType : ubyte {
 	Float2,
 	Float3,
 	Float4,
-	String
+	String,
+	Ident,
+	ObjectRef
 }
 
 
@@ -70,7 +72,9 @@ struct Param {
 				case ParamValueType.Float2: return 8;
 				case ParamValueType.Float3: return 12;
 				case ParamValueType.Float4: return 16;
+				case ParamValueType.Ident:	// fall through
 				case ParamValueType.String: return 1+strlen(cast(char*)value);
+				case ParamValueType.ObjectRef: return 0;
 				default: assert (false);
 			}
 		} else return 0;
@@ -86,10 +90,15 @@ struct Param {
 
 	void copyValueFrom(Param* p) {
 		if (p.value) {
-			uword size = p.valueSize;
-			value = _allocator(size);
-			memcpy(value, p.value, size);
-			valueType = p.valueType;
+			if (p.valueType != ParamValueType.ObjectRef) {
+				uword size = p.valueSize;
+				value = _allocator(size);
+				memcpy(value, p.value, size);
+				valueType = p.valueType;
+			} else {
+				value = p.value;
+				valueType = p.valueType;
+			}
 		} else {
 			value = null;
 		}
@@ -133,6 +142,18 @@ struct Param {
 		*cast(char*)(value+val.length) = 0;
 	}
 
+	void setValueIdent(cstring val) {
+		valueType = ParamValueType.Ident;
+		value = _allocator(val.length+1);
+		memcpy(value, val.ptr, val.length);
+		*cast(char*)(value+val.length) = 0;
+	}
+
+	void setValue(Object val) {
+		valueType = ParamValueType.ObjectRef;
+		value = cast(void*)val;
+	}
+
 
 	void getValue(float* val) {
 		assert (ParamValueType.Float == valueType);
@@ -163,6 +184,16 @@ struct Param {
 	void getValue(cstring* val) {
 		assert (ParamValueType.String == valueType);
 		*val = fromStringz(cast(char*)value);
+	}
+
+	void getValueIdent(cstring* val) {
+		assert (ParamValueType.Ident == valueType);
+		*val = fromStringz(cast(char*)value);
+	}
+
+	void getValue(Object* val) {
+		assert (ParamValueType.ObjectRef == valueType);
+		*val = cast(Object)value;
 	}
 
 

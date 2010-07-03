@@ -139,6 +139,9 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		void outputPassThrough(in input <from the Output node>, out output <in.input.actual>)
 	+ done that via special Bridge nodes with similar treatment as Func nodes, but with InOut params
 
+-	memory management for the kdef parser
+	* one ScratchFIFO per module, allocated automatically instead of by the user
+
 ~	materials
 	+ make like a class and shit
 	+ the abilititty to set them for renderables (by index)

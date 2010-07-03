@@ -107,6 +107,13 @@ MaterialDefValue
 		VarDef:~vars*
 	"}";
 
+SamplerDefValue
+	= SamplerDefValue createSamplerDefValue(VarDef[] vars)
+	::= "sampler"
+	"{"
+		VarDef:~vars*
+	"}";
+
 
 // ----------------------------------------------------------------------------------------------------------------
 
@@ -131,7 +138,7 @@ OpaqueCodeBlock
 	
 ParamList
 	= ParamDef[] params
-	::= "(" Param:~params* % "," ")";
+	::= "(" (Param:~params* % ",") [","] ")";
 	
 Param
 	= new ParamDef(
@@ -196,6 +203,7 @@ Value
 	TraitDefValue:value |
 	SurfaceDefValue:value |
 	MaterialDefValue:value |
+	SamplerDefValue:value |
 	ParamListValue:value |
 	IdentifierValue:value;
 	

@@ -1,31 +1,33 @@
 Structure = kernel(
-	out position <type vec3 + basis model + use position>,
-	out normal <type vec3 + basis model + use normal>
+	out position <type float3 + basis model + use position>,
+	out normal <type float3 + basis model + use normal>,
+	out texCoord <type float2 + use texCoord>
 );
 
 Light = kernel(
-	in position <type vec3 + use position + basis world>,
-	out intensity <type vec4 + use color>,
-	out toLight <type vec3 + basis world + use toLight>
+	in position <type float3 + use position + basis world>,
+	out intensity <type float4 + use color>,
+	out toLight <type float3 + basis world + use toLight>
 );
 
 Illumination = kernel(
-	in normal <type vec3 + use normal + basis world + unit true>,
-	in intensity <type vec4 + use color>,
-	in toLight <type vec3 + basis world + use toLight>,
-	in toEye <type vec3 + use toEye + basis world + unit true>,
-	out diffuse <type vec4 + use diffuse>,
-	out specular <type vec4 + use specular>
+	in normal <type float3 + use normal + basis world + unit true>,
+	in intensity <type float4 + use color>,
+	in toLight <type float3 + basis world + use toLight>,
+	in toEye <type float3 + use toEye + basis world + unit true>,
+	out diffuse <type float4 + use diffuse>,
+	out specular <type float4 + use specular>
 );
 
 Pigment = kernel(
-	in position <type vec3 + basis world + use position>,
-	in normal <type vec3 + basis world + use normal>,
-	in diffuse <type vec4 + use diffuse>,
-	in specular <type vec4 + use specular>,
-	out radiance <type vec4 + use color>
+	in position <type float3 + basis world + use position>,
+	in normal <type float3 + basis world + use normal>,
+	in texCoord <type float2 + use texCoord>,
+	in diffuse <type float4 + use diffuse>,
+	in specular <type float4 + use specular>,
+	out radiance <type float4 + use color>
 );
 
 Rasterize = kernel(
-	in inPos <type vec4 + use position + basis clip>
+	in inPos <type float4 + use position + basis clip>
 );

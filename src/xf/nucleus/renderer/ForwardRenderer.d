@@ -1,44 +1,59 @@
 module xf.nucleus.renderer.ForwardRenderer;
 
 private {
-	import xf.Common;
-	import xf.nucleus.Defs;
-	import xf.nucleus.Value;
-	import xf.nucleus.Param;
-	import xf.nucleus.Function;
-	import xf.nucleus.Renderable;
-	import xf.nucleus.Light;
-	import xf.nucleus.Renderer;
-	import xf.nucleus.RenderList;
-	import xf.nucleus.KernelImpl;
-	import xf.nucleus.KernelParamInterface;
-	import xf.nucleus.KernelCompiler;
-	import xf.nucleus.SurfaceDef;
-	import xf.nucleus.MaterialDef;
-	import xf.nucleus.kdef.Common;
-	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.kdef.KDefGraphBuilder;
-	import xf.nucleus.kernel.KernelDef;
-	static import xf.nucleus.codegen.Rename;
-	import xf.nucleus.graph.GraphOps;
-	import xf.nucleus.graph.KernelGraph;
-	import xf.nucleus.graph.KernelGraphOps;
-	import xf.nucleus.graph.GraphMisc;
+	import
+		xf.Common,
+		xf.nucleus.Defs,
+		xf.nucleus.Value,
+		xf.nucleus.Param,
+		xf.nucleus.Function,
+		xf.nucleus.Renderable,
+		xf.nucleus.Light,
+		xf.nucleus.Renderer,
+		xf.nucleus.RenderList,
+		xf.nucleus.KernelImpl,
+		xf.nucleus.KernelParamInterface,
+		xf.nucleus.KernelCompiler,
+		xf.nucleus.SurfaceDef,
+		xf.nucleus.MaterialDef,
+		xf.nucleus.SamplerDef,
+		xf.nucleus.kdef.Common,
+		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.kdef.KDefGraphBuilder,
+		xf.nucleus.kernel.KernelDef,
+		xf.nucleus.graph.GraphOps,
+		xf.nucleus.graph.KernelGraph,
+		xf.nucleus.graph.KernelGraphOps,
+		xf.nucleus.graph.GraphMisc;
+		
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
+
+	static import xf.nucleus.codegen.Rename;
+
+	// TODO: refactor into a shared texture loader
+	interface Img {
+	import
+		xf.img.Image,
+		xf.img.FreeImageLoader,
+		xf.img.CachedLoader,
+		xf.img.Loader;
+	}
 
 	import xf.gfx.EffectHelper;		// TODO: get rid of this
 	
 	import Nucleus = xf.nucleus.Nucleus;
 	
-	import xf.gfx.Effect;
-	import xf.gfx.IRenderer : RendererBackend = IRenderer;
-	import xf.gfx.IndexData;
-	import xf.omg.core.LinearAlgebra;
-	import xf.omg.core.CoordSys;
-	import xf.omg.util.ViewSettings;
-	import xf.mem.StackBuffer;
-	import xf.mem.MainHeap;
-	import xf.mem.ScratchAlloc;
+	import
+		xf.gfx.Effect,
+		xf.gfx.IndexData,
+		xf.gfx.Texture,
+		xf.omg.core.LinearAlgebra,
+		xf.omg.core.CoordSys,
+		xf.omg.util.ViewSettings,
+		xf.mem.StackBuffer,
+		xf.mem.MainHeap,
+		xf.mem.ScratchAlloc,
+		xf.gfx.IRenderer : RendererBackend = IRenderer;
 
 	import xf.mem.Array;
 	import MemUtils = xf.utils.Memory;
@@ -129,6 +144,7 @@ class ForwardRenderer : Renderer {
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
 		_kdefRegistry = kdefRegistry;
+		_imgLoader = new Img.CachedLoader(new Img.FreeImageLoader);
 		super(backend);
 	}
 
@@ -157,6 +173,8 @@ class ForwardRenderer : Renderer {
 
 		SurfaceData[256]		_surfaces;
 		Array!(MaterialData)	_materials;
+
+		Img.Loader	_imgLoader;
 	}
 
 
@@ -197,6 +215,8 @@ class ForwardRenderer : Renderer {
 		}
 		
 		auto mat = _materials[def.id];
+		static assert (isReferenceType!(typeof(mat)));
+		
 		MemUtils.alloc(mat.info, def.params.length);
 
 		//assert (def.illumKernel !is null);
@@ -205,12 +225,44 @@ class ForwardRenderer : Renderer {
 		uword sizeReq = 0;
 		
 		foreach (i, p; def.params) {
+			uword psize = p.valueSize;
+
+			switch (p.valueType) {
+				case ParamValueType.ObjectRef: {
+					Object objVal;
+					p.getValue(&objVal);
+					if (auto sampler = cast(SamplerDef)objVal) {
+						psize = Texture.sizeof;
+					} else {
+						error(
+							"Forward renderer: Don't know what to do with"
+							" a {} material param ('{}').",
+							objVal.classinfo.name,
+							p.name
+						);
+					}
+				} break;
+
+				case ParamValueType.String:
+				case ParamValueType.Ident: {
+					error(
+						"Forward renderer: Don't know what to do with"
+						" string/ident material params ('{}').",
+						p.name
+					);
+				} break;
+
+				default: break;
+			}
+
+			assert (psize != 0);
+			
 			// TODO: get clear ownership rules here
 			mat.info[i].name = cast(cstring)p.name;
 			mat.info[i].offset = sizeReq;
-			sizeReq += p.valueSize;
-			sizeReq += 3;
-			sizeReq &= ~3;
+			sizeReq += psize;
+			sizeReq += (uword.sizeof - 1);
+			sizeReq &= ~(uword.sizeof - 1);
 		}
 
 		mat.data = mainHeap.allocRaw(sizeReq);
@@ -218,7 +270,60 @@ class ForwardRenderer : Renderer {
 
 		foreach (i, p; def.params) {
 			void* dst = mat.data + mat.info[i].offset;
-			memcpy(dst, p.value, p.valueSize);
+			assert (dst < mat.data + sizeReq);
+			
+			switch (p.valueType) {
+				case ParamValueType.ObjectRef: {
+					Object objVal;
+					p.getValue(&objVal);
+					if (auto sampler = cast(SamplerDef)objVal) {
+						// TODO: proper handling of sampler objects and textures,
+						// separately, using the new GL 3.3 extension
+						Texture* tex = cast(Texture*)dst;
+						loadMaterialSamplerParam(sampler, tex);
+					} else {
+						error(
+							"Forward renderer: Don't know what to do with"
+							" a {} material param ('{}').",
+							objVal.classinfo.name,
+							p.name
+						);
+					}
+				} break;
+
+				case ParamValueType.String:
+				case ParamValueType.Ident: {
+					error(
+						"Forward renderer: Don't know what to do with"
+						" string/ident material params ('{}').",
+						p.name
+					);
+				} break;
+
+				default: {
+					memcpy(dst, p.value, p.valueSize);
+				} break;
+			}
+		}
+	}
+
+
+	private void loadMaterialSamplerParam(SamplerDef sampler, Texture* tex) {
+		if (auto val = sampler.params.get("texture")) {
+			cstring filePath;
+			val.getValue(&filePath);
+
+			Img.Image img = _imgLoader.load(filePath);
+			if (!img.valid) {
+				// TODO: fallback
+				error("Could not load texture: '{}'", filePath);
+			}
+
+			*tex = _backend.createTexture(
+				img
+			);
+		} else {
+			assert (false, "TODO: use a fallback texture");
 		}
 	}
 
