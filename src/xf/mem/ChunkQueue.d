@@ -119,7 +119,7 @@ struct ScratchFIFO {
 	}
 
 
-	void popFront(void* ptr) {
+	void popFront(void* ptr, size_t bytes = 0) {
 		assert (ptr !is null);
 		assert (_head !is null);
 
@@ -137,7 +137,14 @@ struct ScratchFIFO {
 			if (ptr <= _lastFreed) {
 				if (ptr < _lastFreed) {
 					memError("Popping an address in a wrong order.");
-				} else {
+				} else if (0 == bytes) {
+					// This error only makes sense if popping without an explicit size
+					// Otherwise, _lastFreed is the unaligned next-item pointer.
+					// If alignments matched, this would occur and is valid in that case.
+					
+					// TODO: It would probably make sense to split ScratchFIFO into
+					// two distinct types, one of which gives the old size-less API,
+					// whereas the new one enforces explicit sizing for pops
 					memError("Double-popping an address.");
 				}
 			}
@@ -155,7 +162,19 @@ struct ScratchFIFO {
 				_tail = null;
 			}
 		} else {
-			_lastFreed = ptr;
+			_lastFreed = ptr+bytes;
+		}
+	}
+
+
+	// only valid to be used with the explicit-size popFront function
+	void* front(size_t alignment = 4) {
+		if (_lastFreed !is null) {
+			return alignPointerUp(_lastFreed, alignment);
+		} else if (_head !is null) {
+			return alignPointerUp(_head.ptr(), alignment);
+		} else {
+			return null;
 		}
 	}
 

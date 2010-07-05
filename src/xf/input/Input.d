@@ -2,16 +2,8 @@ module xf.input.Input;
 
 private {
 	import xf.input.KeySym;
-
-	version (OldMath) {
-		import xf.maths.Vec : vec2i;
-	} else {
-		import xf.omg.core.LinearAlgebra : vec2i;
-	}
-
-	import mintl.queue;
-	import mintl.deque;
-	import mintl.mem : Mallocator = Malloc;
+	import xf.omg.core.LinearAlgebra : vec2i;
+	import xf.mem.ChunkQueue;
 }
 
 public {
@@ -20,51 +12,18 @@ public {
 
 
 
-class InputQueue {
-   abstract void sendOne(InputReader);
-   abstract void removeOne();
-}
-
-
-class InputQueueT(T) : InputQueue {
-   alias .Queue!(T, .Deque!(T, false, Mallocator))	Queue;
-	Queue queue;
-   
-   
-   override void sendOne(InputReader reader) {
-      T input = queue[0];
-      reader.process_(T.inputTypeId, (cast(ubyte*)&input)[0 .. T.sizeof]);
-   }
-
-
-   override void removeOne() {
-		queue.takeHead();
-   }
-
-
-   static InputQueue produce() {
-		 return new typeof(this);
-	}
-
-
-	final void addOne(T x) {
-		queue.addTail(x);
-	}
-}
-
-
-
-int								lastInputId = 0;
-InputQueue function()[]	inputQueueFactories;
+alias ubyte InputType;
+InputType	_lastInputType = 0;
+TypeInfo[]	_inputTypeInfos;
 
 
 template MInput() {
-   static int inputTypeId;
-   
-   static this() {
-      inputTypeId = lastInputId++;
-		inputQueueFactories ~= &InputQueueT!(typeof(*this)).produce;
-   }
+	static InputType _inputTypeId;
+
+	static this() {
+		_inputTypeId = ._lastInputType++;
+		._inputTypeInfos ~= typeid(typeof(*this));
+	}
 }
 
 
@@ -80,24 +39,24 @@ struct KeyboardInput {
 		RSHIFT	= 0x0002,
 		LCTRL	= 0x0040,
 		RCTRL	= 0x0080,
-		LALT		= 0x0100,
-		RALT		= 0x0200,
+		LALT	= 0x0100,
+		RALT	= 0x0200,
 		LMETA	= 0x0400,
 		RMETA	= 0x0800,
 		NUM		= 0x1000,
 		CAPS	= 0x2000,
 		MODE	= 0x4000,
 	
-		CTRL	= LCTRL	|	RCTRL,
+		CTRL	= LCTRL		|	RCTRL,
 		SHIFT	= LSHIFT	|	RSHIFT,
 		ALT		= LALT		|	RALT,
-		META	= LMETA	|	RMETA
+		META	= LMETA		|	RMETA
 	}
 	
 	Modifiers	modifiers;
-	KeySym	keySym;
+	KeySym		keySym;
 	dchar		unicode;
-	Type			type;
+	Type		type;
 	
 	mixin MInput;
 }
@@ -105,12 +64,12 @@ struct KeyboardInput {
 
 struct MouseInput {
 	enum Button {
-		Left				= 1,
-		Middle			= 2,
-		Right				= 4,
+		Left		= 1,
+		Middle		= 2,
+		Right		= 4,
 		WheelUp		= 8,
 		WheelDown	= 16,
-		WheelLeft		= 32,
+		WheelLeft	= 32,
 		WheelRight	= 64,
 	}
 
@@ -124,7 +83,7 @@ struct MouseInput {
 	vec2i	move;
 	vec2i	global;
 	Button	buttons;
-	Type		type;
+	Type	type;
 
 	mixin MInput;
 }
@@ -146,8 +105,9 @@ bool isWheelInput(MouseInput.Button bttn) {
 struct JoystickInput {
 	float[6]	axes;
 	uint		buttons;
-	int		pov;
-	mixin	MInput;
+	int			pov;
+	
+	mixin MInput;
 }
 
 
@@ -160,38 +120,33 @@ struct TimeInput {
 
 class InputReader {
 	this() {
-		typeReaders.length = lastInputId;
+		typeReaders.length = ._lastInputType;
 	}
 	
 	
-	void process(int inputType, ubyte[] input) {
-		// do some additional checking
-		
-		assert (handlesInput(inputType));
-		process_(inputType, input);
-	}
-   
+	void process(InputType inputType, void[] input) {
+		assert (inputType >= 0 && inputType < typeReaders.length);
 
-	bool handlesInput(int inputType) {
-		return inputType >= 0 && inputType < typeReaders.length && typeReaders[inputType] !is null;
-	}
-
-   
-	protected {
-		void process_(int inputType, ubyte[] input) {
-			assert (input !is null);
-			
-			if (typeReaders[inputType] !is null) {
-				typeReaders[inputType](input.ptr);
-			}
+		if (typeReaders[inputType] !is null) {
+			typeReaders[inputType](input.ptr);
 		}
+	}
 
 
+	bool handlesInput(InputType inputType) {
+		return
+				inputType >= 0
+			&&	inputType < typeReaders.length
+			&&	typeReaders[inputType] !is null;
+	}
+
+
+	protected {
 		void delegate(void*)[] typeReaders;
 		
 		final void registerReader(T)(void delegate(T*) rdr) {
-		assert (rdr !is null);
-		typeReaders[T.inputTypeId] = cast(void delegate(void*))rdr;
+			assert (rdr !is null);
+			typeReaders[T._inputTypeId] = cast(void delegate(void*))rdr;
 		}
 	}
 }
@@ -241,8 +196,8 @@ class SimpleKeyboardReader : InputReader {
 		// do anything with the input
 //		writefln("got a mouse input, button = ", i.button);
 	}
-   
-   
+
+
 	this() {
 		registerReader!(MouseInput)(&this.foo);
 	}
@@ -263,31 +218,40 @@ class TimeReader : InputReader {
 
 
 class InputChannel {
+	enum { inputAlignment = 1 }
+
+
 	void addReader(InputReader r) {
 		readers ~= r;
 	}
 	
 	
 	void opShl(T)(T newInput) {
-		queueIndices.addTail(newInput.inputTypeId);
-		getQueue!(T)(newInput.inputTypeId).addOne(newInput);
+		void*	inputData = queue.pushBack(InputType.sizeof + T.sizeof, inputAlignment);
+		*cast(InputType*)inputData = T._inputTypeId;
+
+		void*	inputPtr = inputData+InputType.sizeof;
+		memcpy(inputPtr, &newInput, T.sizeof);
 	}
 	
 	
 	bool empty() {
-		return queueIndices.isEmpty;
+		return queue.isEmpty();
 	}
 	
 	
 	void dispatchOne() {
-		int qi = queueIndices.takeHead();
-		InputQueue q = queues[qi];
+		void*		inputData = queue.front(inputAlignment);
+		InputType	inputType = *cast(InputType*)inputData;
+
+		void*		inputPtr = inputData+InputType.sizeof;
+		TypeInfo	inputTI = _inputTypeInfos[inputType];
 		
 		foreach (reader; readers) {
-			q.sendOne(reader);
+			reader.process(inputType, inputPtr[0..inputTI.tsize]);
 		}
-		
-		q.removeOne();
+
+		queue.popFront(inputData, InputType.sizeof + inputTI.tsize);
 	}
 	
 
@@ -297,24 +261,14 @@ class InputChannel {
 		}
 	}
 
-	
-	private InputQueueT!(T) getQueue(T)(int i) {
-		return cast(InputQueueT!(T))queues[i];
-	}
-	
-	
+
 	this() {
-		queues.length = lastInputId;
-		foreach (i, inout q; queues) {
-			q = inputQueueFactories[i]();
-		}
+		queue.initialize();
 	}
 
 
 	private {
-		InputQueue[]		queues;
-		Queue!(int)		queueIndices;
-		
+		ScratchFIFO		queue;
 		InputReader[]	readers;
 	}
 }
@@ -341,8 +295,8 @@ class InputConverter {
 	bool empty() {
 		return incoming.empty;
 	}
-   
-   // arbitary readers and writers connected to channels, readers from 'incoming' will write to 'outgoing'
+
+	// arbitary readers and writers connected to channels, readers from 'incoming' will write to 'outgoing'
 }
 
 
