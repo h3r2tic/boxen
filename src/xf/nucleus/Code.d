@@ -2,7 +2,10 @@ module xf.nucleus.Code;
 
 private {
 	import xf.Common;
+	import tango.math.Math : min;
 	import tango.util.Convert;
+	import xf.mem.ScratchAllocator;
+	import xf.mem.ScratchRope;
 }
 
 
@@ -20,11 +23,11 @@ enum : uint {
 
 
 struct KDefToken {
-	char[] filename;
-	uint line;
-	uint column;
-    uint type;
-	char[] value;
+	char[]	filename;
+	char[]	value;
+	ushort	line;
+	ubyte	column;
+    ubyte	type;
     
     public char[] toString(){
         return value;
@@ -95,54 +98,40 @@ struct KDefToken {
 }
 
 
+void writeOutTokens(KDefToken[] tokens, void delegate(char[]) sink) {
+	if (0 != tokens.length) {
+		int lin = tokens[0].line;
+		int col = 0;
+		
+		foreach (tok; tokens) {
+			cstring val = tok.verbatim;
+			col += val.length;
+			while (tok.column > col) {
+				++col;
+				sink(" ");
+			}
+			sink(val);
 
-class Code {
-	KDefToken[]	tokens;
-	//cstring		language;
-	
-	
-	this (/+cstring language, +/KDefToken[] tokens) {
-		this.tokens = tokens;
-		//this.language = language;
-	}
-
-
-	// holy shit, Enki2...
-	void writeOut(void delegate(char[]) sink) {
-		if (0 != tokens.length) {
-			int lin = tokens[0].line;
-			int col = 0;
-			
-			foreach (tok; tokens) {
-				cstring val = tok.verbatim;
-				col += val.length;
-				while (tok.column > col) {
-					++col;
-					sink(" ");
-				}
-				sink(val);
-
-				while (tok.line > lin) {
-					++lin;
-					sink("\n");
-					col = 0;
-				}
+			while (tok.line > lin) {
+				++lin;
+				sink("\n");
+				col = 0;
 			}
 		}
 	}
-	
-	
-	cstring toString() {
-		size_t resLen = 0;
-		writeOut((char[] meh) { resLen += meh.length; });
+}
 
-		char[] res = new char[resLen];
-		resLen = 0;
-		writeOut((char[] meh) {
-			res[resLen..resLen+meh.length] = meh;
-			resLen += meh.length;
-		});
 
-		return res;
+struct Code {
+	private {
+		ScratchFixedRope _code;
+	}
+
+	void append(cstring str, DgScratchAllocator mem) {
+		_code.append(str, mem);
+	}
+
+	void writeOut(void delegate(char[]) sink) {
+		return _code.writeOut(sink);
 	}
 }

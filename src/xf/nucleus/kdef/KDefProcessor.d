@@ -21,6 +21,7 @@ private {
 	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
 	//import xf.nucleus.CommonDef;
 
+	import xf.mem.ScratchAllocator;
 	import xf.nucleus.Log : error = nucleusError;
 
 	import xf.utils.Graph : findTopologicalOrder, CycleHandlingMode;
@@ -36,7 +37,7 @@ private {
 
 
 class KDefProcessor {
-	alias void* delegate(size_t) Allocator;
+	alias DgScratchAllocator Allocator;
 
 
 	this (IKDefFileParser fileParser) {
@@ -478,7 +479,11 @@ class KDefProcessor {
 			if (auto qf = cast(Function)func) {
 				//Stdout.formatln("{} code:", qf.code.language);
 				Stdout("----").newline;
-				Stdout(qf.code.toString).newline;
+				char[] code;
+				qf.code.writeOut((char[] s) {
+					code ~= s;
+				});
+				Stdout(code).newline;
 				Stdout("----").newline;
 			}
 			Stdout("}").newline;
@@ -551,7 +556,7 @@ class KDefProcessor {
 							case "input": 
 							case "data":
 							case "output": {
-								node.params = ParamList(allocator);
+								node.params = ParamList(allocator._allocator);
 							}
 							default: break;
 						}

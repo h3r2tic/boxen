@@ -41,6 +41,8 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 
+	import xf.mem.ScratchAllocator;
+
 	static import xf.utils.Memory;
 
 	import Path = tango.io.Path;
@@ -186,8 +188,8 @@ class TestApp : GfxApp {
 
 	override void initialize() {
 		mem.initialize();
-
-		void* delegate(size_t) allocator = &mem.pushBack;
+		auto allocator = DgScratchAllocator(&mem.pushBack);
+		
 		final vfs = new FileFolder(".");
 
 		kdefRegistry = create!(IKDefRegistry)();

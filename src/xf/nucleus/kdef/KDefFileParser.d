@@ -2,6 +2,7 @@ module xf.nucleus.kdef.KDefFileParser;
 
 private {
 	import xf.core.Registry;
+	import xf.mem.ScratchAllocator;
 	
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefLexer;
@@ -24,7 +25,7 @@ class KDefFileParser : IKDefFileParser {
 	
 	KDefModule parseFile(
 		string sourcePath,
-		void* delegate(size_t) allocator
+		DgScratchAllocator allocator
 	) {
 		auto input = _vfs.file(sourcePath).input();
 		scope(exit) input.close;
@@ -32,7 +33,7 @@ class KDefFileParser : IKDefFileParser {
 
 		scope lexer = new KDefLexer;
 		scope parser = new KDefParser;
-		parser.allocator = allocator;
+		parser.mem = allocator;
 
 		lexer.initialize(data, sourcePath);
 		

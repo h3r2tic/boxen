@@ -17,6 +17,8 @@ private {
 	import enkilib.d.Parser;
 	import enkilib.d.ParserException;
 
+	import xf.mem.ScratchAllocator;
+
 	import Float = tango.text.convert.Float;
 	import tango.text.convert.Format : Format;
 	static import tango.stdc.math;
@@ -36,8 +38,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		abstract bool	parse_Syntax();
 		Statement[]		statements;
 
-		alias void* delegate(size_t) Allocator;
-		Allocator	allocator;
+		DgScratchAllocator	mem;
 	}
 	
 
@@ -55,7 +56,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		
 
 		VarDef parseVarDef(string name, Value value) {
-			return VarDef(name.dup, value);
+			return VarDef(mem.dupString(name), value);
 		}
 		
 
@@ -75,8 +76,8 @@ class KDefParserBase : Parser!(KDefToken) {
 		
 		ParamSemanticExp parseParamSemanticTrait(string name, Value value) {
 			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Trait);
-			res.name = name.dup;
-			res.value = value is null ? null : value.toString.dup;
+			res.name = mem.dupString(name);
+			res.value = value is null ? null : mem.dupString(value.toString);
 			return res;
 		}
 
@@ -106,12 +107,12 @@ class KDefParserBase : Parser!(KDefToken) {
 		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
 			auto res = new KernelDefValue;
 			res.kernelDef = new KernelDef;
-			if (code) {
+			if (code != code.init) {
 				res.kernelDef.func = createFunction(null, tags, params, code);
 			} else {
 				res.kernelDef.func = createAbstractFunction(null, tags, params);
 			}
-			res.kernelDef.superKernel = superKernel.dup;
+			res.kernelDef.superKernel = mem.dupString(superKernel);
 			return res;
 		}
 
@@ -119,7 +120,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags) {
 			auto res = new GraphDefValue;
 			res.graphDef = new GraphDef(stmts);
-			res.graphDef.superKernel = superKernel.dup;
+			res.graphDef.superKernel = mem.dupString(superKernel);
 			res.graphDef.tags = dupStringArray(tags);
 			return res;
 		}
@@ -143,7 +144,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars) {
 			auto res = new SurfaceDefValue;
-			auto surf = res.surface = new SurfaceDef(illumKernel, allocator);
+			auto surf = res.surface = new SurfaceDef(illumKernel, mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					surf.params.add(ParamDirection.Out, var.name),
@@ -156,7 +157,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars) {
 			auto res = new MaterialDefValue;
-			auto mat = res.material = new MaterialDef(pigmentKernel, allocator);
+			auto mat = res.material = new MaterialDef(pigmentKernel, mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					mat.params.add(ParamDirection.Out, var.name),
@@ -169,7 +170,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		SamplerDefValue createSamplerDefValue(VarDef[] vars) {
 			auto res = new SamplerDefValue;
-			auto meh = res.value = new SamplerDef(allocator);
+			auto meh = res.value = new SamplerDef(mem._allocator);
 
 			// HACK until proper memory management in the parser is done
 			static SamplerDef[] allSamplersHACK;
@@ -185,14 +186,48 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
+		ImportStatement createImportStatement(string path, string[] what) {
+			return mem._new!(ImportStatement)(
+				mem.dupString(path),
+				dupStringArray(what)
+			);
+		}
+
+
+		Code createCode(Atom[] tokens) {
+			Code res;
+			//char[] orig;
+			writeOutTokens(tokens, (string s) {
+				res.append(s, mem);
+				//orig ~= s;
+			});
+			/+char[] neu;
+			res.writeOut((string s) {
+				neu ~= s;
+			});
+			assert (neu == orig);+/
+			return res;
+		}
+
+
+		string[] dupStringArray(string[] arr) {
+			string[] res = mem.allocArrayNoInit!(string)(arr.length);
+			foreach (i, s; arr) {
+				res[i] = mem.dupString(s);
+			}
+			return res;
+		}
+
+
 		AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params) {
-			auto res = new AbstractFunction(name, tags, allocator);
+			auto res = new AbstractFunction(name, tags, mem._allocator);
 			_createFunctionParams(params, res);
 			return res;
 		}
 		
+		
 		Function createFunction(string name, string[] tags, ParamDef[] params, Code code) {
-			auto res = new Function(name, tags, code, allocator);
+			auto res = new Function(name, tags, code, mem._allocator);
 			_createFunctionParams(params, res);
 			return res;
 		}
@@ -278,7 +313,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
-			auto func = new Function(name, tags, code, allocator);
+			auto func = new Function(name, tags, code, mem._allocator);
 			_createFunctionParams(params, func);
 			auto res = new ConverterDeclStatement;
 			res.func = func;

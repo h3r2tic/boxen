@@ -9,3 +9,4 @@
 +xtango
 -g
 -I../../../..
++threads=1

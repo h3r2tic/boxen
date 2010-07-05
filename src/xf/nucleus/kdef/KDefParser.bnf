@@ -38,7 +38,7 @@ AssignStatement
 	::= Identifier:name "=" Value:value ?!("';' expected") ";";
 	
 ImportStatement
-	= new ImportStatement(string name, string[] what)
+	= ImportStatement createImportStatement(string name, string[] what)
 	::= "import" String:name [ ":" WildcardIdentifier:~what* % "," ] ";";
 	
 	WildcardIdentifier
@@ -118,7 +118,7 @@ SamplerDefValue
 // ----------------------------------------------------------------------------------------------------------------
 
 Code
-	= new Code(Atom[] tokens)
+	= Code createCode(Atom[] tokens)
 	::= "{" OpaqueCodeBlock:tokens "}";
 
 KernelTagList

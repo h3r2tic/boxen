@@ -24,16 +24,6 @@ private {
 
 
 
-// TODO: could be optimized
-string[] dupStringArray(string[] arr) {
-	string[] res = new string[arr.length];
-	foreach (i, s; arr) {
-		res[i] = s.dup;
-	}
-	return res;
-}
-
-
 
 abstract class Scope {
 	Statement[]	statements;
@@ -342,8 +332,8 @@ class ImportStatement : Statement {
 	string[] what;
 	
 	this (string path, string[] what) {
-		this.path = path.dup;
-		this.what = what.dupStringArray();
+		this.path = path;
+		this.what = what;
 	}
 }
 
