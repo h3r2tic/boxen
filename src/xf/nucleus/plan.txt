@@ -151,13 +151,18 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	* the surface must have a valid ID before it's passed to the renderer (registered in it)
 	* must register surfaces before using them for objects
 
-
 ~	memory management for the kdef parser
 	+ replace the token array in xf.nucleus.Code with a Rope
 	+ replace regular arrays with ones on the scratch space
 	~ replace string.dup with scratch.dupString()
 	~ alloc new Foo with scratch._new!(Foo)
 	* one ScratchFIFO per module, allocated automatically instead of by the user
+
+-	make OPTLINK not hate me :(((((((((
+	- remove MinTL from the project (xf.input)
+	- add per-package / per-module build flags to xfBuild
+		- compile xf.omg.core.LinearAlgebra with -O -inline -release, sans -g
+		- compile platform modules and GL functions without -g
 
 -	monitor quark files for changes, recompile shaders when needed
 
