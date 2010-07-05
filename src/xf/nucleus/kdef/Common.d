@@ -16,6 +16,8 @@ private {
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.GraphDef;
 
+	import xf.mem.ChunkQueue;		// for ScratchFIFO
+
 	import TextUtil = tango.text.Util;
 	alias char[] string;
 
@@ -91,6 +93,12 @@ class TraitDef {
 
 
 class KDefModule : Scope {
+	ScratchFIFO	mem;
+
+	~this() {
+		mem.clear();
+	}
+	
 	string	filePath;
 	bool	processing;
 	

@@ -22,8 +22,6 @@ private {
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kernel.KernelDef;
-	import tango.io.vfs.FileFolder;
-	import xf.mem.ChunkQueue;
 
 	import xf.gfx.IRenderer : IRenderer;
 	import xf.gfx.Buffer;
@@ -41,10 +39,9 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 
-	import xf.mem.ScratchAllocator;
-
 	static import xf.utils.Memory;
 
+	import tango.io.vfs.FileFolder;
 	import Path = tango.io.Path;
 	import tango.io.Stdout;
 }
@@ -183,20 +180,16 @@ class TestApp : GfxApp {
 	TestLight[]		lights;
 
 	IKDefRegistry	kdefRegistry;
-	ScratchFIFO		mem;
 	FileFolder		vfs;
 
 	override void initialize() {
-		mem.initialize();
-		auto allocator = DgScratchAllocator(&mem.pushBack);
-		
 		final vfs = new FileFolder(".");
 
 		kdefRegistry = create!(IKDefRegistry)();
 		kdefRegistry.setVFS(vfs);
-		kdefRegistry.registerFolder("../../media/kdef", allocator);
-		kdefRegistry.registerFolder(".", allocator);
-		kdefRegistry.doSemantics(allocator);
+		kdefRegistry.registerFolder("../../media/kdef");
+		kdefRegistry.registerFolder(".");
+		kdefRegistry.doSemantics();
 		kdefRegistry.dumpInfo();
 
 		// ----

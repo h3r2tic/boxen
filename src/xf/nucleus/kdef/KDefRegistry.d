@@ -53,9 +53,9 @@ class KDefRegistry : IKDefRegistry {
 	}
 	
 
-	override void processFile(string path, Allocator allocator) {
+	override void processFile(string path) {
 		_fileParser.setVFS(_vfs);
-		kdefProcessor.processFile(path, allocator);
+		kdefProcessor.processFile(path);
 	}
 
 
@@ -74,8 +74,8 @@ class KDefRegistry : IKDefRegistry {
 	}
 
 	
-	void doSemantics(Allocator allocator) {
-		kdefProcessor.doSemantics(allocator);
+	void doSemantics() {
+		kdefProcessor.doSemantics();
 	}
 	
 

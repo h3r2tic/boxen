@@ -2,6 +2,8 @@ module xf.nucleus.kdef.KDefFileParser;
 
 private {
 	import xf.core.Registry;
+
+	import xf.mem.ChunkQueue;		// for ScratchFIFO
 	import xf.mem.ScratchAllocator;
 	
 	import xf.nucleus.kdef.Common;
@@ -24,8 +26,7 @@ class KDefFileParser : IKDefFileParser {
 	
 	
 	KDefModule parseFile(
-		string sourcePath,
-		DgScratchAllocator allocator
+		string sourcePath
 	) {
 		auto input = _vfs.file(sourcePath).input();
 		scope(exit) input.close;
@@ -33,7 +34,17 @@ class KDefFileParser : IKDefFileParser {
 
 		scope lexer = new KDefLexer;
 		scope parser = new KDefParser;
+
+		auto res = new KDefModule;
+		res.mem = ScratchFIFO();
+		res.mem.initialize();
+
+		auto allocator = DgScratchAllocator(&res.mem.pushBack);
 		parser.mem = allocator;
+
+		scope (failure) {
+			delete res;
+		}
 
 		lexer.initialize(data, sourcePath);
 		
@@ -46,7 +57,6 @@ class KDefFileParser : IKDefFileParser {
 			throw new Exception("parser fail");
 		}
 		
-		auto res = new KDefModule;
 		res.filePath = sourcePath;
 		res.statements = parser.statements;
 		return res;

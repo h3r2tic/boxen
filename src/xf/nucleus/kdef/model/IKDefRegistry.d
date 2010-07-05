@@ -30,6 +30,6 @@ abstract class IKDefRegistry : AbstractRegistry {
 	abstract int converters(int delegate(ref SemanticConverter) dg);
 	abstract int surfaces(int delegate(ref string, ref SurfaceDef) dg);
 	abstract int materials(int delegate(ref string, ref MaterialDef) dg);
-	abstract void doSemantics(Allocator);
+	abstract void doSemantics();
 	abstract void clear();
 }
