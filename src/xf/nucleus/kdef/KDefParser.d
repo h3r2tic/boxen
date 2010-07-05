@@ -2,6 +2,7 @@ module xf.nucleus.kdef.KDefParser;
 private {
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
+	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.Function;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefParserBase;
@@ -101,7 +102,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ConnectStatement
-		= new ConnectStatement(string from,string to)
+		= ConnectStatement createConnectStatement(string from,string to)
 		::= "connect" Identifier:from Identifier:to ";";
 
 	*/
@@ -139,7 +140,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_ConnectStatement = new ConnectStatement(var_from,var_to);
+			value_ConnectStatement = createConnectStatement(var_from,var_to);
 			debug Stdout.format("\tparse_ConnectStatement passed: {0}",value_ConnectStatement).newline;
 			return true;
 		fail1:
@@ -150,7 +151,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	AssignStatement
-		= new AssignStatement(string name,Value value)
+		= AssignStatement createAssignStatement(string name,Value value)
 		::= Identifier:name "=" Value:value ?!("\';\' expected") ";";
 
 	*/
@@ -191,7 +192,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_AssignStatement = new AssignStatement(var_name,var_value);
+			value_AssignStatement = createAssignStatement(var_name,var_value);
 			debug Stdout.format("\tparse_AssignStatement passed: {0}",value_AssignStatement).newline;
 			return true;
 		fail1:
@@ -1239,7 +1240,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Param
-		= new ParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue)
+		= ParamDef createParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue)
 		::= [ParamDirection:dir] Identifier:name ["<" [ParamSemantic:semantic] ">"] ["=" Value:defaultValue];
 
 	*/
@@ -1311,7 +1312,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Param = new ParamDef(var_dir,var_type,var_semantic,var_name,var_defaultValue);
+			value_Param = createParamDef(var_dir,var_type,var_semantic,var_name,var_defaultValue);
 			debug Stdout.format("\tparse_Param passed: {0}",value_Param).newline;
 			return true;
 		fail1:
@@ -1889,7 +1890,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	BooleanValue
-		= new BooleanValue(string value)
+		= BooleanValue createBooleanValue(string value)
 		::= ("true" | "false"):value;
 
 	*/
@@ -1914,7 +1915,7 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_value,slice(position2,pos));
 		// Rule
 		pass0:
-			value_BooleanValue = new BooleanValue(var_value);
+			value_BooleanValue = createBooleanValue(var_value);
 			debug Stdout.format("\tparse_BooleanValue passed: {0}",value_BooleanValue).newline;
 			return true;
 		fail1:
@@ -1925,7 +1926,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	IdentifierValue
-		= new IdentifierValue(string value)
+		= IdentifierValue createIdentifierValue(string value)
 		::= Identifier:value;
 
 	*/
@@ -1941,7 +1942,7 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,value_Identifier);
 		// Rule
 		pass0:
-			value_IdentifierValue = new IdentifierValue(var_value);
+			value_IdentifierValue = createIdentifierValue(var_value);
 			debug Stdout.format("\tparse_IdentifierValue passed: {0}",value_IdentifierValue).newline;
 			return true;
 		fail1:
@@ -1952,7 +1953,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	NumberValue
-		= new NumberValue(double value)
+		= NumberValue createNumberValue(double value)
 		::= Number:value;
 
 	*/
@@ -1968,7 +1969,7 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,value_Number);
 		// Rule
 		pass0:
-			value_NumberValue = new NumberValue(var_value);
+			value_NumberValue = createNumberValue(var_value);
 			debug Stdout.format("\tparse_NumberValue passed: {0}",value_NumberValue).newline;
 			return true;
 		fail1:
@@ -1979,7 +1980,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Vector2Value
-		= new Vector2Value(double x,double y)
+		= Vector2Value createVector2Value(double x,double y)
 		::= Number:x Number:y;
 
 	*/
@@ -2007,7 +2008,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Vector2Value = new Vector2Value(var_x,var_y);
+			value_Vector2Value = createVector2Value(var_x,var_y);
 			debug Stdout.format("\tparse_Vector2Value passed: {0}",value_Vector2Value).newline;
 			return true;
 		fail1:
@@ -2018,7 +2019,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Vector3Value
-		= new Vector3Value(double x,double y,double z)
+		= Vector3Value createVector3Value(double x,double y,double z)
 		::= Number:x Number:y Number:z;
 
 	*/
@@ -2053,7 +2054,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Vector3Value = new Vector3Value(var_x,var_y,var_z);
+			value_Vector3Value = createVector3Value(var_x,var_y,var_z);
 			debug Stdout.format("\tparse_Vector3Value passed: {0}",value_Vector3Value).newline;
 			return true;
 		fail1:
@@ -2064,7 +2065,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Vector4Value
-		= new Vector4Value(double x,double y,double z,double w)
+		= Vector4Value createVector4Value(double x,double y,double z,double w)
 		::= Number:x Number:y Number:z Number:w;
 
 	*/
@@ -2106,7 +2107,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Vector4Value = new Vector4Value(var_x,var_y,var_z,var_w);
+			value_Vector4Value = createVector4Value(var_x,var_y,var_z,var_w);
 			debug Stdout.format("\tparse_Vector4Value passed: {0}",value_Vector4Value).newline;
 			return true;
 		fail1:
@@ -2117,7 +2118,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	StringValue
-		= new StringValue(char[] value)
+		= StringValue createStringValue(char[] value)
 		::= &TOK_STRING:value;
 
 	*/
@@ -2133,7 +2134,7 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,__match);
 		// Rule
 		pass0:
-			value_StringValue = new StringValue(var_value);
+			value_StringValue = createStringValue(var_value);
 			debug Stdout.format("\tparse_StringValue passed: {0}",value_StringValue).newline;
 			return true;
 		fail1:
@@ -2144,7 +2145,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ParamListValue
-		= new ParamListValue(ParamDef[] params)
+		= ParamListValue createParamListValue(ParamDef[] params)
 		::= ParamList:params;
 
 	*/
@@ -2160,7 +2161,7 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_params,value_ParamList);
 		// Rule
 		pass0:
-			value_ParamListValue = new ParamListValue(var_params);
+			value_ParamListValue = createParamListValue(var_params);
 			debug Stdout.format("\tparse_ParamListValue passed: {0}",value_ParamListValue).newline;
 			return true;
 		fail1:

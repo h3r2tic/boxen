@@ -1,6 +1,6 @@
 module xf.nucleus.kdef.KDefLexer;
 private {
-	import xf.nucleus.Code;
+	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.kdef.KDefLexerBase;
 }
 debug import tango.io.Stdout;

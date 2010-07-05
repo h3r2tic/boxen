@@ -3,6 +3,7 @@
 private {{
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
+	import xf.nucleus.kdef.KDefToken;
 	import xf.nucleus.Function;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefParserBase;
@@ -30,11 +31,11 @@ Statement
 	
 
 ConnectStatement
-	= new ConnectStatement(string from, string to)
+	= ConnectStatement createConnectStatement(string from, string to)
 	::= "connect" Identifier:from Identifier:to ";";
 	
 AssignStatement
-	= new AssignStatement(string name, Value value)
+	= AssignStatement createAssignStatement(string name, Value value)
 	::= Identifier:name "=" Value:value ?!("';' expected") ";";
 	
 ImportStatement
@@ -141,7 +142,7 @@ ParamList
 	::= "(" (Param:~params* % ",") [","] ")";
 	
 Param
-	= new ParamDef(
+	= ParamDef createParamDef(
 		string dir = "in",
 		string type,
 		ParamSemanticExp semantic,
@@ -208,35 +209,35 @@ Value
 	IdentifierValue:value;
 	
 BooleanValue
-	= new BooleanValue(string value)
+	= BooleanValue createBooleanValue(string value)
 	::= ("true" | "false"):value;
 
 IdentifierValue
-	= new IdentifierValue(string value)
+	= IdentifierValue createIdentifierValue(string value)
 	::= Identifier:value;
 
 NumberValue
-	= new NumberValue(double value)
+	= NumberValue createNumberValue(double value)
 	::= Number:value;
 	
 Vector2Value
-	= new Vector2Value(double x, double y)
+	= Vector2Value createVector2Value(double x, double y)
 	::= Number:x Number:y;
 
 Vector3Value
-	= new Vector3Value(double x, double y, double z)
+	= Vector3Value createVector3Value(double x, double y, double z)
 	::= Number:x Number:y Number:z;
 
 Vector4Value
-	= new Vector4Value(double x, double y, double z, double w)
+	= Vector4Value createVector4Value(double x, double y, double z, double w)
 	::= Number:x Number:y Number:z Number:w;
 
 StringValue
-	= new StringValue(char[] value)
+	= StringValue createStringValue(char[] value)
 	::= &TOK_STRING:value;
 	
 ParamListValue
-	= new ParamListValue(ParamDef[] params)
+	= ParamListValue createParamListValue(ParamDef[] params)
 	::= ParamList:params;
 
 Identifier

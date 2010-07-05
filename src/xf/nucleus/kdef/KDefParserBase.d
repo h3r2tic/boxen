@@ -12,7 +12,9 @@ private {
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.TypeSystem;
+	
 	import xf.nucleus.kdef.ParamUtils;
+	import xf.nucleus.kdef.KDefToken;
 
 	import enkilib.d.Parser;
 	import enkilib.d.ParserException;
@@ -61,21 +63,21 @@ class KDefParserBase : Parser!(KDefToken) {
 		
 
 		ParamSemanticExp createParamSemanticSum(ParamSemanticExp a, ParamSemanticExp b) {
-			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Sum);
+			auto res = mem._new!(ParamSemanticExp)(ParamSemanticExp.Type.Sum);
 			res.exp1 = a;
 			res.exp2 = b;
 			return res;
 		}
 
 		ParamSemanticExp createParamSemanticExclusion(ParamSemanticExp a, ParamSemanticExp b) {
-			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Exclusion);
+			auto res = mem._new!(ParamSemanticExp)(ParamSemanticExp.Type.Exclusion);
 			res.exp1 = a;
 			res.exp2 = b;
 			return res;
 		}
 		
 		ParamSemanticExp parseParamSemanticTrait(string name, Value value) {
-			auto res = new ParamSemanticExp(ParamSemanticExp.Type.Trait);
+			auto res = mem._new!(ParamSemanticExp)(ParamSemanticExp.Type.Trait);
 			res.name = mem.dupString(name);
 			res.value = value is null ? null : mem.dupString(value.toString);
 			return res;
@@ -85,9 +87,9 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		char[] concatTokens(KDefToken[] tokens){
-			return KDefToken.concat(tokens);
+			return KDefToken.concat(tokens, mem);
 		}
-		
+				
 
 		override void error(char[] message) {
 			auto tok = data[pos < $ ? pos : ($-1)];
@@ -103,10 +105,63 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
+		ConnectStatement createConnectStatement(string from, string to) {
+			return mem._new!(ConnectStatement)(from, to);
+		}
+		
+		AssignStatement createAssignStatement(string name, Value value) {
+			return mem._new!(AssignStatement)(name, value);
+		}
+		
+		ParamDef createParamDef(
+			string dir,
+			string type,
+			ParamSemanticExp semantic,
+			string name,
+			Value defaultValue
+		) {
+			return mem._new!(ParamDef)(dir, type, semantic, name, defaultValue);
+		}
+		
+		BooleanValue createBooleanValue(string value) {
+			return mem._new!(BooleanValue)(value);
+		}
+		
+		IdentifierValue createIdentifierValue(string value) {
+			return mem._new!(IdentifierValue)(mem.dupString(value));
+		}
+		
+		NumberValue createNumberValue(double value) {
+			return mem._new!(NumberValue)(value);
+		}
+		
+		Vector2Value createVector2Value(double x, double y) {
+			return mem._new!(Vector2Value)(x, y);
+		}
+		
+		Vector3Value createVector3Value(double x, double y, double z) {
+			return mem._new!(Vector3Value)(x, y, z);
+		}
+		
+		Vector4Value createVector4Value(double x, double y, double z, double w) {
+			return mem._new!(Vector4Value)(x, y, z, w);
+		}
+		
+		StringValue createStringValue(char[] value) {
+			return mem._new!(StringValue)(mem.dupString(value));
+		}
+		
+		ParamListValue createParamListValue(ParamDef[] params) {
+			return mem._new!(ParamListValue)(mem.dupArray(params));
+		}
 
+
+		// no need to dup params, as they're immediately converted
+		// tags and name dup'd by the Function
 		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
-			auto res = new KernelDefValue;
-			res.kernelDef = new KernelDef;
+			auto res = mem._new!(KernelDefValue);
+			res.kernelDef = mem._new!(KernelDef);
+			
 			if (code != code.init) {
 				res.kernelDef.func = createFunction(null, tags, params, code);
 			} else {
@@ -118,8 +173,8 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags) {
-			auto res = new GraphDefValue;
-			res.graphDef = new GraphDef(stmts);
+			auto res = mem._new!(GraphDefValue);
+			res.graphDef = mem._new!(GraphDef)(mem.dupArray(stmts));
 			res.graphDef.superKernel = mem.dupString(superKernel);
 			res.graphDef.tags = dupStringArray(tags);
 			return res;
@@ -127,24 +182,24 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars) {
-			auto res = new GraphDefNodeValue;
-			res.node = new GraphDefNode(vars);
+			auto res = mem._new!(GraphDefNodeValue);
+			res.node = mem._new!(GraphDefNode)(mem.dupArray(vars));
 			return res;
 		}
 
 
 		TraitDefValue createTraitDefValue(string[] values, string defaultValue) {
-			auto res = new TraitDefValue;
-			res.value = new TraitDef;
+			auto res = mem._new!(TraitDefValue);
+			res.value = mem._new!(TraitDef);
 			res.value.values = values.dupStringArray();
-			res.value.defaultValue = defaultValue.dup;
+			res.value.defaultValue = mem.dupString(defaultValue);
 			return res;
 		}
 
 
 		SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars) {
-			auto res = new SurfaceDefValue;
-			auto surf = res.surface = new SurfaceDef(illumKernel, mem._allocator);
+			auto res = mem._new!(SurfaceDefValue);
+			auto surf = res.surface = mem._new!(SurfaceDef)(illumKernel, mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					surf.params.add(ParamDirection.Out, var.name),
@@ -156,8 +211,8 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars) {
-			auto res = new MaterialDefValue;
-			auto mat = res.material = new MaterialDef(pigmentKernel, mem._allocator);
+			auto res = mem._new!(MaterialDefValue);
+			auto mat = res.material = mem._new!(MaterialDef)(pigmentKernel, mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					mat.params.add(ParamDirection.Out, var.name),
@@ -169,13 +224,9 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		SamplerDefValue createSamplerDefValue(VarDef[] vars) {
-			auto res = new SamplerDefValue;
-			auto meh = res.value = new SamplerDef(mem._allocator);
+			auto res = mem._new!(SamplerDefValue);
+			auto meh = res.value = mem._new!(SamplerDef)(mem._allocator);
 
-			// HACK until proper memory management in the parser is done
-			static SamplerDef[] allSamplersHACK;
-			allSamplersHACK ~= meh;
-			
 			foreach (var; vars) {
 				setParamValue(
 					meh.params.add(ParamDirection.Out, var.name),
@@ -196,16 +247,9 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		Code createCode(Atom[] tokens) {
 			Code res;
-			//char[] orig;
 			writeOutTokens(tokens, (string s) {
 				res.append(s, mem);
-				//orig ~= s;
 			});
-			/+char[] neu;
-			res.writeOut((string s) {
-				neu ~= s;
-			});
-			assert (neu == orig);+/
 			return res;
 		}
 
@@ -219,16 +263,32 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
+		// no need to dup params, as they're immediately converted
+		// tags and name dup'd by the Function
 		AbstractFunction createAbstractFunction(string name, string[] tags, ParamDef[] params) {
-			auto res = new AbstractFunction(name, tags, mem._allocator);
+			auto res = mem._new!(AbstractFunction)(name, tags, mem._allocator);
 			_createFunctionParams(params, res);
 			return res;
 		}
 		
 		
+		// no need to dup params, as they're immediately converted
+		// tags and name dup'd by the Function
 		Function createFunction(string name, string[] tags, ParamDef[] params, Code code) {
-			auto res = new Function(name, tags, code, mem._allocator);
+			auto res = mem._new!(Function)(name, tags, code, mem._allocator);
 			_createFunctionParams(params, res);
+			return res;
+		}
+
+
+		// no need to dup params, as they're immediately converted
+		// tags and name dup'd by the Function
+		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
+			auto func = mem._new!(Function)(name, tags, code, mem._allocator);
+			_createFunctionParams(params, func);
+			auto res = mem._new!(ConverterDeclStatement);
+			res.func = func;
+			res.cost = cast(int)cost;
 			return res;
 		}
 
@@ -310,15 +370,6 @@ class KDefParserBase : Parser!(KDefToken) {
 					buildSemanticExp(d.paramSemantic, true);
 				}
 			}
-		}
-
-		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
-			auto func = new Function(name, tags, code, mem._allocator);
-			_createFunctionParams(params, func);
-			auto res = new ConverterDeclStatement;
-			res.func = func;
-			res.cost = cast(int)cost;
-			return res;
 		}
 	}
 }

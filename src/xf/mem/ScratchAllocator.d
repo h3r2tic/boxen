@@ -29,7 +29,9 @@ template MScratchAllocator() {
 		static if (is(T == class)) {
 			void[] data = dupArray(T.classinfo.init);
 			T res = cast(T)data.ptr;
-			res._ctor(p);
+			static if (is(typeof(&res._ctor))) {
+				res._ctor(p);
+			}
 		} else {
 			T* res = cast(T*)allocRaw(T.sizeof);
 			*res = T(p);
