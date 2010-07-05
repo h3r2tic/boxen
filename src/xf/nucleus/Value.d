@@ -132,7 +132,7 @@ class StringValue : Value {
 	cstring value;
 	
 	this (cstring val) {
-		this.value = val.dup;
+		this.value = val;
 	}
 
 	override cstring toString() {
@@ -149,7 +149,7 @@ class IdentifierValue : Value {
 	cstring value;
 	
 	this (cstring val) {
-		this.value = val.dup;
+		this.value = val;
 	}
 
 	override cstring toString() {
