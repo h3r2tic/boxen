@@ -52,7 +52,7 @@ private {
 		xf.omg.util.ViewSettings,
 		xf.mem.StackBuffer,
 		xf.mem.MainHeap,
-		xf.mem.ScratchAlloc,
+		xf.mem.ScratchAllocator,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
 
 	import xf.mem.Array;
@@ -451,7 +451,7 @@ class ForwardRenderer : Renderer {
 			++numParams;
 		});
 
-		final pool = PoolScratchAlloc(mainHeap.allocRaw(sizeReq)[0..sizeReq]);
+		final pool = PoolScratchAllocator(mainHeap.allocRaw(sizeReq)[0..sizeReq]);
 		
 		effectInfo.uniformDefaults = pool.allocArray
 			!(EffectInfo.UniformDefaults)(numParams);

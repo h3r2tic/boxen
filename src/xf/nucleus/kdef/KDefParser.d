@@ -202,7 +202,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	ImportStatement
-		= new ImportStatement(string name,string[] what)
+		= ImportStatement createImportStatement(string name,string[] what)
 		::= "import" String:name [":" WildcardIdentifier:~what* % ","] ";";
 
 	*/
@@ -274,7 +274,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_ImportStatement = new ImportStatement(var_name,var_what);
+			value_ImportStatement = createImportStatement(var_name,var_what);
 			debug Stdout.format("\tparse_ImportStatement passed: {0}",value_ImportStatement).newline;
 			return true;
 		fail1:
@@ -1005,7 +1005,7 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Code
-		= new Code(Atom[] tokens)
+		= Code createCode(Atom[] tokens)
 		::= "{" OpaqueCodeBlock:tokens "}";
 
 	*/
@@ -1036,7 +1036,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_Code = new Code(var_tokens);
+			value_Code = createCode(var_tokens);
 			debug Stdout.format("\tparse_Code passed: {0}",value_Code).newline;
 			return true;
 		fail1:

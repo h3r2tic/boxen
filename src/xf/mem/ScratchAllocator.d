@@ -1,15 +1,38 @@
-module xf.mem.ScratchAlloc;
+module xf.mem.ScratchAllocator;
 
 private {
 	import xf.Common;
+	import xf.mem.Log;
 }
 
 
-template MScratchAlloc() {
+private template Ref(T) {
+	static if (is(T == class)) {
+		alias T Ref;
+	} else {
+		alias T* Ref;
+	}
+}
+
+
+template MScratchAllocator() {
 	T[] allocArray(T)(size_t len, bool throwExc = true) {
 		auto res = allocArrayNoInit!(T)(len, throwExc);
 		if (res) {
 			res[] = T.init;
+		}
+		return res;
+	}
+
+
+	Ref!(T) _new(T, P...)(P p) {
+		static if (is(T == class)) {
+			void[] data = dupArray(T.classinfo.init);
+			T res = cast(T)data.ptr;
+			res._ctor(p);
+		} else {
+			T* res = cast(T*)allocRaw(T.sizeof);
+			*res = T(p);
 		}
 		return res;
 	}
@@ -36,31 +59,31 @@ template MScratchAlloc() {
 		copy.ptr[copy.length] = 0;
 		return copy;
 	}
-
-
-	void* allocRaw(size_t bytes) {		// throws
-		return this.allocRaw(bytes, true);
-	}
 }
 
 
-struct DgScratchAlloc {
+struct DgScratchAllocator {
 	void* delegate(uword)	_allocator;
 
 	void* allocRaw(size_t bytes, bool throwExc) {
 		void* res = _allocator(bytes);
-		if (res is null && throwExc) {
-			throw new Exception("DgScratchAlloc: _allocator returned null.");
+		if (res is null && bytes > 0 && throwExc) {
+			memError("DgScratchAlloc: _allocator returned null when trying to alloc {} bytes.", bytes);
+			assert (false);
 		} else {
 			return res;
 		}
 	}
 
-	mixin MScratchAlloc;
+	void* allocRaw(size_t bytes) {		// throws
+		return this.allocRaw(bytes, true);
+	}
+
+	mixin MScratchAllocator;
 }
 
 
-struct PoolScratchAlloc {
+struct PoolScratchAllocator {
 	void[] _pool;
 
 	void* allocRaw(size_t bytes, bool throwExc) {
@@ -69,15 +92,20 @@ struct PoolScratchAlloc {
 			_pool = _pool[bytes..$];
 			return res;
 		} else if (throwExc) {
-			throw new Exception("PoolScratchAlloc: ran out of pool space.");
+			memError("PoolScratchAllocator: ran out of pool space when trying to alloc {} bytes.", bytes);
+			assert (false);
 		} else {
 			return null;
 		}
+	}
+
+	void* allocRaw(size_t bytes) {		// throws
+		return this.allocRaw(bytes, true);
 	}
 
 	bool isFull() {
 		return 0 == _pool.length;
 	}
 
-	mixin MScratchAlloc;
+	mixin MScratchAllocator;
 }

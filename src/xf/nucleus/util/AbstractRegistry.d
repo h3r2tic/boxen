@@ -3,6 +3,8 @@ module xf.nucleus.util.AbstractRegistry;
 private {
 	import tango.io.vfs.model.Vfs;
 	import tango.text.convert.Utf;
+	
+	import xf.mem.ScratchAllocator;
 
 	import tango.io.Stdout;
 	import PathUtil = tango.io.Path;
@@ -11,7 +13,7 @@ private {
 
 
 class AbstractRegistry {
-	alias void* delegate(size_t) Allocator;
+	alias DgScratchAllocator Allocator;
 
 	
 	this(char[] fnmatch) {

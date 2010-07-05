@@ -26,10 +26,11 @@ abstract class KDefLexerBase : PositionalCharParser {
 	KDefToken CreateToken(String text,uint TOK){
 		Position pos = getPosition();		
 		KDefToken tok;
-		tok.type = TOK;
-		tok.line = pos.line;
+		assert (TOK <= cast(uint)tok.type.max);
+		tok.type = cast(typeof(tok.type))TOK;
+		tok.line = cast(typeof(tok.line))pos.line;
 		tok.filename = filename;
-		tok.column = pos.col;
+		tok.column = cast(typeof(tok.column))pos.col;
 		tok.value = text;
 		return tok;
 	}
