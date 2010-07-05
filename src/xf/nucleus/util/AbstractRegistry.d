@@ -4,8 +4,6 @@ private {
 	import tango.io.vfs.model.Vfs;
 	import tango.text.convert.Utf;
 	
-	import xf.mem.ScratchAllocator;
-
 	import tango.io.Stdout;
 	import PathUtil = tango.io.Path;
 }
@@ -13,9 +11,6 @@ private {
 
 
 class AbstractRegistry {
-	alias DgScratchAllocator Allocator;
-
-	
 	this(char[] fnmatch) {
 		_fnmatch = fnmatch;
 	}	
@@ -26,22 +21,22 @@ class AbstractRegistry {
 	}
 	
 	
-	void registerFolder(char[] path, Allocator allocator) {
+	void registerFolder(char[] path) {
 		auto folder = _vfs.folder(path).open;
 		scope(exit) folder.close;
 		
 		foreach (entry; folder.tree.catalog(_fnmatch)) {
-			registerFile(entry, allocator);
+			registerFile(entry);
 		}
 	}
 	
 	
-	synchronized void registerFile(VfsFile file, Allocator allocator) {
-		processFile(PathUtil.normalize(file.toString), allocator);
+	synchronized void registerFile(VfsFile file) {
+		processFile(PathUtil.normalize(file.toString));
 	}
 	
 	
-	abstract void processFile(char[] path, Allocator allocator) {
+	abstract void processFile(char[] path) {
 	}
 	
 	

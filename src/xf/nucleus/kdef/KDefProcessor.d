@@ -43,20 +43,25 @@ class KDefProcessor {
 	this (IKDefFileParser fileParser) {
 		this.fileParser = fileParser;
 	}
+
+
+	static Allocator modAlloc(KDefModule mod) {
+		return Allocator(&mod.mem.pushBack);
+	}
 	
 	
-	void processFile(string path, Allocator allocator) {
+	void processFile(string path) {
 		if (auto mod = path in modules) {
 			if ((*mod).processing) {
 				throw new Exception("Cyclic import in kernel module '" ~ path ~ "'");
 			}
 		} else {
 			Stdout.formatln("KDefProcessor.parseFile({})", path);
-			auto mod = fileParser.parseFile(path, allocator);
+			auto mod = fileParser.parseFile(path);
 			modules[path] = mod;
 			mod.processing = true;
 			mod.filePath = path;
-			process(mod, allocator);
+			process(mod, modAlloc(mod));
 			mod.processing = false;
 		}
 	}
@@ -71,8 +76,8 @@ class KDefProcessor {
 	}
 	
 	
-	void doSemantics(Allocator allocator) {
-		doKernelSemantics(allocator);
+	void doSemantics() {
+		doKernelSemantics();
 	}
 	
 	
@@ -159,7 +164,7 @@ class KDefProcessor {
 		}
 
 
-		void doKernelSemantics(Allocator allocator) {
+		void doKernelSemantics() {
 			Processed[KernelImpl] processed;
 
 			foreach (name, mod; modules) {
@@ -182,7 +187,7 @@ class KDefProcessor {
 			
 
 			foreach (n, ref k; kernels) {
-				doKernelSemantics(k.impl, allocator, processed);
+				doKernelSemantics(k.impl, modAlloc(k.mod), processed);
 			}
 		}
 
@@ -633,7 +638,7 @@ class KDefProcessor {
 					sc.doAssign(stmt.name, stmt.value);
 				} else if (auto stmt = cast(ImportStatement)stmt_) {
 					auto path = stmt.path;
-					processFile(path, allocator);
+					processFile(path);
 					auto names = stmt.what;
 					auto mod = modules[path];
 					

@@ -96,6 +96,14 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ serialize calc nodes
 		+ create the main shader with linking via temporaries
 
+~	memory management for the kdef parser
+	+ one ScratchFIFO per module, allocated automatically instead of by the user
+	+ replace the token array in xf.nucleus.Code with a Rope
+	+ replace regular arrays with ones on the scratch space
+	+ replace string.dup with scratch.dupString()
+	+ alloc new Foo with scratch._new!(Foo)
+	- change the array appending in Enki not to use the GC
+
 ~	plug the codegen into the Forward renderer
 	+ generate code
 	+ create the Cg Effect
@@ -125,7 +133,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		void outputPassThrough(in input <from the Output node>, out output <in.input.actual>)
 	+ done that via special Bridge nodes with similar treatment as Func nodes, but with InOut params
 
--	default values for params
++	default values for params
 	* restrict to Data nodes only for now
 
 ~	handling of Data nodes
@@ -150,14 +158,6 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- samplers (via ARB_sampler_objects)
 	* the surface must have a valid ID before it's passed to the renderer (registered in it)
 	* must register surfaces before using them for objects
-
-~	memory management for the kdef parser
-	- one ScratchFIFO per module, allocated automatically instead of by the user
-	+ replace the token array in xf.nucleus.Code with a Rope
-	+ replace regular arrays with ones on the scratch space
-	+ replace string.dup with scratch.dupString()
-	+ alloc new Foo with scratch._new!(Foo)
-	- change the array appending in Enki not to use the GC
 
 ~	make OPTLINK not hate me :(((((((((
 	+ remove MinTL from the project (xf.input)
