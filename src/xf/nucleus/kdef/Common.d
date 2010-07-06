@@ -1,7 +1,7 @@
 module xf.nucleus.kdef.Common;
 
 private {
-	import xf.Common : equal;
+	import xf.Common : equal, DgAllocator;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.Defs;
 	import xf.nucleus.Param;
@@ -20,6 +20,7 @@ private {
 	import xf.nucleus.DepTracker;
 
 	import xf.mem.ChunkQueue;		// for ScratchFIFO
+	import xf.mem.ScratchAllocator;
 
 	import TextUtil = tango.text.Util;
 	alias char[] string;
@@ -31,11 +32,38 @@ private {
 
 
 abstract class Scope {
-	Statement[]	statements;
+	Statement[]			statements;
+	DgScratchAllocator	mem;
 
 	// after semantic analysis:
-	
-	Value[string]	vars;
+
+	private {
+		string[]	_varNames;
+		Value[]		_varValues;
+	}
+
+	this(DgAllocator allocator) {
+		mem = DgScratchAllocator(allocator);
+	}
+
+	protected void setVars(VarDef[] vars) {
+		assert (_varNames is null);
+		_varNames = mem.allocArrayNoInit!(string)(vars.length);
+		_varValues = mem.allocArrayNoInit!(Value)(vars.length);
+		foreach (i, v; vars) {
+			_varNames[i] = v.name;
+			_varValues[i] = v.value;
+		}
+	}
+
+	Value getVar(string name) {
+		foreach (i, n; _varNames) {
+			if (n == name) {
+				return _varValues[i];
+			}
+		}
+		return null;
+	}
 	
 	
 	private final Scope getValueOwner(string name, string* finalName) {
@@ -47,8 +75,8 @@ abstract class Scope {
 				throw new Exception("invalid field name: '" ~ name ~ ".");
 			}
 			
-			if (auto prefixVal = prefix in vars) {
-				if (auto scopeVal = cast(IScopeValue)*prefixVal) {
+			if (auto prefixVal = getVar(prefix)) {
+				if (auto scopeVal = cast(IScopeValue)prefixVal) {
 					auto sc = scopeVal.toScope();
 					assert (sc !is null);
 					return sc.getValueOwner(suffix, finalName);
@@ -65,31 +93,41 @@ abstract class Scope {
 		}
 	}
 	
-	
-	final void doAssign(string name, Value value) {
-		string finalName;
-		auto sc = getValueOwner(name, &finalName);
-		sc.doAssignSelf(finalName, value);
+
+	// assumes ownership of the arrays
+	void doAssign(string[] names, Value[] values) {
+		assert (_varNames is null);
+		assert (_varValues is null);
+
+		foreach (ref n; names) {
+			string finalName;
+			auto sc = getValueOwner(n, &finalName);
+			n = finalName;
+		}
+
+		_varNames = names;
+		_varValues = values;
 	}
 	
-
-	void doAssignSelf(string name, Value value) {
-		vars[name] = value;
-	}
-
 
 	// NOTE: Only valid after semantic analysis
 	bool opEquals(Scope other) {
-		if (vars.length != other.vars.length) {
+		if (
+				_varNames.length != other._varNames.length
+			||	statements.length != other.statements.length
+		) {
 			return false;
 		}
 
-		foreach (vn, v; vars) {
-			if (auto v2 = vn in other.vars) {
-				if (!equal(v, *v2)) {
-					return false;
-				}
-			} else {
+		foreach (vi, vn; _varNames) {
+			auto vv = _varValues[vi];
+			if (other._varNames[vi] != vn || !equal(other._varValues[vi], vv)) {
+				return false;
+			}
+		}
+
+		foreach (i, s; statements) {
+			if (!s.opEquals(other.statements[i])) {
 				return false;
 			}
 		}
@@ -121,10 +159,15 @@ class TraitDef {
 
 
 class KDefModule : Scope {
-	ScratchFIFO	mem;
+	ScratchFIFO	scratchFIFO;
+
+	this () {
+		scratchFIFO.initialize();
+		super(&scratchFIFO.pushBack);
+	}
 
 	~this() {
-		mem.clear();
+		scratchFIFO.clear();
 	}
 	
 	string	filePath;
@@ -147,15 +190,14 @@ class KDefModule : Scope {
 
 
 final class GraphDefNode : Scope {
-	this (VarDef[] vars_) {
-		foreach (var; vars_) {
-			this.vars[var.name] = var.value;
-		}
+	this (VarDef[] vars_, DgAllocator allocator) {
+		super(allocator);
+		this.setVars(vars_);
 	}
 
 	char[] type() {
-		auto typeVar = vars["type"];
-		assert (cast(IdentifierValue)typeVar);
+		auto typeVar = getVar("type");
+		assert (cast(IdentifierValue)typeVar, "type fields for graph nodes must be idents");
 		return (cast(IdentifierValue)typeVar).value;
 	}
 
@@ -177,8 +219,8 @@ final class GraphDef : Scope, IGraphDef {
 	string		superKernel;
 	DepTracker	_dependentOnThis;
 
-
-	this (Statement[] statements, void* delegate(size_t) allocator) {
+	this (Statement[] statements, DgAllocator allocator) {
+		super (allocator);
 		this.statements = statements;
 		_dependentOnThis = DepTracker(allocator);
 	}
@@ -199,15 +241,44 @@ final class GraphDef : Scope, IGraphDef {
 	bool opEquals(IGraphDef other) {
 		return opEquals(GraphDef(other));
 	}
+
+
+	private struct NodeFruct {
+		GraphDef _this;
+		int opApply(int delegate(ref string, ref GraphDefNode) sink) {
+			return _this._iterNodes(sink);
+		}
+		size_t length() {
+			return _this._nodes.length;
+		}
+	}
+
+	NodeFruct nodes() {
+		return NodeFruct(this);
+	}
+	private int _iterNodes(int delegate(ref string, ref GraphDefNode) sink) {
+		foreach (i, ref nn; _nodeNames) {
+			if (int r = sink(nn, _nodes[i])) {
+				return r;
+			}
+		}
+		return 0;
+	}
 	
 
 	bool opEquals(GraphDef other) {
 		if (	_name != other._name
 			||	superKernel != other.superKernel
-			||	nodes.length != other.nodes.length
+			||	_nodes.length != other._nodes.length
 			||	nodeConnections.length != other.nodeConnections.length
 			||	nodeFieldConnections.length != other.nodeFieldConnections.length
 		) {
+			if (_name != other._name) log.info("blah1");
+			if (superKernel != other.superKernel) log.info("blah2");
+			if (_nodes.length != other._nodes.length) log.info("blah3");
+			if (nodeConnections.length != other.nodeConnections.length) log.info("blah4");
+			if (nodeFieldConnections.length != other.nodeFieldConnections.length) log.info("blah5");
+			log.info("blah");
 			return false;
 		}
 
@@ -222,13 +293,26 @@ final class GraphDef : Scope, IGraphDef {
 	}
 
 
-	override void doAssignSelf(string name, Value value) {
-		super.doAssignSelf(name, value);
+	override void doAssign(string[] names, Value[] values) {
+		super.doAssign(names, values);
 		
-		if (auto nodeValue = cast(GraphDefNodeValue)value) {
-			nodes[name] = nodeValue.node;
-		} else {
-			error("Graphs can only contain nodes, not '{}' {}", name, value.classinfo.name);
+		size_t num = 0;
+		foreach (v; values) {
+			if (cast(GraphDefNodeValue)v) {
+				++num;
+			}
+		}
+
+		_nodeNames = mem.allocArrayNoInit!(string)(num);
+		_nodes = mem.allocArrayNoInit!(GraphDefNode)(num);
+
+		num = 0;
+		foreach (i, v; values) {
+			if (auto nodeValue = cast(GraphDefNodeValue)v) {
+				_nodeNames[num] = names[i];
+				_nodes[num] = nodeValue.node;
+				++num;
+			}
 		}
 	}
 
@@ -236,7 +320,8 @@ final class GraphDef : Scope, IGraphDef {
 	// after semantic analysis:
 
 	string					_name;
-	GraphDefNode[string]	nodes;
+	string[]				_nodeNames;
+	GraphDefNode[]			_nodes;
 	NodeConnection[]		nodeConnections;
 	NodeFieldConnection[]	nodeFieldConnections;
 	
@@ -249,6 +334,15 @@ final class GraphDef : Scope, IGraphDef {
 		string from, to;
 	}
 	
+	GraphDefNode getNode(string name) {
+		foreach (i, n; _nodeNames) {
+			if (n == name) {
+				return _nodes[i];
+			}
+		}
+		return null;
+	}
+
 	override void importStatement(Statement st) {
 		// TODO
 	}
@@ -260,7 +354,7 @@ final class GraphDef : Scope, IGraphDef {
 	}
 
 	size_t numNodes() {
-		return nodes.length;
+		return _nodes.length;
 	}
 	
 	
@@ -272,9 +366,9 @@ final class GraphDef : Scope, IGraphDef {
 		
 		if (auto fromGraph = cast(GraphDef)fromScope) {
 			if (auto toGraph = cast(GraphDef)toScope) {
-				if (auto fromNode = fromName in fromGraph.nodes) {
-					if (auto toNode = toName in toGraph.nodes) {
-						nodeConnections ~= NodeConnection(*fromNode, *toNode);
+				if (auto fromNode = fromGraph.getNode(fromName)) {
+					if (auto toNode = toGraph.getNode(toName)) {
+						nodeConnections ~= NodeConnection(fromNode, toNode);
 					} else {
 						throw new Exception("no target node");
 					}
@@ -410,8 +504,7 @@ class ParamListValue : Value {
 	
 	this (ParamDef[] params) {
 		assert (params.length > 0);
-		this.value = params.dup;
-		//log.info("ParamListValue @ {:x} has {} params", cast(void*)this, params.length);
+		this.value = params;
 	}
 
 	override bool opEquals(Value other) {
@@ -434,6 +527,7 @@ class ParamListValue : Value {
 
 
 abstract class Statement {
+	abstract bool opEquals(Statement other);
 }
 
 
@@ -442,8 +536,16 @@ class ConnectStatement : Statement {
 	string to;
 	
 	this (string from, string to) {
-		this.from = from.dup;
-		this.to = to.dup;
+		this.from = from;
+		this.to = to;
+	}
+
+	override bool opEquals(Statement other) {
+		if (auto o = cast(ConnectStatement)other) {
+			return from == o.from && to == o.to;
+		} else {
+			return false;
+		}
 	}
 }
 
@@ -453,8 +555,16 @@ class AssignStatement : Statement {
 	Value value;
 	
 	this (string name, Value value) {
-		this.name = name.dup;
+		this.name = name;
 		this.value = value;
+	}
+
+	override bool opEquals(Statement other) {
+		if (auto o = cast(AssignStatement)other) {
+			return name == o.name && value == o.value;
+		} else {
+			return false;
+		}
 	}
 }
 
@@ -467,12 +577,29 @@ class ImportStatement : Statement {
 		this.path = path;
 		this.what = what;
 	}
+
+	override bool opEquals(Statement other) {
+		if (auto o = cast(ImportStatement)other) {
+			// TODO: does == for string[] compare contents or ptrs?
+			return path == o.path && what == o.what;
+		} else {
+			return false;
+		}
+	}
 }
 
 
 class ConverterDeclStatement : Statement {
 	Function	func;
 	int			cost;
+
+	override bool opEquals(Statement other) {
+		if (auto o = cast(ConverterDeclStatement)other) {
+			return func == o.func && cost == o.cost;
+		} else {
+			return false;
+		}
+	}
 }
 
 

@@ -25,14 +25,17 @@ Pigment = kernel(
 	out radiance <type vec4 + use color>
 );
 
+
+// differs
 Rasterize = kernel(
-	in inPos <type vec4 + use position + basis clip>
+	in inPos <type vec4 + use position + basis world>
 );
 
 
 // ----
 
 
+// differs
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
@@ -50,7 +53,7 @@ DefaultMeshStructure = graph Structure {
 	};
 
 	connect node_0 node_1;
-	connect node_0 node_2;
+	connect node_0 node_1;
 };
 
 
@@ -79,8 +82,10 @@ basis = trait {
 // ----
 
 
+// differs
 Add = kernel(in a, in b,	out c <in.a.actual>) {
-	c = a + b;
+	c = a
+	 + b;
 };
 
 
@@ -121,11 +126,12 @@ converter(20) normal2color(
 }
 
 
+// differs
 converter(20) model2world_p(
 	in a <type vec3 + basis model + use position>,
-	out b <in.a.actual + basis world>
+	out x <in.a.actual + basis world>
 ) {
-	b = mul(modelToWorld, float4(a, 1)).xyz;
+	x = mul(modelToWorld, float4(a, 1)).xyz;
 }
 
 converter(20) model2world_n(
@@ -135,7 +141,8 @@ converter(20) model2world_n(
 	b = mul(modelToWorld, float4(a, 0)).xyz;
 }
 
-converter(20) world2view(
+// differs
+converter(10) world2view(
 	in a <type vec3 + basis world + use position>,
 	out b <in.a.actual + basis view>
 ) {

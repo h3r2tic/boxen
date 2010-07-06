@@ -22,6 +22,7 @@ private {
 	//import xf.nucleus.CommonDef;
 
 	import xf.mem.ScratchAllocator;
+	import xf.mem.StackBuffer;
 	import xf.nucleus.Log : error = nucleusError;
 
 	import xf.utils.Graph : findTopologicalOrder, CycleHandlingMode;
@@ -46,7 +47,7 @@ class KDefProcessor {
 
 
 	static Allocator modAlloc(KDefModule mod) {
-		return Allocator(&mod.mem.pushBack);
+		return mod.mem;
 	}
 	
 	
@@ -361,7 +362,11 @@ class KDefProcessor {
 					} break;
 
 					case "kernel": {
-						auto kernelVar = node.vars["kernel"];
+						auto kernelVar = node.getVar("kernel");
+						if (kernelVar is null) {
+							// TODO: err
+							error("No kernel defined for a kernel node.");
+						}
 						if (auto ident = cast(IdentifierValue)kernelVar) {
 							node.kernelImpl = getKernel(ident.value);
 						}
@@ -539,6 +544,33 @@ class KDefProcessor {
 		
 				
 		void process(Scope sc, Allocator allocator) {
+			{
+				size_t num = 0;
+				foreach (stmt_; sc.statements) {
+					if (cast(AssignStatement)stmt_) {
+						++num;
+					}				
+				}
+
+				if (num > 0) {
+					scope stack = new StackBuffer;
+					
+					string[]	names = sc.mem.allocArrayNoInit!(string)(num);
+					Value[]		values = sc.mem.allocArrayNoInit!(Value)(num);
+
+					num = 0;
+					foreach (stmt_; sc.statements) {
+						if (auto stmt = cast(AssignStatement)stmt_) {
+							names[num] = stmt.name;
+							values[num] = stmt.value;
+							++num;
+						}
+					}
+
+					sc.doAssign(names, values);
+				}
+			}
+
 			foreach (stmt_; sc.statements) {
 				if (auto stmt = cast(ConnectStatement)stmt_) {
 					if (auto graph = cast(GraphDef)sc) {
@@ -591,9 +623,7 @@ class KDefProcessor {
 							default: break;
 						}
 
-						if (auto params__ = "params" in node.vars) {
-							auto params_ = *params__;
-							
+						if (auto params_ = node.getVar("params")) {
 							ParamDirection pdir;
 							switch (node.type) {
 								case "input": 
@@ -659,8 +689,6 @@ class KDefProcessor {
 							mod.traitDefs ~= traitValue.value;
 						}
 					}
-
-					sc.doAssign(stmt.name, stmt.value);
 				} else if (auto stmt = cast(ImportStatement)stmt_) {
 					auto path = stmt.path;
 					processFile(path);
