@@ -20,7 +20,6 @@ private {
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.KDefGraphBuilder,
-		xf.nucleus.kernel.KernelDef,
 		xf.nucleus.graph.GraphOps,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.KernelGraphOps,
@@ -211,7 +210,6 @@ class ForwardRenderer : Renderer {
 
 
 	// TODO: mem
-	// TODO: textures
 	override void registerMaterial(MaterialDef def) {
 		if (def.id >= _materials.length) {
 			_materials.growBy(def.id - _materials.length + 1);
@@ -480,9 +478,9 @@ class ForwardRenderer : Renderer {
 		MaterialId materialId = renderables.material[rid];
 		auto material = _materials[materialId];
 
-		final structureKernel		= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel			= material.pigmentKernel;
-		final illumKernel			= surface.illumKernel;
+		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
+		final pigmentKernel		= material.pigmentKernel;
+		final illumKernel		= surface.illumKernel;
 
 		alias KernelGraph.NodeType NT;
 

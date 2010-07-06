@@ -103,3 +103,9 @@ char toLowerASCII(char c) {
 		return c;
 	}
 }
+
+template Generator(T) {
+	alias void delegate(void delegate(T)) Generator;
+}
+
+alias void* delegate(uword) DgAllocator;

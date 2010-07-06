@@ -160,7 +160,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		// tags and name dup'd by the Function
 		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
 			auto res = mem._new!(KernelDefValue);
-			res.kernelDef = mem._new!(KernelDef);
+			res.kernelDef = mem._new!(KernelDef)(mem._allocator);
 			
 			if (code != code.init) {
 				res.kernelDef.func = createFunction(null, tags, params, code);
@@ -174,7 +174,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags) {
 			auto res = mem._new!(GraphDefValue);
-			res.graphDef = mem._new!(GraphDef)(mem.dupArray(stmts));
+			res.graphDef = mem._new!(GraphDef)(mem.dupArray(stmts), mem._allocator);
 			res.graphDef.superKernel = mem.dupString(superKernel);
 			res.graphDef.tags = dupStringArray(tags);
 			return res;

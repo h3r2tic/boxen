@@ -165,7 +165,26 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		- compile xf.omg.core.LinearAlgebra with -O -inline -release, sans -g
 		- compile platform modules and GL functions without -g
 
--	monitor quark files for changes, recompile shaders when needed
+~	monitor quark files for changes, recompile shaders when needed
+	+ track dependencies
+		* kernels depending on kernels
+		* graphs depending on kernels
+		* graphs depending on graphs
+		* (?) kernels depending on graphs
+		* materials depending on kernels/graphs
+		* surfaces depending on kernels/graphs
+		* all compiled effects depend on all converters
+	- add opEquals to:
+		- Function
+		- ParamList
+	* might reparse everything, but detect changes and only invalidate the runtime constructs
+	  that are affected - recompile Effects, modify material params
+	- find all affected items, walk the dependency graph, marking stuff as invalid
+	- notify renderers about the invalid elements
+		- unregister surfaces and materials
+		- invalidate parts of Effect caches
+	- delete the olde registry data
+		* nothing can retain the defs other than by their name (separately allocated strings)
 
 -	heavy and ugly CPU quarks for post-proc and the pipeline
 	* no fancy runtime fixups

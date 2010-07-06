@@ -5,6 +5,7 @@ private {
 	import xf.mem.FreeList;
 	import xf.mem.ChunkQueue;
 	import xf.mem.StackBuffer;
+	import xf.mem.SmallTempArray;
 	import xf.omg.core.Misc : min, max;
 	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
@@ -36,84 +37,6 @@ struct DataFlow {
 
 // version = DebugGraphConnections;
 
-
-
-template MSmallTempArray(T) {
-	enum { GrowBy = 8 }
-	
-	T[] items() {
-		return _items[0.._length];
-	}
-
-	ushort length() {
-		return _length;
-	}
-
-	void pushBack(T item, ScratchFIFO mem) {
-		if (_length < _capacity) {
-			_items[_length++] = item;
-		} else {
-			_capacity += GrowBy;
-			assert (_capacity > _length);
-			T* nitems = cast(T*)mem.pushBack(_capacity * T.sizeof);
-			nitems[0.._length] = _items[0.._length];
-			nitems[_length++] = item;
-			nitems[_length.._capacity] = T.init;
-			_items = nitems;
-		}
-	}
-
-	void remove(T* item) {
-		assert (_length > 0);
-		assert (item >= _items && item < _items + _length);
-		ushort idx = cast(ushort)(item - _items);
-		if (idx != _length-1) {
-			_items[idx] = _items[_length-1];
-		}
-		_items[_length-1] = T.init;
-		--_length;
-	}
-
-	void removeMatching(bool delegate(T) pred) {
-		ushort dst = 0;
-		for (ushort src = 0; src < _length; ++src) {
-			if (!pred(_items[src])) {
-				if (dst != src) {
-					_items[dst] = _items[src];
-				}
-				++dst;
-			}
-		}
-
-		assert (dst <= _length);
-
-		_items[dst.._length] = T.init;
-		_length = dst;
-	}
-
-	void alloc(ushort num, ScratchFIFO mem) {
-		if (num > 0) {
-			_capacity = cast(ushort)(((num + cast(ushort)(GrowBy-1)) / GrowBy) * GrowBy);
-			_items = cast(T*)mem.pushBack(_capacity * T.sizeof);
-			assert (_items !is null);
-			_length = num;
-			_items[0.._capacity] = T.init;
-		} else {
-			_items = null;
-			_length = 0;
-			_capacity = 0;
-		}
-	}
-
-	void clear() {
-		_length = 0;
-	}
-	
-
-	T*		_items;
-	ushort	_length;
-	ushort	_capacity;
-}
 
 
 interface IGraphFlow {
@@ -333,12 +256,12 @@ final class Graph : IGraphFlow {
 
 			outList.pushBack(
 				con,
-				_mem
+				&_mem.pushBack
 			);
 
 			incList.pushBack(
 				con,
-				_mem
+				&_mem.pushBack
 			);
 		}
 
@@ -347,7 +270,7 @@ final class Graph : IGraphFlow {
 				_allocString(fromPort),
 				_allocString(toPort)
 			),
-			_mem
+			&_mem.pushBack
 		);
 
 		if (newFlow) *newFlow = true;
@@ -916,7 +839,7 @@ final class Graph : IGraphFlow {
 				// copy data connections
 
 				void copyConnections(ref ConnectionList dst, ref ConnectionList src) {
-					dst.alloc(src.length, _mem);
+					dst.alloc(src.length, &_mem.pushBack);
 					foreach (conI, ref dstCon; dst.items) {
 						assert (dstCon is null);
 						dstCon = _allocConnection();
@@ -926,7 +849,7 @@ final class Graph : IGraphFlow {
 						
 						dstCon.from = srcCon.from;
 						dstCon.to = srcCon.to;
-						dstCon.alloc(srcCon.length, _mem);
+						dstCon.alloc(srcCon.length, &_mem.pushBack);
 						foreach (flowI, ref dstFlow; dstCon.items) {
 							final srcFlow = srcCon._items[flowI];
 							dstFlow.from = _allocString(srcFlow.from);
@@ -947,7 +870,7 @@ final class Graph : IGraphFlow {
 				}
 
 				void shallowCopyConnections(ref ConnectionList dst, ref ConnectionList src) {
-					dst.alloc(src.length, _mem);
+					dst.alloc(src.length, &_mem.pushBack);
 					foreach (conI, ref dstCon; dst.items) {
 						assert (dstCon is null);
 						dstCon = src._items[conI]._reallocReal;

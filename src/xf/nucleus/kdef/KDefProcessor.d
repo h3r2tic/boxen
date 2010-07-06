@@ -184,6 +184,19 @@ class KDefProcessor {
 					}
 				}
 			}
+
+
+			foreach (name, mod; modules) {
+				foreach (ref surf; mod.surfaces) {
+					getKernel(surf.illumKernelName)
+						.dependentOnThis.add(surf.dependentOnThis);
+				}
+
+				foreach (ref mat; mod.materials) {
+					getKernel(mat.pigmentKernelName)
+						.dependentOnThis.add(mat.dependentOnThis);
+				}
+			}
 			
 
 			foreach (n, ref k; kernels) {
@@ -313,6 +326,10 @@ class KDefProcessor {
 				auto superKernel = getKernel(k.superKernel);
 				doKernelSemantics(superKernel, allocator, processed);
 				inheritKernel(k, superKernel);
+
+				superKernel.dependentOnThis.add(
+					k.dependentOnThis
+				);
 			}
 		}
 
@@ -323,6 +340,10 @@ class KDefProcessor {
 			if (graph.superKernel.length > 0) {
 				superKernel = getKernel(graph.superKernel);
 				doKernelSemantics(superKernel, allocator, processed);
+
+				superKernel.dependentOnThis.add(
+					graph.dependentOnThis
+				);
 			}
 
 			foreach (nodeName, node; graph.nodes) {
@@ -363,6 +384,10 @@ class KDefProcessor {
 								" not a '{}'", kernelVar.classinfo.name
 							);
 						}
+
+						node.kernelImpl.dependentOnThis.add(
+							graph.dependentOnThis
+						);
 					} break;
 
 					default: break;

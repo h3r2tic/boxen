@@ -14,14 +14,12 @@ private {
 	import xf.nucleus.Renderable;
 	import xf.nucleus.Light;
 	import xf.nucleus.IStructureData;
-	import xf.nucleus.Kernel;
 	import xf.nucleus.CompiledMeshAsset;
 	import xf.nucleus.KernelParamInterface;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.kernel.KernelDef;
 
 	import xf.gfx.IRenderer : IRenderer;
 	import xf.gfx.Buffer;
