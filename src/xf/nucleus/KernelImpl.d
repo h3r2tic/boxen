@@ -37,6 +37,25 @@ struct KernelImpl {
 	}
 
 
+	bool opEquals(ref KernelImpl other) {
+		if (type != other.type) {
+			return false;
+		}
+
+		switch (type) {
+			case KernelImpl.Type.Graph: {
+				return graph.opEquals(other.graph);
+			}
+			
+			case KernelImpl.Type.Kernel: {
+				return kernel.opEquals(other.kernel);
+			}
+			
+			default: assert (false);
+		}
+	}
+
+
 	DepTracker* dependentOnThis() {
 		switch (type) {
 			case KernelImpl.Type.Graph: {

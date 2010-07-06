@@ -10,7 +10,7 @@ private {
 
 
 
-class SurfaceDef {
+final class SurfaceDef {
 	private alias void* delegate(uword) Allocator;
 	union {
 		ParamList	params;
@@ -23,11 +23,16 @@ class SurfaceDef {
 	}
 
 
+	bool opEquals(SurfaceDef other) {
+		return
+			name == other.name
+		&&	illumKernelName == other.illumKernelName
+		&&	params == other.params;
+	}
+
+
 	void invalidateIfDifferent(SurfaceDef other) {
-		if (	params != other.params
-			||	name != other.name
-			||	illumKernelName != other.illumKernelName
-		) {
+		if (!opEquals(other)) {
 			dependentOnThis.valid = false;
 		}
 	}

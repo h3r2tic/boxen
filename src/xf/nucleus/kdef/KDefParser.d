@@ -605,14 +605,13 @@ class KDefParser:KDefParserBase{
 
 	/*
 	GraphDefValue
-		= GraphDefValue createGraphDefValue(string superKernel,Statement[] stmts,string[] tags)
-		::= "graph" ["<" KernelTagList:tags ">"] [Identifier:superKernel] "{" Statement:~stmts* "}";
+		= GraphDefValue createGraphDefValue(string superKernel,Statement[] stmts)
+		::= "graph" [Identifier:superKernel] "{" Statement:~stmts* "}";
 
 	*/
 	GraphDefValue value_GraphDefValue;
 	bool parse_GraphDefValue(){
 		debug Stdout("parse_GraphDefValue").newline;
-		string[] var_tags;
 		Statement[] var_stmts;
 		string var_superKernel;
 
@@ -624,62 +623,40 @@ class KDefParser:KDefParserBase{
 				}
 			term5:
 				// Optional
-					// AndGroup
-						auto position8 = pos;
-							// Terminal
-							if(!match("<")){
-								goto fail9;
-							}
-						term10:
-							// Production
-							if(!parse_KernelTagList()){
-								goto fail9;
-							}
-							smartAssign(var_tags,value_KernelTagList);
-						term11:
-							// Terminal
-							if(match(">")){
-								goto term6;
-							}
-						fail9:
-						pos = position8;
-						goto term6;
-			term6:
-				// Optional
 					// Production
 					if(!parse_Identifier()){
-						goto term12;
+						goto term6;
 					}
 					smartAssign(var_superKernel,value_Identifier);
-			term12:
+			term6:
 				// Terminal
 				if(!match("{")){
 					goto fail4;
 				}
-			term13:
+			term7:
 				// Iterator
-				start14:
+				start8:
 					// (terminator)
 						// Terminal
 						if(match("}")){
-							goto end15;
+							goto end9;
 						}
 					// (expression)
-					expr16:
+					expr10:
 						// Production
 						if(!parse_Statement()){
 							goto fail4;
 						}
 						smartAppend(var_stmts,value_Statement);
-					goto start14;
-				end15:
+					goto start8;
+				end9:
 					goto pass0;
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_GraphDefValue = createGraphDefValue(var_superKernel,var_stmts,var_tags);
+			value_GraphDefValue = createGraphDefValue(var_superKernel,var_stmts);
 			debug Stdout.format("\tparse_GraphDefValue passed: {0}",value_GraphDefValue).newline;
 			return true;
 		fail1:

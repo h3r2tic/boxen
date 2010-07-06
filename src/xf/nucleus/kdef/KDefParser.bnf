@@ -73,8 +73,8 @@ AbstractKernelDefValue
 		ParamList:params;
 
 GraphDefValue
-	= GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags)
-	::= "graph" ["<" KernelTagList:tags ">"] [Identifier:superKernel]
+	= GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts/+, string[] tags+/)
+	::= "graph" /+["<" KernelTagList:tags ">"]+/ [Identifier:superKernel]
 	"{"
 		Statement:~stmts*
 	"}";

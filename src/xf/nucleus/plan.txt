@@ -174,9 +174,17 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		* materials depending on kernels/graphs
 		* surfaces depending on kernels/graphs
 		* all compiled effects depend on all converters
-	- add opEquals to:
-		- Function
-		- ParamList
+	+ add opEquals to:
+		+ Function
+		+ ParamList
+		+ Param
+		+ SemanticExp
+		+ KernelImpl
+		+ Value
+		+ ParamSemanticExp
+		+ ParamDef
+		+ Code
+		+ ScratchFixedRope
 	* might reparse everything, but detect changes and only invalidate the runtime constructs
 	  that are affected - recompile Effects, modify material params
 	- find all affected items, walk the dependency graph, marking stuff as invalid

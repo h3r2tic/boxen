@@ -34,6 +34,27 @@ class AbstractFunction {
 
 		return false;
 	}
+
+	bool opEquals(AbstractFunction other) {
+		if (cast(Function)other) {
+			return false;
+		} else {
+			if (name != other.name) {
+				return false;
+			}
+			
+			// TODO: is it comparing string contents or ptrs?
+			if (_tags != other._tags) {
+				return false;
+			}
+			
+			if (params != other.params) {
+				return false;
+			}
+
+			return true;
+		}
+	}
 	
 	this (cstring name, cstring[] tags, void* delegate(uword) allocator) {
 		_allocator = allocator;
@@ -59,5 +80,30 @@ class Function : AbstractFunction {
 	this (cstring name, cstring[] tags, Code code, void* delegate(uword) allocator) {
 		super (name, tags, allocator);
 		this.code = code;
+	}
+
+	override bool opEquals(AbstractFunction other_) {
+		if (auto other = cast(Function)other_) {
+			if (name != other.name) {
+				return false;
+			}
+			
+			// TODO: is it comparing string contents or ptrs?
+			if (_tags != other._tags) {
+				return false;
+			}
+			
+			if (params != other.params) {
+				return false;
+			}
+
+			if (code != other.code) {
+				return false;
+			}
+
+			return true;
+		} else {
+			return false;
+		}
 	}
 }

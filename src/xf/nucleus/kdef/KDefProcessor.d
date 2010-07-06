@@ -525,10 +525,10 @@ class KDefProcessor {
 			foreach (nodeName, _node; graph.nodes) {
 				Stdout.formatln("\tnode: {}", nodeName);
 			}
-			foreach (graphName, subGraph; graph.graphs) {
+			/+foreach (graphName, subGraph; graph.graphs) {
 				Stdout.formatln("\tsub-graph: ");
 				dumpInfo(subGraph);
-			}
+			}+/
 			Stdout("}").newline;
 		}
 		

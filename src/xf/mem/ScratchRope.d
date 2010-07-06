@@ -7,7 +7,7 @@ private {
 
 
 
-private struct ScratchRope {
+/+private struct ScratchRope {
 	private {
 		struct Chunk {
 			align(0)
@@ -105,10 +105,10 @@ private struct ScratchRope {
 			sink(str[0..cast(uword)(it.length)+1]);
 		}
 	}
-}
+}+/
 
 
-private struct ScratchFixedRope {
+struct ScratchFixedRope {
 	private {
 		struct Chunk {
 			align(0)
@@ -185,6 +185,37 @@ private struct ScratchFixedRope {
 		for (Chunk* it = first; it; it = it.next) {
 			char* str = cast(char*)(it+1);
 			sink(str[0..cast(uword)(it.length)+1]);
+		}
+	}
+
+	bool opEquals(ref ScratchFixedRope other) {
+		Chunk* c1 = first;
+		Chunk* c2 = other.first;
+
+	compareChunk:
+		if (c1 is null) {
+			if (c2 is null) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			if (c2 is null) {
+				return false;
+			} else {
+				if (c1.length != c2.length) {
+					return false;
+				}
+
+				uword len = cast(uword)c1.length+1;
+				if ((cast(char*)(c1+1))[0..len] != (cast(char*)(c2+1))[0..len]) {
+					return false;
+				}
+				
+				c1 = c1.next;
+				c2 = c2.next;
+				goto compareChunk;
+			}
 		}
 	}
 }

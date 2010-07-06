@@ -361,6 +361,25 @@ struct SemanticExp {
 	}
 
 
+	bool opEquals(ref SemanticExp other) {
+		if (_traits.length != other._traits.length) {
+			return false;
+		}
+
+		for (uword i = 0; i < _traits.length; ++i) {
+			if (
+					_traits[i].op != other._traits[i].op
+				||	_traits[i].name != other._traits[i].name
+				||	_traits[i].value != other._traits[i].value
+			) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+
 	SemanticExp dup(Allocator allocator = null) {
 		SemanticExp res;
 		res._allocator = allocator is null ? _allocator : allocator;

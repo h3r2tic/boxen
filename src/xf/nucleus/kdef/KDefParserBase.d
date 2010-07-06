@@ -172,11 +172,11 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
-		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts, string[] tags) {
+		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts/+, string[] tags+/) {
 			auto res = mem._new!(GraphDefValue);
 			res.graphDef = mem._new!(GraphDef)(mem.dupArray(stmts), mem._allocator);
 			res.graphDef.superKernel = mem.dupString(superKernel);
-			res.graphDef.tags = dupStringArray(tags);
+			//res.graphDef.tags = dupStringArray(tags);
 			return res;
 		}
 

@@ -1,6 +1,7 @@
 module xf.nucleus.kdef.Common;
 
 private {
+	import xf.Common : equal;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.Defs;
 	import xf.nucleus.Param;
@@ -23,7 +24,7 @@ private {
 	import TextUtil = tango.text.Util;
 	alias char[] string;
 
-	import xf.nucleus.Log : log = nucleusLog;
+	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
 }
 
 
@@ -77,6 +78,26 @@ abstract class Scope {
 	}
 
 
+	// NOTE: Only valid after semantic analysis
+	bool opEquals(Scope other) {
+		if (vars.length != other.vars.length) {
+			return false;
+		}
+
+		foreach (vn, v; vars) {
+			if (auto v2 = vn in other.vars) {
+				if (!equal(v, *v2)) {
+					return false;
+				}
+			} else {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+
 	void doImport(void delegate(void delegate(Statement)) stProducer) {
 		stProducer((Statement st) {
 			importStatement(st);
@@ -88,9 +109,14 @@ abstract class Scope {
 
 
 class TraitDef {
-	string	name;
+	string		name;
 	string[]	values;
-	string	defaultValue;
+	string		defaultValue;
+
+	bool opEquals(TraitDef other) {
+		// TODO: is the string[] comparison comparing string contents or pointers?
+		return name == other.name && values == other.values && defaultValue == other.defaultValue;
+	}
 }
 
 
@@ -120,9 +146,35 @@ class KDefModule : Scope {
 }
 
 
+final class GraphDefNode : Scope {
+	this (VarDef[] vars_) {
+		foreach (var; vars_) {
+			this.vars[var.name] = var.value;
+		}
+	}
+
+	char[] type() {
+		auto typeVar = vars["type"];
+		assert (cast(IdentifierValue)typeVar);
+		return (cast(IdentifierValue)typeVar).value;
+	}
+
+	override void importStatement(Statement st) {
+		// TODO
+	}
+
+	// after semantics for kernel nodes
+
+	KernelImpl	kernelImpl;
+
+	// after semantics for param nodes
+
+	ParamList	params;
+}
+
+
 final class GraphDef : Scope, IGraphDef {
 	string		superKernel;
-	string[]	tags;
 	DepTracker	_dependentOnThis;
 
 
@@ -142,10 +194,31 @@ final class GraphDef : Scope, IGraphDef {
 	DepTracker* dependentOnThis() {
 		return &_dependentOnThis;
 	}
+
+
+	bool opEquals(IGraphDef other) {
+		return opEquals(GraphDef(other));
+	}
+	
+
+	bool opEquals(GraphDef other) {
+		if (	_name != other._name
+			||	superKernel != other.superKernel
+			||	nodes.length != other.nodes.length
+			||	nodeConnections.length != other.nodeConnections.length
+			||	nodeFieldConnections.length != other.nodeFieldConnections.length
+		) {
+			return false;
+		}
+
+		return super.opEquals(other);
+	}
 	
 
 	void invalidateIfDifferent(GraphDef other) {
-		static assert (false, "TODO");
+		if (!opEquals(other)) {
+			dependentOnThis().valid = false;
+		}
 	}
 
 
@@ -154,17 +227,8 @@ final class GraphDef : Scope, IGraphDef {
 		
 		if (auto nodeValue = cast(GraphDefNodeValue)value) {
 			nodes[name] = nodeValue.node;
-			
-			if (name in graphs) {
-				graphs.remove(name);
-			}
-		} else if (auto graphValue = cast(GraphDefValue)value) {
-			graphs[name] = graphValue.graphDef;
-			if (name in nodes) {
-				nodes.remove(name);
-			}
 		} else {
-			throw new Exception("graphs can only contain nodes and graphs, not '" ~ name ~ "' " ~ value.classinfo.name);
+			error("Graphs can only contain nodes, not '{}' {}", name, value.classinfo.name);
 		}
 	}
 
@@ -173,7 +237,6 @@ final class GraphDef : Scope, IGraphDef {
 
 	string					_name;
 	GraphDefNode[string]	nodes;
-	GraphDef[string]		graphs;
 	NodeConnection[]		nodeConnections;
 	NodeFieldConnection[]	nodeFieldConnections;
 	
@@ -237,33 +300,6 @@ final class GraphDef : Scope, IGraphDef {
 }
 
 
-class GraphDefNode : Scope {
-	this (VarDef[] vars_) {
-		foreach (var; vars_) {
-			this.vars[var.name] = var.value;
-		}
-	}
-
-	char[] type() {
-		auto typeVar = vars["type"];
-		assert (cast(IdentifierValue)typeVar);
-		return (cast(IdentifierValue)typeVar).value;
-	}
-
-	override void importStatement(Statement st) {
-		// TODO
-	}
-
-	// after semantics for kernel nodes
-
-	KernelImpl	kernelImpl;
-
-	// after semantics for param nodes
-
-	ParamList	params;
-}
-
-
 interface IScopeValue {
 	Scope toScope();
 }
@@ -271,12 +307,28 @@ interface IScopeValue {
 
 class KernelDefValue : Value {
 	KernelDef kernelDef;
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(KernelDefValue)other) {
+			return kernelDef == o.kernelDef;
+		} else {
+			return false;
+		}
+	}
 }
 
 
 class GraphDefValue : Value, IScopeValue {
 	GraphDef graphDef;
 	
+	override bool opEquals(Value other) {
+		if (auto o = cast(GraphDefValue)other) {
+			return graphDef == o.graphDef;
+		} else {
+			return false;
+		}
+	}
+
 	// implements IScopeValue
 	Scope toScope() {
 		return graphDef;
@@ -287,6 +339,14 @@ class GraphDefValue : Value, IScopeValue {
 class GraphDefNodeValue : Value, IScopeValue {
 	GraphDefNode node;
 	
+	override bool opEquals(Value other) {
+		if (auto o = cast(GraphDefNodeValue)other) {
+			return node == o.node;
+		} else {
+			return false;
+		}
+	}
+
 	// implements IScopeValue
 	override Scope toScope() {
 		assert (node !is null);
@@ -297,20 +357,51 @@ class GraphDefNodeValue : Value, IScopeValue {
 
 class SurfaceDefValue : Value {
 	SurfaceDef surface;
-}
 
+	override bool opEquals(Value other) {
+		if (auto o = cast(SurfaceDefValue)other) {
+			return surface == o.surface;
+		} else {
+			return false;
+		}
+	}
+}
 
 class MaterialDefValue : Value {
 	MaterialDef material;
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(MaterialDefValue)other) {
+			return material == o.material;
+		} else {
+			return false;
+		}
+	}
 }
 
 class SamplerDefValue : Value {
 	SamplerDef value;
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(SamplerDefValue)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
+	}
 }
 
 
 class TraitDefValue : Value {
 	TraitDef value;
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(TraitDefValue)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
+	}
 }
 
 
@@ -321,6 +412,23 @@ class ParamListValue : Value {
 		assert (params.length > 0);
 		this.value = params.dup;
 		//log.info("ParamListValue @ {:x} has {} params", cast(void*)this, params.length);
+	}
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(ParamListValue)other) {
+			if (value.length != o.value.length) {
+				return false;
+			}
+			
+			foreach (i, p; value) {
+				if (p != o.value[i]) {
+					return false;
+				}
+			}
+			return true;
+		} else {
+			return false;
+		}
 	}
 }
 
@@ -392,6 +500,22 @@ class ParamSemanticExp {
 	this (Type t) {
 		this.type = t;
 	}
+
+
+	bool opEquals(ParamSemanticExp other) {
+		if (type != other.type) {
+			return false;
+		}
+		
+		switch (type) {
+			case Type.Sum:
+			case Type.Exclusion:
+				return exp1.opEquals(other.exp1) && exp2.opEquals(other.exp2);
+			case Type.Trait:
+				return name == other.name && value == other.value;
+			default: assert (false);
+		}
+	}
 }
 
 
@@ -414,5 +538,14 @@ class ParamDef {
 		this.paramSemantic = paramSemantic;
 		this.name = name;
 		this.defaultValue = defaultValue;
+	}
+
+	bool opEquals(ParamDef other) {
+		return
+			dir == other.dir
+		&&	type == other.type
+		&&	equal(paramSemantic, other.paramSemantic)
+		&&	name == other.name
+		&&	equal(defaultValue, other.defaultValue);
 	}
 }

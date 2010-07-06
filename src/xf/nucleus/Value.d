@@ -14,6 +14,9 @@ abstract class Value {
 	Variant toVariant() {
 		assert (false, this.classinfo.name);
 	}
+
+
+	abstract bool opEquals(Value other);
 	
 	
 	T as(T)() {
@@ -33,11 +36,19 @@ struct VarDef {
 }
 
 
-class NumberValue : Value {
+final class NumberValue : Value {
 	double value;
 	
 	this (double val) {
 		this.value = val;
+	}
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(NumberValue)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
 	}
 	
 	override cstring toString() {
@@ -67,6 +78,14 @@ class BooleanValue : Value {
 		}
 	}
 	
+	override bool opEquals(Value other) {
+		if (auto o = cast(BooleanValue)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
+	}
+
 	override cstring toString() {
 		return value ? "true" : "false";
 	}
@@ -82,6 +101,14 @@ class Vector2Value : Value {
 	
 	this (double x, double y) {
 		this.value = vec2d(x, y);
+	}
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(Vector2Value)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
 	}
 
 	override cstring toString() {
@@ -101,6 +128,14 @@ class Vector3Value : Value {
 		this.value = vec3d(x, y, z);
 	}
 
+	override bool opEquals(Value other) {
+		if (auto o = cast(Vector3Value)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
+	}
+
 	override cstring toString() {
 		return value.toString;
 	}
@@ -116,6 +151,14 @@ class Vector4Value : Value {
 	
 	this (double x, double y, double z, double w) {
 		this.value = vec4d(x, y, z, w);
+	}
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(Vector4Value)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
 	}
 
 	override cstring toString() {
@@ -135,6 +178,14 @@ class StringValue : Value {
 		this.value = val;
 	}
 
+	override bool opEquals(Value other) {
+		if (auto o = cast(StringValue)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
+	}
+
 	override cstring toString() {
 		return '"' ~ value ~ '"';
 	}
@@ -150,6 +201,14 @@ class IdentifierValue : Value {
 	
 	this (cstring val) {
 		this.value = val;
+	}
+
+	override bool opEquals(Value other) {
+		if (auto o = cast(IdentifierValue)other) {
+			return value == o.value;
+		} else {
+			return false;
+		}
 	}
 
 	override cstring toString() {
