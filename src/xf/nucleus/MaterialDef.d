@@ -40,7 +40,7 @@ final class MaterialDef {
 
 	this(cstring pigment, Allocator alloc) {
 		_allocator = alloc;
-		this.pigmentKernelName = pigment.dup;		// TODO
+		this.pigmentKernelName = pigment;
 		_dependentOnThis = DepTracker(alloc);
 	}
 
