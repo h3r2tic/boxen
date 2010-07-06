@@ -4,7 +4,6 @@ private {
 	import tango.core.tools.TraceExceptions;
 	
 	import xf.Common;
-	import xf.mem.ChunkQueue;
 
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefFileParser;
@@ -25,11 +24,6 @@ private {
 
 void main() {
 	{
-		ScratchFIFO mem;
-		mem.initialize();
-
-		void* delegate(size_t) allocator = &mem.pushBack;
-
 		final vfs = new FileFolder(".");
 
 		final fparser = new KDefFileParser;
@@ -37,8 +31,8 @@ void main() {
 
 		final processor = new KDefProcessor(fparser);
 
-		processor.processFile("sample.kdef", allocator);
-		processor.doSemantics(allocator);
+		processor.processFile("sample.kdef");
+		processor.doSemantics();
 		processor.dumpInfo();
 
 		foreach (impl; processor.kernels) {

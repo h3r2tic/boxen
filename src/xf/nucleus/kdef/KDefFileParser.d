@@ -35,11 +35,9 @@ class KDefFileParser : IKDefFileParser {
 		scope lexer = new KDefLexer;
 		scope parser = new KDefParser;
 
-		auto res = new KDefModule;
-		res.mem = ScratchFIFO();
-		res.mem.initialize();
+		auto res = new KDefModule();
 
-		auto allocator = DgScratchAllocator(&res.mem.pushBack);
+		auto allocator = res.mem;
 		parser.mem = allocator;
 
 		scope (failure) {

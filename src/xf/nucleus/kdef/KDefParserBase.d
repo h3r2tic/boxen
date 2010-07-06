@@ -106,11 +106,11 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		ConnectStatement createConnectStatement(string from, string to) {
-			return mem._new!(ConnectStatement)(from, to);
+			return mem._new!(ConnectStatement)(mem.dupString(from), mem.dupString(to));
 		}
 		
 		AssignStatement createAssignStatement(string name, Value value) {
-			return mem._new!(AssignStatement)(name, value);
+			return mem._new!(AssignStatement)(mem.dupString(name), value);
 		}
 		
 		ParamDef createParamDef(
@@ -183,7 +183,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars) {
 			auto res = mem._new!(GraphDefNodeValue);
-			res.node = mem._new!(GraphDefNode)(mem.dupArray(vars));
+			res.node = mem._new!(GraphDefNode)(mem.dupArray(vars), mem._allocator);
 			return res;
 		}
 
