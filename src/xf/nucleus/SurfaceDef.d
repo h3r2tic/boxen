@@ -40,7 +40,7 @@ final class SurfaceDef {
 
 	this(cstring illum, Allocator alloc) {
 		_allocator = alloc;
-		this.illumKernelName = illum.dup;		// TODO
+		this.illumKernelName = illum;
 		_dependentOnThis = DepTracker(alloc);
 	}
 

@@ -199,7 +199,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars) {
 			auto res = mem._new!(SurfaceDefValue);
-			auto surf = res.surface = mem._new!(SurfaceDef)(illumKernel, mem._allocator);
+			auto surf = res.surface = mem._new!(SurfaceDef)(mem.dupString(illumKernel), mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					surf.params.add(ParamDirection.Out, var.name),
@@ -212,7 +212,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 		MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars) {
 			auto res = mem._new!(MaterialDefValue);
-			auto mat = res.material = mem._new!(MaterialDef)(pigmentKernel, mem._allocator);
+			auto mat = res.material = mem._new!(MaterialDef)(mem.dupString(pigmentKernel), mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					mat.params.add(ParamDirection.Out, var.name),
