@@ -4,6 +4,7 @@ private {
 	import xf.Common;
 	import xf.nucleus.graph.GraphDef;
 	import xf.nucleus.kernel.KernelDef;
+	import xf.nucleus.DepTracker;
 }
 
 
@@ -33,6 +34,21 @@ struct KernelImpl {
 		res.kernel = k;
 		res.type = Type.Kernel;
 		return res;
+	}
+
+
+	DepTracker* dependentOnThis() {
+		switch (type) {
+			case KernelImpl.Type.Graph: {
+				return graph.dependentOnThis();
+			}
+			
+			case KernelImpl.Type.Kernel: {
+				return kernel.dependentOnThis();
+			}
+			
+			default: assert (false);
+		}
 	}
 
 

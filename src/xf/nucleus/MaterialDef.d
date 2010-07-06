@@ -5,6 +5,7 @@ private {
 	import xf.nucleus.Defs;
 	import xf.nucleus.Param;
 	import xf.nucleus.KernelImpl;
+	import xf.nucleus.DepTracker;
 }
 
 
@@ -16,10 +17,26 @@ class MaterialDef {
 		Allocator	_allocator;
 	}
 
+	private DepTracker	_dependentOnThis;
+	DepTracker* dependentOnThis() {
+		return &_dependentOnThis;
+	}
+
+
+	void invalidateIfDifferent(MaterialDef other) {
+		if (	params != other.params
+			||	name != other.name
+			||	pigmentKernelName != other.pigmentKernelName
+		) {
+			dependentOnThis.valid = false;
+		}
+	}
+
 
 	this(cstring pigment, Allocator alloc) {
 		_allocator = alloc;
 		this.pigmentKernelName = pigment.dup;		// TODO
+		_dependentOnThis = DepTracker(alloc);
 	}
 
 	// TODO: make these props

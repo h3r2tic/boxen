@@ -16,6 +16,8 @@ private {
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.GraphDef;
 
+	import xf.nucleus.DepTracker;
+
 	import xf.mem.ChunkQueue;		// for ScratchFIFO
 
 	import TextUtil = tango.text.Util;
@@ -118,20 +120,34 @@ class KDefModule : Scope {
 }
 
 
-class GraphDef : Scope, IGraphDef {
+final class GraphDef : Scope, IGraphDef {
 	string		superKernel;
 	string[]	tags;
-	
-	this (Statement[] statements) {
+	DepTracker	_dependentOnThis;
+
+
+	this (Statement[] statements, void* delegate(size_t) allocator) {
 		this.statements = statements;
+		_dependentOnThis = DepTracker(allocator);
 	}
+
 
 	static GraphDef opCall(IGraphDef i) {
 		final res = cast(GraphDef)i;
 		assert (res !is null);
 		return res;
 	}
+
+
+	DepTracker* dependentOnThis() {
+		return &_dependentOnThis;
+	}
 	
+
+	void invalidateIfDifferent(GraphDef other) {
+		static assert (false, "TODO");
+	}
+
 
 	override void doAssignSelf(string name, Value value) {
 		super.doAssignSelf(name, value);
