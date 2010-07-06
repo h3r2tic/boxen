@@ -15,7 +15,6 @@ private {
 	import xf.nucleus.kdef.KDefGraphBuilder;
 
 	import xf.nucleus.Log : error = nucleusError;
-	import xf.nucleus.quark.QuarkDef;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.graph.GraphMisc;
@@ -29,56 +28,19 @@ private {
 }
 
 
-void findBestKernelImpls(
-	int			delegate(int delegate(ref QuarkDef) dg)
-			quarks,
-			
-	KernelDef	delegate(cstring name)
-			getKernel
-) {
-	foreach (q; quarks) {
-		static assert (is(typeof(q) == QuarkDef));
-		
-		foreach (impl; q.implList) {
-			if (auto kernel = getKernel(impl.name)) {
-				if (impl.score > kernel.bestImplScore) {
-					kernel.bestImplScore = impl.score;
-					kernel.bestImpl = cast(Object)q;
-				}
-			}
-		}
-	}
-}
-
-
-void findBestKernelImpls(IKDefRegistry reg) {
-	return findBestKernelImpls(
-		&reg.quarks,
-		&reg.getKernel
-	);
-}
-
-
 import tango.core.Memory;
 
 void main() {
 	{
 		GC.disable();
 		
-		ScratchFIFO mem;
-		mem.initialize();
-
-		final allocator = (uword bytes) { return mem.pushBack(bytes); };
-
 		final vfs = new FileFolder(".");
 
 		final registry = create!(IKDefRegistry)();
 		registry.setVFS(vfs);
-		registry.registerFolder(".", allocator);
-		registry.doSemantics(allocator);
+		registry.registerFolder(".");
+		registry.doSemantics();
 		registry.dumpInfo();
-
-		findBestKernelImpls(registry);
 
 		GraphDef[char[]] graphs;
 
