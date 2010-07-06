@@ -8,7 +8,7 @@ private {
 
 
 
-class KernelDef {
+final class KernelDef {
 	AbstractFunction	func;
 	cstring				superKernel;
 	private DepTracker	_dependentOnThis;
@@ -18,10 +18,13 @@ class KernelDef {
 	}
 
 
+	bool opEquals(KernelDef other) {
+		return equal(func, other.func) && superKernel == other.superKernel;
+	}
+
+
 	void invalidateIfDifferent(KernelDef other) {
-		if (	func != other.func
-			||	superKernel != other.superKernel
-		) {
+		if (!opEquals(other)) {
 			dependentOnThis.valid = false;
 		}
 	}

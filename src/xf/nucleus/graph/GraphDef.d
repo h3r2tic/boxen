@@ -11,4 +11,5 @@ interface IGraphDef {
 	cstring		name();
 	uword		numNodes();
 	DepTracker* dependentOnThis();
+	bool		opEquals(IGraphDef other);
 }

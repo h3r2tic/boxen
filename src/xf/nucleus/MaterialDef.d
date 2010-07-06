@@ -10,7 +10,7 @@ private {
 
 
 
-class MaterialDef {
+final class MaterialDef {
 	private alias void* delegate(uword) Allocator;
 	union {
 		ParamList	params;
@@ -23,11 +23,16 @@ class MaterialDef {
 	}
 
 
+	bool opEquals(MaterialDef other) {
+		return
+			name == other.name
+		&&	pigmentKernelName == other.pigmentKernelName
+		&&	params == other.params;
+	}
+
+
 	void invalidateIfDifferent(MaterialDef other) {
-		if (	params != other.params
-			||	name != other.name
-			||	pigmentKernelName != other.pigmentKernelName
-		) {
+		if (!opEquals(other)) {
 			dependentOnThis.valid = false;
 		}
 	}

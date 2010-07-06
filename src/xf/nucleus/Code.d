@@ -20,4 +20,8 @@ struct Code {
 	void writeOut(void delegate(char[]) sink) {
 		return _code.writeOut(sink);
 	}
+
+	bool opEquals(Code other) {
+		return _code == other._code;
+	}
 }

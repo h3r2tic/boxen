@@ -8,11 +8,16 @@ private {
 
 
 
-class SamplerDef {
+final class SamplerDef {
 	private alias void* delegate(uword) Allocator;
 	union {
 		ParamList	params;
 		Allocator	_allocator;
+	}
+
+
+	bool opEquals(SamplerDef other) {
+		return params == other.params;
 	}
 
 

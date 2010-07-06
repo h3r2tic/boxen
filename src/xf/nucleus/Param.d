@@ -48,6 +48,9 @@ ParamDirection ParamDirectionFromString(cstring str) {
 
 
 struct Param {
+	// TODO: tags / non-trait semantics
+
+
 	// Overlaps with Semantic and SemanticExp
 	private alias void* delegate(uword) Allocator;
 	private union {
@@ -85,6 +88,45 @@ struct Param {
 		Param res;
 		res._allocator = allocator;
 		return res;
+	}
+
+
+	bool opEquals(ref Param other) {
+		if (
+				_name != other._name
+			||	dir != other.dir
+			|| (value is null) != (other.value is null)
+			|| hasPlainSemantic != other.hasPlainSemantic
+		) {
+			return false;
+		}
+
+		if (hasPlainSemantic) {
+			if (_semantic != other._semantic) {
+				return false;
+			}
+		} else {
+			if (_semanticExp != other._semanticExp) {
+				return false;
+			}
+		}
+
+		if (value !is null) {
+			if (valueType != other.valueType) {
+				return false;
+			}
+
+			uword vs = valueSize();
+			if (vs != other.valueSize()) {
+				return false;
+			}
+
+			if (value[0..vs] != other.value[0..vs]) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 
@@ -265,15 +307,6 @@ struct Param {
 		return dir != ParamDirection.In;
 	}
 
-
-	// TODO: default value
-	// TODO: tags / non-trait semantics
-
-	bool opEquals(ref Param) {
-		assert (false, "TODO");
-	}
-
-
 	void writeOut(void delegate(cstring) sink) {
 		sink(dirStr);
 		sink(" ");
@@ -363,7 +396,22 @@ struct ParamList {
 		return res;
 	}
 
-	
+
+	bool opEquals(ref ParamList other) {
+		if (length != other.length) {
+			return false;
+		}
+
+		foreach (i, ref p; _params) {
+			if (p != other._params.ptr[i]) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+
 	uword length() {
 		return _params.length;
 	}
