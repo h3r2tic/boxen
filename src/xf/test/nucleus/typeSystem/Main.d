@@ -6,6 +6,7 @@ private {
 	import xf.Common;
 	import xf.mem.ChunkQueue;
 	import xf.mem.StackBuffer;
+	import xf.nucleus.Code;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.Param;
 	import xf.nucleus.Function;
@@ -110,7 +111,7 @@ void main() {
 	{
 		SemanticConverter[] conv;
 		{
-			final f = new Function("normalize", null, null, allocator);
+			final f = new Function("normalize", null, Code.init, allocator);
 
 			with (*f.params.add(ParamDirection.In, "input")) {
 				hasPlainSemantic = true;
@@ -127,7 +128,7 @@ void main() {
 		}
 
 		{
-			final f = new Function("local2world", null, null, allocator);
+			final f = new Function("local2world", null, Code.init, allocator);
 
 			with (*f.params.add(ParamDirection.In, "input")) {
 				hasPlainSemantic = true;
@@ -145,7 +146,7 @@ void main() {
 		}
 
 		{
-			final f = new Function("world2clip", null, null, allocator);
+			final f = new Function("world2clip", null, Code.init, allocator);
 
 			with (*f.params.add(ParamDirection.In, "input")) {
 				hasPlainSemantic = true;
