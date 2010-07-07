@@ -4,6 +4,7 @@ private {
 	import xf.core.Registry;
 	
 	import xf.nucleus.kdef.model.IKDefFileParser;
+	import xf.nucleus.kdef.model.KDefInvalidation;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.kdef.Common : GraphDef, KDefModule;
 	import xf.nucleus.util.AbstractRegistry;
@@ -31,5 +32,7 @@ abstract class IKDefRegistry : AbstractRegistry {
 	abstract int surfaces(int delegate(ref string, ref SurfaceDef) dg);
 	abstract int materials(int delegate(ref string, ref MaterialDef) dg);
 	abstract void doSemantics();
-	abstract void clear();
+	abstract void registerObserver(IKDefInvalidationObserver o);
+	abstract bool invalidated();
+	abstract void reload();
 }

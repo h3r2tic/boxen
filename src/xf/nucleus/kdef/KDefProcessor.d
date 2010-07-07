@@ -1,37 +1,37 @@
 module xf.nucleus.kdef.KDefProcessor;
 
 private {
-	import xf.core.Registry;
-	
-	import xf.nucleus.kdef.KDefParserBase;
-	import xf.nucleus.kdef.Common;
-	import xf.nucleus.kdef.model.IKDefFileParser;
-	import xf.nucleus.kdef.ParamUtils;
+	import
+		xf.nucleus.kdef.model.IKDefFileParser,
+		xf.nucleus.kdef.model.KDefInvalidation,
+		xf.nucleus.kdef.KDefParserBase,
+		xf.nucleus.kdef.Common,
+		xf.nucleus.kdef.ParamUtils;
 
-	import xf.nucleus.kernel.KernelDef;
+	import
+		xf.nucleus.kernel.KernelDef;
 
-	import xf.nucleus.TypeSystem;
-	import xf.nucleus.TypeConversion;
-	import xf.nucleus.Function;
-	import xf.nucleus.Param;
-	import xf.nucleus.Value;
-	import xf.nucleus.KernelImpl;
-	import xf.nucleus.SurfaceDef;
-	import xf.nucleus.MaterialDef;
-	import Dep = xf.nucleus.DepTracker;
-	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
-	//import xf.nucleus.CommonDef;
+	import
+		xf.nucleus.TypeSystem,
+		xf.nucleus.TypeConversion,
+		xf.nucleus.Function,
+		xf.nucleus.Param,
+		xf.nucleus.Value,
+		xf.nucleus.KernelImpl,
+		xf.nucleus.SurfaceDef,
+		xf.nucleus.MaterialDef,
+		Dep = xf.nucleus.DepTracker;
 
-	import xf.mem.ScratchAllocator;
-	import xf.mem.StackBuffer;
-	import xf.nucleus.Log : error = nucleusError;
+	import
+		xf.mem.ScratchAllocator,
+		xf.mem.StackBuffer;
+		
+	import xf.utils.Graph	: findTopologicalOrder, CycleHandlingMode;
+	import xf.utils.Memory	: alloc, free, append;
+	import xf.nucleus.Log	: error = nucleusError, log = nucleusLog;
 
-	import xf.utils.Graph : findTopologicalOrder, CycleHandlingMode;
-	import xf.utils.Memory : alloc, free, append;
-	
+	import tango.io.Stdout;		// for dumpInfo, could be moved outside, to another mod
 	import tango.io.vfs.model.Vfs;
-	
-	import tango.io.Stdout;
 	
 	alias char[] string;
 }
@@ -58,7 +58,7 @@ class KDefProcessor {
 				throw new Exception("Cyclic import in kernel module '" ~ path ~ "'");
 			}
 		} else {
-			Stdout.formatln("KDefProcessor.parseFile({})", path);
+			log.trace("KDefProcessor.parseFile({})", path);
 			auto mod = fileParser.parseFile(path);
 			modules[path] = mod;
 			mod.processing = true;
@@ -83,7 +83,10 @@ class KDefProcessor {
 	}
 	
 	
-	void clear() {
+	void dispose() {
+		foreach (ref mod; modules) {
+			delete mod;
+		}
 		// TODO(?): do more thorough cleaning
 		modules = null;
 	}
@@ -157,12 +160,8 @@ class KDefProcessor {
 	}
 
 
-	struct InvalidationResult {
-		bool anyConverters = false;
-	}
-
-	InvalidationResult invalidateDifferences(KDefProcessor other) {
-		InvalidationResult res;
+	KDefInvalidationInfo invalidateDifferences(KDefProcessor other) {
+		KDefInvalidationInfo res;
 
 		foreach (modName, mod; other.modules) {
 			if (!(modName in this.modules)) {
@@ -651,6 +650,7 @@ class KDefProcessor {
 		
 				
 		void process(Scope sc, Allocator allocator) {
+			// TODO: refactor this pattern
 			{
 				size_t num = 0;
 				foreach (stmt_; sc.statements) {
@@ -678,13 +678,41 @@ class KDefProcessor {
 				}
 			}
 
+			// TODO: refactor this pattern
+			{
+				size_t num = 0;
+				foreach (stmt_; sc.statements) {
+					if (auto stmt = cast(ConnectStatement)stmt_) {
+						++num;
+					}
+				}
+
+				if (num > 0) {
+					scope stack = new StackBuffer;
+						
+					string[]	from = sc.mem.allocArrayNoInit!(string)(num);
+					string[]	to = sc.mem.allocArrayNoInit!(string)(num);
+
+					num = 0;
+					foreach (stmt_; sc.statements) {
+						if (auto stmt = cast(ConnectStatement)stmt_) {
+							if (auto graph = cast(GraphDef)sc) {
+								from[num] = stmt.from;
+								to[num] = stmt.to;
+							} else {
+								throw new Exception("connections only allowed at graph scope");
+							}
+							++num;
+						}
+					}
+
+					(cast(GraphDef)sc).doConnect(from, to);
+				}
+			}
+
 			foreach (stmt_; sc.statements) {
 				if (auto stmt = cast(ConnectStatement)stmt_) {
-					if (auto graph = cast(GraphDef)sc) {
-						graph.doConnect(stmt.from, stmt.to);
-					} else {
-						throw new Exception("connections only allowed at graph scope");
-					}
+					// nothing
 				} else if (auto stmt = cast(AssignStatement)stmt_) {
 					if (auto scopeValue = cast(IScopeValue)stmt.value) {
 						process(scopeValue.toScope, allocator);
@@ -830,7 +858,8 @@ class KDefProcessor {
 						
 						string name = stmt.func.name;
 						if (name is null) {
-							name = "TODO: some mangled name omglol";
+							// Will get renamed for overloads by codegen
+							name = "converter";
 						}
 						
 						mod.converters ~= SemanticConverter(stmt.func, stmt.cost);

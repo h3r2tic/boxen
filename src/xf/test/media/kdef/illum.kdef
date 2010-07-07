@@ -155,7 +155,7 @@ BlinnPhong = graph Illumination {
 	n2 = node {
 		type = kernel;
 		kernel = kernel Illumination(
-			specularPower <type float>
+			in specularPower <type float>
 		) {
 			float NdotL = dot(normal, toLight).x;
 			float3 H = normalize(toEye + toLight);

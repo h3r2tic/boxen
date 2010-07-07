@@ -120,7 +120,13 @@ class KDefParserBase : Parser!(KDefToken) {
 			string name,
 			Value defaultValue
 		) {
-			return mem._new!(ParamDef)(dir, type, semantic, name, defaultValue);
+			return mem._new!(ParamDef)(
+				mem.dupString(dir),
+				mem.dupString(type),
+				semantic,
+				mem.dupString(name),
+				defaultValue
+			);
 		}
 		
 		BooleanValue createBooleanValue(string value) {

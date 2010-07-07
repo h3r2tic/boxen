@@ -19,6 +19,8 @@ private {
 
 	import xf.nucleus.DepTracker;
 
+	import xf.mem.SmallTempArray;
+	import xf.mem.StackBuffer;
 	import xf.mem.ChunkQueue;		// for ScratchFIFO
 	import xf.mem.ScratchAllocator;
 
@@ -360,37 +362,59 @@ final class GraphDef : Scope, IGraphDef {
 	}
 	
 	
-	void doConnect(string from_, string to_) {
-		string fromName;
-		auto fromScope = getValueOwner(from_, &fromName);
-		string toName;
-		auto toScope = getValueOwner(to_, &toName);
+	void doConnect(string[] fromArr, string[] toArr) {
+		scope stack = new StackBuffer;
+		mixin MSmallTempArray!(NodeConnection) ncarr;
+		mixin MSmallTempArray!(NodeFieldConnection) nfcarr;
 		
-		if (auto fromGraph = cast(GraphDef)fromScope) {
-			if (auto toGraph = cast(GraphDef)toScope) {
-				if (auto fromNode = fromGraph.getNode(fromName)) {
-					if (auto toNode = toGraph.getNode(toName)) {
-						nodeConnections ~= NodeConnection(fromNode, toNode);
+		foreach (conI, from_; fromArr) {
+			auto to_ = toArr[conI];
+
+			string fromName;
+			auto fromScope = getValueOwner(from_, &fromName);
+			string toName;
+			auto toScope = getValueOwner(to_, &toName);
+			
+			if (auto fromGraph = cast(GraphDef)fromScope) {
+				if (auto toGraph = cast(GraphDef)toScope) {
+					if (auto fromNode = fromGraph.getNode(fromName)) {
+						if (auto toNode = toGraph.getNode(toName)) {
+							ncarr.pushBack(
+								NodeConnection(fromNode, toNode),
+								&stack.allocRaw
+							);
+						} else {
+							throw new Exception("no target node");
+						}
 					} else {
-						throw new Exception("no target node");
+						throw new Exception("no source node");
 					}
 				} else {
-					throw new Exception("no source node");
+					throw new Exception("can't connect a node to a field");
+				}
+			} else if (auto fromNode = cast(GraphDefNode)fromScope) {
+				if (auto toNode = cast(GraphDefNode)toScope) {
+					nfcarr.pushBack(
+						NodeFieldConnection(
+							fromNode, toNode,
+							fromName, toName
+						),
+						&stack.allocRaw
+					);
+				} else {
+					throw new Exception("can't connect a field to a node");
 				}
 			} else {
-				throw new Exception("can't connect a node to a field");
+				throw new Exception("Connect a what? oO got: " ~ fromScope.classinfo.name);
 			}
-		} else if (auto fromNode = cast(GraphDefNode)fromScope) {
-			if (auto toNode = cast(GraphDefNode)toScope) {
-				nodeFieldConnections ~= NodeFieldConnection(
-					fromNode, toNode,
-					fromName, toName
-				);
-			} else {
-				throw new Exception("can't connect a field to a node");
-			}
-		} else {
-			throw new Exception("Connect a what? oO got: " ~ fromScope.classinfo.name);
+		}
+
+		if (ncarr.length > 0) {
+			nodeConnections = mem.dupArray(ncarr.items);
+		}
+
+		if (nfcarr.length > 0) {
+			nodeFieldConnections = mem.dupArray(nfcarr.items);
 		}
 	}
 }

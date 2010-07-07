@@ -19,6 +19,7 @@ private {
 		xf.nucleus.SamplerDef,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.kdef.model.KDefInvalidation,
 		xf.nucleus.kdef.KDefGraphBuilder,
 		xf.nucleus.graph.GraphOps,
 		xf.nucleus.graph.KernelGraph,
@@ -159,7 +160,8 @@ class ForwardRenderer : Renderer {
 			
 			Info[]		info;
 			void*		data;
-			KernelImpl	illumKernel;
+			cstring		kernelName;
+			//KernelImpl	illumKernel;
 		}
 		
 		struct MaterialData {
@@ -170,7 +172,8 @@ class ForwardRenderer : Renderer {
 			
 			Info[]		info;
 			void*		data;
-			KernelImpl	pigmentKernel;
+			cstring		kernelName;
+			//KernelImpl	pigmentKernel;
 		}
 
 		SurfaceData[256]		_surfaces;
@@ -187,7 +190,7 @@ class ForwardRenderer : Renderer {
 		surf.info.length = def.params.length;
 
 		//assert (def.illumKernel !is null);
-		surf.illumKernel = def.illumKernel;
+		surf.kernelName = def.illumKernel.name.dup;
 
 		uword sizeReq = 0;
 		
@@ -221,7 +224,7 @@ class ForwardRenderer : Renderer {
 		MemUtils.alloc(mat.info, def.params.length);
 
 		//assert (def.illumKernel !is null);
-		mat.pigmentKernel = def.pigmentKernel;
+		mat.kernelName = def.pigmentKernel.name.dup;
 
 		uword sizeReq = 0;
 		
@@ -309,6 +312,35 @@ class ForwardRenderer : Renderer {
 	}
 
 
+	// implements IKDefInvalidationObserver
+	void onKDefInvalidated(KDefInvalidationInfo info) {
+		if (info.anyConverters) {
+			foreach (eck, ref einfo; _effectCache) {
+				einfo.effect = null;
+			}
+		} else {
+			foreach (eck, ref einfo; _effectCache) {
+				if (
+						!_kdefRegistry.getKernel(eck.pigmentKernel).isValid
+					||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
+					||	!_kdefRegistry.getKernel(eck.illumKernel).isValid
+				) {
+					einfo.effect = null;
+				} else {
+					foreach (lk; eck.lightKernels) {
+						if (!_kdefRegistry.getKernel(lk).isValid) {
+							einfo.effect = null;
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		_refreshRenderables = true;
+	}
+
+
 	private void loadMaterialSamplerParam(SamplerDef sampler, Texture* tex) {
 		if (auto val = sampler.params.get("texture")) {
 			cstring filePath;
@@ -381,8 +413,8 @@ class ForwardRenderer : Renderer {
 		MaterialId materialId = renderables.material[rid];
 		auto material = _materials[materialId];
 
-		key.pigmentKernel = material.pigmentKernel.name;
-		key.illumKernel = surface.illumKernel.name;
+		key.pigmentKernel = material.kernelName;
+		key.illumKernel = surface.kernelName;
 		key.structureKernel = renderables.structureKernel[rid];
 
 		key.lightKernels.length = affectingLights.length;
@@ -479,8 +511,8 @@ class ForwardRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel		= material.pigmentKernel;
-		final illumKernel		= surface.illumKernel;
+		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final illumKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
 
@@ -936,8 +968,12 @@ class ForwardRenderer : Renderer {
 
 
 	private void compileEffectsForRenderables(RenderableId[] rids) {
+		scope (exit) {
+			_refreshRenderables = false;
+		}
+		
 		foreach (idx, rid; rids) {
-			if (!this._renderableValid.isSet(rid)) {
+			if (_refreshRenderables || !this._renderableValid.isSet(rid)) {
 				// --- Find the lights affecting this renderable
 				
 				// HACK
@@ -952,11 +988,19 @@ class ForwardRenderer : Renderer {
 					affectingLights
 				);
 
-				if (auto info = cacheKey in _effectCache) {
-					effectInfo = *info;
-				} else {
-					effectInfo = buildEffectForRenderable(rid, affectingLights);
-					_effectCache[cacheKey] = effectInfo;
+				{
+					EffectInfo* info = cacheKey in _effectCache;
+					
+					if (info !is null && info.effect !is null) {
+						effectInfo = *info;
+					} else {
+						effectInfo = buildEffectForRenderable(rid, affectingLights);
+						if (info !is null) {
+							*info = effectInfo;
+						} else {
+							_effectCache[cacheKey] = effectInfo;
+						}
+					}
 				}
 
 				Effect effect = effectInfo.effect;
@@ -1003,8 +1047,10 @@ class ForwardRenderer : Renderer {
 				 */
 				foreach (ud; effectInfo.uniformDefaults) {
 					void** ptr = getInstUniformPtrPtr(ud.name);
-					assert (ptr && *ptr, ud.name);
-					memcpy(*ptr, ud.value.ptr, ud.value.length);
+					if (ptr) {
+						assert (*ptr, ud.name);
+						memcpy(*ptr, ud.value.ptr, ud.value.length);
+					}
 				}				
 
 				// ----
@@ -1148,5 +1194,7 @@ class ForwardRenderer : Renderer {
 		mat4	worldToView;
 		mat4	viewToClip;
 		vec3	eyePosition;
+
+		bool	_refreshRenderables = false;
 	}
 }
