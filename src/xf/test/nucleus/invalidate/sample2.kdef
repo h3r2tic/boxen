@@ -35,7 +35,6 @@ Rasterize = kernel(
 // ----
 
 
-// differs
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
@@ -53,7 +52,7 @@ DefaultMeshStructure = graph Structure {
 	};
 
 	connect node_0 node_1;
-	connect node_0 node_1;
+	connect node_0 node_2;
 };
 
 

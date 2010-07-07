@@ -28,6 +28,10 @@ struct SemanticConverter {
 		return func.params[0].semantic();
 	}
 
+	bool opEquals(ref SemanticConverter other) {
+		return func == other.func && cost == other.cost;
+	}
+
 	void convert(Semantic* input, Semantic* output) {
 		assert (2 == func.params.length);
 

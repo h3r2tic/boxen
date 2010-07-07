@@ -286,10 +286,12 @@ final class GraphDef : Scope, IGraphDef {
 	}
 	
 
-	void invalidateIfDifferent(GraphDef other) {
-		if (!opEquals(other)) {
-			dependentOnThis().valid = false;
-		}
+	void invalidate() {
+		_dependentOnThis.valid = false;
+	}
+
+	bool isValid() {
+		return _dependentOnThis.valid;
 	}
 
 

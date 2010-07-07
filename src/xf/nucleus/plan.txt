@@ -194,11 +194,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- delete the olde registry data
 		* nothing can retain the defs other than by their name (separately allocated strings)
 
--	heavy and ugly CPU quarks for post-proc and the pipeline
-	* no fancy runtime fixups
-	* no lazy execution
-	* well defined resource ref counting
-	* rich introspection
+-	post-processing kernels
 
 -	editor
 
