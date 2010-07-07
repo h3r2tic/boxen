@@ -71,8 +71,17 @@ struct KernelImpl {
 	}
 
 
-	bool valid() {
-		return graph !is null;
+	void invalidate() {
+		dependentOnThis.valid = false;
+	}
+
+	bool isValid() {
+		return dependentOnThis.valid;
+	}
+	
+
+	bool isNull() {
+		return graph is null;
 	}
 
 

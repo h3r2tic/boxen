@@ -31,10 +31,12 @@ final class MaterialDef {
 	}
 
 
-	void invalidateIfDifferent(MaterialDef other) {
-		if (!opEquals(other)) {
-			dependentOnThis.valid = false;
-		}
+	void invalidate() {
+		_dependentOnThis.valid = false;
+	}
+
+	bool isValid() {
+		return _dependentOnThis.valid;
 	}
 
 

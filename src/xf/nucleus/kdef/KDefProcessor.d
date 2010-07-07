@@ -18,6 +18,7 @@ private {
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
+	import Dep = xf.nucleus.DepTracker;
 	//import xf.nucleus.SemanticTypeSystem : SemanticConverter, Semantic;
 	//import xf.nucleus.CommonDef;
 
@@ -142,7 +143,6 @@ class KDefProcessor {
 	}
 
 
-
 	int materials(int delegate(ref string, ref MaterialDef) dg) {
 		foreach (name, mod; modules) {
 			foreach (name, ref surf; mod.materials) {
@@ -154,6 +154,113 @@ class KDefProcessor {
 		}
 		
 		return 0;
+	}
+
+
+	struct InvalidationResult {
+		bool anyConverters = false;
+	}
+
+	InvalidationResult invalidateDifferences(KDefProcessor other) {
+		InvalidationResult res;
+
+		foreach (modName, mod; other.modules) {
+			if (!(modName in this.modules)) {
+				if (mod.converters.length > 0) {
+					res.anyConverters = true;
+				}
+			}
+		}
+		
+		foreach (modName, mod; modules) {
+			if (auto otherMod = modName in other.modules) {
+				foreach (name, ref o; mod.kernels) {
+					if (auto o2 = name in otherMod.kernels) {
+						if (o != *o2) {
+							o.invalidate();
+						}
+					} else {
+						o.invalidate();
+					}
+				}
+
+				foreach (name, ref o; mod.surfaces) {
+					if (auto o2 = name in otherMod.surfaces) {
+						if (o != *o2) {
+							o.invalidate();
+						}
+					} else {
+						o.invalidate();
+					}
+				}
+
+				foreach (name, ref o; mod.materials) {
+					if (auto o2 = name in otherMod.materials) {
+						if (o != *o2) {
+							o.invalidate();
+						}
+					} else {
+						o.invalidate();
+					}
+				}
+
+				if (!res.anyConverters) {
+					if (mod.converters.length != otherMod.converters.length) {
+						res.anyConverters = true;
+					} else {
+						foreach (i, ref c; mod.converters) {
+							if (c != otherMod.converters[i]) {
+								res.anyConverters = true;
+								break;
+							}
+						}
+					}
+				}
+			} else {
+				// If the module is missing from the other processor,
+				// invalidate all of the current module's items
+				
+				if (mod.converters.length > 0) {
+					res.anyConverters = true;
+				}
+
+				foreach (name, ref o; mod.kernels) {
+					o.invalidate();
+				}
+
+				foreach (name, ref o; mod.surfaces) {
+					o.invalidate();
+				}
+
+				foreach (name, ref o; mod.materials) {
+					o.invalidate();
+				}
+			}
+		}
+
+		Dep.invalidateGraph((void delegate(Dep.DepTracker*) depSink) {
+			void process(Dep.DepTracker* tr) {
+				if (!tr.valid) {
+					depSink(tr);
+				}
+			}
+			
+			foreach (modName, mod; modules) {
+				foreach (name, ref o; mod.kernels) {
+					process(o.dependentOnThis);
+				}
+
+				foreach (name, ref o; mod.surfaces) {
+					process(o.dependentOnThis);
+				}
+
+				foreach (name, ref o; mod.materials) {
+					process(o.dependentOnThis);
+				}
+			}
+		});
+		
+		return res;
 	}
 
 	
@@ -350,13 +457,13 @@ class KDefProcessor {
 			foreach (nodeName, node; graph.nodes) {
 				switch (node.type) {
 					case "input": {
-						if (superKernel.valid) {
+						if (!superKernel.isNull) {
 							inheritKernelInputs(node, superKernel);
 						}
 					} break;
 
 					case "output": {
-						if (superKernel.valid) {
+						if (!superKernel.isNull) {
 							inheritKernelOutputs(node, superKernel);
 						}
 					} break;

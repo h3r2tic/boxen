@@ -62,12 +62,13 @@ rendering game plan:
 	plug the renderer into Boxen
 
 * step 3: tackling the material-light combinatorial problem
-	implement a basic shader snippet composition mechanism
-	add support for multiple lights in the forward mode
-		multipass
-		complex shader generation and caching
-		light cuts
-	whip up some lights along with tracking their influences
+	+ implement a basic shader snippet composition mechanism
+	~ add support for multiple lights in the forward mode
+		- multipass
+		+ complex shader generation and caching
+		- light cuts
+	+ point lights
+	- light influence tracking
 	re-animate the shader editor
 	pre-pass lighting
  
@@ -76,13 +77,7 @@ rendering game plan:
 	kernel templates for real this time
 	associating default kernels with asset types
 
-* step 5: bring back cpu-based rendering operations
-	add support for cpu quarks
-		no lazy eval
-		exact resource management
-			annotating resource flow might help reduce the ref counting
-				albeit not strictly necessary - low frequency ops on the cpu level
-	post-processing
+* step 5: post-processing
 	HDR, tone mapping and subtle glare
 
 * step 6: write the fucking thesis

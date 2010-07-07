@@ -23,15 +23,16 @@ final class KernelDef {
 	}
 
 
-	void invalidateIfDifferent(KernelDef other) {
-		if (!opEquals(other)) {
-			dependentOnThis.valid = false;
-		}
-	}
-
-
 	DepTracker* dependentOnThis() {
 		return &_dependentOnThis;
+	}
+
+	void invalidate() {
+		_dependentOnThis.valid = false;
+	}
+
+	bool isValid() {
+		return _dependentOnThis.valid;
 	}
 
 	bool isConcrete() {

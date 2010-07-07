@@ -31,10 +31,12 @@ final class SurfaceDef {
 	}
 
 
-	void invalidateIfDifferent(SurfaceDef other) {
-		if (!opEquals(other)) {
-			dependentOnThis.valid = false;
-		}
+	void invalidate() {
+		_dependentOnThis.valid = false;
+	}
+
+	bool isValid() {
+		return _dependentOnThis.valid;
 	}
 
 
