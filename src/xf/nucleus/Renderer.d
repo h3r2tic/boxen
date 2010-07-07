@@ -7,6 +7,8 @@ private {
 	import xf.nucleus.RenderList;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
+	import xf.nucleus.kdef.model.IKDefRegistry;
+	import xf.nucleus.kdef.model.KDefInvalidation;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import xf.utils.BitSet;
 	import xf.mem.FreeList;
@@ -15,7 +17,7 @@ private {
 
 
 
-abstract class Renderer : IRenderableObserver {
+abstract class Renderer : IRenderableObserver, IKDefInvalidationObserver {
 	this(RendererBackend backend) {
 		registerRenderableObserver(this);
 		_backend = backend;

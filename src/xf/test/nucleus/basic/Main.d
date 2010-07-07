@@ -168,6 +168,7 @@ T mallocObject(T)() {
 	return cast(T)cast(void*)data.ptr;
 }
 
+import tango.core.Memory;
 
 class TestApp : GfxApp {
 	alias renderer rendererBackend;
@@ -181,13 +182,15 @@ class TestApp : GfxApp {
 	FileFolder		vfs;
 
 	override void initialize() {
+		//GC.disable();
+		
 		final vfs = new FileFolder(".");
 
 		kdefRegistry = create!(IKDefRegistry)();
 		kdefRegistry.setVFS(vfs);
 		kdefRegistry.registerFolder("../../media/kdef");
 		kdefRegistry.registerFolder(".");
-		kdefRegistry.doSemantics();
+		kdefRegistry.reload();
 		kdefRegistry.dumpInfo();
 
 		// ----
@@ -199,19 +202,20 @@ class TestApp : GfxApp {
 		MaterialId			nextMaterialId;
 
 		nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+		kdefRegistry.registerObserver(nr);
 
 		foreach (surfName, surf; &kdefRegistry.surfaces) {
 			surf.id = nextSurfaceId++;
 			surf.illumKernel = kdefRegistry.getKernel(surf.illumKernelName);
 			nr.registerSurface(surf);
-			surfaces[surfName] = surf.id;
+			surfaces[surfName.dup] = surf.id;
 		}
 
 		foreach (matName, mat; &kdefRegistry.materials) {
 			mat.id = nextMaterialId++;
 			mat.pigmentKernel = kdefRegistry.getKernel(mat.pigmentKernelName);
 			nr.registerMaterial(mat);
-			materials[matName] = mat.id;
+			materials[matName.dup] = mat.id;
 		}
 
 		// TODO: configure the VSD spatial subdivision
@@ -278,6 +282,7 @@ class TestApp : GfxApp {
 				final rid = createRenderable();	
 				renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 				renderables.structureData[rid] = ms;
+				assert (material in materials, material);
 				renderables.material[rid] = materials[material];
 				renderables.surface[rid] = surfaces[surface];
 				renderables.transform[rid] = cs;
@@ -369,6 +374,10 @@ class TestApp : GfxApp {
 		rendererBackend.clearBuffers();
 
 		nr.render(viewSettings, rlist);
+
+		if (kdefRegistry.invalidated) {
+			kdefRegistry.reload();
+		}
 	}
 }
 
