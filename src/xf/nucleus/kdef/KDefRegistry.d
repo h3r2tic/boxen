@@ -70,13 +70,15 @@ class KDefRegistry : IKDefRegistry {
 						break;
 					}
 					++i;
+
+					Thread.yield();
 				}
 
 				if (anyMods) {
 					_filesModified = true;
 				}
 
-				Thread.sleep(2);
+				Thread.sleep(0.1);
 			}
 		} catch (Exception e) {
 			char[] msg;

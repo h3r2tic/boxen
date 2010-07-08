@@ -190,7 +190,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ find all affected items, walk the dependency graph, marking stuff as invalid
 	~ notify renderers about the invalid elements
 		- unregister surfaces and materials
-		- clean up the old Effects and their instances
+		+ clean up the old Effects and their instances
 		+ invalidate parts of Effect caches
 	+ delete the olde registry data
 		* nothing can retain the defs other than by their name (separately allocated strings)

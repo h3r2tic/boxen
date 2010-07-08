@@ -53,6 +53,7 @@ private {
 		xf.mem.StackBuffer,
 		xf.mem.MainHeap,
 		xf.mem.ScratchAllocator,
+		xf.mem.SmallTempArray,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
 
 	import xf.mem.Array;
@@ -314,9 +315,13 @@ class ForwardRenderer : Renderer {
 
 	// implements IKDefInvalidationObserver
 	void onKDefInvalidated(KDefInvalidationInfo info) {
+		scope stack = new StackBuffer;
+		mixin MSmallTempArray!(Effect) toDispose;
+		
 		if (info.anyConverters) {
 			foreach (eck, ref einfo; _effectCache) {
-				einfo.effect = null;
+				toDispose.pushBack(einfo.effect, &stack.allocRaw);
+				einfo.dispose();
 			}
 		} else {
 			foreach (eck, ref einfo; _effectCache) {
@@ -325,11 +330,13 @@ class ForwardRenderer : Renderer {
 					||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
 					||	!_kdefRegistry.getKernel(eck.illumKernel).isValid
 				) {
-					einfo.effect = null;
+					toDispose.pushBack(einfo.effect, &stack.allocRaw);
+					einfo.dispose();
 				} else {
 					foreach (lk; eck.lightKernels) {
 						if (!_kdefRegistry.getKernel(lk).isValid) {
-							einfo.effect = null;
+							toDispose.pushBack(einfo.effect, &stack.allocRaw);
+							einfo.dispose();
 							break;
 						}
 					}
@@ -337,7 +344,19 @@ class ForwardRenderer : Renderer {
 			}
 		}
 
-		_refreshRenderables = true;
+		foreach (ref ei; _renderableEI) {
+			auto eiEf = ei.getEffect;
+			foreach (e; toDispose.items) {
+				if (e is eiEf) {
+					ei.dispose();
+					break;
+				}
+			}
+		}
+
+		foreach (ef; toDispose.items) {
+			_backend.disposeEffect(ef);
+		}
 	}
 
 
@@ -372,8 +391,11 @@ class ForwardRenderer : Renderer {
 		Effect				effect;
 
 
+		// NOTE: doesn't actually dispose the effect, only the info
 		void dispose() {
-			// TODO: dispose the effect
+			mainHeap.freeRaw(uniformDefaults.ptr);
+			uniformDefaults = null;
+			effect = null;
 		}
 	}
 
@@ -482,7 +504,8 @@ class ForwardRenderer : Renderer {
 		});
 
 		final pool = PoolScratchAllocator(mainHeap.allocRaw(sizeReq)[0..sizeReq]);
-		
+
+		// free effectInfo.uniformDefaults.ptr to free the whole thing (I accidentally)
 		effectInfo.uniformDefaults = pool.allocArray
 			!(EffectInfo.UniformDefaults)(numParams);
 
@@ -968,12 +991,8 @@ class ForwardRenderer : Renderer {
 
 
 	private void compileEffectsForRenderables(RenderableId[] rids) {
-		scope (exit) {
-			_refreshRenderables = false;
-		}
-		
 		foreach (idx, rid; rids) {
-			if (_refreshRenderables || !this._renderableValid.isSet(rid)) {
+			if (!this._renderableValid.isSet(rid) || !_renderableEI[rid].valid) {
 				// --- Find the lights affecting this renderable
 				
 				// HACK
@@ -996,6 +1015,9 @@ class ForwardRenderer : Renderer {
 					} else {
 						effectInfo = buildEffectForRenderable(rid, affectingLights);
 						if (info !is null) {
+							// Must have been disposed earlier in whatever caused
+							// the compilation of the effect anew
+							assert (info.effect is null);
 							*info = effectInfo;
 						} else {
 							_effectCache[cacheKey] = effectInfo;
@@ -1142,6 +1164,10 @@ class ForwardRenderer : Renderer {
 						}
 				));
 
+				if (_renderableEI[rid].valid) {
+					_renderableEI[rid].dispose();
+				}
+				
 				_renderableEI[rid] = efInst;
 				
 				this._renderableValid.set(rid);
@@ -1187,14 +1213,11 @@ class ForwardRenderer : Renderer {
 		// HACK
 		EffectInstance[]	_renderableEI;
 		IndexData*[]		_renderableIndexData;
-		Effect				_meshEffect;
 
 		IKDefRegistry		_kdefRegistry;
 
 		mat4	worldToView;
 		mat4	viewToClip;
 		vec3	eyePosition;
-
-		bool	_refreshRenderables = false;
 	}
 }

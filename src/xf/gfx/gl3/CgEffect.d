@@ -312,7 +312,7 @@ class CgEffect : Effect {
 	}
 	
 	
-	private {
+	package {
 		CGprogram extractProgram(char* name, GPUDomain domain) {
 			final profile = getProfileForDomain(domain);
 			
