@@ -112,6 +112,8 @@ def parseFuncAttrib(line, func):
 		pname = m.group(1)
 		if 'ref' == pname:
 			pname = '_ref'
+		if 'in' == pname:
+			pname = '_in'
 		ptype = parseParamType(m.group(2).strip())
 		func.addParam(Param(ptype, pname))
 		return

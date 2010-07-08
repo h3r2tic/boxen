@@ -112,6 +112,9 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 		if ename in types or re.match(coreCatRegex, ename) or (ename[0:len(extPrefix)] != extPrefix and len(extPrefix) != 0):
 			coreEnums.append((ename, e))
 		else:
+			if '3DFX' == ename[0:4]:
+				continue
+
 			assert not (ename in name2ext)
 			ext = Extension(ename)
 			ext.enums.append((ename, e))
@@ -123,6 +126,9 @@ def prepareForEmission(enumSpecs, typeSpecs, funcSpecs, extPrefix, coreCatRegex)
 			continue
 
 		if re.search(r"DEPRECATED", f.category):
+			continue
+
+		if '3DFX' == f.category[0:4]:
 			continue
 
 		assert len(extPrefix) == 0 or f.category[0:len(extPrefix)] != extPrefix
