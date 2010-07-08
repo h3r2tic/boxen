@@ -15,6 +15,11 @@ def parseTypes(lineIter):
 			if n != "void":
 				t = m.group(2)
 				t = sub(r'\bconst\b', '', t)
+				t = sub(r'\blong long\b', '$int64$', t)
+				t = sub(r'\bunsigned long\b', 'size_t', t)
+				t = sub(r'\blong\b', 'ptrdiff_t', t)
+				t = sub(r'$int64$', 'long', t)
+				t = sub(r'\bunsigned \b', 'u', t)
 				types[n] = t
 		else:
 			assert False, 'Unrecognized type def: "%s"' % line

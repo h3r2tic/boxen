@@ -31,6 +31,11 @@ public {
 	alias long		GLint64EXT;
 	alias ulong		GLuint64EXT;
 
+	typedef ushort	GLhalfNV;
+	alias ptrdiff_t	GLintptrARB;
+	alias ptrdiff_t	GLsizeiptrARB;
+	typedef void*	GLsync;
+
 	alias char GLcharARB;
 	alias uint GLhandleARB;
 }

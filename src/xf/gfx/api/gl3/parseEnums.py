@@ -66,7 +66,7 @@ def parseEnum(enumMatch, lineIter):
 	global enums
 	
 	groups = enumMatch.groups()
-	names = groups[0].split(' ')
+	names = [n.strip() for n in groups[0].split(',')]
 	annot = groups[1]
 
 	def getEnum(n):

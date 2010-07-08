@@ -42,7 +42,7 @@ private {
 
 extern (Windows) void function(GLint, GLint, GLsizei, GLsizei) glAddSwapHintRectWIN;
 
-private extern (Windows) int windowProc(HWND hwnd, uint umsg, WPARAM wparam, LPARAM lparam) {
+private extern (Windows) int gl3_backend_root_Win32_windowProc(HWND hwnd, uint umsg, WPARAM wparam, LPARAM lparam) {
 	auto window = cast(GLRootWindow)cast(void*)GetWindowLong(hwnd, GWL_USERDATA);
 	
 	if (WM_CREATE == umsg && window is null) {
@@ -215,7 +215,7 @@ class GLRootWindow : GLContext {
 			with (windowClass) {
 				cbSize = windowClass.sizeof;
 				style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-				lpfnWndProc = cast(typeof(lpfnWndProc))&.windowProc;		// bug in core32 ? it expects lparam, wparam instead of wrapam, lparam
+				lpfnWndProc = cast(typeof(lpfnWndProc))&.gl3_backend_root_Win32_windowProc;		// bug in core32 ? it expects lparam, wparam instead of wrapam, lparam
 				hInstance = hinstance();
 				hbrBackground = cast(HBRUSH)(COLOR_APPWORKSPACE);
 				hCursor = LoadCursor(null, IDC_ARROW);

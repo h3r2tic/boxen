@@ -40,7 +40,7 @@ private {
 
 
 
-private extern (Windows) int windowProc(HWND hwnd, uint umsg, WPARAM wparam, LPARAM lparam) {
+private extern (Windows) int gl3_backend_native_Win32_windowProc(HWND hwnd, uint umsg, WPARAM wparam, LPARAM lparam) {
 	auto window = cast(GLWindow)cast(void*)GetWindowLong(hwnd, GWL_USERDATA);
 	
 	if (WM_CREATE == umsg && window is null) {
@@ -214,7 +214,7 @@ class GLWindow : GLContext {
 			with (windowClass) {
 				cbSize = windowClass.sizeof;
 				style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-				lpfnWndProc = cast(typeof(lpfnWndProc))&.windowProc;		// bug in core32 ? it expects lparam, wparam instead of wrapam, lparam
+				lpfnWndProc = cast(typeof(lpfnWndProc))&.gl3_backend_native_Win32_windowProc;		// bug in core32 ? it expects lparam, wparam instead of wrapam, lparam
 				hInstance = hinstance();
 				hbrBackground = cast(HBRUSH)(COLOR_APPWORKSPACE);
 				hCursor = LoadCursor(null, IDC_ARROW);
