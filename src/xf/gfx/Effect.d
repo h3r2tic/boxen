@@ -609,6 +609,7 @@ struct EffectSource {
 interface IEffectMngr {
 	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts = EffectCompilationOptions.init);
 	EffectInstance instantiateEffect(Effect effect);
+	void disposeEffect(Effect);
 	Effect getEffect(EffectInstanceHandle);
 	//bool setVarying(EffectInstanceHandle, cstring name, VertexBuffer buf, VertexAttrib vattr);
 	void** getUniformPtrsDataPtr(EffectInstanceHandle);

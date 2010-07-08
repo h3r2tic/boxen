@@ -126,6 +126,22 @@ class CgCompiler {
 
 		return new CgEffect(name, eh, gl, opts);
 	}
+
+
+	void disposeEffect(CgEffect effect) {
+		if (effect._vertexProgram) {
+			cgDestroyProgram(effect._vertexProgram);
+		}
+		if (effect._geometryProgram) {
+			cgDestroyProgram(effect._geometryProgram);
+		}
+		if (effect._fragmentProgram) {
+			cgDestroyProgram(effect._fragmentProgram);
+		}
+		cgDestroyEffect(effect._handle);
+
+		delete effect;
+	}
 	
 	
 	CGcontext context() {

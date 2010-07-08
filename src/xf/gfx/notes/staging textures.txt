@@ -1,0 +1,5 @@
+http://www.docstoc.com/docs/3670084/DirectX-10-Performance-Tips
+
+The preferred way to update textures in dx10 is via a 'staging' texture, which is mapped into non-local vid memory, written to from the cpu and then copied into a local vid mem texture via CopySubresourceRegion.
+
+GL has a way to map buffer memory in a way in which the coder must manually specify buffer updates. Is that equivalent?

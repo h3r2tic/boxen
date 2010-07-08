@@ -266,6 +266,30 @@ class Renderer : IRenderer {
 		_effects ~= EffectData(effect);
 		return effect;
 	}
+
+
+	// TODO: do anything about Effect ordinals?
+	void disposeEffect(Effect effect_) {
+		if (auto effect = cast(CgEffect)effect_) {
+			log.info("Disposing an effect.");
+			
+			auto data = &_effects[effect._idxInRenderer];
+			data.dispose();
+			
+			if (effect._idxInRenderer+1 != _effects.length) {
+				auto other = &_effects[$-1];
+				other.effect._idxInRenderer = effect._idxInRenderer;
+				*data = *other;
+				*other = EffectData.init;
+			}
+
+			_effects = _effects[0..$-1];
+			
+			_cgCompiler.disposeEffect(effect);
+		} else {
+			error("disposeEffect: the argument is not an instance of CgEffect.");
+		}		
+	}
 	
 	
 	protected EffectData* getEffectData(Effect effect) {
@@ -347,8 +371,13 @@ class Renderer : IRenderer {
 			if (res.refCount > 0) {
 				return true;
 			} else if (goodBefore) {
-				// TODO: free the other shit
+				log.info("Disposing an effect instance.");
+
+				// TODO: free anything else?
+				EffectInstanceImpl* inst = res.impl;
+				_effects[inst._proto._idxInRenderer].disposeInstance(inst);
 				_effectInstances.free(resData);
+				mainHeap.freeRaw(inst);
 			}
 		}
 		
@@ -1835,6 +1864,27 @@ private struct EffectData {
 		instancesSorted = false;
 		inst.renderOrdinal = instances.length;
 		instances.pushBack(inst);
+	}
+
+	void disposeInstance(EffectInstanceImpl* inst) {
+		instancesSorted = false;
+		uword ord = inst.renderOrdinal;
+		uword numInstances = instances.length;
+		if (ord+1 != numInstances) {
+			EffectInstanceImpl** other = instances[numInstances-1];
+			(*other).renderOrdinal = ord;
+			*(instances[ord]) = *other;
+		}
+		instances.popBack();
+	}
+
+	void dispose() {
+		if (instances.length > 0) {
+			error("Delete all EffectInstances before deleting the Effect.");
+		}
+		
+		instances.dispose();
+		tmp.dispose();
 	}
 	
 	u32 countSortingKeyChanges(EffectInstanceImpl*[] instances) {
