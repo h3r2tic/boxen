@@ -938,19 +938,19 @@ class ForwardRenderer : Renderer {
 			cgSetup,
 			_backend,
 			(CodeSink fmt) {
-				fmt(`
-					float3x4 modelToWorld;
-
-					float4x4 worldToView <
-						string scope = "effect";
-					>;
-					float4x4 viewToClip <
-						string scope = "effect";
-					>;
-					float3 eyePosition <
-						string scope = "effect";
-					>;
-					`
+				fmt(
+`
+float3x4 modelToWorld;
+float4x4 worldToView <
+	string scope = "effect";
+>;
+float4x4 viewToClip <
+	string scope = "effect";
+>;
+float3 eyePosition <
+	string scope = "effect";
+>;
+`
 				);
 			}
 		);

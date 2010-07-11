@@ -21,7 +21,8 @@ enum SourceKernelType {
 	Structure,
 	Illumination,
 	Pigment,
-	Light
+	Light,
+	Composite
 }
 
 alias xf.nucleus.graph.Graph.GraphNodeId GraphNodeId;

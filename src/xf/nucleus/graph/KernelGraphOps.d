@@ -869,12 +869,14 @@ private void findAutoFlow(
 
 		assert (toParam.wantAutoFlow, toParam.toString);
 
-		error(
+		// This error probably shouldn't even be triggered, as the
+		// node may be unused.
+		/+error(
 			"Auto flow not found for an input param"
 			" '{}' in graph node {}.\n"
 			"Considered {} converters from:\n[{}]",
 			toParam.toString, toId.id, numConv, suffix
-		);
+		);+/
 	}
 }
 
@@ -1007,7 +1009,11 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 
 			if (fromName is null) {
 				if (par.wantAutoFlow) {
-					error("No flow to '{}' D:", par.name);
+					// the loop is to test whether there are any outgoing
+					// connections at all
+					foreach (id; graph.flow.iterOutgoingConnections(id)) {
+						error("No flow to '{}' D:", par.name);
+					}
 				}
 			} else {
 				final srcParam = graph.getNode(fromId)
@@ -1234,7 +1240,7 @@ private bool buildFunctionSubgraph(
 				// This param will have to be bridged via the Data node
 				
 				formatTmp((Fmt fmt) {
-					fmt("comp__p{}", dataNode.params.length);
+					fmt.format("comp__p{}", dataNode.params.length);
 				},
 				(cstring pname) {
 					/*
@@ -1263,7 +1269,7 @@ private bool buildFunctionSubgraph(
 					GraphNodeId	oldSrcNid;
 					Param*		oldSrcParam;
 
-					if (!getOutputParamIndirect(
+					if (!findSrcParam(
 						graph,
 						id,
 						param.name,
@@ -1397,6 +1403,7 @@ private bool doManualFlow(
 			 */
 			final dataNodeId = subgraph.addNode(KernelGraph.NodeType.Data);
 			final dataNode = subgraph.getNode(dataNodeId).data();
+			dataNode.sourceKernelType = SourceKernelType.Composite;
 
 			compNode.targetFunc = dstFunc;
 			compNode.graph = subgraph;

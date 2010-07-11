@@ -16,5 +16,13 @@ struct CodegenContext {
 	GPUDomain	domain;
 	KernelGraph	graph;
 	GPUDomain[]	nodeDomains;
+	uint		indentSize;
+
+	CodeSink	indent() {
+		for (uint i = 0; i < indentSize; ++i) {
+			sink('\t');
+		}
+		return sink;
+	}
 }
 

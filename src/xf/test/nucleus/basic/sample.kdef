@@ -1,13 +1,47 @@
 Image = kernel(
-	in uv <type float2>,
+	in uv <type float2 + use uv>,
 	out sample <type float4>
 );
 
-ImageGenTest = kernel(
-	in uv <type float2>,
-	out color <type float4>
+ImageGenTest = kernel Image {
+	sample = float4(uv, 0, 1);
+};
+
+CheckerGen = kernel Image(
+	in size <type float2>
 ) {
-	color = float4(uv.xy, 0, 1);
+	float2 meh = step(float2(0.5, 0.5), frac(uv * size)) * 2 - 1;
+	sample = (meh.x * meh.y) * 0.5 + 0.5;
+};
+
+converter<linear>(20) sampler2img (
+	in a <type sampler2D>,
+	out b <in.a.actual + type Image>
+) {
+	sampler2DImage res;
+	res.sampler = a;
+	b = res;
+}
+
+
+BlurImage = kernel(
+	in uv <type float2>,
+	in offset <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+	res += img.sample(uv - offset) * coeff[0];
+	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
+	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
+	res += img.sample(uv) * coeff[3];
+	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
+	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
+	res += img.sample(uv + offset) * coeff[6];
+	sample = res;
 };
 
 DefaultMeshStructure = graph Structure {
@@ -16,7 +50,7 @@ DefaultMeshStructure = graph Structure {
 		params = (
 			position <type float3 + basis model + use position>,
 			normal <type float3 + basis model + use normal>,
-			texCoord <type float2 + use texCoord>
+			texCoord <type float2 + use uv>
 		);
 	};
 	node_1 = node {
@@ -100,46 +134,62 @@ TestPigment = graph Pigment {
 		type = data;
 		params = (
 			albedoTint <type float4 + use color> = 1 1 1 1,
-			albedoTex <type sampler2D + use color>
+			albedoTex <type sampler2D + use color>,
+			blurOffset <type float2> = 0.002 0.002,
+			checkerSize <type float2> = 30 30
 		);
-	};
-	nt = node {
-		type = kernel;
-		kernel = Tex2D;
 	};
 	ng = node {
 		type = kernel;
-		kernel = ImageGenTest;
+		kernel = CheckerGen;
+	};
+	ns = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	nb = node {
+		type = kernel;
+		kernel = BlurImage;
 	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Pigment(
 			albedoTint <type float4 + use color>,
-			albedoTexColor <type float4 + use color>,
 			someImg <type Image>
 		) {
-			radiance = diffuse * albedoTint * albedoTexColor + specular;
-			radiance *= someImg.sample(texCoord);
-			/+float lum = dot(radiance.xyz, float3(0.2126, 0.7152, 0.0722));
-			float lum2 = lum;
-			lum2 *= 2.0;
-			lum2 += 0.33;
-			lum2 = pow(lum2, 1/0.35);
-			radiance *= lum2 / max(0.01, lum);+/
+			float4 albedo = diffuse * albedoTint * someImg.sample(texCoord);
+			radiance = albedo + specular;
 		};
 	};
 	n3 = node {
 		type = output;
 	};
 
-	connect ng.color n2.someImg;
+	// ----
+
+	connect n1.checkerSize ng.size;
+	connect n1.blurOffset nb.offset;
+
+	connect n1 ns;
+
+	connect ng.sample nb.img;		// procedural tex -> blur
+	//connect ns.sample nb.img;		// albedo tex -> blur
+
+	connect nb.sample n2.someImg;	// blur -> out
+
+	//connect nb.sample n2.someImg;	// albedo tex -> out
+	//connect ng.sample n2.someImg;	// procedural tex -> out
+
+	// ----
+
+	noauto nb.uv;
 	noauto ng.uv;
+	noauto ns.uv;
+
+	// ----
 
 	connect n0 n2;
 	connect n1.albedoTint n2.albedoTint;
-	connect n1 nt;
-	connect n0.texCoord nt.texCoord;
-	connect nt.color n2.albedoTexColor;
 	connect n2 n3;
 };
 

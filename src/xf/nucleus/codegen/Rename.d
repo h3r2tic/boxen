@@ -35,6 +35,10 @@ void renameDataNodeParam(
 			codeSink("light")(pnode.sourceLightIndex)("__");
 		} break;
 
+		case SourceKernelType.Composite: {
+			// no prefix
+		} break;
+
 		default: assert (false);
 	}
 

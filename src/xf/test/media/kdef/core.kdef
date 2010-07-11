@@ -1,7 +1,7 @@
 Structure = kernel(
 	out position <type float3 + basis model + use position>,
 	out normal <type float3 + basis model + use normal>,
-	out texCoord <type float2 + use texCoord>
+	out texCoord <type float2 + use uv>
 );
 
 Light = kernel(
@@ -22,7 +22,7 @@ Illumination = kernel(
 Pigment = kernel(
 	in position <type float3 + basis world + use position>,
 	in normal <type float3 + basis world + use normal>,
-	in texCoord <type float2 + use texCoord>,
+	in texCoord <type float2 + use uv>,
 	in diffuse <type float4 + use diffuse>,
 	in specular <type float4 + use specular>,
 	out radiance <type float4 + use color>
