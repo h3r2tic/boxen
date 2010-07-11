@@ -93,7 +93,7 @@ class KernelGraph {
 		GraphNodeId			inNode;
 		GraphNodeId			outNode;
 		cstring				returnType;
-		uint				_graphIdx;		// no need to dup, used in codegen
+		uint				_graphIdx = uint.max;	// no need to dup, used in codegen
 		
 		AbstractFunction	targetFunc;
 
@@ -120,7 +120,7 @@ class KernelGraph {
 			}
 		}
 
-		// Doesn't perform a deep copy for composite nodes
+		// Doesn't perform a deep copy for composite nodes, just refcounts the graph
 		void copyTo(Node* other) {
 			assert (type == other.type);
 			if (type & NodeType._Param) {
@@ -158,6 +158,7 @@ class KernelGraph {
 						auto src = composite();
 						auto dst = other.composite();
 						dst.graph = src.graph;
+						++dst.graph._refCnt;
 						dst.dataNode = src.dataNode;
 						dst.inNode = src.inNode;
 						dst.outNode = src.outNode;
@@ -396,6 +397,10 @@ class KernelGraph {
 
 
 	void removeNode(GraphNodeId id) {
+		auto node = getNode(id);
+		if (NodeType.Composite == node.type) {
+			disposeKernelGraph(node.composite.graph);
+		}
 		_graph.removeNode(id);
 	}
 
@@ -510,6 +515,7 @@ class KernelGraph {
 	private {
 		Node*		_nodeFreeList;
 		Graph		_graph;
+		int			_refCnt = 1;
 	}
 }
 
@@ -524,8 +530,18 @@ KernelGraph createKernelGraph() {
 }
 
 
-void disposeKernelGraph(ref KernelGraph g) {
+/+void assureNotCyclic(KernelGraph g) {
+	KernelGraph[] list;
+	return assureNotCyclic(g, list);
+}
+
+void assureNotCyclic(KernelGraph g, ref KernelGraph[] list) {
 	assert (g !is null);
+
+	foreach (x; list) {
+		assert (x !is g);
+	}
+	list ~= g;
 
 	foreach (nid; g.iterNodes) {
 		auto node = g.getNode(nid);
@@ -533,14 +549,31 @@ void disposeKernelGraph(ref KernelGraph g) {
 			auto comp = node.composite();
 			assert (comp.graph !is g);
 			if (comp.graph) {
-				disposeKernelGraph(comp.graph);
+				assureNotCyclic(comp.graph, list);
 			}
 		}
 	}
-	
-	g._dtor();
-	memset(cast(void*)g, 0xcb, KernelGraph.classinfo.init.length);
-	_kernelGraphFreeList.free(cast(void*)g);
+}+/
+
+
+void disposeKernelGraph(ref KernelGraph g) {
+	assert (g !is null);
+	if (--g._refCnt <= 0) {
+		foreach (nid; g.iterNodes) {
+			auto node = g.getNode(nid);
+			if (KernelGraph.NodeType.Composite == node.type) {
+				auto comp = node.composite();
+				assert (comp.graph !is g);
+				if (comp.graph) {
+					disposeKernelGraph(comp.graph);
+				}
+			}
+		}
+		
+		g._dtor();
+		memset(cast(void*)g, 0xcb, KernelGraph.classinfo.init.length);
+		_kernelGraphFreeList.free(cast(void*)g);
+	}
 	g = null;
 }
 

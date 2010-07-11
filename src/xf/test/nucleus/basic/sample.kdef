@@ -151,6 +151,10 @@ TestPigment = graph Pigment {
 		type = kernel;
 		kernel = BlurImage;
 	};
+	na = node {
+		type = kernel;
+		kernel = Add;
+	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Pigment(
@@ -172,8 +176,12 @@ TestPigment = graph Pigment {
 
 	connect n1 ns;
 
-	connect ng.sample nb.img;		// procedural tex -> blur
+	connect ng.sample na.a;			// procedural tex -> sum
+	connect ns.sample na.b;			// albedo tex -> sum
+
+	//connect ng.sample nb.img;		// procedural tex -> blur
 	//connect ns.sample nb.img;		// albedo tex -> blur
+	connect na.c nb.img;			// sum -> blur
 
 	connect nb.sample n2.someImg;	// blur -> out
 

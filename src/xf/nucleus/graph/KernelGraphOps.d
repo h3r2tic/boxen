@@ -1153,6 +1153,7 @@ private bool buildFunctionSubgraph(
 		bool delegate(Param*) paramFilter,
 		
 		void delegate(Param*, GraphNodeId) freeParamSink,
+		DynamicBitSet* clonedNodesSet,
 		KernelGraph newGraph,
 		GraphNodeId newGraphDataNode,
 		GraphNodeId oldGraphCompNode,
@@ -1187,6 +1188,7 @@ private bool buildFunctionSubgraph(
 			from,
 			paramFilter,
 			freeParamSink,
+			clonedNodesSet,
 			newGraph,
 			newGraphDataNode,
 			oldGraphCompNode,
@@ -1196,6 +1198,7 @@ private bool buildFunctionSubgraph(
 				auto node = graph.getNode(id);
 				*newNode = newGraph.addNode(node.type);
 				node.copyTo(newGraph.getNode(*newNode));
+				clonedNodesSet.set(id.id);
 				result = true;
 			}
 
@@ -1216,6 +1219,7 @@ private bool buildFunctionSubgraph(
 					auto node = graph.getNode(id);
 					*newNode = newGraph.addNode(node.type);
 					node.copyTo(newGraph.getNode(*newNode));
+					clonedNodesSet.set(id.id);
 					result = true;
 				}
 				
@@ -1244,24 +1248,6 @@ private bool buildFunctionSubgraph(
 				},
 				(cstring pname) {
 					/*
-					 * Add a param to the data node in the new subgraph.
-					 * Use a unique name for it.
-					 */
-					auto dparam = dataNode.params.add(param, pname);
-					dparam.dir = ParamDirection.Out;
-
-					/*
-					 * Now add flow from the newly added Data node param to the
-					 * node we've just cloned as the main part of this function.
-					 */
-					newGraph.flow.addDataFlow(
-						newGraphDataNode,
-						pname,
-						*newNode,
-						param.name
-					);
-
-					/*
 					 * Find where from the flow comes into the param back in the
 					 * original graph. We'll copy the flow into the function node
 					 * which graph the subgraph we're constructing.
@@ -1280,23 +1266,47 @@ private bool buildFunctionSubgraph(
 					}
 
 					/*
-					 * Add the same param as in the Data node to the function node
-					 * we're building in the old graph
+					 * Only copy the flow if the source is not already in the cloned
+					 * subgraph. Otherwise the flow would be duplicate
 					 */
+					if (!clonedNodesSet.isSet(oldSrcNid.id)) {
+						/*
+						 * Add a param to the data node in the new subgraph.
+						 * Use a unique name for it.
+						 */
+						auto dparam = dataNode.params.add(param, pname);
+						dparam.dir = ParamDirection.Out;
 
-					auto fparam = oldCompNode.params.add(param, pname);
-					fparam.dir = ParamDirection.In;
+						/*
+						 * Now add flow from the newly added Data node param to the
+						 * node we've just cloned as the main part of this function.
+						 */
+						newGraph.flow.addDataFlow(
+							newGraphDataNode,
+							pname,
+							*newNode,
+							param.name
+						);
 
-					/*
-					 * Finally, create flow to the function node
-					 */
+						/*
+						 * Add the same param as in the Data node to the function node
+						 * we're building in the old graph
+						 */
 
-					graph.flow.addDataFlow(
-						oldSrcNid,
-						oldSrcParam.name,
-						oldGraphCompNode,
-						pname
-					);
+						auto fparam = oldCompNode.params.add(param, pname);
+						fparam.dir = ParamDirection.In;
+
+						/*
+						 * Finally, create flow to the function node
+						 */
+
+						graph.flow.addDataFlow(
+							oldSrcNid,
+							oldSrcParam.name,
+							oldGraphCompNode,
+							pname
+						);
+					}
 				});
 			}
 		}
@@ -1357,6 +1367,8 @@ private bool doManualFlow(
 				}
 			}
 
+			//assureNotCyclic(graph);
+
 			assert (
 				1 == numFuncOutputParams,
 				"TODO: currently kernels used in functional composition may only"
@@ -1366,6 +1378,8 @@ private bool doManualFlow(
 			assert (funcOutputParam !is null);
 
 			KernelGraph subgraph = createKernelGraph();
+
+			//assureNotCyclic(graph);
 
 			/*
 			 * There will be a subgraph of comprising the nodes being used in
@@ -1411,6 +1425,8 @@ private bool doManualFlow(
 			compNode.inNode = inNodeId;
 			compNode.outNode = outNodeId;
 
+			//assureNotCyclic(graph);
+
 			/*
 			 * The input node's params must now be connected to the params in the
 			 * source node's incoming tree which have no incoming flow.
@@ -1419,6 +1435,13 @@ private bool doManualFlow(
 			 */
 
 			GraphNodeId fromNodeInSubgraph;
+
+			//assureNotCyclic(graph);
+
+			DynamicBitSet clonedNodesSet;
+			clonedNodesSet.alloc(graph.capacity, &stack.allocRaw);
+			clonedNodesSet.clearAll();
+			
 
 			buildFunctionSubgraph(
 				graph,
@@ -1440,6 +1463,8 @@ private bool doManualFlow(
 					Param* inParam = null;
 					inNode.params.getOutput(param.name, &inParam);
 					assert (inParam !is null);
+
+					//assureNotCyclic(graph);
 					
 					if (!findConversion(
 						*inParam.semantic,
@@ -1466,13 +1491,18 @@ private bool doManualFlow(
 							toParam.type, funcOutputParam.toString
 						);
 					}
+
+					//assureNotCyclic(graph);
 				},
 
+				&clonedNodesSet,
 				subgraph,
 				dataNodeId,
 				compNodeId,
 				&fromNodeInSubgraph
 			);
+
+			//assureNotCyclic(graph);
 
 			Semantic funcOutputPlainSem = Semantic(&subgraph._mem.pushBack);
 			
@@ -1508,6 +1538,8 @@ private bool doManualFlow(
 			);
 
 			compNode.returnType = funcOutputPlainSem.getTrait("type");
+
+			//assureNotCyclic(graph);
 
 			/*
 			 * The function's output param must be convertible to the destination
@@ -1552,6 +1584,8 @@ private bool doManualFlow(
 				toId,
 				toParam.name
 			);
+
+			//assureNotCyclic(graph);
 
 			/*
 			 * New connections were added, remove the original one which caused
