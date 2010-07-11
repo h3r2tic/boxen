@@ -230,7 +230,7 @@ private void buildKernelSubGraph(
 	}
 
 	foreach (nf; def.noAutoFlow) {
-		auto nodeId = findInputId(nf.toNode);
+		auto nodeId = findOutputId(nf.toNode);
 		auto node = kg.getNode(nodeId);
 		auto param = node.getInputParam(nf.to);
 		if (param is null) {
@@ -238,8 +238,9 @@ private void buildKernelSubGraph(
 				"Input param {} for noauto not found in node {}.",
 				nf.to, nodeId.id
 			);
+		} else {
+			param.wantAutoFlow = false;
 		}
-		param.wantAutoFlow = false;
 	}
 
 	version (DebugGraphConnections) {

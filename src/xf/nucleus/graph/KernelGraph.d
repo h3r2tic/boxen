@@ -353,6 +353,10 @@ class KernelGraph {
 			node.composite._allocator = &_mem.pushBack;
 		}
 		
+		if (NodeType.Func == t) {
+			node.func.params._allocator = &_mem.pushBack;
+		}
+
 		return id;
 	}
 
@@ -371,6 +375,10 @@ class KernelGraph {
 		node._type = t;
 		if (t & NodeType._Param) {
 			node._param._allocator = &_mem.pushBack;
+		} else if (NodeType.Bridge == t) {
+			node.bridge._allocator = &_mem.pushBack;
+		} else if (NodeType.Composite == t) {
+			node.composite._allocator = &_mem.pushBack;
 		}
 	}
 
@@ -511,8 +519,10 @@ void disposeKernelGraph(ref KernelGraph g) {
 		auto node = g.getNode(nid);
 		if (KernelGraph.NodeType.Composite == node.type) {
 			auto comp = node.composite();
-			disposeKernelGraph(comp.graph);
-			comp.graph = null;
+			assert (comp.graph !is g);
+			if (comp.graph) {
+				disposeKernelGraph(comp.graph);
+			}
 		}
 	}
 	

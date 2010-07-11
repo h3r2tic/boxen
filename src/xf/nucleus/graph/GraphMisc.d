@@ -127,7 +127,7 @@ cstring toGraphviz(Graph graph) {
 
 
 
-cstring toGraphviz(KernelGraph kgraph, cstring delegate(GraphNodeId) annotGen) {
+cstring toGraphviz(KernelGraph kgraph, cstring delegate(GraphNodeId) annotGen = null) {
 	auto graph = kgraph.flow;
 	
 	char[] res;

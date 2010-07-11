@@ -255,19 +255,27 @@ struct Param {
 		res.hasPlainSemantic = hasPlainSemantic;
 		res.wantAutoFlow = this.wantAutoFlow;
 		res.dir = this.dir;
-		res.name = this._name;
+		res.name = name;
 		res.copyValueFrom(this);
 		return res;
 	}
 
 
 	Semantic* semantic() {
-		assert (hasPlainSemantic, "Trying to access a plain semantic while it's an expression");
+		assert (
+			hasPlainSemantic,
+			"Trying to access a plain semantic while it's an expression, in param: "
+			~ name
+		);
 		return &_semantic;
 	}
 
 	SemanticExp* semanticExp() {
-		assert (!hasPlainSemantic, "Trying to access a semantic expression while it's plain.");
+		assert (
+			!hasPlainSemantic,
+			"Trying to access a semantic expression while it's plain, in param: "
+			~ name
+		);
 		return &_semanticExp;
 	}
 

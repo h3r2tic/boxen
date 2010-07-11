@@ -560,10 +560,10 @@ class ForwardRenderer : Renderer {
 		// Compute all flow and conversions within the Structure graph,
 		// skipping conversions to the Output node
 
-		/+File.set("graph.dot", toGraphviz(kg));
+		File.set("graph.dot", toGraphviz(kg));
 		scope (failure) {
 			File.set("graph.dot", toGraphviz(kg));
-		}+/
+		}
 
 		ConvCtx convCtx;
 		convCtx.semanticConverters = &_kdefRegistry.converters;
