@@ -546,6 +546,7 @@ class ForwardRenderer : Renderer {
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
+			//assureNotCyclic(kg);
 			disposeKernelGraph(kg);
 		}
 
@@ -922,6 +923,8 @@ class ForwardRenderer : Renderer {
 			);
 		}
 
+		//assureNotCyclic(kg);
+
 		kg.flow.removeAllAutoFlow();
 
 		verifyDataFlowNames(kg);
@@ -955,12 +958,16 @@ float3 eyePosition <
 			}
 		);
 
+		//assureNotCyclic(kg);
+
 		// ----
 
 		effect.compile();
 
 		// HACK
 		allocateDefaultUniformStorage(effect);
+
+		//assureNotCyclic(kg);
 
 		void** uniforms = effect.getUniformPtrsDataPtr();
 
@@ -989,6 +996,8 @@ float3 eyePosition <
 		// ----
 
 		findEffectInfo(kg, &effectInfo);
+
+		//assureNotCyclic(kg);
 
 		return effectInfo;
 	}

@@ -32,8 +32,9 @@ struct CodegenSetup {
 
 
 private struct SubgraphData {
-	cstring[] node2funcName;
-	cstring[] node2compName;
+	cstring[]	node2funcName;
+	cstring[]	node2compName;
+	bool		emitted = false;
 }
 
 
@@ -134,13 +135,17 @@ void codegen(
 		}
 	}
 
-	File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
-		switch (nodeDomains[nid.id]) {
-			case GPUDomain.Vertex: return " : vert"[];
-			case GPUDomain.Fragment: return " : frag"[];
-			default: assert (false);
-		}
-	}));
+	void outputGraphToDot() {
+		File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
+			switch (nodeDomains[nid.id]) {
+				case GPUDomain.Vertex: return " : vert"[];
+				case GPUDomain.Fragment: return " : frag"[];
+				default: assert (false);
+			}
+		}));
+	}
+
+	outputGraphToDot();
 
 	// ----
 
@@ -401,9 +406,10 @@ void codegen(
 				auto compNode = node.composite();
 				assert (compNode.graph !is null);
 				assert (compNode.graph !is graph);
-				compNode._graphIdx = numGraphs++;
-				assert (compNode._graphIdx != 0);
-				findNumGraphs(compNode.graph);
+				if (compNode._graphIdx != uint.max) {
+					compNode._graphIdx = numGraphs++;
+					findNumGraphs(compNode.graph);
+				}
 			}
 		}
 	}
@@ -419,6 +425,10 @@ void codegen(
 		sink,
 		stack
 	);
+
+	// ----
+
+	outputGraphToDot();
 	
 	// ---- codegen the vertex shader ----
 
@@ -538,6 +548,7 @@ void emitGraphCompositesAndFuncs(
 	uint graphIdx,
 	SubgraphData[] graphs,
 	CodeSink sink,
+	
 	StackBufferUnsafe stack
 ) {
 	alias KernelGraph.NodeType NT;
@@ -573,7 +584,14 @@ void emitGraphCompositesAndFuncs(
 
 			// ---- dump the composite ----
 
-			{
+			if (!graphs[compNode._graphIdx].emitted) {
+				graphs[compNode._graphIdx].emitted = true;
+				
+				removeUnreachableBackwards(
+					compNode.graph.backend_readOnly,
+					compNode.outNode
+				);
+				
 				// reserved for the main graph
 				assert (compNode._graphIdx != 0);
 				
