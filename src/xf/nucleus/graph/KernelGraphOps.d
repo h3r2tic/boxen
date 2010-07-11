@@ -1234,7 +1234,7 @@ private bool buildFunctionSubgraph(
 				// This param will have to be bridged via the Data node
 				
 				formatTmp((Fmt fmt) {
-					fmt("p{}", dataNode.params.length);
+					fmt("comp__p{}", dataNode.params.length);
 				},
 				(cstring pname) {
 					/*
@@ -1398,6 +1398,7 @@ private bool doManualFlow(
 			final dataNodeId = subgraph.addNode(KernelGraph.NodeType.Data);
 			final dataNode = subgraph.getNode(dataNodeId).data();
 
+			compNode.targetFunc = dstFunc;
 			compNode.graph = subgraph;
 			compNode.dataNode = dataNodeId;
 			compNode.inNode = inNodeId;
@@ -1466,7 +1467,7 @@ private bool doManualFlow(
 				&fromNodeInSubgraph
 			);
 
-			Semantic funcOutputPlainSem = Semantic(&graph._mem.pushBack);
+			Semantic funcOutputPlainSem = Semantic(&subgraph._mem.pushBack);
 			
 			findOutputSemantic(
 				funcOutputParam,
@@ -1498,6 +1499,8 @@ private bool doManualFlow(
 				
 				&funcOutputPlainSem
 			);
+
+			compNode.returnType = funcOutputPlainSem.getTrait("type");
 
 			/*
 			 * The function's output param must be convertible to the destination
