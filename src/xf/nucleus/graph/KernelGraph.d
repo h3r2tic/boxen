@@ -97,6 +97,45 @@ class KernelGraph {
 			}
 		}
 
+		void copyTo(Node* other) {
+			assert (type == other.type);
+			if (type & NodeType._Param) {
+				auto src = _param();
+				auto dst = other._param();
+				dst.sourceKernelType = src.sourceKernelType;
+				dst.sourceLightIndex = src.sourceLightIndex;
+				assert (dst.params._allocator !is null);
+				foreach (p; src.params) {
+					dst.params.add(p);
+				}
+			} else {
+				switch (type) {
+					case NodeType.Kernel: {
+						other.kernel.kernel = this.kernel.kernel;
+					} break;
+					case NodeType.Func: {
+						auto src = func();
+						auto dst = other.func();
+						dst.func = src.func;
+						assert (dst.params._allocator !is null);
+						foreach (p; src.params) {
+							dst.params.add(p);
+						}
+					} break;
+					case NodeType.Bridge: {
+						auto src = bridge();
+						auto dst = other.bridge();
+						assert (dst.params._allocator !is null);
+						foreach (p; src.params) {
+							dst.params.add(p);
+						}
+					} break;
+					
+					default: assert (false);
+				}
+			}
+		}
+
 
 		NodeType type() {
 			return _type;
