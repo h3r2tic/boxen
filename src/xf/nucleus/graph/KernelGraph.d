@@ -9,6 +9,7 @@ private {
 	import xf.nucleus.Function;
 	import xf.mem.ChunkQueue;
 	import xf.mem.FreeList;
+	import xf.mem.ScratchAllocator;
 }
 
 
@@ -86,10 +87,13 @@ class KernelGraph {
 
 
 	struct CompositeNode {
-		KernelGraph	graph;
-		GraphNodeId	dataNode;
-		GraphNodeId	inNode;
-		GraphNodeId	outNode;
+		KernelGraph			graph;
+		GraphNodeId			dataNode;
+		GraphNodeId			inNode;
+		GraphNodeId			outNode;
+		cstring				returnType;
+		
+		AbstractFunction	targetFunc;
 
 		alias void* delegate(size_t) Allocator;
 
@@ -155,7 +159,13 @@ class KernelGraph {
 						dst.dataNode = src.dataNode;
 						dst.inNode = src.inNode;
 						dst.outNode = src.outNode;
+						dst.targetFunc = src.targetFunc;
 						assert (dst.params._allocator !is null);
+
+						dst.returnType = DgScratchAllocator(
+							dst.params._allocator
+						).dupString(src.returnType);
+						
 						foreach (p; src.params) {
 							dst.params.add(p);
 						}

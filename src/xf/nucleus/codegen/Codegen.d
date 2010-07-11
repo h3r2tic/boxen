@@ -387,99 +387,227 @@ void codegen(
 	}
 	
 
+	// ---- dump all composites ----
+
+	cstring[] node2compName; {
+		auto _emittedComps = stack.allocArray!(GraphNodeId)(
+			graph.numNodes
+		);
+		uword numEmittedComps = 0;
+		
+		GraphNodeId[] emittedComps() {
+			return _emittedComps[0..numEmittedComps];
+		}
+		
+		node2compName = stack.allocArray!(cstring)(graph.capacity);
+
+		foreach (nid, node; graph.iterNodes) {
+			if (NT.Composite != node.type) {
+				continue;
+			}
+
+			auto compNode = node.composite();
+
+			bool ifaceEmitted = false;
+
+			foreach (emid; emittedComps) {
+				auto c = graph.getNode(emid).composite();
+								
+				if (c.targetFunc.name == compNode.targetFunc.name) {
+					ifaceEmitted = true;
+					break;
+				}
+			}
+
+			final func = compNode.targetFunc;
+
+			if (!ifaceEmitted) {
+				_emittedComps[numEmittedComps++] = nid;
+				sink("interface ")(func.name)(" {").newline;
+				sink('\t');
+				bool returnEmitted = false;
+				foreach (p; func.params) {
+					if (p.isOutput) {
+						assert (!returnEmitted);	// uh oh, only one ret allowed for now (TODO?)
+						returnEmitted = true;
+						sink(compNode.returnType);
+						sink(' ');
+						sink(p.name);
+					}
+				}
+				sink('(').newline;
+				{
+					word i = 0;
+					foreach (p; func.params) {
+						if (p.isInput) {
+							if (i > 0) {
+								sink(',').newline();
+							}
+
+							sink("\t\t")(p.type)(' ')(p.name);
+							++i;
+						}
+					}
+				}
+				sink.newline()("\t);").newline;
+				sink("};").newline;
+			}
+
+			cstring compName; {
+				char[128] buf;
+				compName = Format.sprint(
+					buf,
+					"{}__impl{}",
+					func.name,
+					nid.id
+				);
+				
+				compName =
+					stack.allocArrayNoInit!(char)(compName.length)[] = compName;
+			}
+
+			node2compName[nid.id] = compName;
+
+			// ---- dump the composite ----
+
+			{
+				sink("struct ")(compName)(" : ")(func.name)(" {").newline;
+
+				foreach (p; compNode.graph.getNode(compNode.dataNode).data().params) {
+					sink("\t\t")(p.type)(' ')(p.name)(';').newline;
+				}
+
+				sink('\t');
+				bool returnEmitted = false;
+				foreach (p; func.params) {
+					if (p.isOutput) {
+						assert (!returnEmitted);	// uh oh, only one ret allowed for now (TODO?)
+						returnEmitted = true;
+						sink(compNode.returnType);
+						sink(' ');
+						sink(p.name);
+					}
+				}
+				sink('(').newline;
+				{
+					word i = 0;
+					foreach (p; func.params) {
+						if (p.isInput) {
+							if (i > 0) {
+								sink(',').newline();
+							}
+
+							sink("\t\t")(p.type)(' ')(p.name);
+							++i;
+						}
+					}
+				}
+				sink.newline()("\t) {").newline;
+
+				// codegen the body
+				
+				sink("\t}").newline();
+				sink("};").newline;
+			}
+		}
+	}
+
+
 	// ---- dump all funcs ----
 
-	auto _emittedFuncs = stack.allocArray!(GraphNodeId)(
-		graph.numNodes
-	);
-	uword numEmittedFuncs = 0;
-	
-	GraphNodeId[] emittedFuncs() {
-		return _emittedFuncs[0..numEmittedFuncs];
-	}
-	
-	auto node2funcName = stack.allocArray!(cstring)(graph.capacity);
-
-	funcDumpIter: foreach (nid, node; graph.iterNodes) {
-		if (NT.Func != node.type) {
-			continue;
+	cstring[] node2funcName; {
+		auto _emittedFuncs = stack.allocArray!(GraphNodeId)(
+			graph.numNodes
+		);
+		uword numEmittedFuncs = 0;
+		
+		GraphNodeId[] emittedFuncs() {
+			return _emittedFuncs[0..numEmittedFuncs];
 		}
+		
+		node2funcName = stack.allocArray!(cstring)(graph.capacity);
 
-		auto	funcNode = node.func();
-		uword	overloadIndex = 0;
+		funcDumpIter: foreach (nid, node; graph.iterNodes) {
+			if (NT.Func != node.type) {
+				continue;
+			}
 
-		overloadSearch: foreach (emid; emittedFuncs) {
-			auto f = graph.getNode(emid).func();
-			
-			if (f.func.name == funcNode.func.name) {
-				if (f.params.length != funcNode.func.params.length) {
-					++overloadIndex;
-					continue overloadSearch;
-				}
+			auto	funcNode = node.func();
+			uword	overloadIndex = 0;
+
+			overloadSearch: foreach (emid; emittedFuncs) {
+				auto f = graph.getNode(emid).func();
 				
-				foreach (i, p1; f.params) {
-					assert (p1.hasTypeConstraint);
-					auto p2 = funcNode.params[i];
-					assert (p2.hasTypeConstraint);
-
-					if (p1.type() != p2.type()) {
+				if (f.func.name == funcNode.func.name) {
+					if (f.params.length != funcNode.func.params.length) {
 						++overloadIndex;
 						continue overloadSearch;
 					}
+					
+					foreach (i, p1; f.params) {
+						assert (p1.hasTypeConstraint);
+						auto p2 = funcNode.params[i];
+						assert (p2.hasTypeConstraint);
+
+						if (p1.type() != p2.type()) {
+							++overloadIndex;
+							continue overloadSearch;
+						}
+					}
+
+					// no param types differ, use this overload
+					node2funcName[nid.id] = node2funcName[emid.id];
+					continue funcDumpIter;
 				}
-
-				// no param types differ, use this overload
-				node2funcName[nid.id] = node2funcName[emid.id];
-				continue funcDumpIter;
 			}
-		}
 
-		_emittedFuncs[numEmittedFuncs++] = nid;
+			_emittedFuncs[numEmittedFuncs++] = nid;
 
-		cstring funcName; {
-			if (0 == overloadIndex) {
-				funcName = funcNode.func.name;
-			} else {
-				char[128] buf;
-				funcName = Format.sprint(
-					buf,
-					"{}__overload{}",
-					funcNode.func.name,
-					overloadIndex
-				);
+			cstring funcName; {
+				if (0 == overloadIndex) {
+					funcName = funcNode.func.name;
+				} else {
+					char[128] buf;
+					funcName = Format.sprint(
+						buf,
+						"{}__overload{}",
+						funcNode.func.name,
+						overloadIndex
+					);
+					
+					funcName =
+						stack.allocArrayNoInit!(char)(funcName.length)[] = funcName;
+				}
+			}
+
+			node2funcName[nid.id] = funcName;
+
+			// ---- dump the func ----
+
+			sink.formatln("void {} (", funcName);
+			
+			foreach (i, par; funcNode.params) {
+				sink("\t");
+				sink(.toString(par.dir));
+				sink(" ");
+				sink(par.type);
+				sink(" ");
+				sink(par.name);
 				
-				funcName =
-					stack.allocArrayNoInit!(char)(funcName.length)[] = funcName;
-			}
-		}
-
-		node2funcName[nid.id] = funcName;
-
-		// ---- dump the func ----
-
-		sink.formatln("void {} (", funcName);
-		
-		foreach (i, par; funcNode.params) {
-			sink("\t");
-			sink(.toString(par.dir));
-			sink(" ");
-			sink(par.type);
-			sink(" ");
-			sink(par.name);
-			
-			if (i+1 != funcNode.params.length) {
-				sink(",");
+				if (i+1 != funcNode.params.length) {
+					sink(",");
+				}
+				
+				sink.newline();
 			}
 			
+			sink(") {").newline();
+			funcNode.func.code.writeOut((char[] text) {
+				sink(text);
+			});
 			sink.newline();
+			sink("}").newline();
 		}
-		
-		sink(") {").newline();
-		funcNode.func.code.writeOut((char[] text) {
-			sink(text);
-		});
-		sink.newline();
-		sink("}").newline();
 	}
 	
 	// ---- codegen the vertex shader ----
@@ -501,7 +629,8 @@ void codegen(
 				}
 			}
 		},
-		node2funcName
+		node2funcName,
+		node2compName
 	);
 
 	// ---- codegen the fragment shader ----
@@ -523,7 +652,8 @@ void codegen(
 				}
 			}
 		},
-		node2funcName
+		node2funcName,
+		node2compName
 	);
 }
 
@@ -535,7 +665,8 @@ void domainCodegen(
 	CgParam[] inputs,
 	CgParam[] outputs,
 	void delegate(void delegate(GraphNodeId)) nodesTopo,
-	cstring[] node2funcName
+	cstring[] node2funcName,
+	cstring[] node2compName
 ) {
 	auto sink = ctx.sink;
 	
@@ -592,7 +723,7 @@ void domainCodegen(
 
 	sink(") {").newline();
 
-	domainCodegenBody(ctx, nodesTopo, node2funcName);
+	domainCodegenBody(ctx, nodesTopo, node2funcName, node2compName);
 
 	foreach (i, par; outputs) {
 		sink.format("\tbridge__{} = ", i);
@@ -630,7 +761,8 @@ void domainCodegen(
 void domainCodegenBody(
 	CodegenContext ctx,
 	void delegate(void delegate(GraphNodeId)) nodesTopo,
-	cstring[] node2funcName
+	cstring[] node2funcName,
+	cstring[] node2compName
 ) {
 	alias KernelGraph.NodeType NT;
 
@@ -672,6 +804,47 @@ void domainCodegenBody(
 				emitSourceParamName(ctx, srcNid, srcParam.name);
 
 				sink(';').newline();
+			}
+		} else if (NT.Composite == node.type) {
+			auto compName = node2compName[nid.id];
+			assert (compName !is null);
+
+			sink('\t')(compName)(' ');
+			const compOutputName = "kernel";	// TODO: move the name to a common place
+			emitSourceParamName(ctx, nid, compOutputName);
+			sink(';').newline();
+
+			auto params = &node.composite().params;
+			
+			foreach (i, par; *params) {
+				if (par.isInput) {
+					sink('\t');
+
+					emitSourceParamName(ctx, nid, compOutputName);
+					sink('.');
+					sink(par.name)(" = ");
+
+					GraphNodeId	srcNid;
+					Param*		srcParam;
+
+					if (!findSrcParam(
+						ctx.graph,
+						nid,
+						par.name,
+						&srcNid,
+						&srcParam
+					)) {
+						error(
+							"No flow to {}.{}. Should have been caught earlier.",
+							nid.id,
+							par.name
+						);
+					}
+
+					emitSourceParamName(ctx, srcNid, srcParam.name);
+
+					sink(';').newline();
+				}
 			}
 		} else if (NT.Func == node.type) {
 			auto params = &node.func().params;
