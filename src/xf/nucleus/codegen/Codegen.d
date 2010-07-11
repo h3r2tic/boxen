@@ -30,6 +30,12 @@ struct CodegenSetup {
 }
 
 
+private struct SubgraphData {
+	cstring[] node2funcName;
+	cstring[] node2compName;
+}
+
+
 void codegen(
 	KernelGraph graph,
 	CodegenSetup setup,
@@ -385,7 +391,86 @@ void codegen(
 			}
 		}
 	}
+
+	word numGraphs = 1;
+	void findNumGraphs(KernelGraph graph) {
+		foreach (nid, node; graph.iterNodes) {
+			if (NT.Composite == node.type) {
+				auto compNode = node.composite();
+				assert (compNode.graph !is null);
+				compNode._graphIdx = numGraphs++;
+				findNumGraphs(compNode.graph);
+			}
+		}
+	}
+	findNumGraphs(graph);
+
+	final graphs = stack.allocArray!(SubgraphData)(numGraphs);
+	emitGraphCompositesAndFuncs(
+		graph,
+		0,
+		graphs,
+		sink,
+		stack
+	);
 	
+	// ---- codegen the vertex shader ----
+
+	domainCodegen(
+		CodegenContext(
+			sink,
+			GPUDomain.Vertex,
+			graph,
+			nodeDomains
+		),
+		"VertexProgram",
+		vinputs,
+		voutputs,
+		(void delegate(GraphNodeId) sink) {
+			foreach (nid; topological) {
+				if (GPUDomain.Vertex == nodeDomains[nid.id]) {
+					sink(nid);
+				}
+			}
+		},
+		graphs[0].node2funcName,
+		graphs[0].node2compName
+	);
+
+	// ---- codegen the fragment shader ----
+
+	domainCodegen(
+		CodegenContext(
+			sink,
+			GPUDomain.Fragment,
+			graph,
+			nodeDomains
+		),
+		"FragmentProgram",
+		finputs[1..$],	// without the POSITION param
+		foutputs,
+		(void delegate(GraphNodeId) sink) {
+			foreach (nid; topological) {
+				if (GPUDomain.Fragment == nodeDomains[nid.id]) {
+					sink(nid);
+				}
+			}
+		},
+		graphs[0].node2funcName,
+		graphs[0].node2compName
+	);
+}
+
+
+
+void emitGraphCompositesAndFuncs(
+	KernelGraph graph,
+	uint graphIdx,
+	SubgraphData[] graphs,
+	CodeSink sink,
+	StackBufferUnsafe stack
+) {
+	alias KernelGraph.NodeType NT;
 
 	// ---- dump all composites ----
 
@@ -457,9 +542,10 @@ void codegen(
 				char[128] buf;
 				compName = Format.sprint(
 					buf,
-					"{}__impl{}",
+					"{}__impl{}_g{}",
 					func.name,
-					nid.id
+					nid.id,
+					graphIdx
 				);
 				
 				compName =
@@ -471,6 +557,14 @@ void codegen(
 			// ---- dump the composite ----
 
 			{
+				emitGraphCompositesAndFuncs(
+					compNode.graph,
+					compNode._graphIdx,
+					graphs,
+					sink,
+					stack
+				);
+
 				sink("struct ")(compName)(" : ")(func.name)(" {").newline;
 
 				foreach (p; compNode.graph.getNode(compNode.dataNode).data().params) {
@@ -505,7 +599,63 @@ void codegen(
 				sink.newline()("\t) {").newline;
 
 				// codegen the body
+
+				File.set("graph.dot", toGraphviz(compNode.graph));
+
+				auto topological = stack.allocArray!(GraphNodeId)(compNode.graph.numNodes);
+				findTopologicalOrder(compNode.graph.backend_readOnly, topological);
+
+				final ctx = CodegenContext(
+					sink,
+					GPUDomain.Unresolved,
+					compNode.graph,
+					null
+				);
+
+				domainCodegenBody(
+					ctx,
+					(void delegate(GraphNodeId) sink) {
+						foreach (nid; topological) {
+							sink(nid);
+						}
+					},
+					graphs[compNode._graphIdx].node2funcName,
+					graphs[compNode._graphIdx].node2compName
+				);
 				
+				{
+					cstring retName;
+					foreach (p; func.params) {
+						if (p.isOutput) {
+							assert (retName is null);	// uh oh, only one ret allowed for now (TODO?)
+							retName = p.name;
+						}
+					}
+
+					sink.newline()("\t\treturn ");
+
+					GraphNodeId	srcNid;
+					Param*		srcParam;
+
+					if (!findSrcParam(
+						compNode.graph,
+						compNode.outNode,
+						retName,
+						&srcNid,
+						&srcParam
+					)) {
+						error(
+							"No flow to {}.{}. Should have been caught earlier.",
+							compNode.outNode,
+							retName
+						);
+					}
+
+					emitSourceParamName(ctx, srcNid, srcParam.name);
+
+					sink(';').newline();
+				}
+
 				sink("\t}").newline();
 				sink("};").newline;
 			}
@@ -564,15 +714,16 @@ void codegen(
 			_emittedFuncs[numEmittedFuncs++] = nid;
 
 			cstring funcName; {
-				if (0 == overloadIndex) {
+				if (0 == overloadIndex && 0 == graphIdx) {
 					funcName = funcNode.func.name;
 				} else {
 					char[128] buf;
 					funcName = Format.sprint(
 						buf,
-						"{}__overload{}",
+						"{}__overload{}_g{}",
 						funcNode.func.name,
-						overloadIndex
+						overloadIndex,
+						graphIdx
 					);
 					
 					funcName =
@@ -609,52 +760,9 @@ void codegen(
 			sink("}").newline();
 		}
 	}
-	
-	// ---- codegen the vertex shader ----
 
-	domainCodegen(
-		CodegenContext(
-			sink,
-			GPUDomain.Vertex,
-			graph,
-			nodeDomains
-		),
-		"VertexProgram",
-		vinputs,
-		voutputs,
-		(void delegate(GraphNodeId) sink) {
-			foreach (nid; topological) {
-				if (GPUDomain.Vertex == nodeDomains[nid.id]) {
-					sink(nid);
-				}
-			}
-		},
-		node2funcName,
-		node2compName
-	);
-
-	// ---- codegen the fragment shader ----
-
-	domainCodegen(
-		CodegenContext(
-			sink,
-			GPUDomain.Fragment,
-			graph,
-			nodeDomains
-		),
-		"FragmentProgram",
-		finputs[1..$],	// without the POSITION param
-		foutputs,
-		(void delegate(GraphNodeId) sink) {
-			foreach (nid; topological) {
-				if (GPUDomain.Fragment == nodeDomains[nid.id]) {
-					sink(nid);
-				}
-			}
-		},
-		node2funcName,
-		node2compName
-	);
+	graphs[graphIdx].node2funcName = node2funcName;
+	graphs[graphIdx].node2compName = node2compName;
 }
 
 
