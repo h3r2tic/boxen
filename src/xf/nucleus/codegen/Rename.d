@@ -52,13 +52,16 @@ void emitSourceParamName(
 
 	final node = ctx.graph.getNode(nid);
 	
-	if (
-			NT.Input == node.type
-		&&	ctx.nodeDomains[nid.id] == ctx.domain
-	) {
-		// Can only have Input nodes for structure kernels
-		ctx.sink("structure__");
-		ctx.sink(pname);
+	if (NT.Input == node.type) {
+		if (ctx.nodeDomains is null) {
+			ctx.sink(pname);
+		} else if (ctx.nodeDomains[nid.id] == ctx.domain) {
+			ctx.sink("structure__");
+			ctx.sink(pname);
+		} else {
+			ctx.sink('n')(nid.id)("__");
+			ctx.sink(pname);
+		}
 	} else if (
 		NT.Data == node.type
 	) {

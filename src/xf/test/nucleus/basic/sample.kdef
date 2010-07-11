@@ -119,7 +119,7 @@ TestPigment = graph Pigment {
 			someImg <type Image>
 		) {
 			radiance = diffuse * albedoTint * albedoTexColor + specular;
-			radiance *= someImg.sample(float2(1, 1));
+			radiance *= someImg.sample(texCoord);
 			/+float lum = dot(radiance.xyz, float3(0.2126, 0.7152, 0.0722));
 			float lum2 = lum;
 			lum2 *= 2.0;

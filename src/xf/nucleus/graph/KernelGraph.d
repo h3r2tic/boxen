@@ -92,6 +92,7 @@ class KernelGraph {
 		GraphNodeId			inNode;
 		GraphNodeId			outNode;
 		cstring				returnType;
+		uint				_graphIdx;		// no need to dup, used in codegen
 		
 		AbstractFunction	targetFunc;
 
