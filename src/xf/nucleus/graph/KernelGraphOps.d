@@ -929,9 +929,29 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 						}
 					}
 
-					assert (fromName !is null, "No flow D:");
-					return *graph.getNode(fromId)
-						.getOutputParam(fromName).semantic();
+					if (fromName !is null) {
+						Param* dstParam;
+						if (params.getInput(name, &dstParam)) {
+							assert (dstParam !is null);
+							if (!dstParam.wantAutoFlow) {
+								error(
+									"Output param {} of kernel {} used by node {}"
+									" has an semantic expression using the actual"
+									" parameter of the input {}, which has been"
+									" marked as noauto and has no direct connection.",
+									par.name, node.func.func.name, id.id,
+									name
+								);
+							}
+						} else {
+							assert (false, name);
+						}
+
+						return *graph.getNode(fromId)
+							.getOutputParam(fromName).semantic();
+					} else {
+						assert (false, "No flow D:");
+					}
 				},
 				
 				&plainSem
@@ -1045,6 +1065,12 @@ private void doAutoFlow(
 	DynamicBitSet portHasDataFlow;
 	portHasDataFlow.alloc(plist.length, (uword num) { return stack.allocRaw(num); });
 	portHasDataFlow.clearAll();
+
+	foreach (i, param; *plist) {
+		if (!param.wantAutoFlow) {
+			portHasDataFlow.set(i);
+		}
+	}
 
 	// Note: O (cons * flow * inputPorts). Maybe too slow?
 	foreach (fromId; graph.flow.iterIncomingConnections(toId)) {

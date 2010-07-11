@@ -57,7 +57,7 @@ class KDefParser:KDefParserBase{
 	/*
 	Statement
 		= Statement st
-		::= AssignStatement:st | ImportStatement:st | ConnectStatement:st | ConverterDeclStatement:st;
+		::= AssignStatement:st | ImportStatement:st | ConnectStatement:st | NoAutoFlowStatement:st | ConverterDeclStatement:st;
 
 	*/
 	Statement value_Statement;
@@ -84,6 +84,12 @@ class KDefParser:KDefParserBase{
 				goto pass0;
 			}
 		term4:
+			// Production
+			if(parse_NoAutoFlowStatement()){
+				smartAssign(var_st,value_NoAutoFlowStatement);
+				goto pass0;
+			}
+		term5:
 			// Production
 			if(!parse_ConverterDeclStatement()){
 				goto fail1;
@@ -146,6 +152,48 @@ class KDefParser:KDefParserBase{
 		fail1:
 			value_ConnectStatement = (ConnectStatement).init;
 			debug Stdout.format("\tparse_ConnectStatement failed").newline;
+			return false;
+	}
+
+	/*
+	NoAutoFlowStatement
+		= NoAutoFlowStatement createNoAutoFlowStatement(string to)
+		::= "noauto" Identifier:to ";";
+
+	*/
+	NoAutoFlowStatement value_NoAutoFlowStatement;
+	bool parse_NoAutoFlowStatement(){
+		debug Stdout("parse_NoAutoFlowStatement").newline;
+		string var_to;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("noauto")){
+					goto fail4;
+				}
+			term5:
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_to,value_Identifier);
+			term6:
+				// Terminal
+				if(match(";")){
+					goto pass0;
+				}
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_NoAutoFlowStatement = createNoAutoFlowStatement(var_to);
+			debug Stdout.format("\tparse_NoAutoFlowStatement passed: {0}",value_NoAutoFlowStatement).newline;
+			return true;
+		fail1:
+			value_NoAutoFlowStatement = (NoAutoFlowStatement).init;
+			debug Stdout.format("\tparse_NoAutoFlowStatement failed").newline;
 			return false;
 	}
 

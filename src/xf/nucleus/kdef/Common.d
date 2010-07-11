@@ -328,6 +328,7 @@ final class GraphDef : Scope, IGraphDef {
 	GraphDefNode[]			_nodes;
 	NodeConnection[]		nodeConnections;
 	NodeFieldConnection[]	nodeFieldConnections;
+	NoAutoFlow[]			noAutoFlow;
 	
 	struct NodeConnection {
 		GraphDefNode from, to;
@@ -336,6 +337,11 @@ final class GraphDef : Scope, IGraphDef {
 	struct NodeFieldConnection {
 		GraphDefNode fromNode, toNode;
 		string from, to;
+	}
+
+	struct NoAutoFlow {
+		GraphDefNode toNode;
+		string to;
 	}
 	
 	GraphDefNode getNode(string name) {
@@ -359,6 +365,23 @@ final class GraphDef : Scope, IGraphDef {
 
 	size_t numNodes() {
 		return _nodes.length;
+	}
+
+
+	void setNoAuto(string[] toArr) {
+		noAutoFlow = mem.allocArrayNoInit!(NoAutoFlow)(toArr.length);
+		
+		foreach (i, to_; toArr) {
+			string toName;
+			auto toScope = getValueOwner(to_, &toName);
+
+			if (auto toNode = cast(GraphDefNode)toScope) {
+				noAutoFlow[i] = NoAutoFlow(toNode, toName);
+			} else {
+				// TODO?
+				throw new Exception("Can only use noauto on nodes.");
+			}
+		}
 	}
 	
 	
@@ -569,6 +592,23 @@ class ConnectStatement : Statement {
 	override bool opEquals(Statement other) {
 		if (auto o = cast(ConnectStatement)other) {
 			return from == o.from && to == o.to;
+		} else {
+			return false;
+		}
+	}
+}
+
+
+class NoAutoFlowStatement : Statement {
+	string to;
+	
+	this (string to) {
+		this.to = to;
+	}
+
+	override bool opEquals(Statement other) {
+		if (auto o = cast(NoAutoFlowStatement)other) {
+			return to == o.to;
 		} else {
 			return false;
 		}
