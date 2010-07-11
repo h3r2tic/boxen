@@ -1150,7 +1150,7 @@ private bool buildFunctionSubgraph(
 		void delegate(Param*, GraphNodeId) freeParamSink,
 		KernelGraph newGraph,
 		GraphNodeId newGraphDataNode,
-		GraphNodeId oldGraphFuncNode,
+		GraphNodeId oldGraphCompNode,
 		GraphNodeId* newNode
 ) {
 	bool result = false;
@@ -1184,7 +1184,7 @@ private bool buildFunctionSubgraph(
 			freeParamSink,
 			newGraph,
 			newGraphDataNode,
-			oldGraphFuncNode,
+			oldGraphCompNode,
 			&prevNode
 		)) {
 			if (!result) {
@@ -1209,14 +1209,18 @@ private bool buildFunctionSubgraph(
 					node.copyTo(newGraph.getNode(*newNode));
 					result = true;
 				}
-				freeParamSink(&param, id);
+				
+				freeParamSink(
+					newGraph.getNode(*newNode).getInputParam(param.name),
+					*newNode
+				);
 			}
 		}
 	}
 
 	if (result) {
 		auto dataNode = newGraph.getNode(newGraphDataNode).data();
-		auto oldFuncNode = graph.getNode(oldGraphFuncNode).func();
+		auto oldCompNode = graph.getNode(oldGraphCompNode).composite();
 		
 		foreach (i, ref param; *plist) {
 			if (paramHasInput.isSet(i)) {
@@ -1267,7 +1271,7 @@ private bool buildFunctionSubgraph(
 					 * we're building in the old graph
 					 */
 
-					auto fparam = oldFuncNode.params.add(param, pname);
+					auto fparam = oldCompNode.params.add(param, pname);
 					fparam.dir = ParamDirection.In;
 
 					/*
@@ -1277,7 +1281,7 @@ private bool buildFunctionSubgraph(
 					graph.flow.addDataFlow(
 						oldSrcNid,
 						oldSrcParam.name,
-						oldGraphFuncNode,
+						oldGraphCompNode,
 						pname
 					);
 				});
@@ -1348,23 +1352,47 @@ private bool doManualFlow(
 
 			assert (funcOutputParam !is null);
 
+			KernelGraph subgraph = createKernelGraph();
+
 			/*
 			 * There will be a subgraph of comprising the nodes being used in
 			 * functional composition. Create an output node for it
 			 */
-			final outNodeId = graph.addNode(KernelGraph.NodeType.Output);
-			final outNode = graph.getNode(outNodeId);
-			final outNodeParam = outNode.output.params.add(*funcOutputParam);
+			final outNodeId = subgraph.addNode(KernelGraph.NodeType.Output);
+			final outNode = subgraph.getNode(outNodeId).output();
+			final outNodeParam = outNode.params.add(*funcOutputParam);
 			outNodeParam.dir = ParamDirection.In;
 
 			/*
 			 * Similarly with the input node.
 			 */
-			final inNodeId = graph.addNode(KernelGraph.NodeType.Input);
-			final inNode = graph.getNode(inNodeId);
+			final inNodeId = subgraph.addNode(KernelGraph.NodeType.Input);
+			final inNode = subgraph.getNode(inNodeId).input();
 			foreach (ref param; dstFunc.params) {
-				inNode.input.params.add(param).dir = ParamDirection.Out;
+				inNode.params.add(param).dir = ParamDirection.Out;
 			}
+
+			const kernelOutputName = "kernel";
+
+			/*
+			 * The functional composition will happen via a Composite node which
+			 * will reside in the original graph and codegen into a struct in Cg
+			 */
+			final compNodeId = graph.addNode(KernelGraph.NodeType.Composite);
+			final compNode = graph.getNode(compNodeId).composite();
+			auto compOutParam = compNode.params.add(ParamDirection.Out, kernelOutputName);
+			compOutParam.type = toParam.type;
+
+			/*
+			 * Params which go into the composition node on the side of the old
+			 * graph, will appear in a data node on the side of the new graph.
+			 */
+			final dataNodeId = subgraph.addNode(KernelGraph.NodeType.Data);
+			final dataNode = subgraph.getNode(dataNodeId).data();
+
+			compNode.dataNode = dataNodeId;
+			compNode.inNode = inNodeId;
+			compNode.outNode = outNodeId;
 
 			/*
 			 * The input node's params must now be connected to the params in the
@@ -1373,10 +1401,12 @@ private bool doManualFlow(
 			 * to each of them
 			 */
 
-			findFreeParamsInSubtree(
+			GraphNodeId fromNodeInSubgraph;
+
+			buildFunctionSubgraph(
 				graph,
 				fromId,
-				
+
 				/* paramFilter */
 				(Param* param) {
 					assert (param.isInput);
@@ -1387,10 +1417,12 @@ private bool doManualFlow(
 					}
 					return false;
 				},
-
+				
 				/* freeParamSink */
 				(Param* param, GraphNodeId node) {
-					Param* inParam = inNode.getOutputParam(param.name);
+					Param* inParam = null;
+					inNode.params.getOutput(param.name, &inParam);
+					assert (inParam !is null);
 					
 					if (!findConversion(
 						*inParam.semantic,
@@ -1399,7 +1431,7 @@ private bool doManualFlow(
 						stack,
 						(ConvSinkItem[] convChain) {
 							_insertConversionNodes(
-								graph,
+								subgraph,
 								convChain,
 								inNodeId,
 								inParam,
@@ -1417,7 +1449,12 @@ private bool doManualFlow(
 							toParam.type, funcOutputParam.toString
 						);
 					}
-				}
+				},
+
+				subgraph,
+				dataNodeId,
+				compNodeId,
+				&fromNodeInSubgraph
 			);
 
 			/*
@@ -1434,9 +1471,9 @@ private bool doManualFlow(
 				stack,
 				(ConvSinkItem[] convChain) {
 					_insertConversionNodes(
-						graph,
+						subgraph,
 						convChain,
-						fromId,
+						fromNodeInSubgraph,
 						fromParam,
 						outNodeId,
 						outNodeParam
@@ -1454,14 +1491,20 @@ private bool doManualFlow(
 			}
 
 			/*
-			 * Finally, construct a Function node containing the subgraph as the
-			 * function definition so the rest is done by the codegen phase
+			 * Finally, connect the output of the Composite node with the
+			 * destination param from which we started the operation
 			 */
+			graph.flow.addDataFlow(
+				compNodeId,
+				kernelOutputName,
+				toId,
+				toParam.name
+			);
 
-			
-
-			// new connections were added, remove the original one which caused
-			// the manual data flow func to be invoked
+			/*
+			 * New connections were added, remove the original one which caused
+			 * the manual data flow func to be invoked.
+			 */
 			return true;
 		}
 	}

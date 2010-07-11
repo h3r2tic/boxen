@@ -47,6 +47,7 @@ class KernelGraph {
 		Kernel	= (4 << 1),
 		Func	= (5 << 1),
 		Bridge	= (6 << 1),
+		Composite = (7 << 1),
 	}
 
 
@@ -84,19 +85,36 @@ class KernelGraph {
 	}
 
 
+	struct CompositeNode {
+		KernelGraph	graph;
+		GraphNodeId	dataNode;
+		GraphNodeId	inNode;
+		GraphNodeId	outNode;
+
+		alias void* delegate(size_t) Allocator;
+
+		union {
+			ParamList	params;
+			Allocator	_allocator;
+		}
+	}
+
+
 	struct Node {
 		private {
 			NodeType	_type;
 
 			union {
-				ParamNode	_inputOutputData;
-				KernelNode	_kernel;
-				FuncNode	_func;
-				BridgeNode	_bridge;
-				Node*		_freeListNext;
+				ParamNode		_inputOutputData;
+				KernelNode		_kernel;
+				FuncNode		_func;
+				BridgeNode		_bridge;
+				CompositeNode	_composite;
+				Node*			_freeListNext;
 			}
 		}
 
+		// Doesn't perform a deep copy for composite nodes
 		void copyTo(Node* other) {
 			assert (type == other.type);
 			if (type & NodeType._Param) {
@@ -130,6 +148,18 @@ class KernelGraph {
 							dst.params.add(p);
 						}
 					} break;
+					case NodeType.Composite: {
+						auto src = composite();
+						auto dst = other.composite();
+						dst.graph = src.graph;
+						dst.dataNode = src.dataNode;
+						dst.inNode = src.inNode;
+						dst.outNode = src.outNode;
+						assert (dst.params._allocator !is null);
+						foreach (p; src.params) {
+							dst.params.add(p);
+						}
+					} break;
 					
 					default: assert (false);
 				}
@@ -149,6 +179,7 @@ class KernelGraph {
 				case NodeType.Kernel: return "Kernel";
 				case NodeType.Func: return "Func";
 				case NodeType.Bridge: return "Bridge";
+				case NodeType.Composite: return "Composite";
 				default: assert (false);
 			}
 		}
@@ -183,6 +214,11 @@ class KernelGraph {
 			return &_bridge;
 		}
 
+		CompositeNode* composite() {
+			assert (NodeType.Composite == type);
+			return &_composite;
+		}
+
 		ParamNode* _param() {
 			assert(NodeType._Param & type);
 			return &_inputOutputData;
@@ -193,10 +229,11 @@ class KernelGraph {
 				cstring name
 		) {
 			switch (_type) {
-				case NodeType.Output:	return null;
-				case NodeType.Input:	// fall through
-				case NodeType.Data:		return _inputOutputData.params.get(name);
-				case NodeType.Bridge:	return _bridge.params.get(name);
+				case NodeType.Output:		return null;
+				case NodeType.Input:		// fall through
+				case NodeType.Data:			return _inputOutputData.params.get(name);
+				case NodeType.Bridge:		return _bridge.params.get(name);
+				case NodeType.Composite:	return _composite.params.get(name);
 				default: {
 					final p = getParamList().get(name);
 					if (p.isInput) {
@@ -217,10 +254,11 @@ class KernelGraph {
 				cstring name
 		) {
 			switch (_type) {
-				case NodeType.Output:	return _inputOutputData.params.get(name);
-				case NodeType.Input:	// fall through
-				case NodeType.Data:		return null;
-				case NodeType.Bridge:	return _bridge.params.get(name);
+				case NodeType.Output:		return _inputOutputData.params.get(name);
+				case NodeType.Input:		// fall through
+				case NodeType.Data:			return null;
+				case NodeType.Bridge:		return _bridge.params.get(name);
+				case NodeType.Composite:	return _composite.params.get(name);
 				default: {
 					final p = getParamList().get(name);
 					if (false == p.isInput) {
@@ -239,11 +277,12 @@ class KernelGraph {
 
 		ParamList* getParamList() {
 			switch (_type) {
-				case NodeType.Output:	// fall through
-				case NodeType.Input:	// fall through
-				case NodeType.Data:		return &_inputOutputData.params;
-				case NodeType.Func:		return &_func.params;
-				case NodeType.Bridge:	return &_bridge.params;
+				case NodeType.Output:		// fall through
+				case NodeType.Input:		// fall through
+				case NodeType.Data:			return &_inputOutputData.params;
+				case NodeType.Func:			return &_func.params;
+				case NodeType.Bridge:		return &_bridge.params;
+				case NodeType.Composite:	return &_composite.params;
 				
 				case NodeType.Kernel: {
 					auto k = _kernel.kernel;
@@ -308,6 +347,10 @@ class KernelGraph {
 
 		if (NodeType.Bridge == t) {
 			node.bridge._allocator = &_mem.pushBack;
+		}
+
+		if (NodeType.Composite == t) {
+			node.composite._allocator = &_mem.pushBack;
 		}
 		
 		return id;
@@ -463,6 +506,16 @@ KernelGraph createKernelGraph() {
 
 void disposeKernelGraph(ref KernelGraph g) {
 	assert (g !is null);
+
+	foreach (nid; g.iterNodes) {
+		auto node = g.getNode(nid);
+		if (KernelGraph.NodeType.Composite == node.type) {
+			auto comp = node.composite();
+			disposeKernelGraph(comp.graph);
+			comp.graph = null;
+		}
+	}
+	
 	g._dtor();
 	memset(cast(void*)g, 0xcb, KernelGraph.classinfo.init.length);
 	_kernelGraphFreeList.free(cast(void*)g);
