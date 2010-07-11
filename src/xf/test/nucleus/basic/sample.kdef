@@ -136,6 +136,79 @@ TestPigment = graph Pigment {
 			albedoTint <type float4 + use color> = 1 1 1 1,
 			albedoTex <type sampler2D + use color>,
 			blurOffset <type float2> = 0.002 0.002,
+			albedoScale <type float4> = 4 4 4 4
+		);
+	};
+	ns = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	nb = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+	nsub = node {
+		type = kernel;
+		kernel = Sub;
+	};
+	nmul = node {
+		type = kernel;
+		kernel = Mul;
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Pigment(
+			albedoTint <type float4 + use color>,
+			someImg <type Image>
+		) {
+			float4 albedo = diffuse * albedoTint * abs(someImg.sample(texCoord));
+			radiance = albedo + specular;
+/+			radiance = someImg.sample(texCoord);
+			radiance = abs(radiance);+/
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	// ----
+
+	connect n1 ns;
+
+	connect n1.blurOffset nb.offset;
+	connect ns.sample nb.img;		// albedo tex -> blur
+
+	connect nb.sample nsub.a;
+	connect ns.sample nsub.b;
+
+	connect nsub.c nmul.a;			// blurred - orig
+	connect n1.albedoScale nmul.b;
+
+	connect nmul.c n2.someImg;		
+
+	// ----
+
+	noauto nb.uv;
+	noauto ns.uv;
+
+	// ----
+
+	connect n0 n2;
+	connect n1.albedoTint n2.albedoTint;
+	connect n2 n3;
+};
+
+
+TestPigment2 = graph Pigment {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D + use color>,
+			blurOffset <type float2> = 0.002 0.002,
 			checkerSize <type float2> = 30 30
 		);
 	};

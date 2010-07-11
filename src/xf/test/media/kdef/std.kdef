@@ -2,6 +2,18 @@ Add = kernel <linear> (in a, in b,	out c <in.a.actual>) {
 	c = a + b;
 };
 
+Sub = kernel <linear> (in a, in b,	out c <in.a.actual>) {
+	c = a - b;
+};
+
+Mul = kernel <linear> (in a, in b,	out c <in.a.actual>) {
+	c = a * b;
+};
+
+Div = kernel <linear> (in a, in b,	out c <in.a.actual>) {
+	c = a / b;
+};
+
 Tex2D = kernel (
 	in texture <type sampler2D>,
 	in uv <type float2 + use uv>,
