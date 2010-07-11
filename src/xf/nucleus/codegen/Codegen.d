@@ -14,6 +14,7 @@ private {
 	import xf.gfx.Defs : GPUDomain;
 	import xf.utils.BitSet;
 	import xf.mem.StackBuffer;
+	import xf.mem.SmallTempArray;
 	import xf.nucleus.Log : error = nucleusError;
 
 	import Integer = tango.text.convert.Integer;
@@ -381,7 +382,8 @@ void codegen(
 						sink,
 						GPUDomain.Unresolved,
 						graph,
-						nodeDomains
+						nodeDomains,
+						1
 					),
 					nid,
 					param.name
@@ -394,16 +396,20 @@ void codegen(
 
 	word numGraphs = 1;
 	void findNumGraphs(KernelGraph graph) {
-		foreach (nid, node; graph.iterNodes) {
+		foreach (nid, ref node; graph.iterNodes) {
 			if (NT.Composite == node.type) {
 				auto compNode = node.composite();
 				assert (compNode.graph !is null);
+				assert (compNode.graph !is graph);
 				compNode._graphIdx = numGraphs++;
+				assert (compNode._graphIdx != 0);
 				findNumGraphs(compNode.graph);
 			}
 		}
 	}
 	findNumGraphs(graph);
+	
+	emitInterfaces(graph, sink);
 
 	final graphs = stack.allocArray!(SubgraphData)(numGraphs);
 	emitGraphCompositesAndFuncs(
@@ -421,7 +427,8 @@ void codegen(
 			sink,
 			GPUDomain.Vertex,
 			graph,
-			nodeDomains
+			nodeDomains,
+			1
 		),
 		"VertexProgram",
 		vinputs,
@@ -444,7 +451,8 @@ void codegen(
 			sink,
 			GPUDomain.Fragment,
 			graph,
-			nodeDomains
+			nodeDomains,
+			1
 		),
 		"FragmentProgram",
 		finputs[1..$],	// without the POSITION param
@@ -462,6 +470,68 @@ void codegen(
 }
 
 
+void emitInterfaces(KernelGraph graph, CodeSink sink) {
+	scope stack = new StackBuffer;
+	mixin MSmallTempArray!(cstring) emittedComps;
+
+	/+// HACK
+	emittedComps.pushBack("Image", &stack.allocRaw);+/
+	
+	void worker(KernelGraph graph) {
+		foreach (nid, node; graph.iterNodes) {
+			if (KernelGraph.NodeType.Composite == node.type) {
+				auto compNode = node.composite();
+				worker(compNode.graph);
+
+				bool ifaceEmitted = false;
+
+				foreach (em; emittedComps.items) {
+					if (em == compNode.targetFunc.name) {
+						ifaceEmitted = true;
+						break;
+					}
+				}
+
+				if (!ifaceEmitted) {
+					final func = compNode.targetFunc;
+					emittedComps.pushBack(func.name, &stack.allocRaw);
+
+					sink("interface ")(func.name)(" {").newline;
+					sink('\t');
+					bool returnEmitted = false;
+					foreach (p; func.params) {
+						if (p.isOutput) {
+							assert (!returnEmitted);	// uh oh, only one ret allowed for now (TODO?)
+							returnEmitted = true;
+							sink(compNode.returnType);
+							sink(' ');
+							sink(p.name);
+						}
+					}
+					sink('(').newline;
+					{
+						word i = 0;
+						foreach (p; func.params) {
+							if (p.isInput) {
+								if (i > 0) {
+									sink(',').newline();
+								}
+
+								sink("\t\t")(p.type)(' ')(p.name);
+								++i;
+							}
+						}
+					}
+					sink.newline()("\t);").newline;
+					sink("};").newline;
+				}
+			}
+		}
+	}
+
+	worker(graph);
+}
+
 
 void emitGraphCompositesAndFuncs(
 	KernelGraph graph,
@@ -475,15 +545,6 @@ void emitGraphCompositesAndFuncs(
 	// ---- dump all composites ----
 
 	cstring[] node2compName; {
-		auto _emittedComps = stack.allocArray!(GraphNodeId)(
-			graph.numNodes
-		);
-		uword numEmittedComps = 0;
-		
-		GraphNodeId[] emittedComps() {
-			return _emittedComps[0..numEmittedComps];
-		}
-		
 		node2compName = stack.allocArray!(cstring)(graph.capacity);
 
 		foreach (nid, node; graph.iterNodes) {
@@ -492,51 +553,7 @@ void emitGraphCompositesAndFuncs(
 			}
 
 			auto compNode = node.composite();
-
-			bool ifaceEmitted = false;
-
-			foreach (emid; emittedComps) {
-				auto c = graph.getNode(emid).composite();
-								
-				if (c.targetFunc.name == compNode.targetFunc.name) {
-					ifaceEmitted = true;
-					break;
-				}
-			}
-
 			final func = compNode.targetFunc;
-
-			if (!ifaceEmitted) {
-				_emittedComps[numEmittedComps++] = nid;
-				sink("interface ")(func.name)(" {").newline;
-				sink('\t');
-				bool returnEmitted = false;
-				foreach (p; func.params) {
-					if (p.isOutput) {
-						assert (!returnEmitted);	// uh oh, only one ret allowed for now (TODO?)
-						returnEmitted = true;
-						sink(compNode.returnType);
-						sink(' ');
-						sink(p.name);
-					}
-				}
-				sink('(').newline;
-				{
-					word i = 0;
-					foreach (p; func.params) {
-						if (p.isInput) {
-							if (i > 0) {
-								sink(',').newline();
-							}
-
-							sink("\t\t")(p.type)(' ')(p.name);
-							++i;
-						}
-					}
-				}
-				sink.newline()("\t);").newline;
-				sink("};").newline;
-			}
 
 			cstring compName; {
 				char[128] buf;
@@ -557,6 +574,9 @@ void emitGraphCompositesAndFuncs(
 			// ---- dump the composite ----
 
 			{
+				// reserved for the main graph
+				assert (compNode._graphIdx != 0);
+				
 				emitGraphCompositesAndFuncs(
 					compNode.graph,
 					compNode._graphIdx,
@@ -568,7 +588,7 @@ void emitGraphCompositesAndFuncs(
 				sink("struct ")(compName)(" : ")(func.name)(" {").newline;
 
 				foreach (p; compNode.graph.getNode(compNode.dataNode).data().params) {
-					sink("\t\t")(p.type)(' ')(p.name)(';').newline;
+					sink("\t")(p.type)(' ')(p.name)(';').newline;
 				}
 
 				sink('\t');
@@ -609,7 +629,8 @@ void emitGraphCompositesAndFuncs(
 					sink,
 					GPUDomain.Unresolved,
 					compNode.graph,
-					null
+					null,
+					2
 				);
 
 				domainCodegenBody(
@@ -887,7 +908,7 @@ void domainCodegenBody(
 			
 			foreach (par; *params) {
 				assert (par.hasTypeConstraint);
-				sink('\t');
+				ctx.indent();
 				sink(par.type)(' ');
 				emitSourceParamName(ctx, nid, par.name);
 				sink(" = ");
@@ -917,7 +938,7 @@ void domainCodegenBody(
 			auto compName = node2compName[nid.id];
 			assert (compName !is null);
 
-			sink('\t')(compName)(' ');
+			ctx.indent()(compName)(' ');
 			const compOutputName = "kernel";	// TODO: move the name to a common place
 			emitSourceParamName(ctx, nid, compOutputName);
 			sink(';').newline();
@@ -926,7 +947,7 @@ void domainCodegenBody(
 			
 			foreach (i, par; *params) {
 				if (par.isInput) {
-					sink('\t');
+					ctx.indent();
 
 					emitSourceParamName(ctx, nid, compOutputName);
 					sink('.');
@@ -961,7 +982,7 @@ void domainCodegenBody(
 				assert (par.hasTypeConstraint);
 				
 				if (par.isOutput) {
-					sink('\t');
+					ctx.indent();
 					sink(par.type)(' ');
 					emitSourceParamName(ctx, nid, par.name);
 					sink(';').newline();
@@ -971,10 +992,9 @@ void domainCodegenBody(
 			auto funcName = node2funcName[nid.id];
 			assert (funcName !is null);
 			
-			sink('\t')(funcName)('(').newline;
+			ctx.indent()(funcName)('(').newline;
 			foreach (i, par; *params) {
-				sink('\t');
-				sink('\t');
+				ctx.indent()('\t');
 
 				if (par.isInput) {
 					GraphNodeId	srcNid;
@@ -1004,7 +1024,7 @@ void domainCodegenBody(
 				}
 				sink.newline();
 			}
-			sink("\t);").newline;
+			ctx.indent()(");").newline;
 		}
 	});
 }

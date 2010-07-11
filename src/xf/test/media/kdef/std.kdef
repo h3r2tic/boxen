@@ -4,8 +4,8 @@ Add = kernel <linear> (in a, in b,	out c <in.a.actual>) {
 
 Tex2D = kernel (
 	in texture <type sampler2D>,
-	in texCoord <type float2 + use texCoord>,
-	out color <in.texture.actual + type float4>
+	in uv <type float2 + use uv>,
+	out sample <in.texture.actual + type float4>
 ) {
-	color = tex2D(texture, texCoord);
+	sample = tex2D(texture, uv);
 };
