@@ -1,3 +1,15 @@
+Image = kernel(
+	in uv <type float2>,
+	out sample <type float4>
+);
+
+ImageGenTest = kernel(
+	in uv <type float2>,
+	out color <type float4>
+) {
+	color = float4(uv.xy, 0, 1);
+};
+
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
@@ -95,13 +107,19 @@ TestPigment = graph Pigment {
 		type = kernel;
 		kernel = Tex2D;
 	};
+	ng = node {
+		type = kernel;
+		kernel = ImageGenTest;
+	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Pigment(
 			albedoTint <type float4 + use color>,
-			albedoTexColor <type float4 + use color>
+			albedoTexColor <type float4 + use color>,
+			someImg <type Image>
 		) {
 			radiance = diffuse * albedoTint * albedoTexColor + specular;
+			radiance *= someImg.sample(float2(1, 1));
 			/+float lum = dot(radiance.xyz, float3(0.2126, 0.7152, 0.0722));
 			float lum2 = lum;
 			lum2 *= 2.0;
@@ -113,6 +131,9 @@ TestPigment = graph Pigment {
 	n3 = node {
 		type = output;
 	};
+
+	connect ng.color n2.someImg;
+	noauto ng.uv;
 
 	connect n0 n2;
 	connect n1.albedoTint n2.albedoTint;

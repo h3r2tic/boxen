@@ -723,7 +723,8 @@ private bool _insertConversionNodes(
 		auto p = cnode.params.add(ParamDirection.Out, cnode.func.params[1].name);
 		p.hasPlainSemantic = true;
 		*p.semantic() = c.afterConversion.dup(mem);
-		// No need to care about the default value here
+		// No need to care about the default value here.
+		// No need to care about whether the param wants auto flow or not, either
 
 		srcId = cnodeId;
 		srcParam = cnode.params[1];
@@ -866,6 +867,8 @@ private void findAutoFlow(
 			}
 		}
 
+		assert (toParam.wantAutoFlow, toParam.toString);
+
 		error(
 			"Auto flow not found for an input param"
 			" '{}' in graph node {}.\n"
@@ -1002,11 +1005,16 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 				}
 			}
 
-			assert (fromName !is null, "No flow D:");
-			final srcParam = graph.getNode(fromId)
-				.getOutputParam(fromName);
+			if (fromName is null) {
+				if (par.wantAutoFlow) {
+					error("No flow to '{}' D:", par.name);
+				}
+			} else {
+				final srcParam = graph.getNode(fromId)
+					.getOutputParam(fromName);
 
-			*par.semantic() = *srcParam.semantic();
+				*par.semantic() = *srcParam.semantic();
+			}
 		}
 	}
 }
@@ -1049,24 +1057,15 @@ private void doAutoFlow(
 ) {
 	scope stack = new StackBuffer;
 
-	ParamList* plist = void;
 	final toNode = graph.getNode(toId);
+	ParamList* plist = toNode.getParamList();
+	
 	switch (toNode.type) {
-		case KernelGraph.NodeType.Func: {
-			plist = &toNode.func.func.params;
-		} break;
-
-		case KernelGraph.NodeType.Output: {
-			plist = &toNode.output.params;
-		} break;
-
-		case KernelGraph.NodeType.Kernel: {
-			plist = &toNode.kernel.kernel.func.params;
-		} break;
-
-		case KernelGraph.NodeType.Bridge: {
-			plist = &toNode.bridge.params;
-		} break;
+		case KernelGraph.NodeType.Func:
+		case KernelGraph.NodeType.Output:
+		case KernelGraph.NodeType.Kernel:
+		case KernelGraph.NodeType.Bridge:
+			break;
 
 		default: return;		// just outputs here
 	}
@@ -1075,7 +1074,7 @@ private void doAutoFlow(
 	portHasDataFlow.alloc(plist.length, (uword num) { return stack.allocRaw(num); });
 	portHasDataFlow.clearAll();
 
-	foreach (i, param; *plist) {
+	foreach (i, ref param; *plist) {
 		if (!param.wantAutoFlow) {
 			portHasDataFlow.set(i);
 		}
@@ -1201,6 +1200,10 @@ private bool buildFunctionSubgraph(
 	}
 
 	foreach (i, ref param; *plist) {
+		if (!param.isInput) {
+			continue;
+		}
+		
 		if (!paramHasInput.isSet(i)) {
 			if (paramFilter(&param)) {
 				if (!result) {
@@ -1223,6 +1226,10 @@ private bool buildFunctionSubgraph(
 		auto oldCompNode = graph.getNode(oldGraphCompNode).composite();
 		
 		foreach (i, ref param; *plist) {
+			if (!param.isInput) {
+				continue;
+			}
+
 			if (paramHasInput.isSet(i)) {
 				// This param will have to be bridged via the Data node
 				
@@ -1381,6 +1388,7 @@ private bool doManualFlow(
 			final compNodeId = graph.addNode(KernelGraph.NodeType.Composite);
 			final compNode = graph.getNode(compNodeId).composite();
 			auto compOutParam = compNode.params.add(ParamDirection.Out, kernelOutputName);
+			compOutParam.hasPlainSemantic = true;
 			compOutParam.type = toParam.type;
 
 			/*
@@ -1390,6 +1398,7 @@ private bool doManualFlow(
 			final dataNodeId = subgraph.addNode(KernelGraph.NodeType.Data);
 			final dataNode = subgraph.getNode(dataNodeId).data();
 
+			compNode.graph = subgraph;
 			compNode.dataNode = dataNodeId;
 			compNode.inNode = inNodeId;
 			compNode.outNode = outNodeId;
@@ -1457,6 +1466,39 @@ private bool doManualFlow(
 				&fromNodeInSubgraph
 			);
 
+			Semantic funcOutputPlainSem = Semantic(&graph._mem.pushBack);
+			
+			findOutputSemantic(
+				funcOutputParam,
+
+				// getFormalParamSemantic
+				(cstring name) {
+					foreach (ref Param p; dstFunc.params) {
+						if (p.isInput && p.name == name) {
+							return *p.semantic();
+						}
+					}
+					error(
+						"simplifyParamSemantics: output param '{}' refers to a"
+						" nonexistent formal parameter '{}'.",
+						funcOutputParam.name,
+						name
+					);
+					assert (false);
+				},
+
+				// getActualParamSemantic
+				(cstring name) {
+					error(
+						"Kernels used for functional composition must not use"
+						" actual input param semantics."
+					);
+					return Semantic.init;
+				},
+				
+				&funcOutputPlainSem
+			);
+
 			/*
 			 * The function's output param must be convertible to the destination
 			 * param's semantic. The destination will sample the output param.
@@ -1466,7 +1508,7 @@ private bool doManualFlow(
 			 */
 			if (!findConversion(
 				*fromParam.semantic,
-				*funcOutputParam.semantic,
+				funcOutputPlainSem,
 				ctx.semanticConverters,
 				stack,
 				(ConvSinkItem[] convChain) {
@@ -1728,10 +1770,8 @@ void reduceGraphData(
 			cstring		pname
 		) {
 			if (gotAny) {
-				final rnid = kg.addNode(KernelGraph.NodeType.Func);
+				final rnid = kg.addFuncNode(reductionFunc);
 				final rnode = kg.getNode(rnid);
-				rnode.func.func = reductionFunc;
-				rnode.func.params = reductionFunc.params.dup(&kg._mem.pushBack);
 
 				kg.flow.addDataFlow(
 					prevNid, prevPName,

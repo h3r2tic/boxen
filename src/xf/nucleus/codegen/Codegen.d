@@ -73,6 +73,13 @@ void codegen(
 		error("'Rasterize' node not found, can't codegen :(");
 	}
 
+	// Remove the unreachable nodes. The backend is readonly, but as we won't
+	// be adding nodes to the graph any further, it's safe to remove the backend nodes
+	removeUnreachableBackwards(
+		graph.backend_readOnly,
+		foutputNodeId, rasterNode
+	);
+
 	// ---- Simplify the graph by removing redundant Func nodes
 
 	auto topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
