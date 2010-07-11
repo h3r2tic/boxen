@@ -565,9 +565,13 @@ class ForwardRenderer : Renderer {
 			File.set("graph.dot", toGraphviz(kg));
 		}+/
 
+		ConvCtx convCtx;
+		convCtx.semanticConverters = &_kdefRegistry.converters;
+		convCtx.getKernel = &_kdefRegistry.getKernel;
+
 		convertGraphDataFlowExceptOutput(
 			kg,
-			&_kdefRegistry.converters
+			convCtx
 		);
 
 		void buildPigmentGraph() {
@@ -632,7 +636,7 @@ class ForwardRenderer : Renderer {
 				fuseGraph(
 					kg,
 					lightGraph.input,
-					&_kdefRegistry.converters,
+					convCtx,
 					lightNodesTopo,
 					
 					// _findSrcParam
@@ -698,7 +702,7 @@ class ForwardRenderer : Renderer {
 				fuseGraph(
 					kg,
 					illumGraph.input,
-					&_kdefRegistry.converters,
+					convCtx,
 					illumNodesTopo,
 					
 					// _findSrcParam
@@ -830,7 +834,7 @@ class ForwardRenderer : Renderer {
 
 			convertGraphDataFlowExceptOutput(
 				kg,
-				&_kdefRegistry.converters
+				convCtx
 			);
 
 			buildPigmentGraph();
@@ -843,7 +847,7 @@ class ForwardRenderer : Renderer {
 			fuseGraph(
 				kg,
 				pigmentInfo.input,
-				&_kdefRegistry.converters,
+				convCtx,
 				pigmentNodesTopo,
 				
 				// _findSrcParam
@@ -913,7 +917,7 @@ class ForwardRenderer : Renderer {
 				},
 
 				pigmentInfo.input,
-				&_kdefRegistry.converters,
+				convCtx,
 				OutputNodeConversion.Perform
 			);
 		}

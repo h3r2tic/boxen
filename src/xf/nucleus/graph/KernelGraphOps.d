@@ -3,6 +3,7 @@ module xf.nucleus.graph.KernelGraphOps;
 private {
 	import xf.Common;
 	import xf.nucleus.Function;
+	import xf.nucleus.KernelImpl;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.graph.KernelGraph;
 
@@ -13,13 +14,24 @@ private {
 	import xf.nucleus.graph.GraphOps;
 	import xf.nucleus.TypeConversion;
 	import xf.mem.StackBuffer;
+	import xf.mem.SmallTempArray;
 	import xf.utils.LocalArray;
+	import xf.utils.FormatTmp;
 	import tango.text.convert.Format;
 	// ----
 
 	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
 
+
+
+struct ConvCtx {
+	SemanticConverterIter
+			semanticConverters;
+			
+	bool delegate(cstring, KernelImpl*)
+			getKernel;
+}
 
 
 /**
@@ -113,7 +125,7 @@ bool getOutputParamIndirect(
 void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	input,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	GraphNodeId[] dstGraphTopological,
 	bool delegate(
 		Param* dstParam,
@@ -125,7 +137,7 @@ void fuseGraph(
 	return fuseGraph(
 		graph,
 		input,
-		semanticConverters,
+		ctx,
 		(int delegate(ref GraphNodeId) sink) {
 			foreach (nid; dstGraphTopological) {
 				if (int r = sink(nid)) {
@@ -144,7 +156,7 @@ void fuseGraph(
 void fuseGraph(
 	KernelGraph	graph,
 	GraphNodeId	input,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	int delegate(int delegate(ref GraphNodeId)) dstGraphTopological,
 	bool delegate(
 		Param* dstParam,
@@ -194,7 +206,7 @@ void fuseGraph(
 			doAutoFlow(
 				graph,
 				id,
-				semanticConverters,
+				ctx,
 				OutputNodeConversion.Skip == outNodeConversion && isOutputNode(id)
 					? FlowGenMode.DirectConnection
 					: FlowGenMode.InsertConversionNodes,
@@ -257,7 +269,7 @@ void fuseGraph(
 								graph,
 								fromNode, outCon,
 								DataFlow(fromParam.name, outFl.to),
-								semanticConverters
+								ctx
 							)) {
 								toRemove.pushBack(ConFlow(
 									input, outFl.from,
@@ -282,7 +294,7 @@ void fuseGraph(
 			doAutoFlow(
 				graph,
 				id,
-				semanticConverters,
+				ctx,
 				OutputNodeConversion.Skip == outNodeConversion && isOutputNode(id)
 					? FlowGenMode.DirectConnection
 					: FlowGenMode.InsertConversionNodes,
@@ -322,7 +334,7 @@ void fuseGraph(
 									outputPorts.data,
 									id,
 									toParam,
-									semanticConverters,
+									ctx,
 
 									/* This dg will receive the port to which
 									 * auto flow would resolve to on the
@@ -419,7 +431,7 @@ void fuseGraph(
 								graph,
 								id,
 								con, fl,
-								semanticConverters
+								ctx
 							)) {
 								toRemove.pushBack(ConFlow(
 									id, fl.from,
@@ -457,7 +469,7 @@ void fuseGraph(
 	GraphNodeId	output,
 	int delegate(int delegate(ref GraphNodeId)) graph1NodeIter,
 	GraphNodeId	input,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	OutputNodeConversion outNodeConversion
 ) {
 	scope stack = new StackBuffer;
@@ -507,7 +519,7 @@ void fuseGraph(
 
 	convertGraphDataFlowExceptOutput(
 		graph,
-		semanticConverters,
+		ctx,
 		&iterGraph1Nodes
 	);
 
@@ -516,7 +528,7 @@ void fuseGraph(
 	fuseGraph(
 		graph,
 		input,
-		semanticConverters,
+		ctx,
 		&iterGraph2Nodes,
 		(
 			Param* dstParam,
@@ -742,7 +754,7 @@ private void findAutoFlow(
 	NodeParam[] fromParams,
 	GraphNodeId toId,
 	Param* toParam,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	void delegate(
 			ConvSinkItem[] convChain,
 			GraphNodeId fromId,
@@ -781,7 +793,7 @@ private void findAutoFlow(
 		findConversion(
 			*fromParam.semantic,
 			*toParam.semantic,
-			semanticConverters,
+			ctx.semanticConverters,
 			stack2,
 			(ConvSinkItem[] convChain) {
 				if (convCost > bestCost) {
@@ -994,9 +1006,6 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 			final srcParam = graph.getNode(fromId)
 				.getOutputParam(fromName);
 
-			/+assert (srcParam.hasPlainSemantic);
-			*toParam.semantic() = srcParam.semantic().dup(&graph._mem.pushBack);+/
-
 			*par.semantic() = *srcParam.semantic();
 		}
 	}
@@ -1006,13 +1015,13 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 private void doAutoFlow(
 		KernelGraph graph,
 		GraphNodeId toId,
-		SemanticConverterIter semanticConverters,
+		ConvCtx ctx,
 		FlowGenMode flowGenMode
 ) {
 	return doAutoFlow(
 		graph,
 		toId,
-		semanticConverters,
+		ctx,
 		flowGenMode,
 		(Param*, void delegate(NodeParam) incomingSink) {
 			foreach (fromId; graph.flow.iterIncomingConnections(toId)) {
@@ -1034,7 +1043,7 @@ private void doAutoFlow(
 private void doAutoFlow(
 		KernelGraph graph,
 		GraphNodeId toId,
-		SemanticConverterIter semanticConverters,
+		ConvCtx ctx,
 		FlowGenMode flowGenMode,
 		void delegate(Param*, void delegate(NodeParam)) incomingGen
 ) {
@@ -1091,7 +1100,7 @@ private void doAutoFlow(
 				fromIds.pushBack(np);
 			});
 
-			findAutoFlow(graph, fromIds.data, toId, &param, semanticConverters,
+			findAutoFlow(graph, fromIds.data, toId, &param, ctx,
 				(	ConvSinkItem[] convChain,
 					GraphNodeId fromId,
 					Param* fromParam
@@ -1124,13 +1133,169 @@ private void doAutoFlow(
 }
 
 
+private bool isTypeKernel(cstring type, KernelImpl* info, ConvCtx ctx) {
+	return ctx.getKernel(type, info);
+}
+
+
+/*
+ * Returns true if the node or its incoming subtree contains free params
+ * not filtered out by the supplied delegate
+ */
+private bool buildFunctionSubgraph(
+		KernelGraph graph,
+		GraphNodeId id,
+		bool delegate(Param*) paramFilter,
+		
+		void delegate(Param*, GraphNodeId) freeParamSink,
+		KernelGraph newGraph,
+		GraphNodeId newGraphDataNode,
+		GraphNodeId oldGraphFuncNode,
+		GraphNodeId* newNode
+) {
+	bool result = false;
+	scope stack = new StackBuffer;
+
+	ParamList* plist = graph.getNode(id).getParamList();
+
+	DynamicBitSet paramHasInput;
+	paramHasInput.alloc(plist.length, &stack.allocRaw);
+	paramHasInput.clearAll();
+
+	foreach (from; graph.flow.iterIncomingConnections(id)) {
+		foreach (fl; graph.flow.iterDataFlow(from, id)) {
+			Param* dst;
+			if (!plist.getInput(fl.to, &dst)) {
+				error(
+					"Shit happened. Destination flow invalid for {}.{}->{}.{}",
+					from.id, fl.from, id.id, fl.to
+				);
+			} else {
+				paramHasInput.set(plist.indexOf(dst));
+			}
+		}
+
+		GraphNodeId prevNode;
+		
+		if (buildFunctionSubgraph(
+			graph,
+			from,
+			paramFilter,
+			freeParamSink,
+			newGraph,
+			newGraphDataNode,
+			oldGraphFuncNode,
+			&prevNode
+		)) {
+			if (!result) {
+				auto node = graph.getNode(id);
+				*newNode = newGraph.addNode(node.type);
+				node.copyTo(newGraph.getNode(*newNode));
+				result = true;
+			}
+
+			foreach (fl; graph.flow.iterDataFlow(from, id)) {
+				newGraph.flow.addDataFlow(prevNode, fl.from, *newNode, fl.to);
+			}
+		}
+	}
+
+	foreach (i, ref param; *plist) {
+		if (!paramHasInput.isSet(i)) {
+			if (paramFilter(&param)) {
+				if (!result) {
+					auto node = graph.getNode(id);
+					*newNode = newGraph.addNode(node.type);
+					node.copyTo(newGraph.getNode(*newNode));
+					result = true;
+				}
+				freeParamSink(&param, id);
+			}
+		}
+	}
+
+	if (result) {
+		auto dataNode = newGraph.getNode(newGraphDataNode).data();
+		auto oldFuncNode = graph.getNode(oldGraphFuncNode).func();
+		
+		foreach (i, ref param; *plist) {
+			if (paramHasInput.isSet(i)) {
+				// This param will have to be bridged via the Data node
+				
+				formatTmp((Fmt fmt) {
+					fmt("p{}", dataNode.params.length);
+				},
+				(cstring pname) {
+					/*
+					 * Add a param to the data node in the new subgraph.
+					 * Use a unique name for it.
+					 */
+					auto dparam = dataNode.params.add(param, pname);
+					dparam.dir = ParamDirection.Out;
+
+					/*
+					 * Now add flow from the newly added Data node param to the
+					 * node we've just cloned as the main part of this function.
+					 */
+					newGraph.flow.addDataFlow(
+						newGraphDataNode,
+						pname,
+						*newNode,
+						param.name
+					);
+
+					/*
+					 * Find where from the flow comes into the param back in the
+					 * original graph. We'll copy the flow into the function node
+					 * which graph the subgraph we're constructing.
+					 */
+					GraphNodeId	oldSrcNid;
+					Param*		oldSrcParam;
+
+					if (!getOutputParamIndirect(
+						graph,
+						id,
+						param.name,
+						&oldSrcNid,
+						&oldSrcParam
+					)) {
+						error("Huh. Flow not found to param {}. But... but... D:", param.name);
+					}
+
+					/*
+					 * Add the same param as in the Data node to the function node
+					 * we're building in the old graph
+					 */
+
+					auto fparam = oldFuncNode.params.add(param, pname);
+					fparam.dir = ParamDirection.In;
+
+					/*
+					 * Finally, create flow to the function node
+					 */
+
+					graph.flow.addDataFlow(
+						oldSrcNid,
+						oldSrcParam.name,
+						oldGraphFuncNode,
+						pname
+					);
+				});
+			}
+		}
+	}
+
+	return result;
+}
+
+
 // returns true if any new connections were inserted
 private bool doManualFlow(
 		KernelGraph graph,
 		GraphNodeId fromId,
 		GraphNodeId toId,
 		DataFlow fl,
-		SemanticConverterIter semanticConverters
+		ConvCtx ctx
 ) {
 	scope stack = new StackBuffer;
 
@@ -1142,12 +1307,171 @@ private bool doManualFlow(
 	assert (toParam !is null, fl.to);
 	assert (toParam.hasPlainSemantic);
 
+	{
+		KernelImpl dstKernelImpl;
+
+		final srcType = fromParam.type;
+		
+		if (	toParam.hasTypeConstraint
+			&&	isTypeKernel(toParam.type, &dstKernelImpl, ctx)
+			&&	(!fromParam.hasTypeConstraint || srcType != toParam.type)
+		) {
+			// The destination is a kernel, this is functional composition, not regular
+			// param flow.
+
+			if (dstKernelImpl.type != KernelImpl.Type.Kernel) {
+				error(
+					"Kernels used in functional composition may not be graph"
+					" kernels. There's flow to a graph kernel '{}': {}.{} -> {}.{}.",
+					toParam.type, fromId.id, fl.from, toId.id, fl.to
+				);
+			}
+
+			auto dstFunc = dstKernelImpl.kernel.func;
+			assert (dstFunc !is null);
+
+			Param* funcOutputParam = null;
+
+			uword numFuncOutputParams;
+			foreach (ref param; dstFunc.params) {
+				if (param.isOutput) {
+					++numFuncOutputParams;
+					funcOutputParam = &param;
+				}
+			}
+
+			assert (
+				1 == numFuncOutputParams,
+				"TODO: currently kernels used in functional composition may only"
+				" have one output param."
+			);
+
+			assert (funcOutputParam !is null);
+
+			/*
+			 * There will be a subgraph of comprising the nodes being used in
+			 * functional composition. Create an output node for it
+			 */
+			final outNodeId = graph.addNode(KernelGraph.NodeType.Output);
+			final outNode = graph.getNode(outNodeId);
+			final outNodeParam = outNode.output.params.add(*funcOutputParam);
+			outNodeParam.dir = ParamDirection.In;
+
+			/*
+			 * Similarly with the input node.
+			 */
+			final inNodeId = graph.addNode(KernelGraph.NodeType.Input);
+			final inNode = graph.getNode(inNodeId);
+			foreach (ref param; dstFunc.params) {
+				inNode.input.params.add(param).dir = ParamDirection.Out;
+			}
+
+			/*
+			 * The input node's params must now be connected to the params in the
+			 * source node's incoming tree which have no incoming flow.
+			 * The matching is done by name, then semantic conversion is applied
+			 * to each of them
+			 */
+
+			findFreeParamsInSubtree(
+				graph,
+				fromId,
+				
+				/* paramFilter */
+				(Param* param) {
+					assert (param.isInput);
+					foreach (fp; dstFunc.params) {
+						if (fp.isInput && fp.name == param.name) {
+							return true;
+						}
+					}
+					return false;
+				},
+
+				/* freeParamSink */
+				(Param* param, GraphNodeId node) {
+					Param* inParam = inNode.getOutputParam(param.name);
+					
+					if (!findConversion(
+						*inParam.semantic,
+						*param.semantic,
+						ctx.semanticConverters,
+						stack,
+						(ConvSinkItem[] convChain) {
+							_insertConversionNodes(
+								graph,
+								convChain,
+								inNodeId,
+								inParam,
+								node,
+								param
+							);
+						}
+					)) {
+						error(
+							"Could not find a conversion for direct flow:"
+							" {}:{} -> {}:{} when performing functional composition"
+							" using kernel {}. The input param in the kernel was {}.",
+							inNodeId.id, inParam.toString,
+							node.id, param.toString,
+							toParam.type, funcOutputParam.toString
+						);
+					}
+				}
+			);
+
+			/*
+			 * The function's output param must be convertible to the destination
+			 * param's semantic. The destination will sample the output param.
+			 * Because the sampling may be performed directly by a kernel func,
+			 * any conversion nodes must be inserted into the subgraph generated
+			 * for the function.
+			 */
+			if (!findConversion(
+				*fromParam.semantic,
+				*funcOutputParam.semantic,
+				ctx.semanticConverters,
+				stack,
+				(ConvSinkItem[] convChain) {
+					_insertConversionNodes(
+						graph,
+						convChain,
+						fromId,
+						fromParam,
+						outNodeId,
+						outNodeParam
+					);
+				}
+			)) {
+				error(
+					"Could not find a conversion for direct flow:"
+					" {}:{} -> {}:{} when performing functional composition"
+					" using kernel {}. The output param in the kernel was {}.",
+					fromId.id, fromParam.toString,
+					outNodeId.id, outNodeParam.toString,
+					toParam.type, funcOutputParam.toString
+				);
+			}
+
+			/*
+			 * Finally, construct a Function node containing the subgraph as the
+			 * function definition so the rest is done by the codegen phase
+			 */
+
+			
+
+			// new connections were added, remove the original one which caused
+			// the manual data flow func to be invoked
+			return true;
+		}
+	}
+
 	bool anyNewCons = false;
 
 	if (!findConversion(
 		*fromParam.semantic,
 		*toParam.semantic,
-		semanticConverters,
+		ctx.semanticConverters,
 		stack,
 		(ConvSinkItem[] convChain) {
 			anyNewCons = _insertConversionNodes(
@@ -1162,7 +1486,7 @@ private bool doManualFlow(
 	)) {
 		error(
 			"Could not find a conversion for direct flow:"
-			"  {}:{} -> {}:{}",
+			" {}:{} -> {}:{}",
 			fromId.id, fromParam.toString,
 			toId.id, toParam.toString
 		);
@@ -1176,27 +1500,27 @@ private bool doManualFlow(
 // Assumes the consists of param/calc nodes only
 void convertGraphDataFlow(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters
+	ConvCtx ctx
 ) {
 	scope stack = new StackBuffer;
 
 	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
 	findTopologicalOrder(graph.backend_readOnly, topological);
 
-	return convertGraphDataFlow(graph, semanticConverters, topological);
+	return convertGraphDataFlow(graph, ctx, topological);
 }
 
 
 void convertGraphDataFlow(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	GraphNodeId[] topological
 ) {
 	foreach (id; topological) {
 		doAutoFlow(
 			graph,
 			id,
-			semanticConverters,
+			ctx,
 			FlowGenMode.InsertConversionNodes
 		);
 
@@ -1211,7 +1535,7 @@ void convertGraphDataFlow(
 					graph,
 					id,
 					con, fl,
-					semanticConverters
+					ctx
 				)) {
 					toRemove.pushBack(ConFlow(
 						id, fl.from,
@@ -1234,25 +1558,25 @@ void convertGraphDataFlow(
 
 void convertGraphDataFlowExceptOutput(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters
+	ConvCtx ctx
 ) {
 	scope stack = new StackBuffer;
 
 	final topological = stack.allocArray!(GraphNodeId)(graph.numNodes);
 	findTopologicalOrder(graph.backend_readOnly, topological);
 
-	return convertGraphDataFlowExceptOutput(graph, semanticConverters, topological);
+	return convertGraphDataFlowExceptOutput(graph, ctx, topological);
 }
 
 
 void convertGraphDataFlowExceptOutput(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	GraphNodeId[] topological
 ) {
 	return convertGraphDataFlowExceptOutput(
 		graph,
-		semanticConverters,
+		ctx,
 		(int delegate(ref GraphNodeId) sink) {
 			foreach (id; topological) {
 				if (int r = sink(id)) {
@@ -1266,7 +1590,7 @@ void convertGraphDataFlowExceptOutput(
 
 void convertGraphDataFlowExceptOutput(
 	KernelGraph graph,
-	SemanticConverterIter semanticConverters,
+	ConvCtx ctx,
 	int delegate(int delegate(ref GraphNodeId)) topological
 ) {
 	bool isOutputNode(GraphNodeId id) {
@@ -1279,7 +1603,7 @@ void convertGraphDataFlowExceptOutput(
 		doAutoFlow(
 			graph,
 			id,
-			semanticConverters,
+			ctx,
 			isOutputNode(id)
 				? FlowGenMode.DirectConnection
 				: FlowGenMode.InsertConversionNodes
@@ -1299,7 +1623,7 @@ void convertGraphDataFlowExceptOutput(
 						graph,
 						id,
 						con, fl,
-						semanticConverters
+						ctx
 					)) {
 						toRemove.pushBack(ConFlow(
 							id, fl.from,

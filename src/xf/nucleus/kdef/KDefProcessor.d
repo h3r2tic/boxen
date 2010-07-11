@@ -132,6 +132,16 @@ class KDefProcessor {
 	}
 
 
+	bool getKernel(string name, KernelImpl* res) {
+		if (auto impl = name in this.kernels) {
+			*res = impl.impl;
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+
 	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
 		foreach (name, mod; modules) {
 			foreach (name, ref surf; mod.surfaces) {

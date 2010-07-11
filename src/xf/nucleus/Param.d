@@ -242,6 +242,10 @@ struct Param {
 
 
 	Param dup(Allocator allocator = null) {
+		return dup(this._name, allocator);
+	}
+
+	Param dup(cstring name, Allocator allocator = null) {
 		Param res;
 		if (hasPlainSemantic) {
 			res._semantic = this._semantic.dup(allocator);
@@ -487,6 +491,13 @@ struct ParamList {
 		return _params.ptr + pidx;
 	}
 	
+
+	Param* add(Param p, cstring name) {
+		assert (name.length > 0);
+		final pidx = _params.pushBack(p.dup(name, _allocator));
+		return _params.ptr + pidx;
+	}
+
 	
 	void remove(cstring name) {
 		foreach (i, ref p; _params) {
