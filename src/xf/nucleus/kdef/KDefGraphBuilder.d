@@ -229,6 +229,18 @@ private void buildKernelSubGraph(
 		flow.addDataFlow(findOutputId(con.fromNode), con.from, findInputId(con.toNode), con.to);
 	}
 
+	foreach (nf; def.noAutoFlow) {
+		auto nodeId = findInputId(nf.toNode);
+		auto node = kg.getNode(nodeId);
+		auto param = node.getInputParam(nf.to);
+		if (param is null) {
+			error(
+				"Input param {} for noauto not found in node {}.",
+				nf.to, nodeId.id
+			);
+		}
+		param.wantAutoFlow = false;
+	}
 
 	version (DebugGraphConnections) {
 		void assertAddedNode(GraphNodeId x) {

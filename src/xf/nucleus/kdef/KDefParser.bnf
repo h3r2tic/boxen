@@ -24,7 +24,7 @@ Syntax
 	
 Statement
 	= Statement st
-	::= AssignStatement:st | ImportStatement:st | ConnectStatement:st | ConverterDeclStatement:st;
+	::= AssignStatement:st | ImportStatement:st | ConnectStatement:st | NoAutoFlowStatement:st | ConverterDeclStatement:st;
 
 // ----------------------------------------------------------------------------------------------------------------
 // Statements
@@ -33,6 +33,10 @@ Statement
 ConnectStatement
 	= ConnectStatement createConnectStatement(string from, string to)
 	::= "connect" Identifier:from Identifier:to ";";
+
+NoAutoFlowStatement
+	= NoAutoFlowStatement createNoAutoFlowStatement(string to)
+	::= "noauto" Identifier:to ";";
 	
 AssignStatement
 	= AssignStatement createAssignStatement(string name, Value value)

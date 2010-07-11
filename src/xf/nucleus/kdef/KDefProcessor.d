@@ -710,8 +710,40 @@ class KDefProcessor {
 				}
 			}
 
+			// TODO: refactor this pattern
+			{
+				size_t num = 0;
+				foreach (stmt_; sc.statements) {
+					if (auto stmt = cast(NoAutoFlowStatement)stmt_) {
+						++num;
+					}
+				}
+
+				if (num > 0) {
+					scope stack = new StackBuffer;
+						
+					string[] to = sc.mem.allocArrayNoInit!(string)(num);
+
+					num = 0;
+					foreach (stmt_; sc.statements) {
+						if (auto stmt = cast(NoAutoFlowStatement)stmt_) {
+							if (auto graph = cast(GraphDef)sc) {
+								to[num] = stmt.to;
+							} else {
+								error("Can't use noauto outside of graph definitions.");
+							}
+							++num;
+						}
+					}
+
+					(cast(GraphDef)sc).setNoAuto(to);
+				}
+			}
+
 			foreach (stmt_; sc.statements) {
 				if (auto stmt = cast(ConnectStatement)stmt_) {
+					// nothing
+				} else if (auto stmt = cast(NoAutoFlowStatement)stmt_) {
 					// nothing
 				} else if (auto stmt = cast(AssignStatement)stmt_) {
 					if (auto scopeValue = cast(IScopeValue)stmt.value) {

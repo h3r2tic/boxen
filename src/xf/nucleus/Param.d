@@ -66,6 +66,7 @@ struct Param {
 	ParamDirection	dir;
 	ParamValueType	valueType;
 	bool			hasPlainSemantic = false;
+	bool			wantAutoFlow = true;
 
 
 	uword valueSize() {
@@ -97,6 +98,7 @@ struct Param {
 			||	dir != other.dir
 			|| (value is null) != (other.value is null)
 			|| hasPlainSemantic != other.hasPlainSemantic
+			|| wantAutoFlow != other.wantAutoFlow
 		) {
 			return false;
 		}
@@ -247,6 +249,7 @@ struct Param {
 			res._semanticExp = this._semanticExp.dup(allocator);
 		}
 		res.hasPlainSemantic = hasPlainSemantic;
+		res.wantAutoFlow = this.wantAutoFlow;
 		res.dir = this.dir;
 		res.name = this._name;
 		res.copyValueFrom(this);

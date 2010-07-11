@@ -108,7 +108,11 @@ class KDefParserBase : Parser!(KDefToken) {
 		ConnectStatement createConnectStatement(string from, string to) {
 			return mem._new!(ConnectStatement)(mem.dupString(from), mem.dupString(to));
 		}
-		
+
+		NoAutoFlowStatement createNoAutoFlowStatement(string to) {
+			return mem._new!(NoAutoFlowStatement)(mem.dupString(to));
+		}
+
 		AssignStatement createAssignStatement(string name, Value value) {
 			return mem._new!(AssignStatement)(mem.dupString(name), value);
 		}

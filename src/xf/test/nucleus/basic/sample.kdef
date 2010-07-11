@@ -102,6 +102,12 @@ TestPigment = graph Pigment {
 			albedoTexColor <type float4 + use color>
 		) {
 			radiance = diffuse * albedoTint * albedoTexColor + specular;
+			/+float lum = dot(radiance.xyz, float3(0.2126, 0.7152, 0.0722));
+			float lum2 = lum;
+			lum2 *= 2.0;
+			lum2 += 0.33;
+			lum2 = pow(lum2, 1/0.35);
+			radiance *= lum2 / max(0.01, lum);+/
 		};
 	};
 	n3 = node {
