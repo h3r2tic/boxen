@@ -161,9 +161,10 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 ~	make OPTLINK not hate me :(((((((((
 	+ remove MinTL from the project (xf.input)
-	- add per-package / per-module build flags to xfBuild
-		- compile xf.omg.core.LinearAlgebra with -O -inline -release, sans -g
-		- compile platform modules and GL functions without -g
+	+ add per-package / per-module build flags to xfBuild
+		+ compile xf.omg.core.LinearAlgebra with -O -inline -release, sans -g
+		+ compile platform modules and GL functions without -g
+	- sacrifice a firstborn
 
 ~	monitor quark files for changes, recompile shaders when needed
 	+ track dependencies
@@ -196,7 +197,17 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		* nothing can retain the defs other than by their name (separately allocated strings)
 	+ run a thread to monitor kdef file changes
 
--	post-processing kernels
+~	post-processing kernels
+	+ functional composition of kernels
+	+ Image kernel abstraction
+	+ sampling test
+	+ Blur kernel
+	- special Blit nodes to separate passes
+	- break up the passes
+	- codegen each pass
+	- generate an effect for each path
+	- create render targets
+	- render
 
 -	editor
 
