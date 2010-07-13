@@ -18,12 +18,17 @@ private {
 		xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 
 	import
-		xf.omg.core.LinearAlgebra;
+		xf.omg.core.LinearAlgebra,
+		xf.omg.core.CoordSys;
 
 	import
 		xf.gfx.Texture,
 		xf.gfx.Effect,
 		xf.gfx.Framebuffer,
+		xf.gfx.Buffer,
+		xf.gfx.VertexBuffer,
+		xf.gfx.IndexBuffer,
+		xf.gfx.RenderList,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
 
 	import
@@ -31,6 +36,7 @@ private {
 		xf.mem.Array,
 		xf.mem.FixedQueue,
 		xf.mem.ScratchAllocator,
+		xf.mem.ChunkQueue,
 		xf.mem.SmallTempArray,
 		xf.utils.BitSet;
 }
@@ -41,6 +47,44 @@ final class PostProcessor {
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
 		_backend = backend;
 		_kdefRegistry = kdefRegistry;
+		_allocator = ScratchFIFO();
+		_allocator.initialize();
+		_mem = DgScratchAllocator(&_allocator.pushBack);
+
+		vec2[4] positions = void;
+		positions[0] = vec2(-1, -1);
+		positions[1] = vec2(1, -1);
+		positions[2] = vec2(1, 1);
+		positions[3] = vec2(-1, 1);
+
+		uint[6] indices = void;
+		indices[0] = 0; indices[1] = 1; indices[2] = 2;
+		indices[3] = 0; indices[4] = 2; indices[5] = 3;
+
+		_vb = backend.createVertexBuffer(
+			BufferUsage.StaticDraw,
+			cast(void[])positions
+		);
+		_va = VertexAttrib(
+			0,
+			vec2.sizeof,
+			VertexAttrib.Type.Vec2
+		);
+		_ib = backend.createIndexBuffer(
+			BufferUsage.StaticDraw,
+			indices
+		);
+
+		/+final vdata = efInst.getVaryingParamData("VertexProgram.input.position");
+		vdata.buffer = &vb;
+		vdata.attrib = &va;+/
+	}
+
+
+	struct RenderStage {
+		RenderStage*	next;
+		Effect			effect;
+		EffectInstance	efInst;
 	}
 
 
@@ -601,6 +645,19 @@ final class PostProcessor {
 			_backend,
 			null	// extra codegen
 		);
+
+		stageEffect.compile();
+
+		final rs = _mem._new!(RenderStage)();
+		rs.next = _renderStageList;
+		_renderStageList = rs;
+
+		rs.effect = stageEffect;
+		rs.efInst = _backend.instantiateEffect(stageEffect);
+
+		final vdata = rs.efInst.getVaryingParamData("VertexProgram.structure__position");
+		vdata.buffer = &_vb;
+		vdata.attrib = &_va;
 	}
 
 
@@ -650,6 +707,42 @@ final class PostProcessor {
 
 	private void _render(Texture input) {
 		assert (!_settingsDirty);
+
+		for (auto rs = _renderStageList; rs !is null; rs = rs.next) {
+			final renderList = _backend.createRenderList();
+			assert (renderList !is null);
+			scope (success) _backend.disposeRenderList(renderList);
+
+			void** instUniforms = rs.efInst.getUniformPtrsDataPtr();
+
+			void** getInstUniformPtrPtr(cstring name) {
+				if (instUniforms) {
+					final idx = rs.efInst.getUniformParamGroup.getUniformIndex(name);
+					if (idx != -1) {
+						return instUniforms + idx;
+					}
+				}
+				return null;
+			}
+
+			// HACK
+			if (auto pp = getInstUniformPtrPtr("in__0")) {
+				*pp = &input;
+			} else {
+				error("meh, sampler not found :S");
+			}
+
+			final bin = renderList.getBin(rs.effect);
+			final rdata = bin.add(rs.efInst);
+			*rdata = RenderableData.init;
+			rdata.coordSys = CoordSys.identity;
+			final id = &rdata.indexData;
+			id.indexBuffer	= _ib;
+			id.numIndices	= 6;
+			id.maxIndex		= 5;
+
+			_backend.render(renderList);
+		}
 	}
 
 
@@ -658,9 +751,18 @@ final class PostProcessor {
 		IKDefRegistry	_kdefRegistry;
 		bool			_settingsDirty = false;
 
+		ScratchFIFO			_allocator;
+		DgScratchAllocator	_mem;
+
 		cstring _kernelName = null;
 		
 		vec2i					_inputSize = vec2i.zero;
 		TextureInternalFormat	_inputFormat;
+
+		VertexBuffer	_vb;
+		VertexAttrib	_va;
+		IndexBuffer		_ib;
+
+		RenderStage*	_renderStageList;
 	}
 }
