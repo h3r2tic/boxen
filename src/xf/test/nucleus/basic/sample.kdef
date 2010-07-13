@@ -271,6 +271,16 @@ TestPost = graph {
 	};
 
 	n1 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n2 = node {
+		type = kernel;
+		kernel = OneMinus;
+	};
+
+	n3 = node {
 		type = output;
 		params = (
 			output <type Image>
@@ -278,5 +288,8 @@ TestPost = graph {
 	};
 
 
-	connect n0 n1;
+	connect n0.input n1.image;
+	connect n1.sample n2.a;
+	connect n2.b n3.output;
+	noauto n1.uv;
 };

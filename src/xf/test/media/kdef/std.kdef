@@ -14,12 +14,24 @@ Div = kernel <linear> (in a, in b,	out c <in.a.actual>) {
 	c = a / b;
 };
 
+OneMinus = kernel <linear> (in a, out b <in.a.actual>) {
+	b = 1 - a;
+};
+
 Tex2D = kernel (
 	in texture <type sampler2D>,
 	in uv <type float2 + use uv>,
 	out sample <in.texture.actual + type float4>
 ) {
 	sample = tex2D(texture, uv);
+};
+
+SampleImage = kernel (
+	in image <type Image>,
+	in uv <type float2 + use uv>,
+	out sample <in.image.actual + type float4>
+) {
+	sample = image.sample(uv);
 };
 
 SamplerToImage = kernel (

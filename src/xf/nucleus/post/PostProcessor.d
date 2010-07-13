@@ -334,7 +334,11 @@ final class PostProcessor {
 		// Create the vertex shader func
 
 		final vertCode = Code();
-		vertCode.append(`rasterPos = float4(inPos, 0, 1);`, allocator);
+		vertCode.append(
+			"rasterPos = float4(inPos, 0, 1);\n"
+			"uv = inPos * 0.5 + 0.5;",
+			allocator
+		);
 
 		final vertFunc = stack._new!(Function)(
 			"Blit_vert"[],
@@ -351,6 +355,11 @@ final class PostProcessor {
 			p.type = "float4";
 			p.semantic.addTrait("use", "position");
 			p.semantic.addTrait("basis", "clip");
+		} {
+			final p = vertFunc.params.add(ParamDirection.Out, "uv");
+			p.hasPlainSemantic = true;
+			p.type = "float2";
+			p.semantic.addTrait("use", "uv");
 		}
 
 		// Create a func for sampling images for the fragment shader
@@ -422,8 +431,7 @@ final class PostProcessor {
 
 		// ----
 
-		final old2new = stack.allocArrayNoInit!(GraphNodeId)(graph.capacity);
-
+		final old2new = stack.allocArray!(GraphNodeId)(graph.capacity);
 
 		bool isInputNode(GraphNodeId nid) {
 			foreach (n; inNodes) {
@@ -535,7 +543,7 @@ final class PostProcessor {
 			output.newNid = sampleNid;
 
 			subgraph.flow.addDataFlow(
-				inNid, "position",
+				vertNid, "uv",
 				sampleNid, "uv"
 			);
 
@@ -558,11 +566,11 @@ final class PostProcessor {
 
 		// Finally, copy data flow
 
-		foreach (oldSrc; oldNodes) {
-			bool srcIsInput = isInputNode(oldSrc);
-			
-			foreach (oldDst; graph.flow.iterOutgoingConnections(oldSrc)) {
-				bool dstIsOutput = isOutputNode(oldDst);
+		foreach (oldDst; oldNodes) {
+			bool dstIsOutput = isOutputNode(oldDst);
+
+			foreach (oldSrc; graph.flow.iterIncomingConnections(oldDst)) {
+				bool srcIsInput = isInputNode(oldSrc);
 				
 				foreach (fl; graph.flow.iterDataFlow(oldSrc, oldDst)) {
 					GraphNodeId newSrc, newDst;
@@ -595,6 +603,9 @@ final class PostProcessor {
 						newDst = old2new[oldDst.id];
 						toName = fl.to;
 					}
+
+					assert (newSrc.valid);
+					assert (newDst.valid);
 
 					subgraph.flow.addDataFlow(
 						newSrc, fromName,
