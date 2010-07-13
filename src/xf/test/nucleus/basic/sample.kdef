@@ -26,6 +26,31 @@ BlurImage = kernel(
 	sample = res;
 };
 
+
+// Insanely hacky, but what the hell :P
+FixedBlurHack = kernel(
+	in uv <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+	uv += 0.5f / 1040;
+	float2 offset = float2(6.0f / 1040, 0);
+
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+	res += img.sample(uv - offset) * coeff[0];
+	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
+	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
+	res += img.sample(uv) * coeff[3];
+	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
+	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
+	res += img.sample(uv + offset) * coeff[6];
+	sample = res;
+};
+
+
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
@@ -144,7 +169,8 @@ TestPigment = graph Pigment {
 			someImg <type Image>
 		) {
 			float4 albedo = diffuse * albedoTint * abs(someImg.sample(texCoord));
-			radiance = albedo + specular;
+			// NOTE: 1 - saturate() added to counter the post-proc test's negative
+			radiance = 1 - saturate(albedo + specular);
 /+			radiance = someImg.sample(texCoord);
 			radiance = abs(radiance);+/
 		};
@@ -263,6 +289,50 @@ SpecularOnly = kernel Pigment {
 
 
 TestPost = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>
+		);
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	nn = node {
+		type = kernel;
+		kernel = OneMinus;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = FixedBlurHack;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>
+		);
+	};
+
+
+	/+connect n0.input n1.img;
+	connect n1.sample n2.output;
+	noauto n1.uv;+/
+
+	connect n0.input ns.image;
+	connect ns.sample nn.a;
+	connect nn.b n1.img;
+	connect n1.sample n2.output;
+	noauto n1.uv;
+	noauto ns.uv;
+};
+
+
+TestPost2 = graph {
 	n0 = node {
 		type = input;
 		params = (
