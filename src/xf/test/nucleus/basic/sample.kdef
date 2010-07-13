@@ -260,3 +260,23 @@ TestPigment2 = graph Pigment {
 SpecularOnly = kernel Pigment {
 	radiance = specular;
 };
+
+
+TestPost = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>
+		);
+	};
+
+	n1 = node {
+		type = output;
+		params = (
+			output <type Image>
+		);
+	};
+
+
+	connect n0 n1;
+};

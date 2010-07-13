@@ -229,8 +229,9 @@ final class PostProcessor {
 				foreach (oldSrc; graph.flow.iterIncomingConnections(oldDst)) {
 					auto oldSrcNode = graph.getNode(oldSrc);
 					
-					if (	KernelGraph.NodeType.Kernel == oldSrcNode.type
-						&&	"Blit" == oldSrcNode.kernel.kernel.func.name
+					if ((	KernelGraph.NodeType.Kernel == oldSrcNode.type
+						&&	"Blit" == oldSrcNode.kernel.kernel.func.name)
+						||	KernelGraph.NodeType.Input == oldSrcNode.type
 					) {
 						if (!nodeFlags.isSet(oldSrc.id)) {
 							inNodes.pushBack(oldSrc);
@@ -304,6 +305,8 @@ final class PostProcessor {
 			final p = vertFunc.params.add(ParamDirection.Out, "rasterPos");
 			p.hasPlainSemantic = true;
 			p.type = "float4";
+			p.semantic.addTrait("use", "position");
+			p.semantic.addTrait("basis", "clip");
 		}
 
 		// Create a func for sampling images for the fragment shader
@@ -330,13 +333,6 @@ final class PostProcessor {
 			p.type = "float4";
 		}
 
-		// A Rasterize node is required by codegen
-
-		final rastNid = subgraph.addNode(KernelGraph.NodeType.Kernel);
-
-		subgraph.getNode(rastNid).kernel.kernel
-			= _kdefRegistry.getKernel("Rasterize").kernel;
-
 		// Get the func used for sampling textures, it will be needed in the
 		// fragment shader
 
@@ -359,8 +355,26 @@ final class PostProcessor {
 			pos.type = "float2";
 		}
 
-		final vertNid = subgraph.addFuncNode(vertFunc);
 		final fragNid = subgraph.addFuncNode(fragFunc);
+
+		// A Rasterize node is required by codegen
+
+		final vertNid = subgraph.addFuncNode(vertFunc);
+
+		final rastNid = subgraph.addNode(KernelGraph.NodeType.Kernel);
+
+		subgraph.getNode(rastNid).kernel.kernel
+			= _kdefRegistry.getKernel("Rasterize").kernel;
+
+		subgraph.flow.addDataFlow(
+			vertNid, "rasterPos",
+			rastNid, "inPos"
+		);
+
+		subgraph.flow.addDataFlow(
+			inNid, "position",
+			vertNid, "inPos"
+		);
 
 		// ----
 
@@ -446,6 +460,7 @@ final class PostProcessor {
 			final s2imgNid = subgraph.addFuncNode(samplerToImage);
 			final s2imgNode = subgraph.getNode(s2imgNid);
 			final dataNode = subgraph.getNode(dataNid).data();
+			dataNode.sourceKernelType = SourceKernelType.Composite;
 
 			input.newNid = s2imgNid;
 
@@ -554,9 +569,30 @@ final class PostProcessor {
 		GraphNodeId inNid,
 		GraphNodeId outNid
 	) {
+		ConvCtx convCtx;
+		convCtx.semanticConverters = &_kdefRegistry.converters;
+		convCtx.getKernel = &_kdefRegistry.getKernel;
+
+		convertGraphDataFlow(
+			graph,
+			convCtx
+		);
+		
+		
 		final setup = CodegenSetup();
 		setup.inputNode = inNid;
 		setup.outputNode = outNid;
+		setup.getInterface = (cstring name, AbstractFunction* func) {
+			KernelImpl impl;
+			if (	_kdefRegistry.getKernel(name, &impl)
+				&&	impl.type == impl.type.Kernel
+			) {
+				*func = impl.kernel.func;
+				return true;
+			} else {
+				return false;
+			}		
+		};		
 		
 		Effect stageEffect = compileKernelGraph(
 			"BlitStage",
