@@ -194,15 +194,15 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ Blur kernel
 
 	+ convert the graph data flow - instert conversion nodes
-	- trace forward and find the sizes and formats for buffers/textures
-	- trace backward, using the Output and Blit nodes as watersheds,
+	+ trace forward and find the sizes and formats for buffers/textures
+	+ trace backward, using the Output and Blit nodes as watersheds,
 	  at each step creating one or more subgraphs for the rendering op
 	  group all outputs with the same format and size
-	- for each of the generated graphs, codegen a fragment shader
-	  and use a fixed vertex shader, compile the effect
-	- instantiate effects
+	+ for each of the generated graphs, codegen a fragment shader
+	+ and use a fixed vertex shader, compile the effect
+	+ instantiate effects
 	- create the textures and framebuffers
-	- render
+	+ render
 
 -	editor
 

@@ -25,7 +25,7 @@ Effect compileKernelGraph(
 	CodegenSetup setup,
 	IRenderer renderer,
 	void delegate(CodeSink) extraCodegen = null,
-	EffectCompilationOptions opts = EffectCompilationOptions.init
+	EffectCompilationOptions opts = EffectCompilationOptions.init,
 ) {
 	scope stack = new StackBuffer;
 	const prealloc = 128 * 1024;	// 128KB should be enough for anyone :P
