@@ -169,7 +169,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		// no need to dup params, as they're immediately converted
 		// tags and name dup'd by the Function
 		KernelDefValue createKernelDefValue(string superKernel, ParamDef[] params, Code code, string[] tags) {
-			auto res = mem._new!(KernelDefValue);
+			auto res = mem._new!(KernelDefValue)();
 			res.kernelDef = mem._new!(KernelDef)(mem._allocator);
 			
 			if (code != code.init) {
@@ -183,7 +183,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		GraphDefValue createGraphDefValue(string superKernel, Statement[] stmts/+, string[] tags+/) {
-			auto res = mem._new!(GraphDefValue);
+			auto res = mem._new!(GraphDefValue)();
 			res.graphDef = mem._new!(GraphDef)(mem.dupArray(stmts), mem._allocator);
 			res.graphDef.superKernel = mem.dupString(superKernel);
 			//res.graphDef.tags = dupStringArray(tags);
@@ -192,15 +192,15 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		GraphDefNodeValue createGraphDefNodeValue(VarDef[] vars) {
-			auto res = mem._new!(GraphDefNodeValue);
+			auto res = mem._new!(GraphDefNodeValue)();
 			res.node = mem._new!(GraphDefNode)(mem.dupArray(vars), mem._allocator);
 			return res;
 		}
 
 
 		TraitDefValue createTraitDefValue(string[] values, string defaultValue) {
-			auto res = mem._new!(TraitDefValue);
-			res.value = mem._new!(TraitDef);
+			auto res = mem._new!(TraitDefValue)();
+			res.value = mem._new!(TraitDef)();
 			res.value.values = values.dupStringArray();
 			res.value.defaultValue = mem.dupString(defaultValue);
 			return res;
@@ -208,7 +208,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars) {
-			auto res = mem._new!(SurfaceDefValue);
+			auto res = mem._new!(SurfaceDefValue)();
 			auto surf = res.surface = mem._new!(SurfaceDef)(mem.dupString(illumKernel), mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
@@ -221,7 +221,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars) {
-			auto res = mem._new!(MaterialDefValue);
+			auto res = mem._new!(MaterialDefValue)();
 			auto mat = res.material = mem._new!(MaterialDef)(mem.dupString(pigmentKernel), mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
@@ -234,7 +234,7 @@ class KDefParserBase : Parser!(KDefToken) {
 
 
 		SamplerDefValue createSamplerDefValue(VarDef[] vars) {
-			auto res = mem._new!(SamplerDefValue);
+			auto res = mem._new!(SamplerDefValue)();
 			auto meh = res.value = mem._new!(SamplerDef)(mem._allocator);
 
 			foreach (var; vars) {
@@ -296,7 +296,7 @@ class KDefParserBase : Parser!(KDefToken) {
 		ConverterDeclStatement createConverter(string name, string[] tags, ParamDef[] params, Code code, double cost) {
 			auto func = mem._new!(Function)(name, tags, code, mem._allocator);
 			_createFunctionParams(params, func);
-			auto res = mem._new!(ConverterDeclStatement);
+			auto res = mem._new!(ConverterDeclStatement)();
 			res.func = func;
 			res.cost = cast(int)cost;
 			return res;

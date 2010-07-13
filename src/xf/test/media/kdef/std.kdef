@@ -21,3 +21,19 @@ Tex2D = kernel (
 ) {
 	sample = tex2D(texture, uv);
 };
+
+SamplerToImage = kernel (
+	in sampler <type sampler2D>,
+	out image <in.sampler.actual + type Image>
+) {
+	struct SamplerToImage_Image : Image {
+		sampler2D sampler;
+		float4 sample(float2 uv) {
+			return tex2d(sampler, uv);
+		}
+	};
+
+	SamplerToImage_Image res;
+	res.sampler = sampler;
+	image = res;
+};

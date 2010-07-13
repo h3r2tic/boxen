@@ -10,6 +10,7 @@ private {
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.GraphDef;
 	import xf.nucleus.kdef.Common;
+	import xf.nucleus.kdef.ParamUtils;
 	import xf.nucleus.Log : log = nucleusLog;
 	import xf.mem.StackBuffer;
 }
@@ -142,7 +143,22 @@ private void buildKernelSubGraph(
 					nodeName, n.id
 				);
 
+				auto node = kg.getNode(n);
+
 				createData(type, n);
+				varIter: foreach (varName, varValue; &nodeDef.iterVars) {
+					switch (varName) {
+						case "type":
+						case "kernel":
+						case "params":
+							continue varIter;
+
+						default: {
+							auto par = node.attribs.add(ParamDirection.Out, varName);
+							setParamValue(par, varValue);
+						} break;
+					}
+				}
 
 				return n;
 			}

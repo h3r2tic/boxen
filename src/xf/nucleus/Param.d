@@ -553,6 +553,17 @@ struct ParamList {
 
 		return res;
 	}
+
+	void copyFrom(ref ParamList pl) {
+		assert (_allocator !is null);
+		
+		uint base = _params.length;
+		_params.resize(base+pl.length);
+		
+		foreach (int i, ref Param p; pl) {
+			_params[base+i] = p.dup(_allocator);
+		}
+	}
 }
 
 

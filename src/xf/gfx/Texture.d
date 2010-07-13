@@ -76,6 +76,7 @@ interface ITextureMngr {
 	void	updateTexture(Texture, vec2i origin, vec2i size, ubyte* data);
 	vec3i	getSize(TextureHandle handle);
 	size_t	getApiHandle(TextureHandle handle);
+	bool	getInfo(TextureHandle handle, TextureRequest*);
 }
 
 
@@ -94,5 +95,11 @@ struct Texture {
 		assert (_resHandle !is Handle.init);
 		assert (_resMngr !is null);
 		return (cast(ITextureMngr)_resMngr).getApiHandle(_resHandle);
+	}
+
+	bool getInfo(TextureRequest* info) {
+		assert (_resHandle !is Handle.init);
+		assert (_resMngr !is null);
+		return (cast(ITextureMngr)_resMngr).getInfo(_resHandle, info);
 	}
 }

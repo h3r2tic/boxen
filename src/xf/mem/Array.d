@@ -2,90 +2,17 @@ module xf.mem.Array;
 
 private {
 	import xf.mem.ArrayAllocator;
+	import xf.mem.Log;
 }
 
 
-
-struct Array(
-		T,
-		alias ExpandPolicy = ArrayExpandPolicy.FixedAmount!(64),
-		alias Allocator = ArrayAllocator.MainHeap
-) {
-	mixin Allocator;
-	mixin ExpandPolicy;
-	
-	
-	size_t pushBack(T x) {
-		size_t res = _length;
-		if (_length < _capacity) {
-			_ptr[_length++] = x;
-		} else {
-			_expand(1U);
-			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
-			_ptr[_length++] = x;
-		}
-		return res;
-	}
-
-
-	size_t append(T[] x) {
-		size_t res = _length;
-		size_t xlen = x.length;
-		if (_length + xlen <= _capacity) {
-			_ptr[_length .. _length+xlen] = x;
-			_length += xlen;
-		} else {
-			_expand(xlen);
-			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
-			_ptr[_length .. _length+xlen] = x;
-			_length += xlen;
-		}
-		return res;
-	}
-
-
-	size_t growBy(uint num) {
-		size_t res = _length;
-		resize(res + num);
-		return res;
-	}
-	
-	
+private template MArrCommon(T) {
 	T popBack() {
 		assert (_length > 0);
 		return _ptr[--_length];
 	}
-	
-	
-	void reserve(size_t num) {
-		if (num > _capacity) {
-			_expand(num - _capacity);
-			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
-		}
-	}
-	
-	
-	void resize(size_t num) {
-		if (num > 0) {
-			reserve(num);
-			if (num > _length) {
-				initElements(_length, num);
-			}
-		}
-		
-		_length = num;
-		
-		if (num > 0) {
-			assert (_ptr !is null);
-		}
-	}
-	
-	
-	private void initElements(size_t start, size_t end) {
-		_ptr[start..end] = T.init;
-	}
-	
-	
+
+
 	void clear() {
 		_length = 0;
 	}
@@ -101,12 +28,6 @@ struct Array(
 		assert (i < _length);
 		assert (_ptr !is null);
 		return _ptr + i;
-	}
-
-	
-	void dispose() {
-		_dispose(_ptr);
-		_length = _capacity = 0;
 	}
 	
 	
@@ -201,4 +122,129 @@ struct Array(
 		size_t	_length = 0;
 		size_t	_capacity = 0;
 	}
+}
+
+
+struct Array(
+		T,
+		alias ExpandPolicy = ArrayExpandPolicy.FixedAmount!(64),
+		alias Allocator = ArrayAllocator.MainHeap
+) {
+	mixin Allocator;
+	mixin ExpandPolicy;
+	
+	
+	size_t pushBack(T x) {
+		size_t res = _length;
+		if (_length < _capacity) {
+			_ptr[_length++] = x;
+		} else {
+			_expand(1U);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
+			_ptr[_length++] = x;
+		}
+		return res;
+	}
+
+
+	size_t append(T[] x) {
+		size_t res = _length;
+		size_t xlen = x.length;
+		if (_length + xlen <= _capacity) {
+			_ptr[_length .. _length+xlen] = x;
+			_length += xlen;
+		} else {
+			_expand(xlen);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
+			_ptr[_length .. _length+xlen] = x;
+			_length += xlen;
+		}
+		return res;
+	}
+
+
+	size_t growBy(uint num) {
+		size_t res = _length;
+		resize(res + num);
+		return res;
+	}
+	
+	
+	void reserve(size_t num) {
+		if (num > _capacity) {
+			_expand(num - _capacity);
+			_ptr = cast(T*)_reallocate(_ptr, 0, _length * T.sizeof, _capacity * T.sizeof);
+		}
+	}
+	
+	
+	void resize(size_t num) {
+		if (num > 0) {
+			reserve(num);
+			if (num > _length) {
+				initElements(_length, num);
+			}
+		}
+		
+		_length = num;
+		
+		if (num > 0) {
+			assert (_ptr !is null);
+		}
+	}
+	
+	
+	private void initElements(size_t start, size_t end) {
+		_ptr[start..end] = T.init;
+	}
+	
+	
+	void dispose() {
+		_dispose(_ptr);
+		_length = _capacity = 0;
+	}
+
+
+	mixin MArrCommon!(T);
+}
+
+
+
+struct FixedArray(T) {
+	static FixedArray opCall(T[] arr) {
+		FixedArray res = void;
+		res._ptr = arr.ptr;
+		res._length = 0;
+		res._capacity = arr.length;
+		return res;
+	}
+
+	
+	size_t pushBack(T x) {
+		size_t res = _length;
+		if (_length < _capacity) {
+			_ptr[_length++] = x;
+		} else {
+			memError("FixedArray overflow (cap={}).", _capacity);
+			assert (false);
+		}
+		return res;
+	}
+
+
+	size_t append(T[] x) {
+		size_t res = _length;
+		size_t xlen = x.length;
+		if (_length + xlen <= _capacity) {
+			_ptr[_length .. _length+xlen] = x;
+			_length += xlen;
+		} else {
+			memError("FixedArray overflow (cap={}, len={}, arg={}).", _capacity, _length, xlen);
+			assert (false);
+		}
+		return res;
+	}
+
+
+	mixin MArrCommon!(T);
 }

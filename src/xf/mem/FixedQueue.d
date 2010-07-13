@@ -6,6 +6,7 @@ private {
 
 
 
+// NOTE: this queue sucks. could use some wrap-around.
 private template MFixedQueue() {
 	bool isEmpty() {
 		return head is tail;
@@ -147,6 +148,18 @@ struct FixedQueue(T) {
 		res.head = res.tail = res.data;
 		assert (res.data < res.dataEnd);
 		return res;
+	}
+
+
+	static if (!is(T == void)) {
+		static FixedQueue opCall(T[] data) {
+			FixedQueue res = void;
+			res.data = data.ptr;
+			res.dataEnd = cast(void*)(data.ptr + data.length);
+			res.head = res.tail = res.data;
+			assert (res.data < res.dataEnd);
+			return res;
+		}
 	}
 
 

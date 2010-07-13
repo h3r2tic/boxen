@@ -1,27 +1,9 @@
-Image = kernel(
-	in uv <type float2 + use uv>,
-	out sample <type float4>
-);
-
-ImageGenTest = kernel Image {
-	sample = float4(uv, 0, 1);
-};
-
 CheckerGen = kernel Image(
 	in size <type float2>
 ) {
 	float2 meh = step(float2(0.5, 0.5), frac(uv * size)) * 2 - 1;
 	sample = (meh.x * meh.y) * 0.5 + 0.5;
 };
-
-converter<linear>(20) sampler2img (
-	in a <type sampler2D>,
-	out b <in.a.actual + type Image>
-) {
-	sampler2DImage res;
-	res.sampler = a;
-	b = res;
-}
 
 
 BlurImage = kernel(

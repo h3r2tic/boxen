@@ -3,6 +3,7 @@ module xf.mem.StackBuffer;
 private {
 	import xf.mem.Chunk;
 	import xf.mem.ThreadChunkAllocator : _StackBufferInternalAllocator = ThreadChunkAllocator;
+	import xf.mem.ScratchAllocator;
 	import xf.mem.ChunkCache;
 	import xf.mem.Common;
 	
@@ -61,65 +62,16 @@ class StackBufferUnsafe {
 		g_mainStackBuffer.releaseThreadData();
 	}
 	
-	
-	template alloc(T) {
-		RefType!(T) alloc(Args ...)(Args args) {
-			size_t size = void;
-			
-			static if (is(T == class)) {
-				size = T.classinfo.init.length;
-			} else {
-				size = T.sizeof;
-			}
-			
-			auto buf = _mainBuffer.alloc(size, this);
-			
-			static if (is(T == class)) {
-				buf[] = T.classinfo.init[];
-				auto res = cast(T)cast(void*)buf.ptr;
-				res._ctor(args);
-				return res;
-			} else static if (is(T == struct)) {
-				T* res = cast(T*)buf.ptr;
-				*res = T(args);
-				return res;
-			} else {
-				T* res = cast(T*)buf.ptr;
-				static if (1 == args.length) {
-					*res = args[0];
-				} else {
-					static assert (0 == args.length);
-					*res = T.init;
-				}
-				return res;
-			}
-		}
-	}
-	
-	
-	T[] allocArray(T)(size_t len, bool throwExc = true) {
-		auto res = allocArrayNoInit!(T)(len, throwExc);
-		if (res) {
-			res[] = T.init;
-		}
-		return res;
-	}
-	
-
-	T[] allocArrayNoInit(T)(size_t len, bool throwExc = true) {
-		size_t size = len * T.sizeof;
-		return cast(T[])_mainBuffer.alloc(size, this, throwExc);
-	}
-
 
 	void* allocRaw(size_t bytes) {		// throws
 		return _mainBuffer.alloc(bytes, this, true).ptr;
 	}
 
-
 	void* allocRaw(size_t bytes, bool throwExc) {
 		return _mainBuffer.alloc(bytes, this, throwExc).ptr;
 	}
+
+	mixin MScratchAllocator;
 
 
 	/**
