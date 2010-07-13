@@ -126,3 +126,27 @@ bool equal(T)(T a, T b) {
 		return a == b;
 	}
 }
+
+
+void swap(T)(ref T a, ref T b) {
+	T x = a;
+	a = b;
+	b = x;
+}
+
+
+class AssureException : Exception {
+	this (cstring msg) {
+		super (msg);
+	}
+}
+
+void assure(bool cond, cstring msg = "assure() failed") {
+	if (!cond) {
+		throw new AssureException(msg);
+	}
+}
+
+pragma (ctfe) cstring ct_allocaArray(cstring type, cstring name, cstring len) {
+	return `auto `~name~` = (cast(`~type~`*)alloca(`~type~`.sizeof * `~len~`))[0..`~len~`];`;
+}

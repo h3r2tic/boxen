@@ -802,7 +802,7 @@ private void findAutoFlow(
 				}
 				
 				stack2.mergeWith(stack);
-				final info = stack.alloc!(ConvInfo)(
+				final info = stack._new!(ConvInfo)(
 					convChain,
 					fromId,
 					fromParam,

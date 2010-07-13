@@ -34,6 +34,9 @@ struct Vector(flt_, int dim_) {
 			static if (dim >= 3)	union { flt z; flt b; }
 			static if (dim >= 4)	union { flt w; flt a; }
 		}
+
+		static if (dim > 2)	Vector!(flt_, 2) xy;
+		static if (dim > 3)	Vector!(flt_, 3) xyz;
 	}
 	
 	

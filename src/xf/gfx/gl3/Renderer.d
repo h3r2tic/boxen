@@ -1067,6 +1067,17 @@ class Renderer : IRenderer {
 			return 0;
 		}
 	}
+
+
+	bool getInfo(TextureHandle handle, TextureRequest* info) {
+		if (auto tex = _getTexture(handle)) {
+			*info = tex.request;
+			return true;
+		} else {
+			log.error("getInfo called on an invalid texture handle");
+			return false;
+		}
+	}
 	
 	
 	// Framebuffer ----

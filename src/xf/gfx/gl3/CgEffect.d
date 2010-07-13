@@ -669,7 +669,7 @@ struct CgEffectBuilder {
 	
 	
 	RegisteredParam* createParam(cstring name, CGparameter handle) {
-		final p = mem.alloc!(RegisteredParam);
+		final p = mem._new!(RegisteredParam);
 		final n = mem.allocArray!(char)(name.length);
 		n[] = name;
 		p.name = cast(string)n;

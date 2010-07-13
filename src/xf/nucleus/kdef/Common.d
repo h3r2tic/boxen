@@ -66,6 +66,17 @@ abstract class Scope {
 		}
 		return null;
 	}
+
+
+	int iterVars(int delegate(ref string, ref Value) sink) {
+		foreach (i, n; _varNames) {
+			auto v = _varValues[i];
+			if (int r = sink(n, v)) {
+				return r;
+			}
+		}
+		return 0;
+	}
 	
 	
 	private final Scope getValueOwner(string name, string* finalName) {

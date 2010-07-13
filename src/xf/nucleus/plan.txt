@@ -175,17 +175,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		* materials depending on kernels/graphs
 		* surfaces depending on kernels/graphs
 		* all compiled effects depend on all converters
-	+ add opEquals to:
-		+ Function
-		+ ParamList
-		+ Param
-		+ SemanticExp
-		+ KernelImpl
-		+ Value
-		+ ParamSemanticExp
-		+ ParamDef
-		+ Code
-		+ ScratchFixedRope
+	+ add opEquals to some stuff:
 	* might reparse everything, but detect changes and only invalidate the runtime constructs
 	  that are affected - recompile Effects, modify material params
 	+ find all affected items, walk the dependency graph, marking stuff as invalid
@@ -202,11 +192,16 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ Image kernel abstraction
 	+ sampling test
 	+ Blur kernel
-	- special Blit nodes to separate passes
-	- break up the passes
-	- codegen each pass
-	- generate an effect for each path
-	- create render targets
+
+	+ convert the graph data flow - instert conversion nodes
+	- trace forward and find the sizes and formats for buffers/textures
+	- trace backward, using the Output and Blit nodes as watersheds,
+	  at each step creating one or more subgraphs for the rendering op
+	  group all outputs with the same format and size
+	- for each of the generated graphs, codegen a fragment shader
+	  and use a fixed vertex shader, compile the effect
+	- instantiate effects
+	- create the textures and framebuffers
 	- render
 
 -	editor

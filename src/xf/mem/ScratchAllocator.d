@@ -25,18 +25,28 @@ template MScratchAllocator() {
 	}
 
 
-	Ref!(T) _new(T, P...)(P p) {
-		static if (is(T == class)) {
-			void[] data = dupArray(T.classinfo.init);
-			T res = cast(T)data.ptr;
-			static if (is(typeof(&res._ctor))) {
-				res._ctor(p);
+	template _new(T) {
+		Ref!(T) _new(P...)(P p) {
+			static if (is(T == class)) {
+				void[] data = dupArray(T.classinfo.init);
+				T res = cast(T)data.ptr;
+				static if (is(typeof(&res._ctor))) {
+					res._ctor(p);
+				}
+			} else static if (is(T == struct)) {
+				T* res = cast(T*)allocRaw(T.sizeof);
+				*res = T(p);
+			} else {
+				T* res = cast(T*)allocRaw(T.sizeof);
+				static if (1 == p.length) {
+					*res = p[0];
+				} else {
+					static assert (0 == p.length);
+					*res = T.init;
+				}
 			}
-		} else {
-			T* res = cast(T*)allocRaw(T.sizeof);
-			*res = T(p);
+			return res;
 		}
-		return res;
 	}
 	
 

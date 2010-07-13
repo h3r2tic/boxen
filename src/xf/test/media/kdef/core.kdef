@@ -31,3 +31,13 @@ Pigment = kernel(
 Rasterize = kernel(
 	in inPos <type float4 + use position + basis clip>
 );
+
+Image = kernel(
+	in uv <type float2 + use uv>,
+	out sample <type float4>
+);
+
+Blit = kernel(
+	in input <type Image>,
+	out output <type Image>
+);

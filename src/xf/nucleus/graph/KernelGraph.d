@@ -107,6 +107,8 @@ class KernelGraph {
 
 
 	struct Node {
+		ParamList	attribs;
+
 		private {
 			NodeType	_type;
 
@@ -123,15 +125,15 @@ class KernelGraph {
 		// Doesn't perform a deep copy for composite nodes, just refcounts the graph
 		void copyTo(Node* other) {
 			assert (type == other.type);
+			
+			other.attribs.copyFrom(attribs);
+
 			if (type & NodeType._Param) {
 				auto src = _param();
 				auto dst = other._param();
 				dst.sourceKernelType = src.sourceKernelType;
 				dst.sourceLightIndex = src.sourceLightIndex;
-				assert (dst.params._allocator !is null);
-				foreach (p; src.params) {
-					dst.params.add(p);
-				}
+				dst.params.copyFrom(src.params);
 			} else {
 				switch (type) {
 					case NodeType.Kernel: {
@@ -141,18 +143,12 @@ class KernelGraph {
 						auto src = func();
 						auto dst = other.func();
 						dst.func = src.func;
-						assert (dst.params._allocator !is null);
-						foreach (p; src.params) {
-							dst.params.add(p);
-						}
+						dst.params.copyFrom(src.params);
 					} break;
 					case NodeType.Bridge: {
 						auto src = bridge();
 						auto dst = other.bridge();
-						assert (dst.params._allocator !is null);
-						foreach (p; src.params) {
-							dst.params.add(p);
-						}
+						dst.params.copyFrom(src.params);
 					} break;
 					case NodeType.Composite: {
 						auto src = composite();
@@ -168,10 +164,8 @@ class KernelGraph {
 						dst.returnType = DgScratchAllocator(
 							dst.params._allocator
 						).dupString(src.returnType);
-						
-						foreach (p; src.params) {
-							dst.params.add(p);
-						}
+
+						dst.params.copyFrom(src.params);
 					} break;
 					
 					default: assert (false);
@@ -347,6 +341,8 @@ class KernelGraph {
 
 		*node = Node.init;
 		node._type = t;
+
+		node.attribs._allocator = &_mem.pushBack;
 		
 		GraphNodeInfo info;
 		
