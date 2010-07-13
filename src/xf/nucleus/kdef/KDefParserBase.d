@@ -1,6 +1,8 @@
 module xf.nucleus.kdef.KDefParserBase;
 
 private {
+	import xf.Common : startsWith;
+	
 	import xf.nucleus.Param;
 	import xf.nucleus.Value;
 	import xf.nucleus.Code;
@@ -317,7 +319,29 @@ class KDefParserBase : Parser!(KDefToken) {
 
 				setParamValue(p, d.defaultValue);
 
-				if (ParamDirection.In == dir) {
+				bool hasPlainSemantic = true;
+				void checkPlainSemantic(ParamSemanticExp sem) {
+					if (sem is null) {
+						return;
+					}
+					
+					if (sem) {
+						if (ParamSemanticExp.Type.Sum == sem.type) {
+							checkPlainSemantic(sem.exp1);
+							checkPlainSemantic(sem.exp2);
+						} else if (ParamSemanticExp.Type.Trait == sem.type) {
+							// TODO: resolve formal in. references
+							if (startsWith(sem.name, "in.")) {
+								hasPlainSemantic = false;
+							}
+						} else {
+							hasPlainSemantic = false;
+						}
+					}
+				}
+				checkPlainSemantic(d.paramSemantic);
+
+				if (ParamDirection.In == dir || hasPlainSemantic) {
 					p.hasPlainSemantic = true;
 					final psem = p.semantic();
 

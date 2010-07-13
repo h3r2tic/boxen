@@ -5,6 +5,7 @@ private {
 	import xf.nucleus.codegen.Defs;
 	import xf.nucleus.codegen.Rename;
 	import xf.nucleus.Param;
+	import xf.nucleus.Function;
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.graph.Graph;
 	import xf.nucleus.graph.GraphMisc;
@@ -28,6 +29,7 @@ private {
 struct CodegenSetup {
 	GraphNodeId	inputNode;
 	GraphNodeId	outputNode;
+	bool		delegate(cstring name, AbstractFunction*) getInterface;
 }
 
 
@@ -108,6 +110,18 @@ void codegen(
 	}, rasterNode);
 	nodeDomains[rasterNode.id] = GPUDomain.Vertex;
 
+	void outputGraphToDot() {
+		File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
+			switch (nodeDomains[nid.id]) {
+				case GPUDomain.Vertex: return " : vert"[];
+				case GPUDomain.Fragment: return " : frag"[];
+				default: assert (false);
+			}
+		}));
+	}
+
+	outputGraphToDot();
+
 	assert (GPUDomain.Vertex == nodeDomains[vinputNodeId.id]);
 	assert (GPUDomain.Fragment == nodeDomains[foutputNodeId.id]);
 
@@ -134,18 +148,6 @@ void codegen(
 			// TODO: anything /else/ ?
 		}
 	}
-
-	void outputGraphToDot() {
-		File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
-			switch (nodeDomains[nid.id]) {
-				case GPUDomain.Vertex: return " : vert"[];
-				case GPUDomain.Fragment: return " : frag"[];
-				default: assert (false);
-			}
-		}));
-	}
-
-	outputGraphToDot();
 
 	// ----
 
@@ -415,7 +417,7 @@ void codegen(
 	}
 	findNumGraphs(graph);
 	
-	emitInterfaces(graph, sink);
+	emitInterfaces(graph, sink, setup);
 
 	final graphs = stack.allocArray!(SubgraphData)(numGraphs);
 	emitGraphCompositesAndFuncs(
@@ -480,61 +482,90 @@ void codegen(
 }
 
 
-void emitInterfaces(KernelGraph graph, CodeSink sink) {
+private cstring getIfaceFuncReturnType(AbstractFunction func) {
+	cstring res = null;
+	foreach (p; func.params) {
+		if (ParamDirection.Out == p.dir) {
+			assert (res is null);	// we only support one return param for ifaces
+			assert (p.hasPlainSemantic);	// TODO
+			assert (p.hasTypeConstraint);
+			res = p.type;
+		}
+	}
+	assert (res !is null);
+	return res;
+}
+
+
+void emitInterfaces(KernelGraph graph, CodeSink sink, CodegenSetup setup) {
 	scope stack = new StackBuffer;
 	mixin MSmallTempArray!(cstring) emittedComps;
 
 	/+// HACK
 	emittedComps.pushBack("Image", &stack.allocRaw);+/
+
+
+	void emit(AbstractFunction func, cstring retType) {
+		bool ifaceEmitted = false;
+
+		foreach (em; emittedComps.items) {
+			if (em == func.name) {
+				ifaceEmitted = true;
+				break;
+			}
+		}
+
+		if (!ifaceEmitted) {
+			emittedComps.pushBack(func.name, &stack.allocRaw);
+
+			sink("interface ")(func.name)(" {").newline;
+			sink('\t');
+			bool returnEmitted = false;
+			foreach (p; func.params) {
+				if (p.isOutput) {
+					assert (!returnEmitted);	// uh oh, only one ret allowed for now (TODO?)
+					returnEmitted = true;
+					sink(retType);
+					sink(' ');
+					sink(p.name);
+				}
+			}
+			sink('(').newline;
+			{
+				word i = 0;
+				foreach (p; func.params) {
+					if (p.isInput) {
+						if (i > 0) {
+							sink(',').newline();
+						}
+
+						sink("\t\t")(p.type)(' ')(p.name);
+						++i;
+					}
+				}
+			}
+			sink.newline()("\t);").newline;
+			sink("};").newline;
+		}
+	}
 	
 	void worker(KernelGraph graph) {
 		foreach (nid, node; graph.iterNodes) {
+			if (setup.getInterface !is null) {
+				foreach (par; *node.getParamList()) {
+					if (par.hasPlainSemantic && par.hasTypeConstraint) {
+						AbstractFunction ifaceFunc;
+						if (setup.getInterface(par.type, &ifaceFunc)) {
+							emit(ifaceFunc, getIfaceFuncReturnType(ifaceFunc));
+						}
+					}
+				}
+			}
+			
 			if (KernelGraph.NodeType.Composite == node.type) {
 				auto compNode = node.composite();
 				worker(compNode.graph);
-
-				bool ifaceEmitted = false;
-
-				foreach (em; emittedComps.items) {
-					if (em == compNode.targetFunc.name) {
-						ifaceEmitted = true;
-						break;
-					}
-				}
-
-				if (!ifaceEmitted) {
-					final func = compNode.targetFunc;
-					emittedComps.pushBack(func.name, &stack.allocRaw);
-
-					sink("interface ")(func.name)(" {").newline;
-					sink('\t');
-					bool returnEmitted = false;
-					foreach (p; func.params) {
-						if (p.isOutput) {
-							assert (!returnEmitted);	// uh oh, only one ret allowed for now (TODO?)
-							returnEmitted = true;
-							sink(compNode.returnType);
-							sink(' ');
-							sink(p.name);
-						}
-					}
-					sink('(').newline;
-					{
-						word i = 0;
-						foreach (p; func.params) {
-							if (p.isInput) {
-								if (i > 0) {
-									sink(',').newline();
-								}
-
-								sink("\t\t")(p.type)(' ')(p.name);
-								++i;
-							}
-						}
-					}
-					sink.newline()("\t);").newline;
-					sink("};").newline;
-				}
+				emit(compNode.targetFunc, compNode.returnType);
 			}
 		}
 	}

@@ -18,6 +18,7 @@ private {
 	import xf.nucleus.KernelParamInterface;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
+	import xf.nucleus.post.PostProcessor;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
 
@@ -172,9 +173,17 @@ import tango.core.Memory;
 
 class TestApp : GfxApp {
 	alias renderer rendererBackend;
-	Renderer nr;
-	VSDRoot vsd;
+	Renderer		nr;
+	VSDRoot			vsd;
 	SimpleCamera	camera;
+	
+
+	Texture			fbTex;
+	Framebuffer		mainFb;
+	Framebuffer		texFb;
+
+	PostProcessor	post;
+
 
 	TestLight[]		lights;
 
@@ -203,6 +212,9 @@ class TestApp : GfxApp {
 
 		nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
 		kdefRegistry.registerObserver(nr);
+
+		post = new PostProcessor(rendererBackend, kdefRegistry);
+		post.setKernel("TestPost");
 
 		foreach (surfName, surf; &kdefRegistry.surfaces) {
 			surf.id = nextSurfaceId++;
@@ -316,6 +328,34 @@ class TestApp : GfxApp {
 			model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 			"TestSurface4", "TestMaterial"
 		);
+
+		{
+			mainFb = rendererBackend.framebuffer;
+			
+			final cfg = FramebufferConfig();
+			vec2i size = cfg.size = vec2i(window.width, window.height);
+			cfg.location = FramebufferLocation.Offscreen;
+
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.SRGB8_ALPHA8;
+				treq.minFilter = TextureMinFilter.Linear;
+				treq.magFilter = TextureMagFilter.Linear;
+				cfg.color[0] = fbTex = rendererBackend.createTexture(
+					size,
+					treq
+				);
+			}
+				
+			cfg.depth = RenderBuffer(
+				size,
+				TextureInternalFormat.DEPTH24_STENCIL8
+			);
+
+			texFb = rendererBackend.createFramebuffer(cfg);
+			assert (texFb.valid);
+			rendererBackend.framebuffer = texFb;
+		}
 	}
 
 
@@ -369,11 +409,18 @@ class TestApp : GfxApp {
 			}
 		});
 
+		rendererBackend.framebuffer = texFb;
+
 		rendererBackend.resetStats();
 		rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
 		rendererBackend.clearBuffers();
 
 		nr.render(viewSettings, rlist);
+
+		rendererBackend.framebuffer = mainFb;
+		rendererBackend.clearBuffers();
+
+		post.render(fbTex);
 
 		if (kdefRegistry.invalidated) {
 			kdefRegistry.reload();

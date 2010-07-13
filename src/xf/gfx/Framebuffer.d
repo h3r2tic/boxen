@@ -15,8 +15,8 @@ typedef ResourceHandle FramebufferHandle;
 
 
 struct RenderBuffer {
-	TextureInternalFormat	internalFormat;
 	vec2i					size;
+	TextureInternalFormat	internalFormat;
 }
 
 

@@ -30,13 +30,14 @@ struct LocalArray(T) {
 		LocalArray res;
 		if (0 == n) {
 			return res;
-		}		
-		res.data = sb.allocArray!(T)(n, false);
+		}
+		res.data = sb.allocArrayNoInit!(T)(n, false);
 		if (res.data is null) {
 			res.data = (cast(T*)mainThreadHeap.allocRaw(T.sizeof * n))[0..n];
 		} else {
 			res._flags |= Flags.OnStack;
 		}
+		assert (res.data !is null);
 		return res;
 	}
 	
