@@ -201,8 +201,10 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ for each of the generated graphs, codegen a fragment shader
 	+ and use a fixed vertex shader, compile the effect
 	+ instantiate effects
-	- create the textures and framebuffers
+	~ create the textures and framebuffers
+		- optimize their usage, reusing textures/FBs between stages
 	+ render
+	- add resampling and other buffer formats
 
 -	editor
 

@@ -29,6 +29,15 @@ private template MArrCommon(T) {
 		assert (_ptr !is null);
 		return _ptr + i;
 	}
+
+
+	size_t indexOf(T* item) {
+		size_t res = 0;
+		return
+			(item >= _ptr && (res = item - _ptr) < _length)
+			? res
+			: _length;
+	}
 	
 	
 	int opApply(int delegate(ref T) dg) {
@@ -94,6 +103,16 @@ private template MArrCommon(T) {
 			_ptr[idx] = _ptr[_length-1];
 		}
 		--_length;
+	}
+
+
+	T* opIn_r(T item) {
+		foreach (ref x; _ptr[0.._length]) {
+			if (x == item) {
+				return &x;
+			}
+		}
+		return null;
 	}
 	
 	

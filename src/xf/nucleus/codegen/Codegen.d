@@ -111,13 +111,13 @@ void codegen(
 	nodeDomains[rasterNode.id] = GPUDomain.Vertex;
 
 	void outputGraphToDot() {
-		File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
+		/+File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
 			switch (nodeDomains[nid.id]) {
 				case GPUDomain.Vertex: return " : vert"[];
 				case GPUDomain.Fragment: return " : frag"[];
 				default: assert (false);
 			}
-		}));
+		}));+/
 	}
 
 	outputGraphToDot();
