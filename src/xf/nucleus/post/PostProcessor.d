@@ -39,6 +39,10 @@ private {
 		xf.mem.ChunkQueue,
 		xf.mem.SmallTempArray,
 		xf.utils.BitSet;
+
+	// tmp
+	import xf.nucleus.graph.GraphMisc;
+	import tango.io.device.File;
 }
 
 
@@ -85,6 +89,16 @@ final class PostProcessor {
 		RenderStage*	next;
 		Effect			effect;
 		EffectInstance	efInst;
+		Texture[]		outTextures;
+		StageInputSrc[]	inputs;
+		Framebuffer		fb;
+	}
+
+
+	struct StageInputSrc {
+		RenderStage*	stage;
+		StageInputSrc*	nextInSharedOutput;
+		uword			outputIdx;
 	}
 
 
@@ -154,6 +168,9 @@ final class PostProcessor {
 			graph
 		);
 
+		/+File.set("graph.dot", toGraphviz(graph));
+		assert (false);+/
+
 		// insert conversion nodes, handle auto conversions
 		
 		convertGraphDataFlow(
@@ -182,13 +199,13 @@ final class PostProcessor {
 	// The data passed to sink() is allocated off the supplied stack
 	private void findCompatibleOutputSets(
 		StackBufferUnsafe stack,
-		GraphNodeId[] nodes,
+		QItem[] nodes,
 		RTConfig delegate(GraphNodeId) getRTConfig,
-		void delegate(GraphNodeId[]) sink
+		void delegate(QItem[]) sink
 	) {
 		assert (nodes.length > 0);
 		
-		mixin(ct_allocaArray(`GraphNodeId`, `buf`, `nodes.length`));
+		mixin(ct_allocaArray(`QItem`, `buf`, `nodes.length`));
 		mixin(ct_allocaArray(`bool`, `doneFlags`, `nodes.length`));
 		doneFlags[] = false;
 
@@ -202,7 +219,7 @@ final class PostProcessor {
 				for (uword j = i+1; j < nodes.length; ++j) {
 					auto n2 = nodes[j];
 					if (!doneFlags[j]) {
-						if (getRTConfig(n1).canMRTWith(getRTConfig(n2))) {
+						if (getRTConfig(n1.nid).canMRTWith(getRTConfig(n2.nid))) {
 							doneFlags[j] = true;
 							buf[num++] = n2;
 						}
@@ -215,16 +232,25 @@ final class PostProcessor {
 	}
 
 
+	private struct QItem {
+		GraphNodeId		nid;
+		StageInputSrc*	inputSrc;
+	}
+
+
 	private void genRenderStages(
 		KernelGraph graph,
 		RTConfig delegate(GraphNodeId) getRTConfig
 	) {
 		scope stack = new StackBufferUnsafe;
 
-		auto outNodeSets = FixedQueue!(GraphNodeId[])(
-			stack.allocArrayNoInit!(GraphNodeId[])(graph.capacity)
+		auto outNodeSets = FixedQueue!(QItem[])(
+			stack.allocArrayNoInit!(QItem[])(graph.capacity)
 		);
-		auto inNodes = FixedArray!(GraphNodeId)(
+		auto inNodes = FixedArray!(QItem)(
+			stack.allocArrayNoInit!(QItem)(graph.capacity)
+		);
+		auto stageInNodes = FixedArray!(GraphNodeId)(
 			stack.allocArrayNoInit!(GraphNodeId)(graph.capacity)
 		);
 		auto subgraphNodes = FixedArray!(GraphNodeId)(
@@ -236,86 +262,218 @@ final class PostProcessor {
 		auto nodeFlags = DynamicBitSet();
 		nodeFlags.alloc(graph.capacity, &stack.allocRaw);
 
-		auto nq = FixedQueue!(GraphNodeId)(
-			stack.allocArrayNoInit!(GraphNodeId)(graph.capacity)
+		auto nq = FixedQueue!(QItem)(
+			stack.allocArrayNoInit!(QItem)(graph.capacity)
 		);
 
 		foreach (nid; graph.iterNodes(KernelGraph.NodeType.Output)) {
 			assert (outNodeSets.isEmpty);
-			final arr = stack._new!(GraphNodeId)()[0..1];
-			arr[0] = nid;
-			*outNodeSets.pushBack() = arr;
+			inNodes.pushBack(QItem(nid, null));
 		}
 
-		while (!outNodeSets.isEmpty) {
-			nodeFlags.clearAll();
-			final outNodes = *outNodeSets.popFront();
-
-			/*
-			 * Seed the queue with the output nodes from the previous stage.
-			 */
-
-			foreach (n; outNodes) {
-				*nq.pushBack() = n;
-				nodeFlags.set(n.id);
-				subgraphNodes.pushBack(n);
-			}
-
-			/*
-			 * Walk backwards from the outputs of the previous stage stopping at Blit.
-			 */
-
-			while (!nq.isEmpty) {
-				final oldDst = *nq.popFront();
-				assert (nodeFlags.isSet(oldDst.id));
-				final newDst = old2new[oldDst.id];
-				
-				foreach (oldSrc; graph.flow.iterIncomingConnections(oldDst)) {
-					auto oldSrcNode = graph.getNode(oldSrc);
-					
-					if ((	KernelGraph.NodeType.Kernel == oldSrcNode.type
-						&&	"Blit" == oldSrcNode.kernel.kernel.func.name)
-						||	KernelGraph.NodeType.Input == oldSrcNode.type
-					) {
-						if (!nodeFlags.isSet(oldSrc.id)) {
-							inNodes.pushBack(oldSrc);
-							nodeFlags.set(oldSrc.id);
-						}
-					} else {
-						if (!nodeFlags.isSet(oldSrc.id)) {
-							*nq.pushBack() = oldSrc;
-							nodeFlags.set(oldSrc.id);
-						}
-					}
-
-					subgraphNodes.pushBack(oldSrc);
+		while (inNodes.length > 0) {
+			findCompatibleOutputSets(
+				stack,
+				inNodes.data,
+				getRTConfig,
+				(QItem[] outs) {
+					*outNodeSets.pushBack() = outs;
 				}
-			}
+			);
 
-			if (inNodes.length > 0) {
-				findCompatibleOutputSets(
-					stack,
-					inNodes.data,
-					getRTConfig,
-					(GraphNodeId[] outs) {
-						*outNodeSets.pushBack() = outs;
+			inNodes.clear();
+
+			while (!outNodeSets.isEmpty) {
+				nodeFlags.clearAll();
+				final outNodes = *outNodeSets.popFront();
+
+				/*
+				 * Seed the queue with the output nodes from the previous stage.
+				 */
+
+				foreach (n; outNodes) {
+					*nq.pushBack() = n;
+					nodeFlags.set(n.nid.id);
+					subgraphNodes.pushBack(n.nid);
+				}
+
+				/*
+				 * Walk backwards from the outputs of the previous stage stopping at Blit.
+				 */
+
+				while (!nq.isEmpty) {
+					final oldDstQItem = *nq.popFront();
+					final oldDst = oldDstQItem.nid;
+					assert (nodeFlags.isSet(oldDst.id));
+					final newDst = old2new[oldDst.id];
+					
+					foreach (oldSrc; graph.flow.iterIncomingConnections(oldDst)) {
+						auto oldSrcNode = graph.getNode(oldSrc);
+
+						bool isBlit = (
+							KernelGraph.NodeType.Kernel == oldSrcNode.type
+							&&	"Blit" == oldSrcNode.kernel.kernel.func.name
+						);
+
+						if (isBlit || KernelGraph.NodeType.Input == oldSrcNode.type) {
+							if (!nodeFlags.isSet(oldSrc.id)) {
+								stageInNodes.pushBack(oldSrc);
+								nodeFlags.set(oldSrc.id);
+							}
+						} else {
+							if (!nodeFlags.isSet(oldSrc.id)) {
+								*nq.pushBack() = QItem(oldSrc, null);
+								nodeFlags.set(oldSrc.id);
+							}
+						}
+
+						subgraphNodes.pushBack(oldSrc);
 					}
-				);
+				}
 
-				genRenderStage(graph, inNodes.data, outNodes, subgraphNodes.data);
+				if (stageInNodes.length > 0) {
+					auto rs = genRenderStage(
+						graph,
+						stageInNodes.data,
+						outNodes,
+						subgraphNodes.data
+					);
+
+					createRenderStageFramebuffer(
+						rs,
+						outNodes,
+						getRTConfig
+					);
+
+					// TODO: check whether params are used in the Cg effect
+					bool isAnyOutputUsed(GraphNodeId node) {
+						return true;
+					}
+
+					foreach (n; outNodes) {
+						if (auto info = n.inputSrc) {
+							for (auto it = info; it; it = it.nextInSharedOutput) {
+								it.stage = rs;
+							}
+						}
+					}
+
+					stageNodeIter: foreach (iidx, n1; stageInNodes) {
+						if (KernelGraph.NodeType.Input == graph.getNode(n1).type) {
+							continue;
+						}
+						
+						if (isAnyOutputUsed(n1)) {
+							// HACK: assumes only one input param per node
+							final sis = &rs.inputs[iidx];
+							
+							foreach (ref n2; inNodes) {
+								if (n1 == n2.nid) {
+									sis.nextInSharedOutput = n2.inputSrc;
+									n2.inputSrc = sis;
+									continue stageNodeIter;
+								}
+							}
+							inNodes.pushBack(QItem(n1, sis));
+						}
+					}
+
+					stageInNodes.clear();
+				}
 
 				subgraphNodes.clear();
-				inNodes.clear();
 				nq.clear();
+			}
+		}
+
+		connectStageTextures();
+	}
+
+
+	private void createRenderStageFramebuffer(
+		RenderStage* rs,
+		QItem[] outNodes,
+		RTConfig delegate(GraphNodeId) getRTConfig
+	) {
+		// HACK: assumes only one output per node
+
+		foreach (i, item; outNodes) {
+			assert ((item.inputSrc is null) == (rs.next is null));
+
+			if (item.inputSrc !is null) {	// Texture not needed otherwise
+				final cfg = getRTConfig(item.nid);
+
+				TextureRequest treq;
+				treq.internalFormat = cfg.format;
+				treq.minFilter = TextureMinFilter.Linear;
+				treq.magFilter = TextureMagFilter.Linear;
+				rs.outTextures[i] = _backend.createTexture(
+					cfg.size,
+					treq
+				);
+			}
+		}
+
+		if (rs.next !is null) {
+			final cfg = FramebufferConfig();
+			vec2i size = cfg.size = rs.outTextures[0].getSize().xy;
+			cfg.location = FramebufferLocation.Offscreen;
+			foreach (i, ref tex; rs.outTextures) {
+				cfg.color[i] = tex;
+			}
+			rs.fb = _backend.createFramebuffer(cfg);
+		}
+	}
+
+
+	private void connectStageTextures() {
+		for (auto st = _renderStageList; st; st = st.next) {
+			foreach (i, ref input; st.inputs) {
+				if (input.stage !is null) {
+					Texture* tex = &input.stage.outTextures[input.outputIdx];
+					renameInputParam(
+						i,
+						(cstring name) {
+							if (auto pp = st.efInst.getUniformPtrPtr(name)) {
+								*cast(Texture**)pp = tex;
+							}
+						}
+					);
+				} else {
+					Texture* tex = &_inputTexture;
+					renameInputParam(
+						i,
+						(cstring name) {
+							if (auto pp = st.efInst.getUniformPtrPtr(name)) {
+								*cast(Texture**)pp = tex;
+							}
+						}
+					);
+				}
 			}
 		}
 	}
 
 
-	private void genRenderStage(
+	private void renameInputParam(
+		uword i,
+		void delegate(cstring) sink
+	) {
+		formatTmp(
+			(Fmt fmt) {
+				fmt.format("tex__{}", i);
+			},
+			sink
+		);
+	}
+
+
+	uint rsIdx = 0;
+
+	private RenderStage* genRenderStage(
 		KernelGraph graph,
 		GraphNodeId[] inNodes,
-		GraphNodeId[] outNodes,
+		QItem[] outNodes,
 		GraphNodeId[] oldNodes
 	) {
 		scope stack = new StackBuffer;
@@ -444,7 +602,7 @@ final class PostProcessor {
 
 		bool isOutputNode(GraphNodeId nid) {
 			foreach (n; outNodes) {
-				if (n == nid) {
+				if (n.nid == nid) {
 					return true;
 				}
 			}
@@ -482,6 +640,7 @@ final class PostProcessor {
 
 		foreach (oldNid; inNodes) {
 			final oldNode = graph.getNode(oldNid);
+			uword numIn = 0;
 			foreach (param; *oldNode.getParamList()) {
 				if (!param.isOutput) {
 					continue;
@@ -490,11 +649,20 @@ final class PostProcessor {
 				assert ("Image" == param.type);
 
 				inputBridge.pushBack(BridgeParam(param.name, oldNid), &stack.allocRaw);
+				++numIn;
 			}
+
+			// This will hold true while only the special Blit nodes are allowed
+			// to split execution stages and while only one input is allowed
+			// at the beginning of the post-proc pipeline.
+			// If this restriction is lifted, QItem must be adjusted to carry
+			// a node-param tuple instead of being only concerned aboud nodes.
+			assert (1 == numIn);
 		}
 
-		foreach (oldNid; outNodes) {
-			final oldNode = graph.getNode(oldNid);
+		foreach (i, oldNid; outNodes) {
+			final oldNode = graph.getNode(oldNid.nid);
+			uword numOut = 0;
 			foreach (param; *oldNode.getParamList()) {
 				if (!param.isInput) {
 					continue;
@@ -502,7 +670,36 @@ final class PostProcessor {
 				
 				assert ("Image" == param.type);
 
-				outputBridge.pushBack(BridgeParam(param.name, oldNid), &stack.allocRaw);
+				outputBridge.pushBack(
+					BridgeParam(param.name, oldNid.nid),
+					&stack.allocRaw
+				);
+
+				++numOut;
+			}
+
+			if (0 == numOut) {
+				error("Node {} has 0 outputs, wtf.", oldNid.nid.id);
+			}
+
+			if (numOut != 1) {
+				char[] meh;
+				foreach (param; *oldNode.getParamList()) {
+					if (!param.isInput) {
+						continue;
+					}
+					meh ~= param.toString ~ "   ";
+				}
+				error("Onoz, multiple outputs in node. {}", meh);
+			}
+			assert (1 == numOut);		// as above
+			
+			// HACK: assumes the above
+			// Mark which output a given input should map to
+			if (auto info = oldNid.inputSrc) {
+				for (auto it = info; it; it = it.nextInSharedOutput) {
+					it.outputIdx = i;
+				}
 			}
 		}
 
@@ -516,21 +713,16 @@ final class PostProcessor {
 
 			input.newNid = s2imgNid;
 
-			formatTmp(
-				(Fmt fmt) {
-					fmt.format("in__{}", i);
-				},
-				(cstring str) {
-					auto par = dataNode.params.add(ParamDirection.Out, str);
-					par.hasPlainSemantic = true;
-					par.type = "sampler2D";
+			renameInputParam(i, (cstring str) {
+				auto par = dataNode.params.add(ParamDirection.Out, str);
+				par.hasPlainSemantic = true;
+				par.type = "sampler2D";
 
-					subgraph.flow.addDataFlow(
-						dataNid, str,
-						s2imgNid, "sampler"
-					);
-				}
-			);
+				subgraph.flow.addDataFlow(
+					dataNid, str,
+					s2imgNid, "sampler"
+				);
+			});
 		}
 
 		// Create outputs and sampling funcs for the output bridge
@@ -567,6 +759,10 @@ final class PostProcessor {
 		// Finally, copy data flow
 
 		foreach (oldDst; oldNodes) {
+			if (isInputNode(oldDst)) {
+				continue;
+			}
+			
 			bool dstIsOutput = isOutputNode(oldDst);
 
 			foreach (oldSrc; graph.flow.iterIncomingConnections(oldDst)) {
@@ -615,14 +811,22 @@ final class PostProcessor {
 			}
 		}
 
-		addRenderStage(subgraph, inNid, outNid);
+		formatTmp((Fmt fmt) {
+			fmt.format("graph{}.dot", rsIdx);
+		}, (cstring name) {
+			File.set(name, toGraphviz(subgraph));
+		});
+		++rsIdx;
+
+		return addRenderStage(subgraph, inNid, outNid, inputBridge.length);
 	}
 
 
-	private void addRenderStage(
+	private RenderStage* addRenderStage(
 		KernelGraph graph,
 		GraphNodeId inNid,
-		GraphNodeId outNid
+		GraphNodeId outNid,
+		uword numInputs
 	) {
 		ConvCtx convCtx;
 		convCtx.semanticConverters = &_kdefRegistry.converters;
@@ -669,6 +873,13 @@ final class PostProcessor {
 		final vdata = rs.efInst.getVaryingParamData("VertexProgram.structure__position");
 		vdata.buffer = &_vb;
 		vdata.attrib = &_va;
+
+		final outNode = graph.getNode(outNid).output();
+		
+		rs.outTextures = _mem.allocArray!(Texture)(outNode.params.length);
+		rs.inputs = _mem.allocArray!(StageInputSrc)(numInputs);
+
+		return rs;
 	}
 
 
@@ -719,29 +930,21 @@ final class PostProcessor {
 	private void _render(Texture input) {
 		assert (!_settingsDirty);
 
+		_inputTexture = input;
+
+		final finalFB = _backend.framebuffer;
+		final origState = *_backend.state;
+
+		scope (exit) {
+			*_backend.state = origState;
+		}
+
+		_backend.state.depth.enabled = false;
+
 		for (auto rs = _renderStageList; rs !is null; rs = rs.next) {
 			final renderList = _backend.createRenderList();
 			assert (renderList !is null);
 			scope (success) _backend.disposeRenderList(renderList);
-
-			void** instUniforms = rs.efInst.getUniformPtrsDataPtr();
-
-			void** getInstUniformPtrPtr(cstring name) {
-				if (instUniforms) {
-					final idx = rs.efInst.getUniformParamGroup.getUniformIndex(name);
-					if (idx != -1) {
-						return instUniforms + idx;
-					}
-				}
-				return null;
-			}
-
-			// HACK
-			if (auto pp = getInstUniformPtrPtr("in__0")) {
-				*pp = &input;
-			} else {
-				error("meh, sampler not found :S");
-			}
 
 			final bin = renderList.getBin(rs.effect);
 			final rdata = bin.add(rs.efInst);
@@ -751,6 +954,12 @@ final class PostProcessor {
 			id.indexBuffer	= _ib;
 			id.numIndices	= 6;
 			id.maxIndex		= 5;
+
+			if (rs.next is null) {
+				_backend.framebuffer = finalFB;
+			} else {
+				_backend.framebuffer = rs.fb;
+			}
 
 			_backend.render(renderList);
 		}
@@ -773,6 +982,8 @@ final class PostProcessor {
 		VertexBuffer	_vb;
 		VertexAttrib	_va;
 		IndexBuffer		_ib;
+
+		Texture			_inputTexture;
 
 		RenderStage*	_renderStageList;
 	}

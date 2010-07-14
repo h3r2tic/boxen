@@ -46,6 +46,7 @@ private void buildKernelSubGraph(
 		IGraphDef def_,
 		KernelGraph kg,
 		uword* nodeI,
+		uword firstNodeI,
 		GraphNodeId delegate(
 			uword			i,
 			cstring			nodeName,
@@ -199,6 +200,7 @@ private void buildKernelSubGraph(
 				nodeDef.kernelImpl.graph,
 				kg,
 				nodeI,
+				subgraphDefIdx,
 				nodeBuilder,
 				true,
 				&bridgeIn,
@@ -222,15 +224,15 @@ private void buildKernelSubGraph(
 	}
 
 	GraphNodeId findInputId(GraphDefNode g) {
-		foreach (i, d; nodeDefs) {
-			if (d is g) return nodeInputIds[i];
+		foreach (i, d; nodeDefs[firstNodeI..$]) {
+			if (d is g) return nodeInputIds[i+firstNodeI];
 		}
 		assert (false);
 	}
 
 	GraphNodeId findOutputId(GraphDefNode g) {
-		foreach (i, d; nodeDefs) {
-			if (d is g) return nodeOutputIds[i];
+		foreach (i, d; nodeDefs[firstNodeI..$]) {
+			if (d is g) return nodeOutputIds[i+firstNodeI];
 		}
 		assert (false);
 	}
@@ -306,6 +308,7 @@ void buildKernelGraph(
 		def_,
 		kg,
 		&nodeI,
+		0,
 		nodeBuilder,
 		false,
 		null,

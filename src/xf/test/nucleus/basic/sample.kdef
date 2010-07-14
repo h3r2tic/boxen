@@ -33,8 +33,34 @@ FixedBlurHack = kernel(
 	in img <type Image>,
 	out sample <type float4>
 ) {
-	uv += 0.5f / 1040;
+	uv.x += 0.5f / 1040;
+	uv.y += 0.5f / 650;
+	//float2 offset = float2(6.0f / 1040, 0);
 	float2 offset = float2(6.0f / 1040, 0);
+
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+	res += img.sample(uv - offset) * coeff[0];
+	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
+	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
+	res += img.sample(uv) * coeff[3];
+	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
+	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
+	res += img.sample(uv + offset) * coeff[6];
+	sample = res;
+};
+
+// Insanely hacky, but what the hell :P
+FixedBlurHack2 = kernel(
+	in uv <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+	uv.x -= 0.5f / 1040;
+	uv.y -= 0.5f / 650;
+	float2 offset = float2(0, 6.0f / 650);
 
     // 1D Gaussian 7 taps coefficients
     const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
@@ -74,7 +100,7 @@ DefaultMeshStructure = graph Structure {
 
 
 TestSurface1 = surface CookTorrance {
-	roughness = 0.1;
+	roughness = 0.2;
 };
 
 TestSurface2 = surface BlinnPhong {
@@ -119,7 +145,7 @@ TestLight = graph Light {
 			lumIntens <type float4 + use lumIntens>
 		) {
 			toLight = lightPos - position;
-			intensity = lumIntens / dot(toLight, toLight).xxxx;
+			intensity = lumIntens / (float4(1) + dot(toLight, toLight).xxxx);
 			toLight = normalize(toLight);
 		};
 	};
@@ -169,8 +195,10 @@ TestPigment = graph Pigment {
 			someImg <type Image>
 		) {
 			float4 albedo = diffuse * albedoTint * abs(someImg.sample(texCoord));
+
+			radiance = albedo + specular;
 			// NOTE: 1 - saturate() added to counter the post-proc test's negative
-			radiance = 1 - saturate(albedo + specular);
+			//radiance = 1 - saturate(albedo + specular);
 /+			radiance = someImg.sample(texCoord);
 			radiance = abs(radiance);+/
 		};
@@ -288,7 +316,127 @@ SpecularOnly = kernel Pigment {
 };
 
 
+TestPostX = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>
+		);
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = FixedBlurHack;
+	};
+
+	nb = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	n11 = node {
+		type = kernel;
+		kernel = FixedBlurHack2;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>
+		);
+	};
+
+
+	connect n0.input ns.image;
+	connect ns.sample n1.img;
+	connect n1.sample nb.input;
+	connect nb.output n11.img;
+	connect n11.sample n2.output;
+	noauto n1.uv;
+	noauto n11.uv;
+	noauto ns.uv;
+};
+
+
 TestPost = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>
+		);
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	ns2 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = TestPostX;
+	};
+
+	nb = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	n2 = node {
+		type = kernel;
+		kernel = TestPostX;
+	};
+
+	n3 = node {
+		type = output;
+		params = (
+			output <type Image>
+		);
+	};
+
+	n4 = node {
+		type = kernel;
+		kernel = AddGlare;
+	};
+
+	connect n0.input n1.input;
+	connect n1.output nb.input;
+	connect nb.output n2.input;
+
+	connect n0.input ns.image;
+	connect ns.sample n4.baseColor;
+	connect n2.output ns2.image;
+	connect ns2.sample n4.blurredColor;
+	connect n4.output n3.output;
+
+	noauto ns.uv;
+	noauto ns2.uv;
+	
+	//connect n2.output n3.output;
+};
+
+
+AddGlare = kernel(
+	in baseColor <type float4>,
+	in blurredColor <type float4>,
+	out output <type float4>
+) {
+	output = saturate(saturate(blurredColor)*0.3-0.05);//saturate(saturate(blurredColor*0.3)-0.3) + baseColor;
+	output += baseColor;
+};
+
+
+
+TestPost3 = graph {
 	n0 = node {
 		type = input;
 		params = (
@@ -332,7 +480,58 @@ TestPost = graph {
 };
 
 
-TestPost2 = graph {
+TestPost4 = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>
+		);
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	nn = node {
+		type = kernel;
+		kernel = OneMinus;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = FixedBlurHack;
+	};
+
+	n11 = node {
+		type = kernel;
+		kernel = FixedBlurHack2;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>
+		);
+	};
+
+
+	/+connect n0.input n1.img;
+	connect n1.sample n2.output;
+	noauto n1.uv;+/
+
+	connect n0.input ns.image;
+	connect ns.sample nn.a;
+	connect nn.b n1.img;
+	connect n1.sample n11.img;
+	connect n11.sample n2.output;
+	noauto n1.uv;
+	noauto n11.uv;
+	noauto ns.uv;
+};
+
+
+TestPostNop = graph {
 	n0 = node {
 		type = input;
 		params = (
@@ -346,11 +545,6 @@ TestPost2 = graph {
 	};
 
 	n2 = node {
-		type = kernel;
-		kernel = OneMinus;
-	};
-
-	n3 = node {
 		type = output;
 		params = (
 			output <type Image>
@@ -359,7 +553,6 @@ TestPost2 = graph {
 
 
 	connect n0.input n1.image;
-	connect n1.sample n2.a;
-	connect n2.b n3.output;
+	connect n1.sample n2.output;
 	noauto n1.uv;
 };

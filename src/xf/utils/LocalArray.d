@@ -32,12 +32,13 @@ struct LocalArray(T) {
 			return res;
 		}
 		res.data = sb.allocArrayNoInit!(T)(n, false);
-		if (res.data is null) {
+		if (res.data.ptr is null) {
 			res.data = (cast(T*)mainThreadHeap.allocRaw(T.sizeof * n))[0..n];
 		} else {
 			res._flags |= Flags.OnStack;
 		}
-		assert (res.data !is null);
+		assert (res.data.ptr !is null);
+		res.data[] = T.init;
 		return res;
 	}
 	

@@ -304,8 +304,6 @@ class TestApp : GfxApp {
 
 		cstring model = `../../media/mesh/soldier.hsf`;
 		float scale = 1.0f;
-		//cstring model = `../../media/mesh/masha.hsf`;
-		//float scale = 0.02f;
 
 		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
 
@@ -338,7 +336,7 @@ class TestApp : GfxApp {
 
 			{
 				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.SRGB8_ALPHA8;
+				treq.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
 				treq.minFilter = TextureMinFilter.Linear;
 				treq.magFilter = TextureMagFilter.Linear;
 				cfg.color[0] = fbTex = rendererBackend.createTexture(
