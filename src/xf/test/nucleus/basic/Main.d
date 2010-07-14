@@ -365,7 +365,7 @@ class TestApp : GfxApp {
 		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 2));
 		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 1));
 
-		float lightScale = 5.0f;
+		float lightScale = 8.0f;
 
 		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0) * lightScale;
 		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0) * lightScale;
@@ -407,18 +407,38 @@ class TestApp : GfxApp {
 			}
 		});
 
-		rendererBackend.framebuffer = texFb;
+		static bool wantPost = true;
 
-		rendererBackend.resetStats();
-		rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
-		rendererBackend.clearBuffers();
+		static bool prevKeyDown = false;
+		bool keyDown = keyboard.keyDown(KeySym.space);
+		if (keyDown && !prevKeyDown) {
+			wantPost ^= true;
+		}
+		prevKeyDown = keyDown;
 
-		nr.render(viewSettings, rlist);
+		if (wantPost) {
+			rendererBackend.framebuffer = texFb;
 
-		rendererBackend.framebuffer = mainFb;
-		rendererBackend.clearBuffers();
+			rendererBackend.resetStats();
+			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
+			rendererBackend.clearBuffers();
 
-		post.render(fbTex);
+			nr.render(viewSettings, rlist);
+
+			rendererBackend.framebuffer = mainFb;
+			rendererBackend.clearBuffers();
+
+			post.render(fbTex);
+		} else {
+			rendererBackend.framebuffer = mainFb;
+
+			rendererBackend.resetStats();
+			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
+			rendererBackend.clearBuffers();
+
+			nr.render(viewSettings, rlist);
+		}
+
 
 		if (kdefRegistry.invalidated) {
 			kdefRegistry.reload();

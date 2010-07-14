@@ -182,10 +182,23 @@ final class PostProcessor {
 		);
 
 		RTConfig getRTConfig(GraphNodeId nid) {
-			// TODO
+			vec2i	size = _inputSize;
+			auto	format = _inputFormat;
+
+			auto attribs = graph.getNode(nid).attribs;
+			foreach (a; attribs) {
+				if ("resample" == a.name) {
+					assert (ParamValueType.Float2 == a.valueType);
+					vec2 resample;
+					a.getValue(&resample.x, &resample.y);
+					size.x = cast(int)(resample.x * size.x);
+					size.y = cast(int)(resample.y * size.y);
+				}
+			}
+			
 			return RTConfig(
-				_inputSize,
-				_inputFormat
+				size,
+				format
 			);
 		}
 
@@ -935,10 +948,6 @@ final class PostProcessor {
 		final finalFB = _backend.framebuffer;
 		final origState = *_backend.state;
 
-		scope (exit) {
-			*_backend.state = origState;
-		}
-
 		_backend.state.depth.enabled = false;
 
 		for (auto rs = _renderStageList; rs !is null; rs = rs.next) {
@@ -956,9 +965,12 @@ final class PostProcessor {
 			id.maxIndex		= 5;
 
 			if (rs.next is null) {
+				*_backend.state = origState;
 				_backend.framebuffer = finalFB;
 			} else {
 				_backend.framebuffer = rs.fb;
+				_backend.state.viewport.width = rs.fb.size.x;
+				_backend.state.viewport.height = rs.fb.size.y;
 			}
 
 			_backend.render(renderList);
