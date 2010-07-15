@@ -336,6 +336,12 @@ final class PostProcessor {
 		auto nodeFlags = DynamicBitSet();
 		nodeFlags.alloc(graph.capacity, &stack.allocRaw);
 
+		auto outDone = DynamicBitSet();
+		outDone.alloc(graph.capacity, &stack.allocRaw);
+		outDone.clearAll();
+
+		auto outSIS = stack.allocArray!(StageInputSrc*)(graph.capacity);
+
 		auto nq = FixedQueue!(QItem)(
 			stack.allocArrayNoInit!(QItem)(graph.capacity)
 		);
@@ -455,7 +461,7 @@ final class PostProcessor {
 						if (KernelGraph.NodeType.Input == graph.getNode(n1).type) {
 							continue;
 						}
-						
+
 						if (isAnyOutputUsed(n1)) {
 							// HACK: assumes only one input param per node
 							final sis = &rs.inputs[iidx];
@@ -467,7 +473,19 @@ final class PostProcessor {
 									continue stageNodeIter;
 								}
 							}
-							inNodes.pushBack(QItem(n1, sis));
+
+							if (outDone.isSet(n1.id)) {
+								assert (outSIS[n1.id] !is null);
+								sis.stage = outSIS[n1.id].stage;
+								sis.outputIdx = outSIS[n1.id].outputIdx;
+								sis.nextInSharedOutput = outSIS[n1.id].nextInSharedOutput;
+								outSIS[n1.id].nextInSharedOutput = sis;
+								continue;
+							} else {
+								outDone.set(n1.id);
+								outSIS[n1.id] = sis;
+								inNodes.pushBack(QItem(n1, sis));
+							}
 						}
 					}
 
@@ -904,24 +922,35 @@ final class PostProcessor {
 					bool isSrcBlit = isBlitNode(graph, oldSrc);
 					bool isSrcInput = !isSrcBlit && KernelGraph.NodeType.Input == graph.getNode(oldSrc).type;
 
-					// Special case for the 'size' param of Blit and Input nodes
-					if (fl.from == imageSizeName && (isSrcBlit || isSrcInput)) {
-						newSrc = dataNid;
+					if (srcIsInput) {
+						// Special case for the 'size' param of Blit and Input nodes
+						if (fl.from == imageSizeName && (isSrcBlit || isSrcInput)) {
+							newSrc = dataNid;
 
-						// HACK: assumes just 1 output, again
-						renameInputParam(0, "size", (cstring str) {
-							fromName = stack.dupString(str);
-						});
-					}
-					else if (srcIsInput) {
-						foreach (bp; inputBridge.items) {
-							if (bp.oldNid == oldSrc && bp.name == fl.from) {
-								newSrc = bp.newNid;
-								fromName = "image";	// output from SamplerToImage
-								break;
+							bool found = false;
+							foreach (i, bp; inputBridge.items) {
+								if (bp.oldNid == oldSrc) {
+									assert (!found);
+									found = true;
+									// HACK: assumes just 1 output, again
+									renameInputParam(i, "size", (cstring str) {
+										fromName = stack.dupString(str);
+									});
+								}
 							}
+							assert (found);
+
+							assert (newSrc.valid);
+						} else {
+							foreach (bp; inputBridge.items) {
+								if (bp.oldNid == oldSrc && bp.name == fl.from) {
+									newSrc = bp.newNid;
+									fromName = "image";	// output from SamplerToImage
+									break;
+								}
+							}
+							assert (newSrc.valid);
 						}
-						assert (newSrc.valid);
 					} else {
 						newSrc = old2new[oldSrc.id];
 						if (!newSrc.valid) {

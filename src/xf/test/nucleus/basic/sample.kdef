@@ -329,7 +329,7 @@ BlurAndDownsample = graph {
 		);
 	};
 
-	connect n0 blurOffComp;
+	connect n0.inputSize blurOffComp.imgSize;
 	connect n0.input ns.image;
 	connect ns.sample n1.img;
 	connect n1.sample nb.input;
