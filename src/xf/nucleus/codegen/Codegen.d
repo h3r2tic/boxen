@@ -669,7 +669,7 @@ void emitGraphCompositesAndFuncs(
 
 				// codegen the body
 
-				File.set("graph.dot", toGraphviz(compNode.graph));
+				//File.set("graph.dot", toGraphviz(compNode.graph));
 
 				auto topological = stack.allocArray!(GraphNodeId)(compNode.graph.numNodes);
 				findTopologicalOrder(compNode.graph.backend_readOnly, topological);

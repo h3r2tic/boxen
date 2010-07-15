@@ -304,6 +304,8 @@ class TestApp : GfxApp {
 
 		cstring model = `../../media/mesh/soldier.hsf`;
 		float scale = 1.0f;
+		/+cstring model = `../../media/mesh/masha.hsf`;
+		float scale = 0.0x2f;+/
 
 		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
 
@@ -339,6 +341,8 @@ class TestApp : GfxApp {
 				treq.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
 				treq.minFilter = TextureMinFilter.Linear;
 				treq.magFilter = TextureMagFilter.Linear;
+				treq.wrapS = TextureWrap.ClampToBorder;
+				treq.wrapT = TextureWrap.ClampToBorder;
 				cfg.color[0] = fbTex = rendererBackend.createTexture(
 					size,
 					treq
@@ -420,7 +424,7 @@ class TestApp : GfxApp {
 			rendererBackend.framebuffer = texFb;
 
 			rendererBackend.resetStats();
-			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
+			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.01f;
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, rlist);
@@ -433,7 +437,7 @@ class TestApp : GfxApp {
 			rendererBackend.framebuffer = mainFb;
 
 			rendererBackend.resetStats();
-			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.1f;
+			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.01f;
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, rlist);

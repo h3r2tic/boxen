@@ -24,7 +24,8 @@ private {
 		xf.nucleus.graph.GraphOps,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.KernelGraphOps,
-		xf.nucleus.graph.GraphMisc;
+		xf.nucleus.graph.GraphMisc,
+		xf.nucleus.util.EffectInfo;
 		
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
 
@@ -380,26 +381,6 @@ class ForwardRenderer : Renderer {
 	}
 
 
-	// TODO: mem
-	struct EffectInfo {
-		struct UniformDefaults {
-			char[]	name;		// zero-terminated
-			void[]	value;
-		}
-
-		UniformDefaults[]	uniformDefaults;
-		Effect				effect;
-
-
-		// NOTE: doesn't actually dispose the effect, only the info
-		void dispose() {
-			mainHeap.freeRaw(uniformDefaults.ptr);
-			uniformDefaults = null;
-			effect = null;
-		}
-	}
-
-
 	// TODO: mem, indices instead of names (?)
 	struct EffectCacheKey {
 		cstring		pigmentKernel;
@@ -462,63 +443,6 @@ class ForwardRenderer : Renderer {
 		key.hash = hash;
 
 		return key;
-	}
-
-
-	private void findEffectInfo(KernelGraph kg, EffectInfo* effectInfo) {
-		assert (effectInfo !is null);
-
-		void iterDataParams(void delegate(cstring name, Param* param) sink) {
-			foreach (nid; kg.iterNodes) {
-				final node = kg.getNode(nid);
-				if (KernelGraph.NodeType.Data != node.type) {
-					continue;
-				}
-				final pnode = node.data();
-
-				foreach (ref p; pnode.params) {
-					if (p.value) {
-						formatTmp((Fmt fmt) {
-							xf.nucleus.codegen.Rename.renameDataNodeParam(
-								fmt,
-								pnode,
-								p.name
-							);
-						},
-						(cstring s) {
-							sink(s, &p);
-						});
-					}
-				}
-			}
-		}
-
-		uword numParams = 0;
-		uword sizeReq = 0;
-
-		iterDataParams((cstring name, Param* param) {
-			sizeReq += name.length+1;	// stringz
-			sizeReq += param.valueSize;
-			sizeReq += EffectInfo.UniformDefaults.sizeof;
-			++numParams;
-		});
-
-		final pool = PoolScratchAllocator(mainHeap.allocRaw(sizeReq)[0..sizeReq]);
-
-		// free effectInfo.uniformDefaults.ptr to free the whole thing (I accidentally)
-		effectInfo.uniformDefaults = pool.allocArray
-			!(EffectInfo.UniformDefaults)(numParams);
-
-		numParams = 0;
-		iterDataParams((cstring name, Param* param) {
-			final ud = &effectInfo.uniformDefaults[numParams];
-			assert (param.valueType != ParamValueType.String, "TODO");
-			ud.name = pool.dupStringz(name);
-			ud.value = pool.dupArray(param.value[0..param.valueSize]);
-			++numParams;
-		});
-
-		assert (pool.isFull());
 	}
 
 
@@ -1080,13 +1004,7 @@ float3 eyePosition <
 				 * the level of Nucled, so that mats/surfs always define all values,
 				 * even if they're not set in the GUI
 				 */
-				foreach (ud; effectInfo.uniformDefaults) {
-					void** ptr = getInstUniformPtrPtr(ud.name);
-					if (ptr) {
-						assert (*ptr, ud.name);
-						memcpy(*ptr, ud.value.ptr, ud.value.length);
-					}
-				}				
+				setEffectInstanceUniformDefaults(&effectInfo, efInst);
 
 				// ----
 
