@@ -13,8 +13,11 @@ private {
 		xf.nucleus.Code,
 		xf.nucleus.KernelCompiler,
 		xf.nucleus.KernelImpl,
+		xf.nucleus.graph.Graph,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.KernelGraphOps,
+		xf.nucleus.graph.GraphOps,
+		xf.nucleus.util.EffectInfo,
 		xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 
 	import
@@ -24,6 +27,7 @@ private {
 	import
 		xf.gfx.Texture,
 		xf.gfx.Effect,
+		xf.gfx.EffectHelper,
 		xf.gfx.Framebuffer,
 		xf.gfx.Buffer,
 		xf.gfx.VertexBuffer,
@@ -42,6 +46,7 @@ private {
 
 	// tmp
 	import xf.nucleus.graph.GraphMisc;
+	import tango.text.convert.Format;
 	import tango.io.device.File;
 }
 
@@ -84,12 +89,16 @@ final class PostProcessor {
 		vdata.attrib = &va;+/
 	}
 
+	const cstring imageSizeName	= "size";
+
 
 	struct RenderStage {
 		RenderStage*	next;
 		Effect			effect;
 		EffectInstance	efInst;
+		EffectInfo		efInfo;
 		Texture[]		outTextures;
+		vec2[]			outTextureSizes;
 		StageInputSrc[]	inputs;
 		Framebuffer		fb;
 	}
@@ -168,9 +177,6 @@ final class PostProcessor {
 			graph
 		);
 
-		/+File.set("graph.dot", toGraphviz(graph));
-		assert (false);+/
-
 		// insert conversion nodes, handle auto conversions
 		
 		convertGraphDataFlow(
@@ -181,25 +187,56 @@ final class PostProcessor {
 			)
 		);
 
-		RTConfig getRTConfig(GraphNodeId nid) {
-			vec2i	size = _inputSize;
-			auto	format = _inputFormat;
+		GraphNodeId outNode;
+		foreach (n; graph.iterNodes(KernelGraph.NodeType.Output)) {
+			assert (!outNode.valid);
+			outNode = n;
+		}
+		assert (outNode.valid);
 
-			auto attribs = graph.getNode(nid).attribs;
+		removeUnreachableBackwards(
+			graph.backend_readOnly,
+			outNode
+		);
+
+		File.set("graph.dot", toGraphviz(graph));
+		//assert (false);
+
+		auto topo = stack.allocArray!(GraphNodeId)(graph.numNodes);
+		findTopologicalOrder(graph.backend_readOnly, topo);
+
+		auto rtConfigs = stack.allocArray!(RTConfig)(graph.capacity);
+		foreach (n; topo) {
+			RTConfig config = RTConfig(_inputSize, _inputFormat);
+
+			// HACK: This finds the first param which comes into an Image port
+			// and assumes that the image size may be taken from the node
+			// which owns that param.
+			outer: foreach (from; graph.flow.iterIncomingConnections(n)) {
+				foreach (fl; graph.flow.iterDataFlow(from, n)) {
+					if ("Image" == graph.getNode(n).getInputParam(fl.to).type) {
+						config = rtConfigs[from.id];
+						break outer;
+					}
+				}
+			}
+
+			auto attribs = graph.getNode(n).attribs;
 			foreach (a; attribs) {
 				if ("resample" == a.name) {
 					assert (ParamValueType.Float2 == a.valueType);
 					vec2 resample;
 					a.getValue(&resample.x, &resample.y);
-					size.x = cast(int)(resample.x * size.x);
-					size.y = cast(int)(resample.y * size.y);
+					config.size.x = cast(int)(resample.x * config.size.x);
+					config.size.y = cast(int)(resample.y * config.size.y);
 				}
 			}
-			
-			return RTConfig(
-				size,
-				format
-			);
+
+			rtConfigs[n.id] = config;
+		}
+
+		RTConfig getRTConfig(GraphNodeId nid) {
+			return rtConfigs[nid.id];
 		}
 
 		genRenderStages(
@@ -209,8 +246,19 @@ final class PostProcessor {
 	}
 
 
+	private bool isInPrecedingSubtreeOf(Graph g, GraphNodeId n1, GraphNodeId n2) {
+		foreach (n; g.iterIncomingConnections(n2)) {
+			if (n == n1 || isInPrecedingSubtreeOf(g, n1, n)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+
 	// The data passed to sink() is allocated off the supplied stack
 	private void findCompatibleOutputSets(
+		KernelGraph graph,
 		StackBufferUnsafe stack,
 		QItem[] nodes,
 		RTConfig delegate(GraphNodeId) getRTConfig,
@@ -232,7 +280,11 @@ final class PostProcessor {
 				for (uword j = i+1; j < nodes.length; ++j) {
 					auto n2 = nodes[j];
 					if (!doneFlags[j]) {
-						if (getRTConfig(n1.nid).canMRTWith(getRTConfig(n2.nid))) {
+						if (
+							getRTConfig(n1.nid).canMRTWith(getRTConfig(n2.nid))
+						&&	!isInPrecedingSubtreeOf(graph.backend_readOnly, n1.nid, n2.nid)
+						&&	!isInPrecedingSubtreeOf(graph.backend_readOnly, n2.nid, n1.nid)
+						) {
 							doneFlags[j] = true;
 							buf[num++] = n2;
 						}
@@ -248,6 +300,15 @@ final class PostProcessor {
 	private struct QItem {
 		GraphNodeId		nid;
 		StageInputSrc*	inputSrc;
+	}
+
+
+	private bool isBlitNode(KernelGraph graph, GraphNodeId nid) {
+		final node = graph.getNode(nid);
+		
+		return
+			KernelGraph.NodeType.Kernel == node.type
+			&&	"Blit" == node.kernel.kernel.func.name;
 	}
 
 
@@ -286,6 +347,7 @@ final class PostProcessor {
 
 		while (inNodes.length > 0) {
 			findCompatibleOutputSets(
+				graph,
 				stack,
 				inNodes.data,
 				getRTConfig,
@@ -323,28 +385,46 @@ final class PostProcessor {
 					foreach (oldSrc; graph.flow.iterIncomingConnections(oldDst)) {
 						auto oldSrcNode = graph.getNode(oldSrc);
 
-						bool isBlit = (
-							KernelGraph.NodeType.Kernel == oldSrcNode.type
-							&&	"Blit" == oldSrcNode.kernel.kernel.func.name
-						);
+						bool isBlit = isBlitNode(graph, oldSrc);
 
 						if (isBlit || KernelGraph.NodeType.Input == oldSrcNode.type) {
 							if (!nodeFlags.isSet(oldSrc.id)) {
 								stageInNodes.pushBack(oldSrc);
 								nodeFlags.set(oldSrc.id);
+
+								subgraphNodes.pushBack(oldSrc);
 							}
 						} else {
 							if (!nodeFlags.isSet(oldSrc.id)) {
 								*nq.pushBack() = QItem(oldSrc, null);
 								nodeFlags.set(oldSrc.id);
+
+								subgraphNodes.pushBack(oldSrc);
 							}
 						}
 
-						subgraphNodes.pushBack(oldSrc);
+						if (!nodeFlags.isSet(oldSrc.id)) {
+							subgraphNodes.pushBack(oldSrc);
+							nodeFlags.set(oldSrc.id);
+						}
 					}
 				}
 
 				if (stageInNodes.length > 0) {
+					/+{
+						char[] meh;
+						meh ~= "in:";
+						foreach (n; stageInNodes.data) {
+							meh ~= Format(" {}", n.id);
+						}
+						meh ~= "  out:";
+						foreach (n; outNodes) {
+							meh ~= Format(" {}", n.nid.id);
+						}
+						log.info("genRenderStage({})", meh);
+						delete meh;
+					}+/
+					
 					auto rs = genRenderStage(
 						graph,
 						stageInNodes.data,
@@ -420,10 +500,13 @@ final class PostProcessor {
 				treq.internalFormat = cfg.format;
 				treq.minFilter = TextureMinFilter.Linear;
 				treq.magFilter = TextureMagFilter.Linear;
+				treq.wrapS = TextureWrap.ClampToBorder;
+				treq.wrapT = TextureWrap.ClampToBorder;
 				rs.outTextures[i] = _backend.createTexture(
 					cfg.size,
 					treq
 				);
+				rs.outTextureSizes[i] = vec2.from(cfg.size);
 			}
 		}
 
@@ -444,11 +527,22 @@ final class PostProcessor {
 			foreach (i, ref input; st.inputs) {
 				if (input.stage !is null) {
 					Texture* tex = &input.stage.outTextures[input.outputIdx];
+					vec2* texSize = &input.stage.outTextureSizes[input.outputIdx];
 					renameInputParam(
 						i,
+						"tex",
 						(cstring name) {
 							if (auto pp = st.efInst.getUniformPtrPtr(name)) {
 								*cast(Texture**)pp = tex;
+							}
+						}
+					);
+					renameInputParam(
+						i,
+						"size",
+						(cstring name) {
+							if (auto pp = st.efInst.getUniformPtrPtr(name)) {
+								*cast(vec2**)pp = texSize;
 							}
 						}
 					);
@@ -456,9 +550,19 @@ final class PostProcessor {
 					Texture* tex = &_inputTexture;
 					renameInputParam(
 						i,
+						"tex",
 						(cstring name) {
 							if (auto pp = st.efInst.getUniformPtrPtr(name)) {
 								*cast(Texture**)pp = tex;
+							}
+						}
+					);
+					renameInputParam(
+						i,
+						"size",
+						(cstring name) {
+							if (auto pp = st.efInst.getUniformPtrPtr(name)) {
+								*cast(vec2**)pp = &_inputTextureSize;
 							}
 						}
 					);
@@ -470,11 +574,12 @@ final class PostProcessor {
 
 	private void renameInputParam(
 		uword i,
+		cstring suffix,
 		void delegate(cstring) sink
 	) {
 		formatTmp(
 			(Fmt fmt) {
-				fmt.format("tex__{}", i);
+				fmt.format("in__{}{}", i, suffix);
 			},
 			sink
 		);
@@ -637,6 +742,10 @@ final class PostProcessor {
 			final newNode = subgraph.getNode(newNid);
 			oldNode.copyTo(newNode);
 
+			if (KernelGraph.NodeType.Data == oldNode.type) {
+				newNode.data.sourceKernelType = SourceKernelType.Composite;
+			}
+
 			old2new[oldNid.id] = newNid;
 		}
 
@@ -658,11 +767,12 @@ final class PostProcessor {
 				if (!param.isOutput) {
 					continue;
 				}
-				
-				assert ("Image" == param.type);
 
-				inputBridge.pushBack(BridgeParam(param.name, oldNid), &stack.allocRaw);
-				++numIn;
+				// HACK: the assumption of just one output
+				if ("Image" == param.type) {
+					inputBridge.pushBack(BridgeParam(param.name, oldNid), &stack.allocRaw);
+					++numIn;
+				}
 			}
 
 			// This will hold true while only the special Blit nodes are allowed
@@ -726,7 +836,7 @@ final class PostProcessor {
 
 			input.newNid = s2imgNid;
 
-			renameInputParam(i, (cstring str) {
+			renameInputParam(i, "tex", (cstring str) {
 				auto par = dataNode.params.add(ParamDirection.Out, str);
 				par.hasPlainSemantic = true;
 				par.type = "sampler2D";
@@ -735,6 +845,12 @@ final class PostProcessor {
 					dataNid, str,
 					s2imgNid, "sampler"
 				);
+			});
+
+			renameInputParam(i, "size", (cstring str) {
+				auto par = dataNode.params.add(ParamDirection.Out, str);
+				par.hasPlainSemantic = true;
+				par.type = "float2";
 			});
 		}
 
@@ -784,8 +900,20 @@ final class PostProcessor {
 				foreach (fl; graph.flow.iterDataFlow(oldSrc, oldDst)) {
 					GraphNodeId newSrc, newDst;
 					cstring fromName, toName;
-					
-					if (srcIsInput) {
+
+					bool isSrcBlit = isBlitNode(graph, oldSrc);
+					bool isSrcInput = !isSrcBlit && KernelGraph.NodeType.Input == graph.getNode(oldSrc).type;
+
+					// Special case for the 'size' param of Blit and Input nodes
+					if (fl.from == imageSizeName && (isSrcBlit || isSrcInput)) {
+						newSrc = dataNid;
+
+						// HACK: assumes just 1 output, again
+						renameInputParam(0, "size", (cstring str) {
+							fromName = stack.dupString(str);
+						});
+					}
+					else if (srcIsInput) {
 						foreach (bp; inputBridge.items) {
 							if (bp.oldNid == oldSrc && bp.name == fl.from) {
 								newSrc = bp.newNid;
@@ -796,6 +924,16 @@ final class PostProcessor {
 						assert (newSrc.valid);
 					} else {
 						newSrc = old2new[oldSrc.id];
+						if (!newSrc.valid) {
+							char[] meh;
+							meh ~= "inputs:";
+							foreach (n; inNodes) meh ~= Format(" {}", n.id);
+							meh ~= "   outputs:";
+							foreach (n; outNodes) meh ~= Format(" {}", n.nid.id);
+							meh ~= "   nodes:";
+							foreach (n; oldNodes) meh ~= Format(" {}", n.id);
+							assert (newSrc.valid, Format("Node {} wasn't created. isinput={}, isoutput={}, rest: {}", oldSrc.id, isInputNode(oldSrc), isOutputNode(oldSrc), meh));
+						}
 						fromName = fl.from;
 					}
 
@@ -810,11 +948,9 @@ final class PostProcessor {
 						assert (newDst.valid);
 					} else {
 						newDst = old2new[oldDst.id];
+						assert (newDst.valid);
 						toName = fl.to;
 					}
-
-					assert (newSrc.valid);
-					assert (newDst.valid);
 
 					subgraph.flow.addDataFlow(
 						newSrc, fromName,
@@ -883,6 +1019,10 @@ final class PostProcessor {
 		rs.effect = stageEffect;
 		rs.efInst = _backend.instantiateEffect(stageEffect);
 
+		findEffectInfo(graph, &rs.efInfo);
+		allocateDefaultUniformStorage(rs.efInst);
+		setEffectInstanceUniformDefaults(&rs.efInfo, rs.efInst);
+
 		final vdata = rs.efInst.getVaryingParamData("VertexProgram.structure__position");
 		vdata.buffer = &_vb;
 		vdata.attrib = &_va;
@@ -890,6 +1030,7 @@ final class PostProcessor {
 		final outNode = graph.getNode(outNid).output();
 		
 		rs.outTextures = _mem.allocArray!(Texture)(outNode.params.length);
+		rs.outTextureSizes = _mem.allocArray!(vec2)(outNode.params.length);
 		rs.inputs = _mem.allocArray!(StageInputSrc)(numInputs);
 
 		return rs;
@@ -908,8 +1049,8 @@ final class PostProcessor {
 
 		auto blitFunc = kimpl.kernel.func;
 
-		if (blitFunc.params.length != 2) {
-			error("Expected 2 params for the Blit kernel, not {}.", blitFunc.params.length);
+		if (blitFunc.params.length != 3) {
+			error("Expected 3 params for the Blit kernel, not {}.", blitFunc.params.length);
 		}
 		
 		if (ParamDirection.In != blitFunc.params[0].dir) {
@@ -917,7 +1058,11 @@ final class PostProcessor {
 		}
 		
 		if (ParamDirection.Out != blitFunc.params[1].dir) {
-			error("Wrong Blit kernel signature. The first param must be 'in'.");
+			error("Wrong Blit kernel signature. The first param must be 'out'.");
+		}
+
+		if (ParamDirection.Out != blitFunc.params[2].dir) {
+			error("Wrong Blit kernel signature. The third param must be 'out'.");
 		}
 
 		if ("input" != blitFunc.params[0].name) {
@@ -925,7 +1070,11 @@ final class PostProcessor {
 		}
 
 		if ("output" != blitFunc.params[1].name) {
-			error("Wrong Blit kernel signature. The second param must be called 'input'.");
+			error("Wrong Blit kernel signature. The second param must be called 'output'.");
+		}
+
+		if (imageSizeName != blitFunc.params[2].name) {
+			error("Wrong Blit kernel signature. The third param must be called '{}'.", imageSizeName);
 		}
 
 		if ("Image" != blitFunc.params[0].type) {
@@ -936,6 +1085,10 @@ final class PostProcessor {
 			error("Wrong Blit kernel signature. The second param must be of type Image.");
 		}
 
+		if ("float2" != blitFunc.params[2].type) {
+			error("Wrong Blit kernel signature. The third param must be of type float2.");
+		}
+
 		// TODO: also check SamplerToImage and Tex2D
 	}
 
@@ -944,6 +1097,7 @@ final class PostProcessor {
 		assert (!_settingsDirty);
 
 		_inputTexture = input;
+		_inputTextureSize = vec2.from(input.getSize().xy);
 
 		final finalFB = _backend.framebuffer;
 		final origState = *_backend.state;
@@ -996,6 +1150,7 @@ final class PostProcessor {
 		IndexBuffer		_ib;
 
 		Texture			_inputTexture;
+		vec2			_inputTextureSize;
 
 		RenderStage*	_renderStageList;
 	}

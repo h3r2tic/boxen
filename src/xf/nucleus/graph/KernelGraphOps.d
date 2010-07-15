@@ -1327,11 +1327,11 @@ private bool doManualFlow(
 	scope stack = new StackBuffer;
 
 	final fromParam = graph.getNode(fromId).getOutputParam(fl.from);
-	assert (fromParam !is null, fl.from);
+	assert (fromParam !is null, "doManualfrom: fromParam not found: " ~ fl.from);
 	assert (fromParam.hasPlainSemantic);
 	
 	final toParam = graph.getNode(toId).getInputParam(fl.to);
-	assert (toParam !is null, fl.to);
+	assert (toParam !is null, "doManualfrom: toParam not found: " ~ fl.to);
 	assert (toParam.hasPlainSemantic);
 
 	{

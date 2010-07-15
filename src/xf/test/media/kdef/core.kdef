@@ -39,5 +39,12 @@ Image = kernel(
 
 Blit = kernel(
 	in input <type Image>,
-	out output <type Image>
+	out output <type Image>,
+	out size <type float2>
+);
+
+PostProcess = kernel(
+	in	input <type Image>,
+	in	size <type float2>,
+	out	output <type Image>	
 );
