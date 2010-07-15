@@ -62,8 +62,7 @@ TestSurface3 = surface AshikhminShirley {
 	roughness = 0.7;
 };
 
-TestSurface4 = surface CookTorrance {
-	roughness = 0.95;
+TestSurface4 = surface HalfLambert {
 };
 
 
@@ -95,7 +94,7 @@ TestLight = graph Light {
 			lumIntens <type float4 + use lumIntens>
 		) {
 			toLight = lightPos - position;
-			intensity = lumIntens / (dot(toLight, toLight).xxxx);
+			intensity = lumIntens / (1.0 + dot(toLight, toLight).xxxx);
 			toLight = normalize(toLight);
 		};
 	};
@@ -570,7 +569,7 @@ AddGlare = kernel(
 	float blurredLuma2 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor2.xyz).x;
 	float blurredLuma3 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor3.xyz).x;
 
-	float acuity = smoothstep(0.0, 0.02, blurredLuma3);
+	float acuity = smoothstep(0.0, 0.02, max(blurredLuma3, blurredLuma2));
 	output = lerp(blurredColor, baseColor, acuity);
 	//float toneMapping = 0.1 / blurredLuma3;
 	//toneMapping = pow(toneMapping, 0.5);
@@ -578,7 +577,7 @@ AddGlare = kernel(
 
 	{
 		float luma = max(0.0001, blurredLuma);
-		float targetLuma = min(0.5, 0.2*pow(max(0.0, luma), 1.3));
+		float targetLuma = 0.05*pow(luma, 1.4);
 		output += max(float4(0), blurredColor*targetLuma/luma);
 	}
 	{
