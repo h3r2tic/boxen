@@ -896,7 +896,7 @@ final class Graph : IGraphFlow {
 		}
 
 		uword _getNewCapacity() {
-			return _capacity + 32;
+			return _capacity + 64;
 		}
 
 		void _verifyNodeId(GraphNodeId id) {

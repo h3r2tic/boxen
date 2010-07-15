@@ -95,7 +95,7 @@ TestLight = graph Light {
 			lumIntens <type float4 + use lumIntens>
 		) {
 			toLight = lightPos - position;
-			intensity = lumIntens / (float4(1) + dot(toLight, toLight).xxxx);
+			intensity = lumIntens / (dot(toLight, toLight).xxxx);
 			toLight = normalize(toLight);
 		};
 	};
@@ -273,6 +273,77 @@ SpecularOnly = kernel Pigment {
 };
 
 
+Blur = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>,
+			inputSize <type float2>
+		);
+	};
+
+	blurOffComp = node {
+		type = kernel;
+		kernel = kernel(
+			in imgSize <type float2>,
+			out blurOff1 <type float2>,
+			out blurOff2 <type float2>
+		) {
+			blurOff1 = float2(3.0 / imgSize.x, 0.0);
+			blurOff2 = float2(0.0, 3.0 / imgSize.y);
+		};
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+
+	nb = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	n11 = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+
+	nb2 = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>,
+			outputSize <type float2>
+		);
+	};
+
+	connect n0.inputSize blurOffComp.imgSize;
+	connect n0.input ns.image;
+	connect ns.sample n1.img;
+	connect n1.sample nb.input;
+	connect nb.output n11.img;
+	connect n11.sample nb2.input;
+	connect nb2.output n2.output;
+	noauto n1.uv;
+	noauto n11.uv;
+	noauto ns.uv;
+
+	connect blurOffComp.blurOff1 n1.offset;
+	connect blurOffComp.blurOff2 n11.offset;
+	connect nb2.size n2.outputSize;
+};
+
+
 BlurAndDownsample = graph {
 	n0 = node {
 		type = input;
@@ -381,6 +452,26 @@ TestPost = graph PostProcess {
 		kernel = BlurAndDownsample;
 	};
 
+	blur7 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	blur8 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	blur9 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	blur10 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
 	sampleOrig = node {
 		type = kernel;
 		kernel = SampleImage;
@@ -392,6 +483,11 @@ TestPost = graph PostProcess {
 	};
 
 	sampleBlurred2 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred3 = node {
 		type = kernel;
 		kernel = SampleImage;
 	};
@@ -411,20 +507,27 @@ TestPost = graph PostProcess {
 	connect blur3 blur4;
 	connect blur4 blur5;
 	connect blur5 blur6;
+	connect blur6 blur7;
+	connect blur7 blur8;
+	connect blur8 blur9;
+	connect blur9 blur10;
 
 	connect blur1 sampleBlurred;
-	connect blur6 sampleBlurred2;
+	connect blur3 sampleBlurred2;
+	connect blur10 sampleBlurred3;
 	connect input sampleOrig;
 
 	connect sampleOrig.sample glare.baseColor;
 	connect sampleBlurred.sample glare.blurredColor;
 	connect sampleBlurred2.sample glare.blurredColor2;
+	connect sampleBlurred3.sample glare.blurredColor3;
 
 	connect glare.output output.output;
 
 	noauto sampleOrig.uv;
 	noauto sampleBlurred.uv;
 	noauto sampleBlurred2.uv;
+	noauto sampleBlurred3.uv;
 };
 
 
@@ -459,17 +562,28 @@ AddGlare = kernel(
 	in baseColor <type float4>,
 	in blurredColor <type float4>,
 	in blurredColor2 <type float4>,
+	in blurredColor3 <type float4>,
 	out output <type float4>
 ) {
-	output = baseColor;
+	float baseLuma = dot(float3(0.2126, 0.7152, 0.0722), baseColor.xyz).x;
+	float blurredLuma = dot(float3(0.2126, 0.7152, 0.0722), blurredColor.xyz).x;
+	float blurredLuma2 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor2.xyz).x;
+	float blurredLuma3 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor3.xyz).x;
+
+	float acuity = smoothstep(0.0, 0.02, blurredLuma3);
+	output = lerp(blurredColor, baseColor, acuity);
+	//float toneMapping = 0.1 / blurredLuma3;
+	//toneMapping = pow(toneMapping, 0.5);
+	//output *= toneMapping;
+
 	{
-		float luma = max(0.0001, dot(float3(0.2126, 0.7152, 0.0722), blurredColor.xyz).x);
-		float targetLuma = min(0.5, 0.3*pow(luma, 1.4));
+		float luma = max(0.0001, blurredLuma);
+		float targetLuma = min(0.5, 0.2*pow(max(0.0, luma), 1.3));
 		output += max(float4(0), blurredColor*targetLuma/luma);
 	}
 	{
-		float luma = max(0.0001, dot(float3(0.2126, 0.7152, 0.0722), blurredColor2.xyz).x);
+		float luma = max(0.0001, blurredLuma3);
 		float targetLuma = min(0.5, 0.2*pow(luma, 1.4));
-		output += lerp(max(float4(0), blurredColor2*targetLuma/luma), float4(targetLuma), 0.5);
+		output += lerp(max(float4(0), blurredColor3*targetLuma/luma), float4(targetLuma), 0.8);
 	}
 };

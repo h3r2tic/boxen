@@ -369,7 +369,22 @@ class TestApp : GfxApp {
 		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 2));
 		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 1));
 
-		float lightScale = 8.0f;
+		static float lightScale = 8.0f;
+		if (keyboard.keyDown(KeySym.Down)) {
+			lightScale *= 0.99f;
+		}
+		if (keyboard.keyDown(KeySym.Up)) {
+			lightScale /= 0.99f;
+		}
+
+		static float bgColor = 0.01f;
+		
+		if (keyboard.keyDown(KeySym.Left)) {
+			bgColor *= 0.99f;
+		}
+		if (keyboard.keyDown(KeySym.Right)) {
+			bgColor /= 0.99f;
+		}
 
 		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0) * lightScale;
 		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0) * lightScale;
@@ -424,7 +439,7 @@ class TestApp : GfxApp {
 			rendererBackend.framebuffer = texFb;
 
 			rendererBackend.resetStats();
-			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.01f;
+			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * bgColor;
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, rlist);
@@ -437,7 +452,7 @@ class TestApp : GfxApp {
 			rendererBackend.framebuffer = mainFb;
 
 			rendererBackend.resetStats();
-			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.01f;
+			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * bgColor;
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, rlist);
