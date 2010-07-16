@@ -369,7 +369,7 @@ class TestApp : GfxApp {
 		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 2));
 		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 1));
 
-		static float lightScale = 8.0f;
+		static float lightScale = 1.0f;
 		if (keyboard.keyDown(KeySym.Down)) {
 			lightScale *= 0.99f;
 		}

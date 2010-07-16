@@ -16,3 +16,4 @@ LinearAlgebra.obj
 ../../../platform/win32/win32.lib
 ../../../gfx/api/gl3.lib
 gdi32.lib
+-version=SimpleCameraQwerty
