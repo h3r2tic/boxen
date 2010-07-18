@@ -31,15 +31,6 @@ private {
 
 	static import xf.nucleus.codegen.Rename;
 
-	// TODO: refactor into a shared texture loader
-	interface Img {
-	import
-		xf.img.Image,
-		xf.img.FreeImageLoader,
-		xf.img.CachedLoader,
-		xf.img.Loader;
-	}
-
 	import xf.gfx.EffectHelper;		// TODO: get rid of this
 	
 	import Nucleus = xf.nucleus.Nucleus;
@@ -148,7 +139,6 @@ class ForwardRenderer : Renderer {
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
 		_kdefRegistry = kdefRegistry;
-		_imgLoader = new Img.CachedLoader(new Img.FreeImageLoader);
 		_effectCache = new typeof(_effectCache);
 		super(backend);
 	}
@@ -166,22 +156,7 @@ class ForwardRenderer : Renderer {
 			//KernelImpl	illumKernel;
 		}
 		
-		struct MaterialData {
-			struct Info {
-				cstring	name;		// not owned here
-				word	offset;
-			}
-			
-			Info[]		info;
-			void*		data;
-			cstring		kernelName;
-			//KernelImpl	pigmentKernel;
-		}
-
 		SurfaceData[256]		_surfaces;
-		Array!(MaterialData)	_materials;
-
-		Img.Loader	_imgLoader;
 	}
 
 
@@ -210,106 +185,6 @@ class ForwardRenderer : Renderer {
 		foreach (i, p; def.params) {
 			void* dst = surf.data + surf.info[i].offset;
 			memcpy(dst, p.value, p.valueSize);
-		}
-	}
-
-
-	// TODO: mem
-	override void registerMaterial(MaterialDef def) {
-		if (def.id >= _materials.length) {
-			_materials.growBy(def.id - _materials.length + 1);
-		}
-		
-		auto mat = _materials[def.id];
-		static assert (isReferenceType!(typeof(mat)));
-		
-		MemUtils.alloc(mat.info, def.params.length);
-
-		//assert (def.illumKernel !is null);
-		mat.kernelName = def.pigmentKernel.name.dup;
-
-		uword sizeReq = 0;
-		
-		foreach (i, p; def.params) {
-			uword psize = p.valueSize;
-
-			switch (p.valueType) {
-				case ParamValueType.ObjectRef: {
-					Object objVal;
-					p.getValue(&objVal);
-					if (auto sampler = cast(SamplerDef)objVal) {
-						psize = Texture.sizeof;
-					} else {
-						error(
-							"Forward renderer: Don't know what to do with"
-							" a {} material param ('{}').",
-							objVal.classinfo.name,
-							p.name
-						);
-					}
-				} break;
-
-				case ParamValueType.String:
-				case ParamValueType.Ident: {
-					error(
-						"Forward renderer: Don't know what to do with"
-						" string/ident material params ('{}').",
-						p.name
-					);
-				} break;
-
-				default: break;
-			}
-
-			assert (psize != 0);
-			
-			// TODO: get clear ownership rules here
-			mat.info[i].name = cast(cstring)p.name;
-			mat.info[i].offset = sizeReq;
-			sizeReq += psize;
-			sizeReq += (uword.sizeof - 1);
-			sizeReq &= ~(uword.sizeof - 1);
-		}
-
-		mat.data = mainHeap.allocRaw(sizeReq);
-		memset(mat.data, 0, sizeReq);
-
-		foreach (i, p; def.params) {
-			void* dst = mat.data + mat.info[i].offset;
-			assert (dst < mat.data + sizeReq);
-			
-			switch (p.valueType) {
-				case ParamValueType.ObjectRef: {
-					Object objVal;
-					p.getValue(&objVal);
-					if (auto sampler = cast(SamplerDef)objVal) {
-						// TODO: proper handling of sampler objects and textures,
-						// separately, using the new GL 3.3 extension
-						Texture* tex = cast(Texture*)dst;
-						loadMaterialSamplerParam(sampler, tex);
-					} else {
-						error(
-							"Forward renderer: Don't know what to do with"
-							" a {} material param ('{}').",
-							objVal.classinfo.name,
-							p.name
-						);
-					}
-				} break;
-
-				case ParamValueType.String:
-				case ParamValueType.Ident: {
-					error(
-						"Forward renderer: Don't know what to do with"
-						" string/ident material params ('{}').",
-						p.name
-					);
-				} break;
-
-				default: {
-					memcpy(dst, p.value, p.valueSize);
-				} break;
-			}
 		}
 	}
 
@@ -357,26 +232,6 @@ class ForwardRenderer : Renderer {
 
 		foreach (ef; toDispose.items) {
 			_backend.disposeEffect(ef);
-		}
-	}
-
-
-	private void loadMaterialSamplerParam(SamplerDef sampler, Texture* tex) {
-		if (auto val = sampler.params.get("texture")) {
-			cstring filePath;
-			val.getValue(&filePath);
-
-			Img.Image img = _imgLoader.load(filePath);
-			if (!img.valid) {
-				// TODO: fallback
-				error("Could not load texture: '{}'", filePath);
-			}
-
-			*tex = _backend.createTexture(
-				img
-			);
-		} else {
-			assert (false, "TODO: use a fallback texture");
 		}
 	}
 
@@ -527,35 +382,13 @@ class ForwardRenderer : Renderer {
 				GraphNodeId* srcNid,
 				Param** srcParam
 			) {
-				/+switch (dstParam.name) {
-					case "diffuse": {
-						final param = kg.getNode(diffuseSumNid)
-							.getOutputParam(diffuseSumPName);
-						assert (param !is null);
-
-						*srcNid = diffuseSumNid;
-						*srcParam = param;
-						return true;
-					}
-					case "specular": {
-						final param = kg.getNode(specularSumNid)
-							.getOutputParam(specularSumPName);
-						assert (param !is null);
-
-						*srcNid = specularSumNid;
-						*srcParam = param;
-						return true;
-					}
-
-					default:+/
-						return getOutputParamIndirect(
-							kg,
-							structureInfo.output,
-							dstParam.name,
-							srcNid,
-							srcParam
-						);
-				//}
+				return getOutputParamIndirect(
+					kg,
+					structureInfo.output,
+					dstParam.name,
+					srcNid,
+					srcParam
+				);
 			},
 
 			OutputNodeConversion.Perform
