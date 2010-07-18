@@ -143,7 +143,7 @@ struct GraphBuilder {
 
 
 class ForwardRenderer : Renderer {
-	mixin MRenderer!("Foward");
+	mixin MRenderer!("Forward");
 
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
@@ -507,6 +507,61 @@ class ForwardRenderer : Renderer {
 			assert (pigmentInfo.input.valid);
 		}
 
+
+		buildPigmentGraph();
+
+		final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
+
+		//File.set("graph.dot", toGraphviz(kg));
+
+		fuseGraph(
+			kg,
+			pigmentInfo.input,
+			convCtx,
+			pigmentNodesTopo,
+			
+			// _findSrcParam
+			delegate bool(
+				Param* dstParam,
+				GraphNodeId* srcNid,
+				Param** srcParam
+			) {
+				/+switch (dstParam.name) {
+					case "diffuse": {
+						final param = kg.getNode(diffuseSumNid)
+							.getOutputParam(diffuseSumPName);
+						assert (param !is null);
+
+						*srcNid = diffuseSumNid;
+						*srcParam = param;
+						return true;
+					}
+					case "specular": {
+						final param = kg.getNode(specularSumNid)
+							.getOutputParam(specularSumPName);
+						assert (param !is null);
+
+						*srcNid = specularSumNid;
+						*srcParam = param;
+						return true;
+					}
+
+					default:+/
+						return getOutputParamIndirect(
+							kg,
+							structureInfo.output,
+							dstParam.name,
+							srcNid,
+							srcParam
+						);
+				//}
+			},
+
+			OutputNodeConversion.Perform
+		);
+
+
 		bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
 			if (type == kg.getNode(id).type) {
 				kg.removeNode(id);
@@ -649,8 +704,8 @@ class ForwardRenderer : Renderer {
 							case "normal":
 								return getOutputParamIndirect(
 									kg,
-									structureInfo.output,
-									dstParam.name,
+									pigmentInfo.output,
+									"out_normal",
 									srcNid,
 									srcParam
 								);
@@ -762,68 +817,92 @@ class ForwardRenderer : Renderer {
 				convCtx
 			);
 
-			buildPigmentGraph();
-
-			final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
-			findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
-
-			//File.set("graph.dot", toGraphviz(kg));
-
-			fuseGraph(
-				kg,
-				pigmentInfo.input,
-				convCtx,
-				pigmentNodesTopo,
-				
-				// _findSrcParam
-				delegate bool(
-					Param* dstParam,
-					GraphNodeId* srcNid,
-					Param** srcParam
-				) {
-					switch (dstParam.name) {
-						case "diffuse": {
-							final param = kg.getNode(diffuseSumNid)
-								.getOutputParam(diffuseSumPName);
-							assert (param !is null);
-
-							*srcNid = diffuseSumNid;
-							*srcParam = param;
-							return true;
-						}
-						case "specular": {
-							final param = kg.getNode(specularSumNid)
-								.getOutputParam(specularSumPName);
-							assert (param !is null);
-
-							*srcNid = specularSumNid;
-							*srcParam = param;
-							return true;
-						}
-
-						default:
-							return getOutputParamIndirect(
-								kg,
-								structureInfo.output,
-								dstParam.name,
-								srcNid,
-								srcParam
-							);
-					}
-				},
-
-				OutputNodeConversion.Perform
-			);
-
 			if (!structureInfo.singleNode) {
 				removeNodeIfTypeMatches(structureInfo.output, NT.Output);
 			}
+
+			Function mulFunc; {
+				final mulKernel = _kdefRegistry.getKernel("Mul");
+				assert (KernelImpl.Type.Kernel == mulKernel.type);
+				assert (mulKernel.kernel.isConcrete);
+				mulFunc = cast(Function)mulKernel.kernel.func;
+			}
+
+			auto mulDiffuseNid = kg.addFuncNode(mulFunc);
+			auto mulSpecularNid = kg.addFuncNode(mulFunc);
+			auto sumTotalLight = kg.addFuncNode(addFunc);
+
+			kg.flow.addDataFlow(specularSumNid, "c", mulSpecularNid, "a");
+			kg.flow.addDataFlow(mulDiffuseNid, "c", sumTotalLight, "a");
+
+			kg.flow.addDataFlow(diffuseSumNid, "c", mulDiffuseNid, "a");
+			{
+				GraphNodeId nid;
+				Param* par;
+				if (getOutputParamIndirect(
+					kg,
+					pigmentInfo.output,
+					"out_albedo",
+					&nid,
+					&par
+				)) {
+					kg.flow.addDataFlow(nid, par.name, mulDiffuseNid, "b");
+				} else {
+					error("Incoming flow to 'out_albedo' of the Pigment kernel not found.");
+				}
+			}
+
+			kg.flow.addDataFlow(mulSpecularNid, "c", sumTotalLight, "b");
+			{
+				GraphNodeId nid;
+				Param* par;
+				if (getOutputParamIndirect(
+					kg,
+					pigmentInfo.output,
+					"out_specular",
+					&nid,
+					&par
+				)) {
+					kg.flow.addDataFlow(nid, par.name, mulSpecularNid, "b");
+				} else {
+					error("Incoming flow to 'out_specular' of the Pigment kernel not found.");
+				}
+			}
+
+			auto outRadianceNid = kg.addNode(NT.Output);
+			final outRadiance = kg.getNode(outRadianceNid).output.params
+				.add(ParamDirection.In, "out_radiance");
+			outRadiance.hasPlainSemantic = true;
+			outRadiance.type = "float4";
+			outRadiance.semantic.addTrait("use", "color");
+
+			kg.flow.addDataFlow(sumTotalLight, "c", outRadianceNid, outRadiance.name);
+
+			convertGraphDataFlowExceptOutput(
+				kg,
+				convCtx,
+				(int delegate(ref GraphNodeId) sink) {
+					if (int r = sink(pigmentInfo.output)) return r;
+					if (int r = sink(mulDiffuseNid)) return r;
+					if (int r = sink(mulSpecularNid)) return r;
+					if (int r = sink(sumTotalLight)) return r;
+					if (int r = sink(outRadianceNid)) return r;
+					return 0;
+				}
+			);
+
+			removeNodeIfTypeMatches(pigmentInfo.output, NT.Output);
+
+			// For codegen below
+			pigmentInfo.output = outRadianceNid;
 		} else {
+			assert (false); 	// TODO
+			
 			// No affecting lights
 			// TODO: zero the diffuse and specular contribs
 			// ... or don't draw the object
 
-			buildPigmentGraph();
+			/+buildPigmentGraph();
 
 			verifyDataFlowNames(kg);
 
@@ -844,7 +923,7 @@ class ForwardRenderer : Renderer {
 				pigmentInfo.input,
 				convCtx,
 				OutputNodeConversion.Perform
-			);
+			);+/
 		}
 
 		//assureNotCyclic(kg);

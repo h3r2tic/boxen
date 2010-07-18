@@ -53,20 +53,32 @@ TestSurface1 = surface CookTorrance {
 	roughness = 0.2;
 };
 
-TestSurface2 = surface ABg {
+TestSurface4 = surface HalfLambert {
+};
+
+TestSurface2 = surface ABg_h {
 	BRDF_A = 0.0025;
 	BRDF_B = 0.0001;
 	BRDF_g = 1.8;
 };
 
-TestSurface3 = surface ABg {
+TestSurface3 = surface ABg_h {
 	BRDF_A = 0.06;
 	BRDF_B = 0.001;
 	BRDF_g = 1.3;
 };
 
-TestSurface4 = surface HalfLambert {
+/+TestSurface1 = surface ABg_h {
+	BRDF_A = 0.0025;
+	BRDF_B = 0.0001;
+	BRDF_g = 1.8;
 };
+
+TestSurface4 = surface ABg_h {
+	BRDF_A = 0.06;
+	BRDF_B = 0.001;
+	BRDF_g = 1.3;
+};+/
 
 
 TestMaterial = material TestPigment {
@@ -87,17 +99,20 @@ TestLight = graph Light {
 		type = data;
 		params = (
 			lightPos <type float3 + use lightPos> = 0 1 -2,
-			lumIntens <type float4 + use lumIntens> = 1 1 1 1
+			lumIntens <type float4 + use lumIntens> = 1 1 1 1,
+			radius <type float> = 5
 		);
 	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Light(
+			radius <type float>,
 			lightPos <type float3 + use lightPos>,
 			lumIntens <type float4 + use lumIntens>
 		) {
 			toLight = lightPos - position;
-			intensity = lumIntens / (1.0 + dot(toLight, toLight).xxxx);
+			intensity = lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 			toLight = normalize(toLight);
 		};
 	};
@@ -105,88 +120,9 @@ TestLight = graph Light {
 		type = output;
 	};
 
+	connect n1.radius n2.radius;
 	connect n0 n2;
 	connect n1 n2;
-	connect n2 n3;
-};
-
-
-TestPigmentMeh = graph Pigment {
-	n0 = node {
-		type = input;
-	};
-	n1 = node {
-		type = data;
-		params = (
-			albedoTint <type float4 + use color> = 1 1 1 1,
-			albedoTex <type sampler2D + use color>,
-			blurOffset <type float2> = 0.002 0.002,
-			albedoScale <type float4> = 4 4 4 4
-		);
-	};
-	ns = node {
-		type = kernel;
-		kernel = Tex2D;		
-	};
-	nb = node {
-		type = kernel;
-		kernel = BlurImage;
-	};
-	nsub = node {
-		type = kernel;
-		kernel = Sub;
-	};
-	nmul = node {
-		type = kernel;
-		kernel = Mul;
-	};
-	n2 = node {
-		type = kernel;
-		kernel = kernel Pigment(
-			albedoTint <type float4 + use color>,
-			someImg <type Image>
-		) {
-			float4 albedo = diffuse * albedoTint * abs(someImg.sample(texCoord));
-
-			radiance = albedo + specular;
-			
-			// because my brdfs suck :P
-			radiance = min(radiance, float4(8));
-			
-			// NOTE: 1 - saturate() added to counter the post-proc test's negative
-			//radiance = 1 - saturate(albedo + specular);
-/+			radiance = someImg.sample(texCoord);
-			radiance = abs(radiance);+/
-		};
-	};
-	n3 = node {
-		type = output;
-	};
-
-	// ----
-
-	connect n1 ns;
-
-	connect n1.blurOffset nb.offset;
-	connect ns.sample nb.img;		// albedo tex -> blur
-
-	connect nb.sample nsub.a;
-	connect ns.sample nsub.b;
-
-	connect nsub.c nmul.a;			// blurred - orig
-	connect n1.albedoScale nmul.b;
-
-	connect nmul.c n2.someImg;		
-
-	// ----
-
-	noauto nb.uv;
-	noauto ns.uv;
-
-	// ----
-
-	connect n0 n2;
-	connect n1.albedoTint n2.albedoTint;
 	connect n2 n3;
 };
 
@@ -226,11 +162,9 @@ TestPigment = graph Pigment {
 			albedoTint <type float4 + use color>,
 			someImg <type Image>
 		) {
-			float4 albedo = diffuse * albedoTint * someImg.sample(texCoord);
-			radiance = albedo + specular;
-
-			// because my brdfs suck :P
-			radiance = min(radiance, float4(8));
+			out_albedo = albedoTint * someImg.sample(texCoord);
+			out_specular = float4(1);
+			out_normal = normal;
 		};
 	};
 	n3 = node {
@@ -271,7 +205,9 @@ TestPigment = graph Pigment {
 
 
 SpecularOnly = kernel Pigment {
-	radiance = specular;
+	out_specular = float4(1);
+	out_diffuse = float4(0);
+	out_normal = normal;
 };
 
 
@@ -573,7 +509,7 @@ AddGlare = kernel(
 	float blurredLuma3 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor3.xyz).x;
 
 	// Spatial acuity and color sunsitivity loss
-	float acuity = smoothstep(-0.005, 0.015, max(blurredLuma3, blurredLuma2));
+	float acuity = smoothstep(-0.005, 0.015, max(blurredLuma, max(blurredLuma3, blurredLuma2)));
 	output = lerp(blurredColor, baseColor, acuity);
 	output = lerp(dot(float3(0.2126, 0.7152, 0.0722), output).xxxx, output, acuity);
 

@@ -7,12 +7,14 @@ Structure = kernel(
 Light = kernel(
 	in position <type float3 + use position + basis world>,
 	out intensity <type float4 + use color>,
-	out toLight <type float3 + basis world + use toLight>
+	out toLight <type float3 + basis world + use toLight>,
+	out lightSize <type float>
 );
 
 Illumination = kernel(
 	in normal <type float3 + use normal + basis world + unit true>,
 	in intensity <type float4 + use color>,
+	in lightSize <type float>,
 	in toLight <type float3 + basis world + use toLight>,
 	in toEye <type float3 + use toEye + basis world + unit true>,
 	out diffuse <type float4 + use diffuse>,
@@ -23,9 +25,9 @@ Pigment = kernel(
 	in position <type float3 + basis world + use position>,
 	in normal <type float3 + basis world + use normal>,
 	in texCoord <type float2 + use uv>,
-	in diffuse <type float4 + use diffuse>,
-	in specular <type float4 + use specular>,
-	out radiance <type float4 + use color>
+	out out_albedo <type float4 + use diffuse>,
+	out out_specular <type float4 + use specular>,
+	out out_normal <type float3 + basis world + use normal>
 );
 
 Rasterize = kernel(

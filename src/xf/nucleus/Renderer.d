@@ -91,6 +91,6 @@ template MRenderer(char[] name) {
 	private import Nucleus = xf.nucleus.Nucleus;
 	
 	static this() {
-		Nucleus.registerRenderer!(ForwardRenderer)("Forward");
+		Nucleus.registerRenderer!(typeof(this))(name);
 	}
 }
