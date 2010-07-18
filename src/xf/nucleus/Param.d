@@ -472,6 +472,15 @@ struct ParamList {
 		return false;
 	}
 
+	Param* getInput(cstring name) {
+		foreach (ref p; _params) {
+			if (p.isInput && p.name == name) {
+				return &p;
+			}
+		}
+		assert (false, "Input param not found: " ~ name);
+	}
+
 	bool getOutput(cstring name, Param** res) {
 		foreach (ref p; _params) {
 			if (p.isOutput && p.name == name) {
@@ -480,6 +489,15 @@ struct ParamList {
 			}
 		}
 		return false;
+	}
+
+	Param* getOutput(cstring name) {
+		foreach (ref p; _params) {
+			if (p.isOutput && p.name == name) {
+				return &p;
+			}
+		}
+		assert (false, "Output param not found: " ~ name);
 	}
 
 

@@ -299,7 +299,7 @@ class LightPrePassRenderer : Renderer {
 				);
 			},
 
-			OutputNodeConversion.Perform
+			OutputNodeConversion.Skip
 		);
 
 
@@ -312,16 +312,83 @@ class LightPrePassRenderer : Renderer {
 			}
 		}
 
+		final surfIdDataNid = kg.addNode(NT.Data);
+		final surfIdDataNode = kg.getNode(surfIdDataNid).data(); {
+			surfIdDataNode.sourceKernelType = SourceKernelType.Composite;
+			
+			final param = surfIdDataNode.params.add(ParamDirection.Out, "surfaceId");
+			param.hasPlainSemantic = true;
+			param.type = "float";
 
+			// 0-255 -> 0-1
+			float si = (cast(float)surfaceId + 0.5f) / 255.0f;
+			
+			param.setValue(cast(float)si);
+		}
 
+		SubgraphInfo outInfo;
+		{
+			final kernel = _kdefRegistry.getKernel("LightPrePassGeomOut");
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Undefined;
+			builder.build(kg, kernel, &outInfo, stack);
+			assert (outInfo.input.valid);
+			assert (outInfo.output.valid);
+		}
 
+		final outNodesTopo = stack.allocArray!(GraphNodeId)(outInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, outInfo.nodes, outNodesTopo);
 
+		fuseGraph(
+			kg,
+			outInfo.input,
+			convCtx,
+			outNodesTopo,
+			
+			// _findSrcParam
+			delegate bool(
+				Param* dstParam,
+				GraphNodeId* srcNid,
+				Param** srcParam
+			) {
+				switch (dstParam.name) {
+					case "position": {
+						return getOutputParamIndirect(
+							kg,
+							structureInfo.output,
+							"position",
+							srcNid,
+							srcParam
+						);
+					}
 
+					case "normal": {
+						return getOutputParamIndirect(
+							kg,
+							pigmentInfo.output,
+							"out_normal",
+							srcNid,
+							srcParam
+						);
+					}
 
+					case "surfaceId": {
+						*srcNid = surfIdDataNid;
+						*srcParam = surfIdDataNode.params
+							.getOutput("surfaceId");
+						return true;
+					}
 
+					default: return false;
+				}
+			},
 
+			OutputNodeConversion.Perform
+		);
 
 		kg.flow.removeAllAutoFlow();
+
+		File.set("graph.dot", toGraphviz(kg));
 
 		verifyDataFlowNames(kg);
 
@@ -329,7 +396,7 @@ class LightPrePassRenderer : Renderer {
 
 		CodegenSetup cgSetup;
 		cgSetup.inputNode = structureInfo.input;
-		cgSetup.outputNode = pigmentInfo.output;
+		cgSetup.outputNode = outInfo.output;
 
 		final effect = effectInfo.effect = compileKernelGraph(
 			null,
@@ -347,6 +414,9 @@ float4x4 viewToClip <
 	string scope = "effect";
 >;
 float3 eyePosition <
+	string scope = "effect";
+>;
+float farPlaneDistance <
 	string scope = "effect";
 >;
 `
@@ -387,6 +457,7 @@ float3 eyePosition <
 			setUniform("worldToView", &worldToView);
 			setUniform("viewToClip", &viewToClip);
 			setUniform("eyePosition", &eyePosition);
+			setUniform("farPlaneDistance", &farPlaneDistance);
 		}
 
 		// ----
@@ -473,6 +544,19 @@ float3 eyePosition <
 
 				// ----
 
+				auto material = _materials[renderables.material[rid]];
+				foreach (ref info; material.info) {
+					char[256] fqn;
+					sprintf(fqn.ptr, "pigment__%.*s", info.name);
+					auto name = fromStringz(fqn.ptr);
+					void** ptr = getInstUniformPtrPtr(name);
+					if (ptr) {
+						*ptr = material.data + info.offset;
+					}
+				}
+
+				// ----
+
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
 					
@@ -534,11 +618,12 @@ float3 eyePosition <
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.worldToView = vs.computeViewMatrix();
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
+		this.farPlaneDistance = vs.farPlaneDistance;
 
 		final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileStructureEffectsForRenderables(rids);
 
-		/+final blist = _backend.createRenderList();
+		final blist = _backend.createRenderList();
 		scope (exit) _backend.disposeRenderList(blist);
 
 		foreach (idx, rid; rids) {
@@ -552,7 +637,7 @@ float3 eyePosition <
 			item.numInstances	= 1;
 		}
 
-		_backend.render(blist);+/
+		_backend.render(blist);
 	}
 
 
@@ -566,5 +651,6 @@ float3 eyePosition <
 		mat4	worldToView;
 		mat4	viewToClip;
 		vec3	eyePosition;
+		float	farPlaneDistance;
 	}
 }
