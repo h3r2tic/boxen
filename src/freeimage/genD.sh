@@ -82,15 +82,33 @@ implib FreeImage.lib FreeImage.dll
 lib -l FreeImage.lib
 rm FreeImage.lib
 
-# Iterate all symbols and create loading code for them
+# Iterate all symbols and create func addresses
+
+echo 'void**[] _funcAddr = [' >> FreeImageLoader.d
 
 for sym in `cat FreeImage.lst \
 | sed -ne '3,/^$/p' \
 | cut -f1 -d' '`
 do
 	funcName=`echo $sym | cut -f1 -d'@' | sed -e 's/^_//'`
-	echo "		loadSymbol(cast(void**)&$funcName, \"$sym\");" >> FreeImageLoader.d
+	echo "	cast(void**)&$funcName," >> FreeImageLoader.d
 done
+
+echo '];' >> FreeImageLoader.d
+echo 'char*[] _funcName = [' >> FreeImageLoader.d
+
+# Iterate all symbols and create func names
+
+for sym in `cat FreeImage.lst \
+| sed -ne '3,/^$/p' \
+| cut -f1 -d' '`
+do
+	funcName=`echo $sym | cut -f1 -d'@' | sed -e 's/^_//'`
+	echo "	\"$sym\"," >> FreeImageLoader.d
+done
+
+echo '];' >> FreeImageLoader.d
+
 rm FreeImage.lst
 
 # Finally write the suffix of the loader
