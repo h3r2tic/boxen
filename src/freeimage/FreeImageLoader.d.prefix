@@ -13,8 +13,10 @@ struct FreeImage {
 			static assert (false, "TODO");
 		}
 
-		void loadSymbol(void** sym, char* name) {
-			*sym = library.getSymbol(name);
+		foreach (i, addr; _funcAddr) {
+			*addr = library.getSymbol(_funcName[i]);
 		}
+	}
+}
 
-
+private {
