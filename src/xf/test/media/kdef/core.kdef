@@ -27,7 +27,7 @@ Pigment = kernel(
 	in texCoord <type float2 + use uv>,
 	out out_albedo <type float4 + use diffuse>,
 	out out_specular <type float4 + use specular>,
-	out out_normal <type float3 + basis world + use normal>
+	out out_normal <type float3 + basis world + use normal + unit true>
 );
 
 Rasterize = kernel(

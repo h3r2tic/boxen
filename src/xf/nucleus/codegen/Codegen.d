@@ -345,19 +345,41 @@ void codegen(
 				);
 			}
 
-			foutputs[numFoutputs++] = CgParam(
-				srcNid,
-				srcParam
-			);
+			if (srcParam.semantic.hasTrait("bindingSemantic")) {
+				foutputs[numFoutputs++] = CgParam(
+					srcNid,
+					srcParam,
+					BindingSemantic.parse(srcParam.semantic.getTrait("bindingSemantic"))
+				);
+			} else {
+				foutputs[numFoutputs++] = CgParam(
+					srcNid,
+					srcParam
+				);
+			}
 		}
 	}
 
 	// ---- figure out the binding semantics ----
 
-	// HACK: Will need to handle DEPTH semantics too.
-	foreach (i, ref p; foutputs) {
-		p.bindingSemantic.name = "COLOR";
-		p.bindingSemantic.index = i;
+	{
+		bool[16] used = false;
+		assert (foutputs.length <= 16);
+		
+		foreach (i, ref p; foutputs) {
+			if (p.bindingSemantic.name is null) {
+				foreach (j, ref u; used) {
+					if (!u) {
+						u = true;
+						p.bindingSemantic.name = "COLOR";
+						p.bindingSemantic.index = j;
+						break;
+					}
+				}
+			}
+
+			assert (p.bindingSemantic.name !is null);
+		}
 	}
 
 	void assignTexcoords(CgParam[] pars) {
@@ -1083,8 +1105,26 @@ struct BindingSemantic {
 	cstring	name;
 	uint	index;
 
+	static BindingSemantic parse(cstring str) {
+		int i = void;
+		for (i = str.length-1; i > 0 && str[i] >= '0' && str[i] <= '9'; ++i) {
+			// nothing
+		}
+
+		++i;
+		if (i != str.length) {
+			return BindingSemantic(str[0..i], cast(uint)Integer.parse(str[i..$]));
+		} else {
+			return BindingSemantic(str, 0);
+		}
+	}
+
 	void writeOut(CodeSink sink) {
-		sink(name)(index);
+		if (index != 0) {
+			sink(name)(index);
+		} else {
+			sink(name);
+		}
 	}
 }
 

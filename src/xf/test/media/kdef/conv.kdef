@@ -31,11 +31,18 @@ converter<linear>(20) model2world_n (
 	b = mul(modelToWorld, float4(a, 0)).xyz;
 }
 
-converter<linear>(20) world2view (
+converter<linear>(20) world2view_p (
 	in a <type float3 + basis world + use position>,
 	out b <in.a.actual + type float3 + basis view>
 ) {
 	b = mul(worldToView, float4(a, 1.0)).xyz;
+}
+
+converter<linear>(20) world2view_n (
+	in a <type float3 + basis world + use normal>,
+	out b <in.a.actual + type float3 + basis view>
+) {
+	b = mul(worldToView, float4(a, 0.0)).xyz;
 }
 
 converter<linear>(20) view2clip (
