@@ -48,6 +48,7 @@ private {
 		xf.gfx.Effect,
 		xf.gfx.IndexData,
 		xf.gfx.Texture,
+		xf.gfx.Framebuffer,
 		xf.omg.core.LinearAlgebra,
 		xf.omg.core.CoordSys,
 		xf.omg.util.ViewSettings,
@@ -780,6 +781,17 @@ float farPlaneDistance <
 	override void onLightInvalidated(LightId) {
 	}
 
+
+	EffectInstance	lightEI;
+	EffectInfo		lightEffectInfo;
+
+	void renderLights(Light[] lights) {
+		if (lightEffectInfo.effect is null) {
+			lightEffectInfo = buildLightEffect(lights[0].kernelName);
+			lightEI = _backend.instantiateEffect(lightEffectInfo.effect);
+		}
+	}
+
 	
 	override void render(ViewSettings vs, RenderList* rlist) {
 		this.viewToClip = vs.computeProjectionMatrix();
@@ -788,27 +800,85 @@ float farPlaneDistance <
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
 		this.farPlaneDistance = vs.farPlaneDistance;
 
-		buildLightEffect(.lights[0].kernelName);
-		assert (false);
+		if (_fbSize != _backend.framebuffer.size) {
+			_fbSize = _backend.framebuffer.size;
 
-		/+final rids = rlist.list.renderableId[0..rlist.list.length];
-		compileStructureEffectsForRenderables(rids);
+			if (_depthTex.valid) {
+				_depthTex.dispose();
+				_packed1Tex.dispose();
+				_attribFB.dispose();
+			}
 
-		final blist = _backend.createRenderList();
-		scope (exit) _backend.disposeRenderList(blist);
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.RGBA8;
+				treq.minFilter = TextureMinFilter.Nearest;
+				treq.magFilter = TextureMagFilter.Nearest;
+				treq.wrapS = TextureWrap.ClampToEdge;
+				treq.wrapT = TextureWrap.ClampToEdge;
+				
+				_packed1Tex = _backend.createTexture(
+					_fbSize,
+					treq
+				);
+				assert (_packed1Tex.valid);
+			}
 
-		foreach (idx, rid; rids) {
-			final ei = _structureRenderableEI[rid];
-			final bin = blist.getBin(ei.getEffect);
-			final item = bin.add(ei);
-			
-			item.coordSys		= rlist.list.coordSys[idx];
-			item.scale			= vec3.one;
-			item.indexData		= *_structureRenderableIndexData[rid];
-			item.numInstances	= 1;
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.DEPTH_COMPONENT24;
+				treq.minFilter = TextureMinFilter.Nearest;
+				treq.magFilter = TextureMagFilter.Nearest;
+				treq.wrapS = TextureWrap.ClampToEdge;
+				treq.wrapT = TextureWrap.ClampToEdge;
+				
+				_depthTex = _backend.createTexture(
+					_fbSize,
+					treq
+				);
+				assert (_depthTex.valid);
+			}
+
+			final cfg = FramebufferConfig();
+			cfg.size = _fbSize;
+			cfg.location = FramebufferLocation.Offscreen;
+			cfg.color[0] = _packed1Tex;
+			cfg.depth = _depthTex;
+			_attribFB = _backend.createFramebuffer(cfg);
+			assert (_attribFB.valid);
 		}
 
-		_backend.render(blist);+/
+		final outputFB = _backend.framebuffer;
+		if (outputFB.acquire()) {
+			scope (exit) {
+				_backend.framebuffer = outputFB;
+				outputFB.dispose();
+			}
+			
+			_backend.framebuffer = _attribFB;
+			_backend.clearBuffers();
+
+			final rids = rlist.list.renderableId[0..rlist.list.length];
+			compileStructureEffectsForRenderables(rids);
+
+			final blist = _backend.createRenderList();
+			scope (exit) _backend.disposeRenderList(blist);
+
+			foreach (idx, rid; rids) {
+				final ei = _structureRenderableEI[rid];
+				final bin = blist.getBin(ei.getEffect);
+				final item = bin.add(ei);
+				
+				item.coordSys		= rlist.list.coordSys[idx];
+				item.scale			= vec3.one;
+				item.indexData		= *_structureRenderableIndexData[rid];
+				item.numInstances	= 1;
+			}
+
+			_backend.render(blist);
+		}
+
+		renderLights(.lights);
 	}
 
 
@@ -818,6 +888,11 @@ float farPlaneDistance <
 		IndexData*[]		_structureRenderableIndexData;
 
 		IKDefRegistry		_kdefRegistry;
+
+		vec2i		_fbSize = vec2i.zero;
+		Texture		_depthTex;
+		Texture		_packed1Tex;
+		Framebuffer	_attribFB;
 
 		mat4	worldToView;
 		mat4	viewToClip;

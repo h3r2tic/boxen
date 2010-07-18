@@ -156,7 +156,7 @@ class Renderer : IRenderer {
 		_currentFramebuffer = _mainFramebuffer = toResourceHandle(
 			_framebuffers.alloc((FramebufferImpl* n) {
 				*n = FramebufferImpl(0);
-				//n.cfg.size = cfg.size;
+				n.cfg.size = vec2i(_window.width, _window.height);
 				n.isMainFB = true;
 				n.cfg.color[0].present = true;
 				n.cfg.depth.present = true;
@@ -846,8 +846,10 @@ class Renderer : IRenderer {
 						req.borderColor.ptr
 					);
 				}
-				
-				gl.GenerateMipmap(n.target);
+
+				if (needsMipmap(req.minFilter)) {
+					gl.GenerateMipmap(n.target);
+				}
 			})
 		);
 	}
@@ -897,13 +899,17 @@ class Renderer : IRenderer {
 				int height = size.y;
 
 				scope stack = new StackBuffer;
-				final _dataArr = LocalArray!(vec4)(width * height, stack);
+				LocalArray!(vec4) _dataArr;
+				vec4[] data = null;
+
+				if (colorGen !is null) {
+					_dataArr = LocalArray!(vec4)(width * height, stack);
+					data = _dataArr.data;
+				}
 				scope (exit) {
 					_dataArr.dispose();
 				}
 				
-				vec4[] data = _dataArr.data;
-
 				void initTextureData(vec3 delegate(vec2) transform) {
 					for (uint i = 0; i < width; ++i) {
 						float u = (cast(float)i + 0.5f) / width;
@@ -941,15 +947,30 @@ class Renderer : IRenderer {
 							initTextureData(transform);
 						}
 					}
+
+					GLenum dataLayout = RGBA;
+
+					final internal = enumToGL(req.internalFormat);
+					switch (req.internalFormat) {
+						case TextureInternalFormat.DEPTH_COMPONENT16:
+						case TextureInternalFormat.DEPTH_COMPONENT24:
+						case TextureInternalFormat.DEPTH24_STENCIL8:
+						case TextureInternalFormat.DEPTH_COMPONENT32F:
+						case TextureInternalFormat.DEPTH32F_STENCIL8:
+							assert (data.ptr is null);		// TODO
+							dataLayout = DEPTH_COMPONENT;
+							break;
+						default: break;
+					}
 					
 					gl.TexImage2D(
 						target,
 						level,
-						enumToGL(req.internalFormat),
+						internal,
 						width,
 						height,
 						0,		// TODO: border
-						RGBA,
+						dataLayout,
 						FLOAT,
 						data.ptr
 					);
@@ -1003,8 +1024,10 @@ class Renderer : IRenderer {
 						req.borderColor.ptr
 					);
 				}
-				
-				gl.GenerateMipmap(n.target);
+
+				if (needsMipmap(req.minFilter) && colorGen !is null) {
+					gl.GenerateMipmap(n.target);
+				}
 			})
 		);
 	}

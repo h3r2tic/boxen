@@ -33,6 +33,11 @@ enum TextureMinFilter {
 }
 
 
+bool needsMipmap(TextureMinFilter filter) {
+	return filter != TextureMinFilter.Linear && filter != TextureMinFilter.Nearest;
+}
+
+
 enum TextureMagFilter {
 	Linear = 0,
 	Nearest
