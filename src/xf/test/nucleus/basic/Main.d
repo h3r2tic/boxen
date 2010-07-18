@@ -1,7 +1,9 @@
 module Main;
 
 private {
-	import tango.core.tools.TraceExceptions;
+	version (StackTracing) {
+		import tango.core.tools.TraceExceptions;
+	}
 	
 	import xf.Common;
 	import xf.core.Registry;
@@ -129,6 +131,7 @@ class TestLight : Light {
 	override void setKernelData(KernelParamInterface kpi) {
 		kpi.bindUniform("lightPos", &position);
 		kpi.bindUniform("lumIntens", &lumIntens);
+		kpi.bindUniform("radius", &radius);
 	}
 	
 	override void determineInfluenced(
@@ -149,6 +152,7 @@ class TestLight : Light {
 	}
 
 	vec3	position = { x: 0, y: 1, z: 2 };
+	float	radius;
 }
 
 
@@ -191,7 +195,7 @@ class TestApp : GfxApp {
 	FileFolder		vfs;
 
 	override void initialize() {
-		//GC.disable();
+		GC.disable();
 		
 		final vfs = new FileFolder(".");
 
@@ -210,7 +214,8 @@ class TestApp : GfxApp {
 		MaterialId[cstring]	materials;
 		MaterialId			nextMaterialId;
 
-		nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+		nr = Nucleus.createRenderer("LightPrePass", rendererBackend, kdefRegistry);
+		//nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
 		kdefRegistry.registerObserver(nr);
 
 		post = new PostProcessor(rendererBackend, kdefRegistry);
@@ -302,12 +307,12 @@ class TestApp : GfxApp {
 			});
 		}
 
+		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
+
 		cstring model = `../../media/mesh/soldier.hsf`;
 		float scale = 1.0f;
 		/+cstring model = `../../media/mesh/masha.hsf`;
-		float scale = 0.0x2f;+/
-
-		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
+		float scale = 0.02f;+/
 
 		loadScene(
 			model, scale, CoordSys(vec3fi[-2, 0, 0]),
@@ -328,6 +333,14 @@ class TestApp : GfxApp {
 			model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 			"TestSurface4", "TestMaterial"
 		);
+
+		/+cstring model = `../../media/mesh/lightTest.hsf`;
+		float scale = 0.01f;
+
+		loadScene(
+			model, scale, CoordSys(vec3fi[0, 1, 0]),
+			"TestSurface3", "TestMaterial"
+		);+/
 
 		{
 			mainFb = rendererBackend.framebuffer;
@@ -364,10 +377,18 @@ class TestApp : GfxApp {
 	override void render() {
 		static float lightRot = 0.0f;
 		lightRot += 0.1f;
+
+		static float lightDist = 1.0f;
+		if (keyboard.keyDown(KeySym._1)) {
+			lightDist *= 0.995f;
+		}
+		if (keyboard.keyDown(KeySym._2)) {
+			lightDist /= 0.995f;
+		}
 		
-		lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, -2));
-		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 2));
-		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 1));
+		lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, 0) + vec3(0, 0, -2) * lightDist);
+		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 0) + vec3(0, 0, 2) * lightDist);
+		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 0) + vec3(0, 0, 2) * lightDist);
 
 		static float lightScale = 1.0f;
 		if (keyboard.keyDown(KeySym.Down)) {
@@ -375,6 +396,14 @@ class TestApp : GfxApp {
 		}
 		if (keyboard.keyDown(KeySym.Up)) {
 			lightScale /= 0.99f;
+		}
+
+		static float lightRad = 2.0f;
+		if (keyboard.keyDown(KeySym._3)) {
+			lightRad *= 0.99f;
+		}
+		if (keyboard.keyDown(KeySym._4)) {
+			lightRad /= 0.99f;
 		}
 
 		static float bgColor = 0.01f;
@@ -390,6 +419,10 @@ class TestApp : GfxApp {
 		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0) * lightScale;
 		lights[2].lumIntens = vec4(0.3, 1.0, 0.6, 0) * lightScale;
 		
+		lights[0].radius = lightRad;
+		lights[1].radius = lightRad;
+		lights[2].radius = lightRad;
+
 		// move some objects
 
 		// The various arrays for VSD must be updated as they may have been
@@ -426,7 +459,7 @@ class TestApp : GfxApp {
 			}
 		});
 
-		static bool wantPost = true;
+		static bool wantPost = false;
 
 		static bool prevKeyDown = false;
 		bool keyDown = keyboard.keyDown(KeySym.space);
