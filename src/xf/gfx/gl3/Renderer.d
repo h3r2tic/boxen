@@ -1458,6 +1458,12 @@ class Renderer : IRenderer {
 			gl.Disable(SCISSOR_TEST);
 		}
 
+		if (s.sRGB) {
+			gl.Enable(FRAMEBUFFER_SRGB_EXT);
+		} else {
+			gl.Disable(FRAMEBUFFER_SRGB_EXT);
+		}
+
 		{
 			final v = &s.viewport;
 			gl.Viewport(v.x, v.y, v.width, v.height);
