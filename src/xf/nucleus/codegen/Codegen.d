@@ -287,7 +287,7 @@ void codegen(
 		assert (1 == numVOutputParams);
 		
 		_iterVOutputParams((GraphNodeId nid, Param* param) {
-			foreach (ref cgp; voutputs[0..numVOutputParams]) {
+			foreach (ref cgp; voutputs[1..numVOutputParams]) {
 				if (cgp.param is param) {
 					return;
 				}

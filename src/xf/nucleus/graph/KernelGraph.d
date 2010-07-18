@@ -268,7 +268,9 @@ class KernelGraph {
 				case NodeType.Composite:	return _composite.params.get(name);
 				default: {
 					final p = getParamList().get(name);
-					if (false == p.isInput) {
+					if (p is null) {
+						return p;
+					} else if (false == p.isInput) {
 						error(
 							"Trying to access a function's output parameter '{}'"
 							" as an input.", p.toString

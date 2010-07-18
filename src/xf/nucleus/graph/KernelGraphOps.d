@@ -967,7 +967,7 @@ private void simplifyParamSemantics(KernelGraph graph, GraphNodeId id) {
 						return *graph.getNode(fromId)
 							.getOutputParam(fromName).semantic();
 					} else {
-						assert (false, "No flow D:");
+						assert (false, "simplifyParamSemantics: No flow to " ~ name);
 					}
 				},
 				
@@ -1326,11 +1326,15 @@ private bool doManualFlow(
 ) {
 	scope stack = new StackBuffer;
 
-	final fromParam = graph.getNode(fromId).getOutputParam(fl.from);
+	final fromNode = graph.getNode(fromId);
+	assert (fromNode !is null, "doManualfrom: fromNode not found");
+	final fromParam = fromNode.getOutputParam(fl.from);
 	assert (fromParam !is null, "doManualfrom: fromParam not found: " ~ fl.from);
 	assert (fromParam.hasPlainSemantic);
-	
-	final toParam = graph.getNode(toId).getInputParam(fl.to);
+
+	final toNode = graph.getNode(toId);
+	assert (toNode !is null, "doManualfrom: toNode not found");
+	final toParam = toNode.getInputParam(fl.to);
 	assert (toParam !is null, "doManualfrom: toParam not found: " ~ fl.to);
 	assert (toParam.hasPlainSemantic);
 
