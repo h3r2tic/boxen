@@ -7,6 +7,7 @@ private {
 		xf.nucleus.Defs,
 		xf.nucleus.Param,
 		xf.nucleus.Renderable,
+		xf.nucleus.Light,
 		xf.nucleus.RenderList,
 		xf.nucleus.SurfaceDef,
 		xf.nucleus.MaterialDef,
@@ -40,7 +41,11 @@ private {
 
 
 
-abstract class Renderer : IRenderableObserver, IKDefInvalidationObserver {
+abstract class Renderer
+:	IRenderableObserver,
+	ILightObserver,
+	IKDefInvalidationObserver
+{
 	this(RendererBackend backend) {
 		registerRenderableObserver(this);
 		_backend = backend;
@@ -90,6 +95,18 @@ abstract class Renderer : IRenderableObserver, IKDefInvalidationObserver {
 		void onRenderableInvalidated(RenderableId id) {
 			_renderableValid.clear(id);
 		}
+	// ----
+
+
+	// Implement ILightObserver
+	void onLightCreated(LightId) {
+	}
+	
+	void onLightDisposed(LightId) {
+	}
+	
+	void onLightInvalidated(LightId) {
+	}
 	// ----
 
 

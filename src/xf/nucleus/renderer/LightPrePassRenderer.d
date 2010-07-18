@@ -424,8 +424,6 @@ float farPlaneDistance <
 			}
 		);
 
-		//assureNotCyclic(kg);
-
 		// ----
 
 		effect.compile();
@@ -470,9 +468,165 @@ float farPlaneDistance <
 	}
 
 
+	private EffectInfo buildLightEffect(cstring lightKernel) {
+		scope stack = new StackBuffer;
+
+		EffectInfo effectInfo;
+
+		alias KernelGraph.NodeType NT;
+
+		ConvCtx convCtx;
+		convCtx.semanticConverters = &_kdefRegistry.converters;
+		convCtx.getKernel = &_kdefRegistry.getKernel;
+
+		auto kg = createKernelGraph();
+		scope (exit) {
+			disposeKernelGraph(kg);
+		}
+
+		bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
+			if (type == kg.getNode(id).type) {
+				kg.removeNode(id);
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		SubgraphInfo inInfo;
+		{
+			final kernel = _kdefRegistry.getKernel("LightPrePassLightIn");
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Structure;
+			builder.build(kg, kernel, &inInfo, stack);
+			assert (inInfo.input.valid);
+			assert (inInfo.output.valid);
+		}
+
+		convertGraphDataFlowExceptOutput(
+			kg,
+			convCtx
+		);
+
+		// ----
+
+			auto outRadianceNid = kg.addNode(NT.Output);
+			final outRadiance = kg.getNode(outRadianceNid).output.params
+				.add(ParamDirection.In, "out_radiance");
+			outRadiance.hasPlainSemantic = true;
+			outRadiance.type = "float4";
+			outRadiance.semantic.addTrait("use", "color");
+
+			{
+				GraphNodeId nid;
+				Param* par;
+				if (getOutputParamIndirect(
+					kg,
+					inInfo.output,
+					"normal",
+					&nid,
+					&par
+				)) {
+					kg.flow.addDataFlow(nid, par.name, outRadianceNid, outRadiance.name);
+				} else {
+					error("Incoming flow to 'normal' of the light structure kernel not found.");
+				}
+			}
+
+			File.set("graph.dot", toGraphviz(kg));
+
+			convertGraphDataFlow(
+				kg,
+				convCtx
+			);
+
+			removeNodeIfTypeMatches(inInfo.output, NT.Output);
+
+		// ----
+
+		kg.flow.removeAllAutoFlow();
+
+		verifyDataFlowNames(kg);
+
+		// ----
+
+		CodegenSetup cgSetup;
+		cgSetup.inputNode = inInfo.input;
+		cgSetup.outputNode = outRadianceNid;
+
+		final effect = effectInfo.effect = compileKernelGraph(
+			null,
+			kg,
+			cgSetup,
+			_backend,
+			(CodeSink fmt) {
+				fmt(
+`
+float3x4 modelToWorld;
+float4x4 worldToView <
+	string scope = "effect";
+>;
+float4x4 viewToClip <
+	string scope = "effect";
+>;
+float4x4 clipToView <
+	string scope = "effect";
+>;
+float3 eyePosition <
+	string scope = "effect";
+>;
+float farPlaneDistance <
+	string scope = "effect";
+>;
+`
+				);
+			}
+		);
+
+		effect.compile();
+
+		// HACK
+		allocateDefaultUniformStorage(effect);
+
+		//assureNotCyclic(kg);
+
+		void** uniforms = effect.getUniformPtrsDataPtr();
+
+		void** getUniformPtrPtr(cstring name) {
+			if (uniforms) {
+				final idx = effect.effectUniformParams.getUniformIndex(name);
+				if (idx != -1) {
+					return uniforms + idx;
+				}
+			}
+			return null;
+		}
+		
+		void setUniform(cstring name, void* ptr) {
+			if (auto upp = getUniformPtrPtr(name)) {
+				*upp = ptr;
+			}
+		}
+
+		if (uniforms) {
+			setUniform("worldToView", &worldToView);
+			setUniform("viewToClip", &viewToClip);
+			setUniform("clipToView", &clipToView);
+			setUniform("eyePosition", &eyePosition);
+			setUniform("farPlaneDistance", &farPlaneDistance);
+		}
+
+		// ----
+
+		findEffectInfo(kg, &effectInfo);
+
+		return effectInfo;
+	}
+
+
 	private void compileStructureEffectsForRenderables(RenderableId[] rids) {
 		foreach (idx, rid; rids) {
-			if (!this._renderableValid.isSet(rid) || !_renderableEI[rid].valid) {
+			if (!this._renderableValid.isSet(rid) || !_structureRenderableEI[rid].valid) {
 
 				// compile the kernels, create an EffectInstance
 				// TODO: cache Effects and only create new EffectInstances
@@ -591,15 +745,15 @@ float farPlaneDistance <
 						// setIndexData
 						(IndexData* id) {
 							log.info("_renderableIndexData[{}] = {};", rid, id);
-							_renderableIndexData[rid] = id;
+							_structureRenderableIndexData[rid] = id;
 						}
 				));
 
-				if (_renderableEI[rid].valid) {
-					_renderableEI[rid].dispose();
+				if (_structureRenderableEI[rid].valid) {
+					_structureRenderableEI[rid].dispose();
 				}
 				
-				_renderableEI[rid] = efInst;
+				_structureRenderableEI[rid] = efInst;
 				
 				this._renderableValid.set(rid);
 			}
@@ -609,47 +763,65 @@ float farPlaneDistance <
 
 	override void onRenderableCreated(RenderableId id) {
 		super.onRenderableCreated(id);
-		xf.utils.Memory.realloc(_renderableEI, id+1);
-		xf.utils.Memory.realloc(_renderableIndexData, id+1);
+		xf.utils.Memory.realloc(_structureRenderableEI, id+1);
+		xf.utils.Memory.realloc(_structureRenderableIndexData, id+1);
+	}
+
+
+	// TODO
+	override void onLightCreated(LightId) {
+	}
+	
+	// TODO
+	override void onLightDisposed(LightId) {
+	}
+	
+	// TODO
+	override void onLightInvalidated(LightId) {
 	}
 
 	
 	override void render(ViewSettings vs, RenderList* rlist) {
 		this.viewToClip = vs.computeProjectionMatrix();
+		this.clipToView = this.viewToClip.inverse();
 		this.worldToView = vs.computeViewMatrix();
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
 		this.farPlaneDistance = vs.farPlaneDistance;
 
-		final rids = rlist.list.renderableId[0..rlist.list.length];
+		buildLightEffect(.lights[0].kernelName);
+		assert (false);
+
+		/+final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileStructureEffectsForRenderables(rids);
 
 		final blist = _backend.createRenderList();
 		scope (exit) _backend.disposeRenderList(blist);
 
 		foreach (idx, rid; rids) {
-			final ei = _renderableEI[rid];
+			final ei = _structureRenderableEI[rid];
 			final bin = blist.getBin(ei.getEffect);
 			final item = bin.add(ei);
 			
 			item.coordSys		= rlist.list.coordSys[idx];
 			item.scale			= vec3.one;
-			item.indexData		= *_renderableIndexData[rid];
+			item.indexData		= *_structureRenderableIndexData[rid];
 			item.numInstances	= 1;
 		}
 
-		_backend.render(blist);
+		_backend.render(blist);+/
 	}
 
 
 	private {
 		// HACK
-		EffectInstance[]	_renderableEI;
-		IndexData*[]		_renderableIndexData;
+		EffectInstance[]	_structureRenderableEI;
+		IndexData*[]		_structureRenderableIndexData;
 
 		IKDefRegistry		_kdefRegistry;
 
 		mat4	worldToView;
 		mat4	viewToClip;
+		mat4	clipToView;
 		vec3	eyePosition;
 		float	farPlaneDistance;
 	}
