@@ -1,0 +1,530 @@
+CheckerGen = kernel Image(
+	in size <type float2>
+) {
+	float2 meh = step(float2(0.5, 0.5), frac(uv * size)) * 2 - 1;
+	sample = (meh.x * meh.y) * 0.5 + 0.5;
+};
+
+
+BlurImage = kernel(
+	in uv <type float2>,
+	in offset <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+	res += img.sample(uv - offset) * coeff[0];
+	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
+	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
+	res += img.sample(uv) * coeff[3];
+	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
+	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
+	res += img.sample(uv + offset) * coeff[6];
+	sample = res;
+};
+
+
+DefaultMeshStructure = graph Structure {
+	node_0 = node {
+		type = input;
+		params = (
+			position <type float3 + basis model + use position>,
+			normal <type float3 + basis model + use normal>,
+			texCoord <type float2 + use uv>
+		);
+	};
+	node_1 = node {
+		type = kernel;
+		kernel = Rasterize;
+	};
+	node_2 = node {
+		type = output;
+	};
+
+	connect node_0 node_1;
+	connect node_0 node_2;
+};
+
+
+TestSurface1 = surface CookTorrance {
+	roughness = 0.2;
+};
+
+TestSurface4 = surface HalfLambert {
+};
+
+TestSurface2 = surface ABg_h {
+	BRDF_A = 0.0025;
+	BRDF_B = 0.0001;
+	BRDF_g = 1.8;
+};
+
+TestSurface3 = surface ABg_h {
+	BRDF_A = 0.06;
+	BRDF_B = 0.001;
+	BRDF_g = 1.3;
+};
+
+/+TestSurface1 = surface ABg_h {
+	BRDF_A = 0.0025;
+	BRDF_B = 0.0001;
+	BRDF_g = 1.8;
+};
+
+TestSurface4 = surface ABg_h {
+	BRDF_A = 0.06;
+	BRDF_B = 0.001;
+	BRDF_g = 1.3;
+};+/
+
+
+TestMaterial = material TestPigment {
+	albedoTint = 1 1 1 1;
+	albedoTex = sampler {
+		texture = "../../media/img/testgrid.png";
+		minFilter = mipmapLinear;
+		magFilter = linear;
+	};
+};
+
+
+TestLight = graph Light {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			lightPos <type float3 + use lightPos> = 0 1 -2,
+			lumIntens <type float4 + use lumIntens> = 1 1 1 1,
+			radius <type float> = 5
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Light(
+			radius <type float>,
+			lightPos <type float3 + use lightPos>,
+			lumIntens <type float4 + use lumIntens>
+		) {
+			toLight = lightPos - position;
+			intensity = lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
+			toLight = normalize(toLight);
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n1.radius n2.radius;
+	connect n0 n2;
+	connect n1 n2;
+	connect n2 n3;
+};
+
+
+TestPigment = graph Pigment {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D + use color>,
+			blurOffset <type float2> = 0.002 0.002,
+			checkerSize <type float2> = 30 30
+		);
+	};
+	ng = node {
+		type = kernel;
+		kernel = CheckerGen;
+	};
+	ns = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	nb = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+	na = node {
+		type = kernel;
+		kernel = Add;
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Pigment(
+			albedoTint <type float4 + use color>,
+			someImg <type Image>
+		) {
+			out_albedo = albedoTint * someImg.sample(texCoord);
+			out_specular = float4(1);
+			out_normal = normal;
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	// ----
+
+	connect n1.checkerSize ng.size;
+	connect n1.blurOffset nb.offset;
+
+	connect n1 ns;
+
+	connect ng.sample na.a;			// procedural tex -> sum
+	connect ns.sample na.b;			// albedo tex -> sum
+
+	//connect ng.sample nb.img;		// procedural tex -> blur
+	//connect ns.sample nb.img;		// albedo tex -> blur
+	connect na.c nb.img;			// sum -> blur
+
+	connect nb.sample n2.someImg;	// blur -> out
+
+	//connect nb.sample n2.someImg;	// albedo tex -> out
+	//connect ng.sample n2.someImg;	// procedural tex -> out
+
+	// ----
+
+	noauto nb.uv;
+	noauto ng.uv;
+	noauto ns.uv;
+
+	// ----
+
+	connect n0 n2;
+	connect n1.albedoTint n2.albedoTint;
+	connect n2 n3;
+};
+
+
+SpecularOnly = kernel Pigment {
+	out_specular = float4(1);
+	out_diffuse = float4(0);
+	out_normal = normal;
+};
+
+
+Blur = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>,
+			inputSize <type float2>
+		);
+	};
+
+	blurOffComp = node {
+		type = kernel;
+		kernel = kernel(
+			in imgSize <type float2>,
+			out blurOff1 <type float2>,
+			out blurOff2 <type float2>
+		) {
+			blurOff1 = float2(3.0 / imgSize.x, 0.0);
+			blurOff2 = float2(0.0, 3.0 / imgSize.y);
+		};
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+
+	nb = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	n11 = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+
+	nb2 = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>,
+			outputSize <type float2>
+		);
+	};
+
+	connect n0.inputSize blurOffComp.imgSize;
+	connect n0.input ns.image;
+	connect ns.sample n1.img;
+	connect n1.sample nb.input;
+	connect nb.output n11.img;
+	connect n11.sample nb2.input;
+	connect nb2.output n2.output;
+	noauto n1.uv;
+	noauto n11.uv;
+	noauto ns.uv;
+
+	connect blurOffComp.blurOff1 n1.offset;
+	connect blurOffComp.blurOff2 n11.offset;
+	connect nb2.size n2.outputSize;
+};
+
+
+BlurAndDownsample = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>,
+			inputSize <type float2>
+		);
+	};
+
+	blurOffComp = node {
+		type = kernel;
+		kernel = kernel(
+			in imgSize <type float2>,
+			out blurOff1 <type float2>,
+			out blurOff2 <type float2>
+		) {
+			blurOff1 = float2(12.0 / imgSize.x, 0.0);
+			blurOff2 = float2(0.0, 12.0 / imgSize.y);
+		};
+	};
+
+	ns = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+
+	nb = node {
+		type = kernel;
+		kernel = Blit;
+		resample = 0.5 1.0;
+	};
+
+	n11 = node {
+		type = kernel;
+		kernel = BlurImage;
+	};
+
+	nb2 = node {
+		type = kernel;
+		kernel = Blit;
+		resample = 1.0 0.5;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>,
+			outputSize <type float2>
+		);
+	};
+
+	connect n0.inputSize blurOffComp.imgSize;
+	connect n0.input ns.image;
+	connect ns.sample n1.img;
+	connect n1.sample nb.input;
+	connect nb.output n11.img;
+	connect n11.sample nb2.input;
+	connect nb2.output n2.output;
+	noauto n1.uv;
+	noauto n11.uv;
+	noauto ns.uv;
+
+	connect blurOffComp.blurOff1 n1.offset;
+	connect blurOffComp.blurOff2 n11.offset;
+	connect nb2.size n2.outputSize;
+};
+
+
+TestPost = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	blur1 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur2 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur3 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur4 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur5 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur6 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur7 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	blur8 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	blur9 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	blur10 = node {
+		type = kernel;
+		kernel = Blur;
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred2 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred3 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	glare = node {
+		type = kernel;
+		kernel = AddGlare;
+	};
+
+	connect input blur1;
+	connect blur1 blur2;
+	connect blur2 blur3;
+	connect blur3 blur4;
+	connect blur4 blur5;
+	connect blur5 blur6;
+	connect blur6 blur7;
+	connect blur7 blur8;
+	connect blur8 blur9;
+	connect blur9 blur10;
+
+	connect blur1 sampleBlurred;
+	connect blur3 sampleBlurred2;
+	connect blur10 sampleBlurred3;
+	connect input sampleOrig;
+
+	connect sampleOrig.sample glare.baseColor;
+	connect sampleBlurred.sample glare.blurredColor;
+	connect sampleBlurred2.sample glare.blurredColor2;
+	connect sampleBlurred3.sample glare.blurredColor3;
+
+	connect glare.output output.output;
+
+	noauto sampleOrig.uv;
+	noauto sampleBlurred.uv;
+	noauto sampleBlurred2.uv;
+	noauto sampleBlurred3.uv;
+};
+
+
+TestPostNop = graph {
+	n0 = node {
+		type = input;
+		params = (
+			input <type Image>
+		);
+	};
+
+	n1 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	n2 = node {
+		type = output;
+		params = (
+			output <type Image>
+		);
+	};
+
+
+	connect n0.input n1.image;
+	connect n1.sample n2.output;
+	noauto n1.uv;
+};
+
+
+AddGlare = kernel(
+	in baseColor <type float4>,
+	in blurredColor <type float4>,
+	in blurredColor2 <type float4>,
+	in blurredColor3 <type float4>,
+	out output <type float4>
+) {
+	float baseLuma = dot(float3(0.2126, 0.7152, 0.0722), baseColor.xyz).x;
+	float blurredLuma = dot(float3(0.2126, 0.7152, 0.0722), blurredColor.xyz).x;
+	float blurredLuma2 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor2.xyz).x;
+	float blurredLuma3 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor3.xyz).x;
+
+	// Spatial acuity and color sunsitivity loss
+	float acuity = smoothstep(-0.005, 0.015, max(blurredLuma, max(blurredLuma3, blurredLuma2)));
+	output = lerp(blurredColor, baseColor, acuity);
+	output = lerp(dot(float3(0.2126, 0.7152, 0.0722), output).xxxx, output, acuity);
+
+	/+float toneMapping = 0.1 / blurredLuma3;
+	toneMapping = pow(toneMapping, 0.5);
+	output *= toneMapping;+/
+
+	{
+		float luma = max(0.0001, blurredLuma);
+		float targetLuma = 0.06*pow(luma, 1.4);
+		output += max(float4(0), blurredColor*targetLuma/luma);
+	}
+	{
+		float luma = max(0.0001, blurredLuma3);
+		float targetLuma = min(0.5, 0.2*pow(luma, 1.4));
+		output += lerp(max(float4(0), blurredColor3*targetLuma/luma), float4(targetLuma), 0.8);
+	}
+};

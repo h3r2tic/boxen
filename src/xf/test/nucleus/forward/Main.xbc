@@ -1,13 +1,10 @@
--version=StackTracing
--version=ValidateFuncCalls
 -version=DogCgNoErrorChecking
 -d
 ../../../utils/impl/
 ../../../gfx/gl3/
 ../../../nucleus/kdef/
-../../../nucleus/renderer/LightPrePassRenderer.d
+../../../nucleus/renderer/
 +xtango
--g
 -I../../../..
 +xxf.omg.core.LinearAlgebra
 +xxf.platform.win32
@@ -16,4 +13,5 @@ LinearAlgebra.obj
 ../../../platform/win32/win32.lib
 ../../../gfx/api/gl3.lib
 gdi32.lib
--version=SimpleCameraColemak
+-version=SimpleCameraQwerty
+-release
