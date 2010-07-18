@@ -63,4 +63,5 @@ struct RenderState {
 	Scissor		scissor;
 	Line		line;
 	Point		point;
+	bool		sRGB = true;
 }

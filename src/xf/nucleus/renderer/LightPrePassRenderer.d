@@ -49,6 +49,9 @@ private {
 		xf.gfx.IndexData,
 		xf.gfx.Texture,
 		xf.gfx.Framebuffer,
+		xf.gfx.Buffer,
+		xf.gfx.VertexBuffer,
+		xf.gfx.IndexBuffer,
 		xf.omg.core.LinearAlgebra,
 		xf.omg.core.CoordSys,
 		xf.omg.util.ViewSettings,
@@ -57,6 +60,8 @@ private {
 		xf.mem.ScratchAllocator,
 		xf.mem.SmallTempArray,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
+
+	import Primitives = xf.gfx.misc.Primitives;
 
 	import xf.mem.Array;
 	import MemUtils = xf.utils.Memory;
@@ -146,11 +151,33 @@ struct GraphBuilder {
 class LightPrePassRenderer : Renderer {
 	mixin MRenderer!("LightPrePass");
 
+	enum {
+		maxSurfaceParams = 8,
+		maxSurfaces = 256
+	}
+
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
 		_kdefRegistry = kdefRegistry;
 		_structureEffectCache = new typeof(_structureEffectCache);
 		super(backend);
+		createSurfaceParamTex();
+	}
+
+
+	private void createSurfaceParamTex() {
+		TextureRequest treq;
+		treq.internalFormat = TextureInternalFormat.RGBA_FLOAT32;
+		treq.minFilter = TextureMinFilter.Nearest;
+		treq.magFilter = TextureMagFilter.Nearest;
+		treq.wrapS = TextureWrap.ClampToEdge;
+		treq.wrapT = TextureWrap.ClampToEdge;
+		
+		_surfaceParamTex = _backend.createTexture(
+			vec2i(maxSurfaceParams, maxSurfaces),
+			treq
+		);
+		assert (_surfaceParamTex.valid);
 	}
 
 
@@ -534,8 +561,6 @@ float farPlaneDistance <
 				}
 			}
 
-			File.set("graph.dot", toGraphviz(kg));
-
 			convertGraphDataFlow(
 				kg,
 				convCtx
@@ -546,6 +571,8 @@ float farPlaneDistance <
 		// ----
 
 		kg.flow.removeAllAutoFlow();
+
+			File.set("graph.dot", toGraphviz(kg));
 
 		verifyDataFlowNames(kg);
 
@@ -565,6 +592,9 @@ float farPlaneDistance <
 `
 float3x4 modelToWorld;
 float4x4 worldToView <
+	string scope = "effect";
+>;
+float4x4 viewToWorld <
 	string scope = "effect";
 >;
 float4x4 viewToClip <
@@ -611,6 +641,7 @@ float farPlaneDistance <
 
 		if (uniforms) {
 			setUniform("worldToView", &worldToView);
+			setUniform("viewToWorld", &viewToWorld);
 			setUniform("viewToClip", &viewToClip);
 			setUniform("clipToView", &clipToView);
 			setUniform("eyePosition", &eyePosition);
@@ -785,11 +816,70 @@ float farPlaneDistance <
 	EffectInstance	lightEI;
 	EffectInfo		lightEffectInfo;
 
+		VertexBuffer	_vb;
+		VertexAttrib	_va;
+		IndexBuffer		_ib;
+	
+
 	void renderLights(Light[] lights) {
 		if (lightEffectInfo.effect is null) {
 			lightEffectInfo = buildLightEffect(lights[0].kernelName);
-			lightEI = _backend.instantiateEffect(lightEffectInfo.effect);
+			auto effect = lightEffectInfo.effect;
+			auto efInst = lightEI = _backend.instantiateEffect(effect);
+
+				// HACK
+				allocateDefaultUniformStorage(efInst);
+				setEffectInstanceUniformDefaults(&lightEffectInfo, efInst);
+
+				vec3[24] positions = void;
+				positions[] = Primitives.Cube.positions[];
+				foreach (ref v; positions) {
+					v *= 100;
+				}
+
+				_vb = _backend.createVertexBuffer(
+					BufferUsage.StaticDraw,
+					cast(void[])positions
+				);
+				_va = VertexAttrib(
+					0,
+					vec3.sizeof,
+					VertexAttrib.Type.Vec3
+				);
+				_ib = _backend.createIndexBuffer(
+					BufferUsage.StaticDraw,
+					Primitives.Cube.indices
+				);
+
+			final vdata = efInst.getVaryingParamData("VertexProgram.structure__position");
+			vdata.buffer = &_vb;
+			vdata.attrib = &_va;
+
+			if (auto pp = efInst.getUniformPtrPtr("structure__depthSampler")) {
+				*cast(Texture**)pp = &_depthTex;
+			}
+			if (auto pp = efInst.getUniformPtrPtr("structure__packed1Sampler")) {
+				*cast(Texture**)pp = &_packed1Tex;
+			}
+			if (auto pp = efInst.getUniformPtrPtr("structure__surfaceParamSampler")) {
+				*cast(Texture**)pp = &_surfaceParamTex;
+			}
 		}
+
+		final renderList = _backend.createRenderList();
+		assert (renderList !is null);
+		scope (success) _backend.disposeRenderList(renderList);
+
+		final bin = renderList.getBin(lightEffectInfo.effect);
+		final rdata = bin.add(lightEI);
+		*rdata = typeof(*rdata).init;
+		rdata.coordSys = CoordSys.identity;
+		final id = &rdata.indexData;
+		id.indexBuffer	= _ib;
+		id.numIndices	= Primitives.Cube.indices.length;
+		id.maxIndex		= 7;
+
+		_backend.render(renderList);
 	}
 
 	
@@ -797,6 +887,7 @@ float farPlaneDistance <
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.clipToView = this.viewToClip.inverse();
 		this.worldToView = vs.computeViewMatrix();
+		this.viewToWorld = this.worldToView.inverse();
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
 		this.farPlaneDistance = vs.farPlaneDistance;
 
@@ -849,10 +940,13 @@ float farPlaneDistance <
 		}
 
 		final outputFB = _backend.framebuffer;
+		final origState = *_backend.state();
+		
 		if (outputFB.acquire()) {
 			scope (exit) {
 				_backend.framebuffer = outputFB;
 				outputFB.dispose();
+				*_backend.state() = origState;
 			}
 			
 			_backend.framebuffer = _attribFB;
@@ -875,6 +969,8 @@ float farPlaneDistance <
 				item.numInstances	= 1;
 			}
 
+			_backend.state.sRGB = false;
+
 			_backend.render(blist);
 		}
 
@@ -894,7 +990,10 @@ float farPlaneDistance <
 		Texture		_packed1Tex;
 		Framebuffer	_attribFB;
 
+		Texture		_surfaceParamTex;
+
 		mat4	worldToView;
+		mat4	viewToWorld;
 		mat4	viewToClip;
 		mat4	clipToView;
 		vec3	eyePosition;
