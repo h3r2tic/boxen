@@ -11,6 +11,7 @@ private {
 		xf.nucleus.codegen.Rename,
 		xf.nucleus.codegen.Deps,
 		xf.nucleus.codegen.Body,
+		xf.nucleus.codegen.Misc,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.GraphOps,
 		xf.nucleus.graph.Simplify,
@@ -22,15 +23,16 @@ private {
 
 
 
-
 void codegen(
+	StackBufferUnsafe stack,
 	KernelGraph graph,
 	CodegenSetup setup,
-	CodeSink sink
+	CodegenContext* ctx
 ) {
+	final sink = ctx.sink;
+	
 	alias KernelGraph.NodeType NT;
 
-	scope stack = new StackBuffer;
 	final graphBack = graph.backend_readOnly;
 
 	GraphNodeId rasterNode;
@@ -368,58 +370,11 @@ void codegen(
 
 	// ---- dump all uniforms ----
 
-	foreach (nid, node; graph.iterNodes) {
-		if (NT.Data == node.type) {
-			foreach (param; node.data.params) {
-				assert (param.hasTypeConstraint);
+	dumpUniforms(ctx, graph, sink);
 
-				sink("uniform ");
-				sink(param.type);
-				sink(" ");
-				
-				emitSourceParamName(
-					CodegenContext(
-						sink,
-						GPUDomain.Unresolved,
-						graph,
-						nodeDomains,
-						1
-					),
-					nid,
-					param.name
-				);
+	// ----
 
-				sink(";").newline;
-			}
-		}
-	}
-
-	word numGraphs = 1;
-	void findNumGraphs(KernelGraph graph) {
-		foreach (nid, ref node; graph.iterNodes) {
-			if (NT.Composite == node.type) {
-				auto compNode = node.composite();
-				assert (compNode.graph !is null);
-				assert (compNode.graph !is graph);
-				if (compNode._graphIdx != uint.max) {
-					compNode._graphIdx = numGraphs++;
-					findNumGraphs(compNode.graph);
-				}
-			}
-		}
-	}
-	findNumGraphs(graph);
-	
-	emitInterfaces(graph, sink, setup);
-
-	final graphs = stack.allocArray!(SubgraphData)(numGraphs);
-	emitGraphCompositesAndFuncs(
-		graph,
-		0,
-		graphs,
-		sink,
-		stack
-	);
+	final graphs = emitCompositesAndFuncs(stack, ctx, graph);
 
 	// ----
 
@@ -427,14 +382,12 @@ void codegen(
 	
 	// ---- codegen the vertex shader ----
 
+	ctx.domain = GPUDomain.Vertex;
+
 	domainCodegen(
-		CodegenContext(
-			sink,
-			GPUDomain.Vertex,
-			graph,
-			nodeDomains,
-			1
-		),
+		ctx,
+		graph,
+		nodeDomains,
 		"VertexProgram",
 		vinputs,
 		voutputs,
@@ -451,14 +404,12 @@ void codegen(
 
 	// ---- codegen the fragment shader ----
 
+	ctx.domain = GPUDomain.Fragment;
+
 	domainCodegen(
-		CodegenContext(
-			sink,
-			GPUDomain.Fragment,
-			graph,
-			nodeDomains,
-			1
-		),
+		ctx,
+		graph,
+		nodeDomains,
 		"FragmentProgram",
 		finputs[1..$],	// without the POSITION param
 		foutputs,
@@ -476,7 +427,9 @@ void codegen(
 
 
 void domainCodegen(
-	CodegenContext ctx,
+	CodegenContext* ctx,
+	KernelGraph graph,
+	GPUDomain[] nodeDomains,
 	cstring domainFuncName,
 	CgParam[] inputs,
 	CgParam[] outputs,
@@ -509,7 +462,7 @@ void domainCodegen(
 		sink("\tin ");
 		sink(par.param.type);
 		sink(" ");
-		emitSourceParamName(ctx, par.node, par.param.name);
+		emitSourceParamName(ctx, graph, nodeDomains, par.node, par.param.name);
 		sink(" : ");
 		par.bindingSemantic.writeOut(sink);
 		
@@ -539,33 +492,11 @@ void domainCodegen(
 
 	sink(") {").newline();
 
-	domainCodegenBody(ctx, nodesTopo, node2funcName, node2compName);
+	domainCodegenBody(ctx, graph, nodeDomains, nodesTopo, node2funcName, node2compName);
 
 	foreach (i, par; outputs) {
 		sink.format("\tbridge__{} = ", i);
-
-/+
-		GraphNodeId	srcNid;
-		Param*		srcParam;
-
-		if (!findSrcParam(
-			ctx.graph,
-			par.node,
-			par.param.name,
-			&srcNid,
-			&srcParam
-		)) {
-			error(
-				"No flow to {}.{}. Should have been caught earlier.",
-				par.node.id,
-				par.param.name
-			);
-		}
-
-		emitSourceParamName(ctx, srcNid, srcParam.name);
-+/
-
-		emitSourceParamName(ctx, par.node, par.param.name);
+		emitSourceParamName(ctx, graph, nodeDomains, par.node, par.param.name);
 		sink(';').newline();
 	}
 

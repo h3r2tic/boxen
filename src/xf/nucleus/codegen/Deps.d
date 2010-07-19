@@ -21,6 +21,8 @@ private {
 	import
 		xf.mem.StackBuffer,
 		xf.mem.SmallTempArray;
+
+	alias KernelGraph.NodeType NT;
 }
 
 
@@ -32,9 +34,9 @@ private struct SubgraphData {
 }
 
 
-void emitInterfaces(KernelGraph graph, CodeSink sink, CodegenSetup setup) {
+void emitInterfaces(KernelGraph graph, CodegenContext* ctx) {
 	scope stack = new StackBuffer;
-	mixin MSmallTempArray!(cstring) emittedComps;
+	final sink = ctx.sink;
 
 	/+// HACK
 	emittedComps.pushBack("Image", &stack.allocRaw);+/
@@ -43,7 +45,7 @@ void emitInterfaces(KernelGraph graph, CodeSink sink, CodegenSetup setup) {
 	void emit(AbstractFunction func, cstring retType) {
 		bool ifaceEmitted = false;
 
-		foreach (em; emittedComps.items) {
+		foreach (em; ctx.emittedComps) {
 			if (em == func.name) {
 				ifaceEmitted = true;
 				break;
@@ -51,7 +53,7 @@ void emitInterfaces(KernelGraph graph, CodeSink sink, CodegenSetup setup) {
 		}
 
 		if (!ifaceEmitted) {
-			emittedComps.pushBack(func.name, &stack.allocRaw);
+			ctx.emittedComps.pushBack(func.name);
 
 			sink("interface ")(func.name)(" {").newline;
 			sink('\t');
@@ -86,18 +88,18 @@ void emitInterfaces(KernelGraph graph, CodeSink sink, CodegenSetup setup) {
 	
 	void worker(KernelGraph graph) {
 		foreach (nid, node; graph.iterNodes) {
-			if (setup.getInterface !is null) {
+			if (ctx.getInterface !is null) {
 				foreach (par; *node.getParamList()) {
 					if (par.hasPlainSemantic && par.hasTypeConstraint) {
 						AbstractFunction ifaceFunc;
-						if (setup.getInterface(par.type, &ifaceFunc)) {
+						if (ctx.getInterface(par.type, &ifaceFunc)) {
 							emit(ifaceFunc, getIfaceFuncReturnType(ifaceFunc));
 						}
 					}
 				}
 			}
 			
-			if (KernelGraph.NodeType.Composite == node.type) {
+			if (NT.Composite == node.type) {
 				auto compNode = node.composite();
 				worker(compNode.graph);
 				emit(compNode.targetFunc, compNode.returnType);
@@ -111,6 +113,7 @@ void emitInterfaces(KernelGraph graph, CodeSink sink, CodegenSetup setup) {
 
 
 void emitGraphCompositesAndFuncs(
+	CodegenContext* ctx,
 	KernelGraph graph,
 	uint graphIdx,
 	SubgraphData[] graphs,
@@ -118,8 +121,6 @@ void emitGraphCompositesAndFuncs(
 	
 	StackBufferUnsafe stack
 ) {
-	alias KernelGraph.NodeType NT;
-
 	// ---- dump all composites ----
 
 	cstring[] node2compName; {
@@ -163,6 +164,7 @@ void emitGraphCompositesAndFuncs(
 				assert (compNode._graphIdx != 0);
 				
 				emitGraphCompositesAndFuncs(
+					ctx,
 					compNode.graph,
 					compNode._graphIdx,
 					graphs,
@@ -210,16 +212,12 @@ void emitGraphCompositesAndFuncs(
 				auto topological = stack.allocArray!(GraphNodeId)(compNode.graph.numNodes);
 				findTopologicalOrder(compNode.graph.backend_readOnly, topological);
 
-				final ctx = CodegenContext(
-					sink,
-					GPUDomain.Unresolved,
-					compNode.graph,
-					null,
-					2
-				);
+				++ctx.indentSize;
 
 				domainCodegenBody(
 					ctx,
+					compNode.graph,
+					null,
 					(void delegate(GraphNodeId) sink) {
 						foreach (nid; topological) {
 							sink(nid);
@@ -257,10 +255,12 @@ void emitGraphCompositesAndFuncs(
 						);
 					}
 
-					emitSourceParamName(ctx, srcNid, srcParam.name);
+					emitSourceParamName(ctx, compNode.graph, null, srcNid, srcParam.name);
 
 					sink(';').newline();
 				}
+
+				--ctx.indentSize;
 
 				sink("\t}").newline();
 				sink("};").newline;
@@ -272,15 +272,6 @@ void emitGraphCompositesAndFuncs(
 	// ---- dump all funcs ----
 
 	cstring[] node2funcName; {
-		auto _emittedFuncs = stack.allocArray!(GraphNodeId)(
-			graph.numNodes
-		);
-		uword numEmittedFuncs = 0;
-		
-		GraphNodeId[] emittedFuncs() {
-			return _emittedFuncs[0..numEmittedFuncs];
-		}
-		
 		node2funcName = stack.allocArray!(cstring)(graph.capacity);
 
 		funcDumpIter: foreach (nid, node; graph.iterNodes) {
@@ -291,11 +282,9 @@ void emitGraphCompositesAndFuncs(
 			auto	funcNode = node.func();
 			uword	overloadIndex = 0;
 
-			overloadSearch: foreach (emid; emittedFuncs) {
-				auto f = graph.getNode(emid).func();
-				
+			overloadSearch: foreach (f; ctx.emittedFuncs) {
 				if (f.func.name == funcNode.func.name) {
-					if (f.params.length != funcNode.func.params.length) {
+					if (f.params.length != funcNode.params.length) {
 						++overloadIndex;
 						continue overloadSearch;
 					}
@@ -312,12 +301,10 @@ void emitGraphCompositesAndFuncs(
 					}
 
 					// no param types differ, use this overload
-					node2funcName[nid.id] = node2funcName[emid.id];
+					node2funcName[nid.id] = f.name;
 					continue funcDumpIter;
 				}
 			}
-
-			_emittedFuncs[numEmittedFuncs++] = nid;
 
 			cstring funcName; {
 				if (0 == overloadIndex && 0 == graphIdx) {
@@ -335,6 +322,10 @@ void emitGraphCompositesAndFuncs(
 					});
 				}
 			}
+
+			ctx.emittedFuncs.pushBack(
+				EmittedFunc(funcNode.func, funcNode.params, funcName)
+			);
 
 			node2funcName[nid.id] = funcName;
 
@@ -368,6 +359,45 @@ void emitGraphCompositesAndFuncs(
 
 	graphs[graphIdx].node2funcName = node2funcName;
 	graphs[graphIdx].node2compName = node2compName;
+}
+
+
+SubgraphData[] emitCompositesAndFuncs(
+	StackBufferUnsafe stack,
+	CodegenContext* ctx,
+	KernelGraph graph
+) {
+	word numGraphs = 1;
+	void findNumGraphs(KernelGraph graph) {
+		foreach (nid, ref node; graph.iterNodes) {
+			if (NT.Composite == node.type) {
+				auto compNode = node.composite();
+				assert (compNode.graph !is null);
+				assert (compNode.graph !is graph);
+				if (compNode._graphIdx != uint.max) {
+					compNode._graphIdx = numGraphs++;
+					findNumGraphs(compNode.graph);
+				}
+			}
+		}
+	}
+	findNumGraphs(graph);
+
+	// ----
+	
+	emitInterfaces(graph, ctx);
+
+	final graphs = stack.allocArray!(SubgraphData)(numGraphs);
+	emitGraphCompositesAndFuncs(
+		ctx,
+		graph,
+		0,
+		graphs,
+		ctx.sink,
+		stack
+	);
+
+	return graphs;
 }
 
 

@@ -73,8 +73,8 @@ LightPrePassLightIn = graph {
 			out out_position <type float3 + use position + basis view>
 		) {
 			float depth = depth_.x *= farPlaneDistance;
-			float fragW = -(depth - viewToClip._m23) / context.viewToClip._m22;
-			float4 unProj = mul(context.clipToView, position * (fragW / position.w));
+			float fragW = -(depth - viewToClip._m23) / viewToClip._m22;
+			float4 unProj = mul(clipToView, position * (fragW / position.w));
 			out_position = unProj.xyz;
 		};
 	};
@@ -104,7 +104,7 @@ LightPrePassLightIn = graph {
 			in sampler <type sampler2D>,
 			in materialId <type float>
 		) {
-			return tex2D(sampler, float2(idx, materialId));
+			value = tex2D(sampler, float2(idx, materialId));
 		};
 	};
 

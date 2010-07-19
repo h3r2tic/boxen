@@ -3,6 +3,7 @@ module xf.nucleus.KernelCompiler;
 private {
 	import xf.nucleus.graph.KernelGraph;
 	import xf.nucleus.codegen.Codegen;
+	import xf.nucleus.codegen.Defs;
 	import xf.gfx.Effect;
 	import xf.gfx.IRenderer;
 	import xf.mem.StackBuffer;
@@ -14,8 +15,9 @@ private {
 	import tango.io.device.File;
 }
 
-alias xf.nucleus.codegen.Codegen.CodeSink CodeSink;
-alias xf.nucleus.codegen.Codegen.CodegenSetup CodegenSetup;
+alias xf.nucleus.codegen.Defs.CodeSink CodeSink;
+alias xf.nucleus.codegen.Defs.CodegenSetup CodegenSetup;
+alias xf.nucleus.codegen.Defs.CodegenContext CodegenContext;
 
 
 
@@ -23,6 +25,7 @@ Effect compileKernelGraph(
 	cstring name,
 	KernelGraph kernel,
 	CodegenSetup setup,
+	CodegenContext* ctx,
 	IRenderer renderer,
 	void delegate(CodeSink) extraCodegen = null,
 	EffectCompilationOptions opts = EffectCompilationOptions.init,
@@ -37,13 +40,16 @@ Effect compileKernelGraph(
 
 	{
 		scope fmt = new FormatOutput!(char)(layout, arrrr, "\n");
+		if (ctx.sink is null) {
+			ctx.sink = fmt;
+		}
 
 		if (extraCodegen) {
-			extraCodegen(fmt);
+			extraCodegen(ctx.sink);
 		}
 		
-		codegen(kernel, setup, fmt);
-		fmt.flush();
+		codegen(stack, kernel, setup, ctx);
+		ctx.sink.flush();
 	}
 	
 	char[1] zero = '\0';

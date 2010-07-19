@@ -49,4 +49,23 @@ interface ArrayAllocator {
 			xf.mem.MainHeap.mainHeap.freeRaw(ptr);
 		}
 	}
+
+
+	template ScrapDg() {
+		private static import xf.Common;
+		
+		void* delegate(size_t) _outerAllocator;
+		
+		void* _reallocate(void* old, size_t oldBegin, size_t oldEnd, size_t bytes) {
+			void* n = _outerAllocator(bytes);
+			if (old) {
+				assert (bytes > oldEnd);
+				assert (oldBegin <= oldEnd);
+				xf.Common.memcpy(n+oldBegin, old+oldBegin, oldEnd-oldBegin);
+			}
+			return n;
+		}
+		
+		void _dispose(void* ptr) {}
+	}
 }
