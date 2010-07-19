@@ -358,8 +358,28 @@ class LightPrePassRenderer : Renderer {
 				illum.dataNodeParams = illum.graph.getNode(n).getParamList();
 				dataNodeFound = true;
 			}
+		}
 
-			pragma (msg, "TODO: update the surface param texture");
+		vec4 texel;
+
+		texel = vec4[cast(float)surf.illumIdx / (maxSurfaces-1), 0, 0, 0];
+		_backend.updateTexture(
+			_surfaceParamTex,
+			vec2i(0, def.id),
+			vec2i(1, 1),
+			&texel.x
+		);
+
+		foreach (i, p; def.params) {
+			assert (p.valueSize < 16);
+			memcpy(&texel.x, p.value, p.valueSize);
+
+			_backend.updateTexture(
+				_surfaceParamTex,
+				vec2i(i+1, def.id),
+				vec2i(1, 1),
+				&texel.x
+			);
 		}
 	}
 
@@ -485,11 +505,6 @@ class LightPrePassRenderer : Renderer {
 			final param = surfIdDataNode.params.add(ParamDirection.Out, "surfaceId");
 			param.hasPlainSemantic = true;
 			param.type = "float";
-
-			// 0-255 -> 0-1
-			float si = (cast(float)surfaceId + 0.5f) / 255.0f;
-			
-			param.setValue(cast(float)si);
 		}
 
 		SubgraphInfo outInfo;
@@ -966,8 +981,8 @@ float farPlaneDistance <
 		final fmt = ctx.sink;
 
 		void surfParam(int i) {
-			fmt.formatln(
-				"getSurfaceParam.value({})",
+			fmt.format(
+				"getSurfaceParam.value({:f.16})",
 				(cast(float)i + 1.5f) / maxSurfaceParams
 			);
 		}
@@ -978,7 +993,7 @@ float farPlaneDistance <
 			}
 			
 			fmt.formatln(
-				"if (brdf__Index < {}) {{",
+				"if (brdf__Index < {:f.16}) {{",
 				(cast(float)i + 0.5f) / maxSurfaces
 			).newline;
 
@@ -995,7 +1010,7 @@ float farPlaneDistance <
 			illumIdxBranch(illumIdx, {
 				fmt("BRDF__")(illumIdx)(" brdf__inst;");
 				if (illum.dataNodeParams) foreach (i, param; *illum.dataNodeParams) {
-					fmt.formatln("brdf__inst.{} = ", param.name);
+					fmt.format("brdf__inst.{} = ", param.name);
 					surfParam(i);
 					switch (param.type) {
 						case "float":
@@ -1011,6 +1026,8 @@ float farPlaneDistance <
 				fmt("brdf__inst.main(normal, intensity, lightSize, toLight, toEye, diffuse, specular);");
 			});
 		}
+
+		//fmt("diffuse = brdf__Index * 128;");
 	}
 
 
@@ -1151,6 +1168,20 @@ float farPlaneDistance <
 				 * even if they're not set in the GUI
 				 */
 				setEffectInstanceUniformDefaults(&effectInfo, efInst);
+
+
+				{
+					SurfaceId surfaceId = renderables.surface[rid];
+					// 0-255 -> 0-1
+					float si = (cast(float)surfaceId + 0.5f) / 255.0f;
+					
+					if (void** ptr = efInst.getUniformPtrPtr("surfaceId")) {
+						**cast(float**)ptr = si;
+					} else {
+						error("surfaceId not found in the structure kernel.");
+					}
+				}
+
 
 				// ----
 

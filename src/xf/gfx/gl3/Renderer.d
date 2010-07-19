@@ -1055,6 +1055,28 @@ class Renderer : IRenderer {
 		);
 	}
 
+	// HACK
+	void updateTexture(Texture h, vec2i origin, vec2i size, float* data) {
+		final tex = _getTexture(h._resHandle);
+		assert (tex !is null);
+
+		_bindTexture(tex.target, tex.handle);
+
+		const int level = 0;
+
+		gl.TexSubImage2D(
+			tex.target,
+			level,
+			origin.x,
+			origin.y,
+			size.x,
+			size.y,
+			RGBA,
+			FLOAT,
+			data
+		);
+	}
+
 	
 	void _bindTexture(GLenum target, GLuint id) {
 		gl.BindTexture(target, id);
