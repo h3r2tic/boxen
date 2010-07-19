@@ -186,6 +186,7 @@ class LightPrePassRenderer : Renderer {
 		assert (kdefRegistry !is null);
 		_kdefRegistry = kdefRegistry;
 		_structureEffectCache = new typeof(_structureEffectCache);
+		_finalEffectCache = new typeof(_finalEffectCache);
 		super(backend);
 		createSurfaceParamTex();
 	}
@@ -391,6 +392,32 @@ class LightPrePassRenderer : Renderer {
 
 
 	private {
+		struct FinalEffectCacheKey {
+			cstring		pigmentKernel;
+			cstring		structureKernel;
+			hash_t		hash;
+
+			void computeHash() {
+				hash = 0;
+				hash += typeid(cstring).getHash(&pigmentKernel);
+				hash += typeid(cstring).getHash(&structureKernel);
+			}
+
+			hash_t toHash() {
+				return hash;
+			}
+
+			bool opEquals(ref FinalEffectCacheKey other) {
+				return
+						pigmentKernel == other.pigmentKernel
+					&&	structureKernel == other.structureKernel;
+			}
+		}
+
+		private {
+			HashMap!(FinalEffectCacheKey, EffectInfo) _finalEffectCache;
+		}
+
 		HashMap!(cstring, EffectInfo) _structureEffectCache;
 	}
 
@@ -645,8 +672,6 @@ float farPlaneDistance <
 		// ----
 
 		findEffectInfo(kg, &effectInfo);
-
-		//assureNotCyclic(kg);
 
 		return effectInfo;
 	}
@@ -1027,6 +1052,8 @@ float farPlaneDistance <
 			});
 		}
 
+		fmt("else { diffuse = float4(1, 0, 0, 0); specular = float4(1, 0, 0, 0); }").newline;
+
 		//fmt("diffuse = brdf__Index * 128;");
 	}
 
@@ -1094,6 +1121,271 @@ float farPlaneDistance <
 		}
 
 		return func;
+	}
+
+
+	private EffectInfo buildFinalEffectForRenderable(RenderableId rid) {
+		scope stack = new StackBuffer;
+
+		EffectInfo effectInfo;
+
+		SurfaceId surfaceId = renderables.surface[rid];
+		auto surface = &_surfaces[surfaceId];
+
+		MaterialId materialId = renderables.material[rid];
+		auto material = _materials[materialId];
+
+		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
+		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final illumKernel		= _kdefRegistry.getKernel(surface.kernelName);
+
+		alias KernelGraph.NodeType NT;
+
+		// ---- Build the Structure kernel graph
+
+		SubgraphInfo structureInfo;
+		SubgraphInfo pigmentInfo;
+		
+		auto kg = createKernelGraph();
+		scope (exit) {
+			disposeKernelGraph(kg);
+		}
+
+		{
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Structure;
+			builder.build(kg, structureKernel, &structureInfo, stack);
+		}
+
+		assert (structureInfo.output.valid);
+
+		// Compute all flow and conversions within the Structure graph,
+		// skipping conversions to the Output node
+
+		/+File.set("graph.dot", toGraphviz(kg));
+		scope (failure) {
+			File.set("graph.dot", toGraphviz(kg));
+		}+/
+
+		ConvCtx convCtx;
+		convCtx.semanticConverters = &_kdefRegistry.converters;
+		convCtx.getKernel = &_kdefRegistry.getKernel;
+
+		convertGraphDataFlowExceptOutput(
+			kg,
+			convCtx
+		);
+
+		void buildPigmentGraph() {
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Pigment;
+			builder.build(kg, pigmentKernel, &pigmentInfo, stack);
+
+			assert (pigmentInfo.input.valid);
+		}
+
+
+		buildPigmentGraph();
+
+		final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
+
+		//File.set("graph.dot", toGraphviz(kg));
+
+		fuseGraph(
+			kg,
+			pigmentInfo.input,
+			convCtx,
+			pigmentNodesTopo,
+			
+			// _findSrcParam
+			delegate bool(
+				Param* dstParam,
+				GraphNodeId* srcNid,
+				Param** srcParam
+			) {
+				return getOutputParamIndirect(
+					kg,
+					structureInfo.output,
+					dstParam.name,
+					srcNid,
+					srcParam
+				);
+			},
+
+			OutputNodeConversion.Skip
+		);
+
+
+		bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
+			if (type == kg.getNode(id).type) {
+				kg.removeNode(id);
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		final surfIdDataNid = kg.addNode(NT.Data);
+		final surfIdDataNode = kg.getNode(surfIdDataNid).data(); {
+			surfIdDataNode.sourceKernelType = SourceKernelType.Composite;
+			
+			final param = surfIdDataNode.params.add(ParamDirection.Out, "surfaceId");
+			param.hasPlainSemantic = true;
+			param.type = "float";
+		}
+
+		SubgraphInfo outInfo;
+		{
+			final kernel = _kdefRegistry.getKernel("LightPrePassFinalOut");
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Pigment;
+			builder.build(kg, kernel, &outInfo, stack);
+			assert (outInfo.input.valid);
+			assert (outInfo.output.valid);
+		}
+
+		final outNodesTopo = stack.allocArray!(GraphNodeId)(outInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, outInfo.nodes, outNodesTopo);
+
+		fuseGraph(
+			kg,
+			outInfo.input,
+			convCtx,
+			outNodesTopo,
+			
+			// _findSrcParam
+			delegate bool(
+				Param* dstParam,
+				GraphNodeId* srcNid,
+				Param** srcParam
+			) {
+				switch (dstParam.name) {
+					case "position": {
+						return getOutputParamIndirect(
+							kg,
+							structureInfo.output,
+							"position",
+							srcNid,
+							srcParam
+						);
+					}
+
+					case "albedo": {
+						return getOutputParamIndirect(
+							kg,
+							pigmentInfo.output,
+							"out_albedo",
+							srcNid,
+							srcParam
+						);
+					}
+
+					case "specular": {
+						return getOutputParamIndirect(
+							kg,
+							pigmentInfo.output,
+							"out_specular",
+							srcNid,
+							srcParam
+						);
+					}
+
+					default: return false;
+				}
+			},
+
+			OutputNodeConversion.Perform
+		);
+
+		kg.flow.removeAllAutoFlow();
+
+		File.set("graph.dot", toGraphviz(kg));
+
+		verifyDataFlowNames(kg);
+
+		// ----
+
+		final ctx = CodegenContext(&stack.allocRaw);
+
+		CodegenSetup cgSetup;
+		cgSetup.inputNode = structureInfo.input;
+		cgSetup.outputNode = outInfo.output;
+
+		final effect = effectInfo.effect = compileKernelGraph(
+			null,
+			kg,
+			cgSetup,
+			&ctx,
+			_backend,
+			(CodeSink fmt) {
+				fmt(
+`
+float3x4 modelToWorld;
+float4x4 worldToView <
+	string scope = "effect";
+>;
+float4x4 viewToWorld <
+	string scope = "effect";
+>;
+float4x4 viewToClip <
+	string scope = "effect";
+>;
+float4x4 clipToView <
+	string scope = "effect";
+>;
+float3 eyePosition <
+	string scope = "effect";
+>;
+float farPlaneDistance <
+	string scope = "effect";
+>;
+`
+				);
+			}
+		);
+
+		// ----
+
+		effect.compile();
+
+		// HACK
+		allocateDefaultUniformStorage(effect);
+
+		//assureNotCyclic(kg);
+
+		void** uniforms = effect.getUniformPtrsDataPtr();
+
+		void** getUniformPtrPtr(cstring name) {
+			if (uniforms) {
+				final idx = effect.effectUniformParams.getUniformIndex(name);
+				if (idx != -1) {
+					return uniforms + idx;
+				}
+			}
+			return null;
+		}
+		
+		void setUniform(cstring name, void* ptr) {
+			if (auto upp = getUniformPtrPtr(name)) {
+				*upp = ptr;
+			}
+		}
+
+		if (uniforms) {
+			setUniform("worldToView", &worldToView);
+			setUniform("viewToWorld", &viewToWorld);
+			setUniform("viewToClip", &viewToClip);
+			setUniform("clipToView", &clipToView);
+			setUniform("eyePosition", &eyePosition);
+			setUniform("farPlaneDistance", &farPlaneDistance);
+		}
+
+		// ----
+
+		findEffectInfo(kg, &effectInfo);
+
+		return effectInfo;
 	}
 
 
@@ -1248,10 +1540,170 @@ float farPlaneDistance <
 	}
 
 
+	private void compileFinalEffectsForRenderables(RenderableId[] rids) {
+		foreach (idx, rid; rids) {
+			if (!this._renderableValid.isSet(rid) || !_finalRenderableEI[rid].valid) {
+
+				// compile the kernels, create an EffectInstance
+				// TODO: cache Effects and only create new EffectInstances
+				EffectInfo effectInfo;
+
+				{
+					MaterialId materialId = renderables.material[rid];
+					auto material = _materials[materialId];
+
+					final cacheKey = FinalEffectCacheKey(
+						material.kernelName,
+						renderables.structureKernel[rid]
+					);
+					cacheKey.computeHash();
+					
+					EffectInfo* info = cacheKey in _finalEffectCache;
+					
+					if (info !is null && info.effect !is null) {
+						effectInfo = *info;
+					} else {
+						effectInfo = buildFinalEffectForRenderable(rid);
+						if (info !is null) {
+							// Must have been disposed earlier in whatever caused
+							// the compilation of the effect anew
+							assert (info.effect is null);
+							*info = effectInfo;
+						} else {
+							_finalEffectCache[cacheKey] = effectInfo;
+						}
+					}
+				}
+
+				Effect effect = effectInfo.effect;
+				assert (effect !is null);
+
+				// ----
+
+				EffectInstance efInst = _backend.instantiateEffect(effect);
+
+				// HACK
+				// all structure params should come from the asset
+				// all illumination params - from the surface
+				// all light params - from light
+				// all pigmeht params - from materials
+				// hence there should be no need for 'default' storage
+				allocateDefaultUniformStorage(efInst);
+
+				void** instUniforms = efInst.getUniformPtrsDataPtr();
+
+				void** getInstUniformPtrPtr(cstring name) {
+					if (instUniforms) {
+						final idx = efInst.getUniformParamGroup.getUniformIndex(name);
+						if (idx != -1) {
+							return instUniforms + idx;
+						}
+					}
+					return null;
+				}
+
+				// ----
+
+				/*
+				 * HACK: Bah, now this is kind of tricky. On on hand, kernel graphs
+				 * may come with defaults for Data node parameters, which need to be
+				 * set for new effects. On the other hand, parameters are supposed
+				 * to be owned by materials/surfaces but they don't need to specify
+				 * them all. In such a case there doesn't seem to be a location
+				 * for these parameters which materials/surfaces don't set.
+				 *
+				 * The proper solution will be to inspect all illum and pigment
+				 * kernels, match them to mats/surfs and create the default param
+				 * values directly inside mats/surfs. This could also be done on
+				 * the level of Nucled, so that mats/surfs always define all values,
+				 * even if they're not set in the GUI
+				 */
+				setEffectInstanceUniformDefaults(&effectInfo, efInst);
+
+
+				if (void** ptr = efInst.getUniformPtrPtr("pigment__diffuseIlluminationSampler")) {
+					*cast(Texture**)ptr = &_diffuseIllumTex;
+				} else {
+					error("diffuseIlluminationSampler not found in the structure kernel.");
+				}
+
+				if (void** ptr = efInst.getUniformPtrPtr("pigment__specularIlluminationSampler")) {
+					*cast(Texture**)ptr = &_specularIllumTex;
+				} else {
+					error("specularIlluminationSampler not found in the structure kernel.");
+				}
+
+
+				// ----
+
+				auto material = _materials[renderables.material[rid]];
+				foreach (ref info; material.info) {
+					char[256] fqn;
+					sprintf(fqn.ptr, "pigment__%.*s", info.name);
+					auto name = fromStringz(fqn.ptr);
+					void** ptr = getInstUniformPtrPtr(name);
+					if (ptr) {
+						*ptr = material.data + info.offset;
+					}
+				}
+
+				// ----
+
+				renderables.structureData[rid].setKernelObjectData(
+					KernelParamInterface(
+					
+						// getVaryingParam
+						(cstring name) {
+							char[256] fqn;
+							sprintf(fqn.ptr, "VertexProgram.structure__%.*s", name);
+
+							size_t paramIdx = void;
+							if (efInst.getEffect.hasVaryingParam(
+									fromStringz(fqn.ptr),
+									&paramIdx
+							)) {
+								return efInst.getVaryingParamDataPtr() + paramIdx;
+							} else {
+								return cast(VaryingParamData*)null;
+							}
+						},
+
+						// getUniformParam
+						(cstring name) {
+							char[256] fqn;
+							sprintf(fqn.ptr, "structure__%.*s", name);
+
+							if (auto p = getInstUniformPtrPtr(fromStringz(fqn.ptr))) {
+								return p;
+							} else {
+								return cast(void**)null;
+							}
+						},
+
+						// setIndexData
+						(IndexData* id) {
+							/+log.info("_renderableIndexData[{}] = {};", rid, id);
+							_finalRenderableIndexData[rid] = id;+/
+						}
+				));
+
+				if (_finalRenderableEI[rid].valid) {
+					_finalRenderableEI[rid].dispose();
+				}
+				
+				_finalRenderableEI[rid] = efInst;
+				
+				this._renderableValid.set(rid);
+			}
+		}
+	}
+
+
 	override void onRenderableCreated(RenderableId id) {
 		super.onRenderableCreated(id);
 		xf.utils.Memory.realloc(_structureRenderableEI, id+1);
 		xf.utils.Memory.realloc(_structureRenderableIndexData, id+1);
+		xf.utils.Memory.realloc(_finalRenderableEI, id+1);
 	}
 
 
@@ -1353,6 +1805,9 @@ float farPlaneDistance <
 				_depthTex.dispose();
 				_packed1Tex.dispose();
 				_attribFB.dispose();
+				_diffuseIllumTex.dispose();
+				_specularIllumTex.dispose();
+				_lightFB.dispose();
 			}
 
 			{
@@ -1385,14 +1840,51 @@ float farPlaneDistance <
 				assert (_depthTex.valid);
 			}
 
-			final cfg = FramebufferConfig();
-			cfg.size = _fbSize;
-			cfg.location = FramebufferLocation.Offscreen;
-			cfg.color[0] = _packed1Tex;
-			cfg.depth = _depthTex;
-			_attribFB = _backend.createFramebuffer(cfg);
-			assert (_attribFB.valid);
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
+				treq.minFilter = TextureMinFilter.Nearest;
+				treq.magFilter = TextureMagFilter.Nearest;
+				treq.wrapS = TextureWrap.ClampToEdge;
+				treq.wrapT = TextureWrap.ClampToEdge;
+				
+				_diffuseIllumTex = _backend.createTexture(
+					_fbSize,
+					treq
+				);
+				assert (_diffuseIllumTex.valid);
+				_specularIllumTex = _backend.createTexture(
+					_fbSize,
+					treq
+				);
+				assert (_specularIllumTex.valid);
+			}
+
+			{
+				final cfg = FramebufferConfig();
+				cfg.size = _fbSize;
+				cfg.location = FramebufferLocation.Offscreen;
+				cfg.color[0] = _packed1Tex;
+				cfg.depth = _depthTex;
+				_attribFB = _backend.createFramebuffer(cfg);
+				assert (_attribFB.valid);
+			}
+
+			{
+				final cfg = FramebufferConfig();
+				cfg.size = _fbSize;
+				cfg.location = FramebufferLocation.Offscreen;
+				cfg.color[0] = _diffuseIllumTex;
+				cfg.color[1] = _specularIllumTex;
+				//cfg.depth = TODO
+				_lightFB = _backend.createFramebuffer(cfg);
+				assert (_lightFB.valid);
+			}
 		}
+
+		final rids = rlist.list.renderableId[0..rlist.list.length];
+		compileStructureEffectsForRenderables(rids);
+		compileFinalEffectsForRenderables(rids);
 
 		final outputFB = _backend.framebuffer;
 		final origState = *_backend.state();
@@ -1406,9 +1898,6 @@ float farPlaneDistance <
 			
 			_backend.framebuffer = _attribFB;
 			_backend.clearBuffers();
-
-			final rids = rlist.list.renderableId[0..rlist.list.length];
-			compileStructureEffectsForRenderables(rids);
 
 			final blist = _backend.createRenderList();
 			scope (exit) _backend.disposeRenderList(blist);
@@ -1425,17 +1914,36 @@ float farPlaneDistance <
 			}
 
 			_backend.state.sRGB = false;
-
 			_backend.render(blist);
+
+			// HACK
+			_backend.state.depth.enabled = false;
+			_backend.framebuffer = _lightFB;
+			_backend.clearBuffers();
+			renderLights(.lights);
+			_backend.state.depth.enabled = true;
 		}
 
-		renderLights(.lights);
+		final blist = _backend.createRenderList();
+		scope (exit) _backend.disposeRenderList(blist);
+
+		foreach (idx, rid; rids) {
+			final ei = _finalRenderableEI[rid];
+			final bin = blist.getBin(ei.getEffect);
+			final item = bin.add(ei);
+			
+			item.coordSys		= rlist.list.coordSys[idx];
+			item.scale			= vec3.one;
+			item.indexData		= *_structureRenderableIndexData[rid];
+			item.numInstances	= 1;
+		}
+		_backend.render(blist);
 	}
 
 
 	private {
-		// HACK
 		EffectInstance[]	_structureRenderableEI;
+		EffectInstance[]	_finalRenderableEI;
 		IndexData*[]		_structureRenderableIndexData;
 
 		IKDefRegistry		_kdefRegistry;
@@ -1446,6 +1954,10 @@ float farPlaneDistance <
 		Framebuffer	_attribFB;
 
 		Texture		_surfaceParamTex;
+
+		Texture		_diffuseIllumTex;
+		Texture		_specularIllumTex;
+		Framebuffer	_lightFB;
 
 		mat4	worldToView;
 		mat4	viewToWorld;
