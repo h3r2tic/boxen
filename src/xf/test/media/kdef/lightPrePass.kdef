@@ -141,3 +141,52 @@ LightPrePassLightIn = graph {
 	connect data.surfaceParamSampler		getSurfParam.sampler;
 	noauto getSurfParam.idx;
 };
+
+
+LightPrePassFinalOut = graph {
+	input = node {
+		type = input;
+		params = (
+			position <type float4 + use position + basis clip>,
+			albedo <type float4 + use diffuse>,
+			specular <type float4 + use specular>			
+		);
+	};
+
+	data = node {
+		type = data;
+		params = (
+			diffuseIlluminationSampler <type sampler2D + use diffuse>,
+			specularIlluminationSampler <type sampler2D + use specular>
+		);
+	};
+
+	calc = node {
+		type = kernel;
+		kernel = kernel(
+			in position <type float4 + use position + basis clip>,
+			in albedo <type float4 + use diffuse>,
+			in specular <type float4 + use specular>,
+			in diffuseIlluminationSampler <type sampler2D + use diffuse>,
+			in specularIlluminationSampler <type sampler2D + use specular>,
+			out color <type float4 + use color>
+		) {
+			float2 uv = (position.xy / position.w + float2(1)) * 0.5f;
+			color =
+				albedo * tex2D(diffuseIlluminationSampler, uv)
+			+	specular * tex2D(specularIlluminationSampler, uv);
+		};
+	};
+
+	output = node {
+		type = output;
+		params = (
+			color <type float4 + use color>
+		);
+	};
+
+	connect input calc;
+	connect data calc;
+	connect calc output;
+};
+
