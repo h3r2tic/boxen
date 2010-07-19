@@ -10,6 +10,8 @@ private {
 	import xf.mem.ChunkQueue;
 	import xf.mem.FreeList;
 	import xf.mem.ScratchAllocator;
+
+	static import tango.text.convert.Format;
 }
 
 public {
@@ -310,7 +312,7 @@ class KernelGraph {
 					return &k.func.params;
 				}
 				
-				default: assert (false);
+				default: assert (false, tango.text.convert.Format.Format("Wut. _type == {}  o_O", _type));
 			}
 		}
 	}
@@ -496,6 +498,7 @@ class KernelGraph {
 
 	Node* getNode(GraphNodeId idx) {
 		assert (_graph !is null);
+		_graph._verifyNodeId(idx);
 		final info = _graph.getNodeInfo(idx);
 		return cast(Node*)info.nodeData;
 	}

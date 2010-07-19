@@ -52,6 +52,13 @@ converter<linear>(20) view2world_n (
 	b = mul(viewToWorld, float4(a, 0.0)).xyz;
 }
 
+converter<linear>(20) view2world_p (
+	in a <type float3 + basis view + use position>,
+	out b <in.a.actual + type float3 + basis world>
+) {
+	b = mul(viewToWorld, float4(a, 1.0)).xyz;
+}
+
 converter<linear>(20) view2clip (
 	in a <type float3 + basis view + use position>,
 	out b <in.a.actual + type float4 + basis clip + type float4>

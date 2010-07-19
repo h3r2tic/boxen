@@ -10,6 +10,7 @@ private {
 		xf.nucleus.Renderable,
 		xf.nucleus.Light,
 		xf.nucleus.Renderer,
+		xf.nucleus.Code,
 		xf.nucleus.RenderList,
 		xf.nucleus.KernelImpl,
 		xf.nucleus.KernelParamInterface,
@@ -18,6 +19,11 @@ private {
 		xf.nucleus.MaterialDef,
 		xf.nucleus.SamplerDef,
 		xf.nucleus.codegen.Codegen,
+		xf.nucleus.codegen.Body,
+		xf.nucleus.codegen.Defs,
+		xf.nucleus.codegen.Rename,
+		xf.nucleus.codegen.Deps,
+		xf.nucleus.codegen.Misc,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.model.KDefInvalidation,
@@ -26,6 +32,7 @@ private {
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.KernelGraphOps,
 		xf.nucleus.graph.GraphMisc,
+		xf.nucleus.graph.Simplify,
 		xf.nucleus.util.EffectInfo;
 		
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
@@ -60,6 +67,7 @@ private {
 		xf.mem.MainHeap,
 		xf.mem.ScratchAllocator,
 		xf.mem.SmallTempArray,
+		xf.utils.DgOutputStream,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
 
 	import Primitives = xf.gfx.misc.Primitives;
@@ -85,7 +93,7 @@ private struct SubgraphInfo {
 	GraphNodeId		output;
 
 	bool singleNode() {
-		return 1 == nodes.length;
+		return nodes.length <= 1;
 	}
 }
 
@@ -175,6 +183,7 @@ class LightPrePassRenderer : Renderer {
 
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
+		assert (kdefRegistry !is null);
 		_kdefRegistry = kdefRegistry;
 		_structureEffectCache = new typeof(_structureEffectCache);
 		super(backend);
@@ -213,8 +222,48 @@ class LightPrePassRenderer : Renderer {
 		}
 
 		struct IllumData {
-			cstring		kernelName;
-			KernelGraph	graph;
+			cstring			kernelName;
+			KernelGraph		graph;
+			GraphNodeId[]	topological;		// allocated off the KernelGraph's allocator
+			GraphNodeId		input;
+			GraphNodeId		output;
+
+			int inputs(int delegate(ref int, ref Param) sink) {
+				final inputNode = graph.getNode(input);
+				assert (inputNode !is null);
+				
+				if (KernelGraph.NodeType.Input == inputNode.type) {
+					return inputNode.input().params.opApply(sink);
+				} else {
+					int i = 0;
+					foreach (ref p; *inputNode.getParamList()) {
+						if (p.isInput()) {
+							if (int r = sink(i, p)) return r;
+							++i;
+						}
+					}
+					return 0;
+				}
+			}
+
+			int outputs(int delegate(ref int, ref Param) sink) {
+				final outputNode = graph.getNode(output);
+				assert (outputNode !is null);
+				
+				if (KernelGraph.NodeType.Output == outputNode.type) {
+					return outputNode.output().params.opApply(sink);
+				} else {
+					int i = 0;
+					foreach (ref p; *outputNode.getParamList()) {
+						if (p.isOutput()) {
+							if (int r = sink(i, p)) return r;
+							++i;
+						}
+					}
+					return 0;
+				}
+			}
+
 		}
 
 		SurfaceData[256]	_surfaces;
@@ -270,6 +319,8 @@ class LightPrePassRenderer : Renderer {
 			}
 			auto illum = &_illumData[surf.illumIdx];
 
+			illum.kernelName = surf.kernelName;
+
 			illum.graph = createKernelGraph();
 			GraphBuilder builder;
 			builder.sourceKernelType = SourceKernelType.Composite;
@@ -287,6 +338,15 @@ class LightPrePassRenderer : Renderer {
 			);
 
 			removeUnreachableBackwards(illum.graph.backend_readOnly, info.output);
+			simplifyKernelGraph(illum.graph);
+
+			illum.input = info.input;
+			illum.output = info.output;
+
+			illum.topological = DgScratchAllocator(&illum.graph._mem.pushBack)
+				.allocArrayNoInit!(GraphNodeId)(illum.graph.numNodes);
+
+			findTopologicalOrder(illum.graph.backend_readOnly, illum.topological);
 
 			pragma (msg, "TODO: update the surface param texture");
 		}
@@ -489,6 +549,8 @@ class LightPrePassRenderer : Renderer {
 
 		// ----
 
+		final ctx = CodegenContext(&stack.allocRaw);
+
 		CodegenSetup cgSetup;
 		cgSetup.inputNode = structureInfo.input;
 		cgSetup.outputNode = outInfo.output;
@@ -497,6 +559,7 @@ class LightPrePassRenderer : Renderer {
 			null,
 			kg,
 			cgSetup,
+			&ctx,
 			_backend,
 			(CodeSink fmt) {
 				fmt(
@@ -603,61 +666,102 @@ float farPlaneDistance <
 			convCtx
 		);
 
-		// ----
+		SubgraphInfo lightInfo;
+		{
+			final kernel = _kdefRegistry.getKernel(lightKernel);
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Light;
+			builder.sourceLightIndex = 0;
+			builder.build(kg, kernel, &lightInfo, stack);
+			assert (lightInfo.input.valid);
+			assert (lightInfo.output.valid);
+		}
 
-			auto outRadianceNid = kg.addNode(NT.Output);
-			final outRadiance = kg.getNode(outRadianceNid).output.params
-				.add(ParamDirection.In, "out_radiance");
-			outRadiance.hasPlainSemantic = true;
-			outRadiance.type = "float4";
-			outRadiance.semantic.addTrait("use", "color");
+		auto lightNodesTopo = stack.allocArray!(GraphNodeId)(lightInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, lightInfo.nodes, lightNodesTopo);
 
-			{
-				GraphNodeId nid;
-				Param* par;
-				if (getOutputParamIndirect(
-					kg,
-					inInfo.output,
-					"normal",
-					&nid,
-					&par
-				)) {
-					kg.flow.addDataFlow(nid, par.name, outRadianceNid, outRadiance.name);
-				} else {
-					error("Incoming flow to 'normal' of the light structure kernel not found.");
+		fuseGraph(
+			kg,
+			lightInfo.input,
+			convCtx,
+			lightNodesTopo,
+			
+			// _findSrcParam
+			delegate bool(
+				Param* dstParam,
+				GraphNodeId* srcNid,
+				Param** srcParam
+			) {
+				switch (dstParam.name) {
+					case "position":
+						return getOutputParamIndirect(
+							kg,
+							inInfo.output,
+							"position",
+							srcNid,
+							srcParam
+						);
+
+					default:
+						assert (false, dstParam.name);
 				}
-			}
+			},
+			
+			OutputNodeConversion.Skip
+		);
 
-			convertGraphDataFlow(
-				kg,
-				convCtx
-			);
+		// Codegen the BRDF
 
-			removeNodeIfTypeMatches(inInfo.output, NT.Output);
+		final ctx = CodegenContext(&stack.allocRaw);
+		const prealloc = 128 * 1024;	// 128KB should be enough for anyone :P
+		auto layout = Layout!(char).instance;
+		scope arrrr = new Array(stack.allocArrayNoInit!(char)(prealloc), 0);
+		scope fmt = new FormatOutput!(char)(layout, arrrr, "\n");
+		ctx.sink = fmt;
+
+		final BRDFfunc = codegenBRDF(stack, kg, &ctx);
 
 		// ----
+
+		final BRDFnode = kg.addFuncNode(BRDFfunc);
+		void connectIndirect(GraphNodeId src, cstring srcParam, cstring dstParam) {
+			Param* p;
+			GraphNodeId nid;
+			if (getOutputParamIndirect(
+				kg,
+				src,
+				srcParam,
+				&nid,
+				&p
+			)) {
+				kg.flow.addDataFlow(nid, p.name, BRDFnode, dstParam);
+			} else {
+				error("Source for {} not found.", dstParam);
+			}
+		}
+		
+		connectIndirect(inInfo.output, "position", "toEye");
+		connectIndirect(inInfo.output, "normal", "normal");
+		connectIndirect(inInfo.output, "getSurfaceParam", "getSurfaceParam");
+		
+		connectIndirect(lightInfo.output, "intensity", "intensity");
+		connectIndirect(lightInfo.output, "toLight", "toLight");
+		connectIndirect(lightInfo.output, "lightSize", "lightSize");
+
+		removeNodeIfTypeMatches(inInfo.output, NT.Output);
+		removeNodeIfTypeMatches(lightInfo.output, NT.Output);
+
+		convertGraphDataFlow(kg, convCtx);
 
 		kg.flow.removeAllAutoFlow();
 
-			File.set("graph.dot", toGraphviz(kg));
+		File.set("graph.dot", toGraphviz(kg));
 
 		verifyDataFlowNames(kg);
 
 		// ----
 
-		CodegenSetup cgSetup;
-		cgSetup.inputNode = inInfo.input;
-		cgSetup.outputNode = outRadianceNid;
-
-		//codegenLightEffect(kg, cgSetup);
-
-		final effect = effectInfo.effect = compileKernelGraph(
-			null,
-			kg,
-			cgSetup,
-			_backend,
-			(CodeSink fmt) {
-				fmt(
+		fmt(
 `
 float3x4 modelToWorld;
 float4x4 worldToView <
@@ -678,9 +782,30 @@ float3 eyePosition <
 float farPlaneDistance <
 	string scope = "effect";
 >;
-`
-				);
-			}
+`);
+
+		// ----
+
+		CodegenSetup cgSetup;
+		cgSetup.inputNode = inInfo.input;
+		cgSetup.outputNode = BRDFnode;
+
+		codegen(
+			stack,
+			kg,
+			cgSetup,
+			&ctx
+		);
+
+		fmt.flush();
+		char[1] zero = '\0';
+		arrrr.write(zero[]);
+
+		File.set("shader.tmp.cgfx", arrrr.slice());
+
+		final effect = effectInfo.effect = _backend.createEffect(
+			null,
+			EffectSource.stringz(cast(char*)arrrr.slice().ptr)
 		);
 
 		effect.compile();
@@ -733,25 +858,151 @@ float farPlaneDistance <
 		import tango.io.device.File;
 	}
 
-	void codegenLightEffect(KernelGraph kg, CodegenSetup setup) {
-		scope stack = new StackBuffer;
-		const prealloc = 128 * 1024;	// 128KB should be enough for anyone :P
-		
-		auto layout = Layout!(char).instance;
-		auto mem = stack.allocArrayNoInit!(char)(prealloc);
-		
-		scope arrrr = new Array(mem, 0);
 
-		{
-			scope fmt = new FormatOutput!(char)(layout, arrrr, "\n");
-			codegen(kg, setup, fmt);
-			fmt.flush();
+	void dumpBRDFs(CodegenContext* ctx, SubgraphData[][] graphs) {
+		auto fmt = ctx.sink;
+		
+		foreach (illumIdx, illum; _illumData) {
+			fmt("struct BRDF__")(illumIdx)(" {");
+			fmt("\t// ")(illum.kernelName);
+			fmt.newline;
+
+			final inputNode = illum.graph.getNode(illum.input);
+			final outputNode = illum.graph.getNode(illum.output);
+
+			dumpUniforms(ctx, illum.graph, fmt);
+
+			// ---- func body ----
+			{
+				fmt.formatln("void main(");
+
+				uint parIdx = 0;
+				foreach (i, par; &illum.inputs) {
+					assert (par.hasTypeConstraint);
+
+					if (parIdx++ != 0) {
+						fmt(",").newline;
+						ctx.indent(1);
+					}
+
+					fmt("in ");
+					fmt(par.type);
+					fmt(" ");
+					emitSourceParamName(ctx, illum.graph, null, illum.input, par.name);
+				}
+				
+				foreach (i, par; &illum.outputs) {
+					assert (par.hasTypeConstraint);
+
+					if (parIdx++ != 0) {
+						fmt(",").newline;
+						ctx.indent(1);
+					}
+
+					fmt("out ");
+					fmt(par.type);
+					fmt(" ");
+					fmt.format("bridge__{}", i);
+				}
+
+				fmt(") {").newline();
+
+				domainCodegenBody(
+					ctx,
+					illum.graph,
+					null,
+					illum.topological,
+					graphs[illumIdx][0].node2funcName,
+					graphs[illumIdx][0].node2compName
+				);
+
+				foreach (i, par; &illum.outputs) {
+					fmt.format("\tbridge__{} = ", i);
+					emitSourceParamName(ctx, illum.graph, null, illum.output, par.name);
+					fmt(';').newline();
+				}
+
+				fmt("}").newline();
+			}
+			// ---- end of func body ----
+			
+			fmt("};").newline;
 		}
-		
-		char[1] zero = '\0';
-		arrrr.write(zero[]);
+	}
 
-		File.set("shader.tmp.cgfx", arrrr.slice());
+
+	void codegenBRDFEval(
+		StackBufferUnsafe stack,
+		CodegenContext* ctx
+	) {
+		final fmt = ctx.sink;
+		fmt("diffuse = float4(0.1); specular = 0;");
+	}
+
+
+	bool _getInterface(cstring name, AbstractFunction* func) {
+		KernelImpl impl;
+		if (	_kdefRegistry.getKernel(name, &impl)
+			&&	impl.type == impl.type.Kernel
+		) {
+			*func = impl.kernel.func;
+			return true;
+		} else {
+			return false;
+		}		
+	};
+	
+
+	Function codegenBRDF(
+		StackBufferUnsafe stack,
+		KernelGraph kg,
+		CodegenContext* ctx
+	) {
+		final graphs = stack.allocArray!(SubgraphData[])(_illumData.length);
+
+		ctx.domain = GPUDomain.Fragment;
+		ctx.getInterface = &_getInterface;
+
+		foreach (illumIdx, illum; _illumData) {
+			graphs[illumIdx] = emitCompositesAndFuncs(
+				stack,
+				ctx,
+				illum.graph
+			);
+		}
+
+		dumpBRDFs(ctx, graphs);
+
+		Code code;
+		void codeAppend(void[] meh) {
+			code.append(cast(char[])meh, DgScratchAllocator(&stack.allocRaw));
+		}
+
+		auto layout = Layout!(char).instance;
+		scope fmt2 = new FormatOutput!(char)(
+			layout,
+			new DgOutputStream(&codeAppend),
+			"\n"
+		);
+
+		final fmt1 = ctx.sink;
+
+		ctx.sink = fmt2;
+
+		codegenBRDFEval(stack, ctx);
+		
+		fmt2.flush();
+		ctx.sink = fmt1;
+
+		final func = stack._new!(Function)("BRDF__eval"[], cast(cstring[])null, code, &stack.allocRaw);
+		func.params.copyFrom(_kdefRegistry.getKernel("Illumination").kernel.func.params);
+		{
+			auto p = func.params.add(ParamDirection.In, "getSurfaceParam");
+			p.hasPlainSemantic = true;
+			p.type = "LPP_GetSurfaceParam";
+		}
+
+		return func;
 	}
 
 

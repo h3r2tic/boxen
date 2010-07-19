@@ -1,10 +1,23 @@
 module xf.nucleus.graph.Simplify;
 
 private {
-	import xf.Common;
-	import xf.nucleus.graph.KernelGraph;
+	import
+		xf.Common,
+		xf.mem.StackBuffer;
+		
+	import
+		xf.nucleus.graph.KernelGraph,
+		xf.nucleus.graph.GraphOps;
 }
 
+
+
+void simplifyKernelGraph(KernelGraph graph) {
+	scope stack = new StackBuffer;
+	GraphNodeId[] topo = stack.allocArrayNoInit!(GraphNodeId)(graph.numNodes);
+	findTopologicalOrder(graph.backend_readOnly, topo);
+	simplifyKernelGraph(graph, topo);
+}
 
 
 /**

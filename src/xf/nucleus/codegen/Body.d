@@ -15,7 +15,30 @@ private {
 
 
 void domainCodegenBody(
-	CodegenContext ctx,
+	CodegenContext* ctx,
+	KernelGraph graph,
+	GPUDomain[] nodeDomains,
+	GraphNodeId[] nodesTopo,
+	cstring[] node2funcName,
+	cstring[] node2compName
+) {
+	return domainCodegenBody(
+		ctx,
+		graph,
+		nodeDomains,
+		(void delegate(GraphNodeId) sink) {
+			foreach (n; nodesTopo) sink(n);
+		},
+		node2funcName,
+		node2compName
+	);
+}
+
+
+void domainCodegenBody(
+	CodegenContext* ctx,
+	KernelGraph graph,
+	GPUDomain[] nodeDomains,
 	void delegate(void delegate(GraphNodeId)) nodesTopo,
 	cstring[] node2funcName,
 	cstring[] node2compName
@@ -25,8 +48,10 @@ void domainCodegenBody(
 
 	auto sink = ctx.sink;
 
+	uint nodeIdx = uint.max;
 	nodesTopo((GraphNodeId nid) {
-		auto node = ctx.graph.getNode(nid);
+		++nodeIdx;
+		auto node = graph.getNode(nid);
 
 		// TODO: remove Bridge nodes and redirect their flow after auto conversion
 		// have been carried out, so that this step doen't have to be done
@@ -37,14 +62,14 @@ void domainCodegenBody(
 				assert (par.hasTypeConstraint);
 				ctx.indent();
 				sink(par.type)(' ');
-				emitSourceParamName(ctx, nid, par.name);
+				emitSourceParamName(ctx, graph, nodeDomains, nid, par.name);
 				sink(" = ");
 
 				GraphNodeId	srcNid;
 				Param*		srcParam;
 
 				if (!findSrcParam(
-					ctx.graph,
+					graph,
 					nid,
 					par.name,
 					&srcNid,
@@ -57,7 +82,7 @@ void domainCodegenBody(
 					);
 				}
 
-				emitSourceParamName(ctx, srcNid, srcParam.name);
+				emitSourceParamName(ctx, graph, nodeDomains, srcNid, srcParam.name);
 
 				sink(';').newline();
 			}
@@ -67,7 +92,7 @@ void domainCodegenBody(
 
 			ctx.indent()(compName)(' ');
 			const compOutputName = "kernel";	// TODO: move the name to a common place
-			emitSourceParamName(ctx, nid, compOutputName);
+			emitSourceParamName(ctx, graph, nodeDomains, nid, compOutputName);
 			sink(';').newline();
 
 			auto params = &node.composite().params;
@@ -76,7 +101,7 @@ void domainCodegenBody(
 				if (par.isInput) {
 					ctx.indent();
 
-					emitSourceParamName(ctx, nid, compOutputName);
+					emitSourceParamName(ctx, graph, nodeDomains, nid, compOutputName);
 					sink('.');
 					sink(par.name)(" = ");
 
@@ -84,7 +109,7 @@ void domainCodegenBody(
 					Param*		srcParam;
 
 					if (!findSrcParam(
-						ctx.graph,
+						graph,
 						nid,
 						par.name,
 						&srcNid,
@@ -97,7 +122,7 @@ void domainCodegenBody(
 						);
 					}
 
-					emitSourceParamName(ctx, srcNid, srcParam.name);
+					emitSourceParamName(ctx, graph, nodeDomains, srcNid, srcParam.name);
 
 					sink(';').newline();
 				}
@@ -111,7 +136,7 @@ void domainCodegenBody(
 				if (par.isOutput) {
 					ctx.indent();
 					sink(par.type)(' ');
-					emitSourceParamName(ctx, nid, par.name);
+					emitSourceParamName(ctx, graph, nodeDomains, nid, par.name);
 					sink(';').newline();
 				}
 			}
@@ -123,12 +148,12 @@ void domainCodegenBody(
 			foreach (i, par; *params) {
 				ctx.indent()('\t');
 
-				if (par.isInput) {
+				if (nodeIdx > 0 && par.isInput) {
 					GraphNodeId	srcNid;
 					Param*		srcParam;
 
 					if (!findSrcParam(
-						ctx.graph,
+						graph,
 						nid,
 						par.name,
 						&srcNid,
@@ -141,9 +166,9 @@ void domainCodegenBody(
 						);
 					}
 
-					emitSourceParamName(ctx, srcNid, srcParam.name);
+					emitSourceParamName(ctx, graph, nodeDomains, srcNid, srcParam.name);
 				} else {
-					emitSourceParamName(ctx, nid, par.name);
+					emitSourceParamName(ctx, graph, nodeDomains, nid, par.name);
 				}
 				
 				if (i+1 != params.length) {

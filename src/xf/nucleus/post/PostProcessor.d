@@ -1014,12 +1014,12 @@ final class PostProcessor {
 			graph,
 			convCtx
 		);
+
+		scope stack = new StackBuffer;
 		
-		
-		final setup = CodegenSetup();
-		setup.inputNode = inNid;
-		setup.outputNode = outNid;
-		setup.getInterface = (cstring name, AbstractFunction* func) {
+		final ctx = CodegenContext(&stack.allocRaw);
+		ctx.indentSize = 0;
+		ctx.getInterface = (cstring name, AbstractFunction* func) {
 			KernelImpl impl;
 			if (	_kdefRegistry.getKernel(name, &impl)
 				&&	impl.type == impl.type.Kernel
@@ -1031,10 +1031,15 @@ final class PostProcessor {
 			}		
 		};		
 		
+		final setup = CodegenSetup();
+		setup.inputNode = inNid;
+		setup.outputNode = outNid;
+		
 		Effect stageEffect = compileKernelGraph(
 			"BlitStage",
 			graph,
 			setup,
+			&ctx,
 			_backend,
 			null	// extra codegen
 		);

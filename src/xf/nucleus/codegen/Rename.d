@@ -47,19 +47,21 @@ void renameDataNodeParam(
 
 
 void emitSourceParamName(
-	CodegenContext ctx,
+	CodegenContext* ctx,
+	KernelGraph graph,
+	GPUDomain[] nodeDomains,
 	GraphNodeId nid,
 	cstring pname
 ) {
 	alias KernelGraph.NodeType NT;
 
 
-	final node = ctx.graph.getNode(nid);
+	final node = graph.getNode(nid);
 	
 	if (NT.Input == node.type) {
-		if (ctx.nodeDomains is null) {
+		if (nodeDomains is null) {
 			ctx.sink(pname);
-		} else if (ctx.nodeDomains[nid.id] == ctx.domain) {
+		} else if (nodeDomains[nid.id] == ctx.domain) {
 			ctx.sink("structure__");
 			ctx.sink(pname);
 		} else {

@@ -673,6 +673,14 @@ final class Graph : IGraphFlow {
 		}
 	}
 
+
+	void _verifyNodeId(GraphNodeId id) {
+		assert (id.id < _capacity, "Node ID out of range.");
+		assert (true == _readFlag(_presentFlags, id.id), "The node ID had been removed.");
+		assert (id.reuseCnt == _idReuseCounts[id.id], "Stale node handle.");
+	}
+
+
 	private {
 		struct ConnectionList {
 			mixin MSmallTempArray!(Connection*);
@@ -884,12 +892,6 @@ final class Graph : IGraphFlow {
 
 		uword _getNewCapacity() {
 			return _capacity + 64;
-		}
-
-		void _verifyNodeId(GraphNodeId id) {
-			assert (id.id < _capacity, "Node ID out of range.");
-			assert (true == _readFlag(_presentFlags, id.id), "The node ID had been removed.");
-			assert (id.reuseCnt == _idReuseCounts[id.id], "Stale node handle.");
 		}
 
 		void _disposeConnectionList(ConnectionList* list) {
