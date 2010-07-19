@@ -23,6 +23,10 @@ private {
 	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
 
+public {
+	import xf.nucleus.graph.GraphDefs;
+}
+
 
 
 struct ConvCtx {
