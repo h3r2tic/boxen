@@ -89,7 +89,7 @@ LightPrePassLightIn = graph {
 		) {
 			// enc4 is float4, with .rg containing encoded normal
 			float scale = 1.7777;
-			float3 nn = input.xyz*float3(2*scale,2*scale,0) + float3(-scale,-scale,1);
+			float3 nn = float3(input.xy * float2(2*scale,2*scale), 1.0) + float3(-scale,-scale,0);
 			float g = 2.0 / dot(nn.xyz,nn.xyz);
 			normal.xy = g*nn.xy;
 			normal.z = g-1;
