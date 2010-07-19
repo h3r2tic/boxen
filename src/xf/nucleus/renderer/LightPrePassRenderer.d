@@ -1845,7 +1845,7 @@ float farPlaneDistance <
 
 			{
 				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.RGBA8;
+				treq.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
 				treq.minFilter = TextureMinFilter.Nearest;
 				treq.magFilter = TextureMagFilter.Nearest;
 				treq.wrapS = TextureWrap.ClampToEdge;
