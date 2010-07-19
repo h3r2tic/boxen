@@ -12,6 +12,9 @@ private {
 	import xf.mem.ScratchAllocator;
 }
 
+public {
+	import xf.nucleus.graph.GraphDefs;
+}
 
 
 

@@ -10,28 +10,15 @@ private {
 	import xf.nucleus.Log : error = nucleusError, log = nucleusLog;
 }
 
-
-
-struct GraphNodeId {
-	ushort	id = ushort.max;
-	ushort	reuseCnt;
-
-	bool valid() {
-		return id != ushort.max;
-	}
+public {
+	import xf.nucleus.graph.GraphDefs;
 }
+
 
 
 struct GraphNodeInfo {
 	size_t	userData;
 	void*	nodeData;
-}
-
-
-struct DataFlow {
-	cstring from;
-	cstring to;
-	uword	userData;
 }
 
 

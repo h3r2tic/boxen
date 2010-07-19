@@ -1,8 +1,10 @@
 module xf.nucleus.codegen.Defs;
 
 private {
+	import xf.Common;
 	import xf.gfx.Defs : GPUDomain;
 	import xf.nucleus.graph.KernelGraph;
+	import xf.nucleus.Function;
 
 	import tango.io.stream.Format;
 }
@@ -26,3 +28,9 @@ struct CodegenContext {
 	}
 }
 
+
+struct CodegenSetup {
+	GraphNodeId	inputNode;
+	GraphNodeId	outputNode;
+	bool		delegate(cstring name, AbstractFunction*) getInterface;
+}

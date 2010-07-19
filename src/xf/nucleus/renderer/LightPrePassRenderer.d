@@ -17,6 +17,7 @@ private {
 		xf.nucleus.SurfaceDef,
 		xf.nucleus.MaterialDef,
 		xf.nucleus.SamplerDef,
+		xf.nucleus.codegen.Codegen,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.model.KDefInvalidation,
@@ -89,6 +90,7 @@ private struct SubgraphInfo {
 }
 
 
+pragma (msg, "Move GraphBuilder out to its own module. Take the one from LPP.");
 struct GraphBuilder {
 	SourceKernelType	sourceKernelType;
 	uword				sourceLightIndex;
@@ -102,39 +104,54 @@ struct GraphBuilder {
 			SubgraphInfo* info,
 			StackBufferUnsafe stack
 	) {
+		assert (info !is null);
+		
 		if (KernelImpl.Type.Kernel == kernel.type) {
 			if (!kernel.kernel.isConcrete) {
 				error("Trying to use an abstract function for a kernel in a graph");
 			}
+
+			final nid = kg.addFuncNode(cast(Function)kernel.kernel.func);
+
+			if (stack) {
+				info.nodes = stack.allocArrayNoInit!(GraphNodeId)(1);
+			}
+
+			if (info.nodes) {
+				info.nodes[0] = nid;
+			}
 			
-			info.nodes = stack.allocArrayNoInit!(GraphNodeId)(1);
-			
-			info.nodes[0] = info.input = info.output
-				= kg.addFuncNode(cast(Function)kernel.kernel.func);
+			info.input = info.output = nid;
 		} else {
-			info.nodes = stack.allocArrayNoInit!(GraphNodeId)(
-				numGraphFlattenedNodes(kernel.graph)
-			);
+			if (stack) {
+				info.nodes = stack.allocArrayNoInit!(GraphNodeId)(
+					numGraphFlattenedNodes(kernel.graph)
+				);
+			}
 			
 			buildKernelGraph(
 				kernel.graph,
 				kg,
 				(uint nidx, cstring, GraphDefNode def, GraphNodeId delegate() getNid) {
 					if (!spawnDataNodes && "data" == def.type) {
-						return info.nodes[nidx] = dataNodeSource[nidx];
+						final nid = dataNodeSource[nidx];
+						if (info.nodes) {
+							info.nodes[nidx] = nid;
+						}
+						return nid;
 					} else {
 						final nid = getNid();
 						final n = kg.getNode(nid);
 
-						info.nodes[nidx] = nid;
+						if (info.nodes) {
+							info.nodes[nidx] = nid;
+						}
 
 						if (KernelGraph.NodeType.Input == n.type) {
 							info.input = nid;
-						}
-						if (KernelGraph.NodeType.Output == n.type) {
+						} else if (KernelGraph.NodeType.Output == n.type) {
 							info.output = nid;
-						}
-						if (KernelGraph.NodeType.Data == n.type) {
+						} else if (KernelGraph.NodeType.Data == n.type) {
 							n.data.sourceKernelType = sourceKernelType;
 							n.data.sourceLightIndex = sourceLightIndex;
 						}
@@ -191,10 +208,22 @@ class LightPrePassRenderer : Renderer {
 			Info[]		info;
 			void*		data;
 			cstring		kernelName;
+			ubyte		illumIdx;
 			//KernelImpl	illumKernel;
 		}
 
-		SurfaceData[256]		_surfaces;
+		struct IllumData {
+			cstring		kernelName;
+			KernelGraph	graph;
+		}
+
+		SurfaceData[256]	_surfaces;
+		IllumData[256]		_illumDataBuf;
+		uint				_numIllumData;
+
+		IllumData[] _illumData() {
+			return _illumDataBuf[0.._numIllumData];
+		}
 	}
 
 
@@ -222,6 +251,44 @@ class LightPrePassRenderer : Renderer {
 		foreach (i, p; def.params) {
 			void* dst = surf.data + surf.info[i].offset;
 			memcpy(dst, p.value, p.valueSize);
+		}
+
+		bool illumFound = false;
+		foreach (ubyte i, ref illum; _illumData) {
+			if (illum.kernelName == surf.kernelName) {
+				surf.illumIdx = i;
+				illumFound = true;
+				break;
+			}
+		}
+
+		if (!illumFound) {
+			{
+				uint idx = _numIllumData++;
+				assert (idx < 256);
+				surf.illumIdx = cast(ubyte)idx;
+			}
+			auto illum = &_illumData[surf.illumIdx];
+
+			illum.graph = createKernelGraph();
+			GraphBuilder builder;
+			builder.sourceKernelType = SourceKernelType.Composite;
+
+			SubgraphInfo info;
+			builder.build(illum.graph, def.illumKernel, &info, null);
+
+			ConvCtx convCtx;
+			convCtx.semanticConverters = &_kdefRegistry.converters;
+			convCtx.getKernel = &_kdefRegistry.getKernel;
+
+			convertGraphDataFlow(
+				illum.graph,
+				convCtx
+			);
+
+			removeUnreachableBackwards(illum.graph.backend_readOnly, info.output);
+
+			pragma (msg, "TODO: update the surface param texture");
 		}
 	}
 
@@ -582,6 +649,8 @@ float farPlaneDistance <
 		cgSetup.inputNode = inInfo.input;
 		cgSetup.outputNode = outRadianceNid;
 
+		//codegenLightEffect(kg, cgSetup);
+
 		final effect = effectInfo.effect = compileKernelGraph(
 			null,
 			kg,
@@ -653,6 +722,36 @@ float farPlaneDistance <
 		findEffectInfo(kg, &effectInfo);
 
 		return effectInfo;
+	}
+
+
+
+	private {
+		import tango.io.stream.Format;
+		import tango.io.device.Array;
+		import tango.text.convert.Layout;
+		import tango.io.device.File;
+	}
+
+	void codegenLightEffect(KernelGraph kg, CodegenSetup setup) {
+		scope stack = new StackBuffer;
+		const prealloc = 128 * 1024;	// 128KB should be enough for anyone :P
+		
+		auto layout = Layout!(char).instance;
+		auto mem = stack.allocArrayNoInit!(char)(prealloc);
+		
+		scope arrrr = new Array(mem, 0);
+
+		{
+			scope fmt = new FormatOutput!(char)(layout, arrrr, "\n");
+			codegen(kg, setup, fmt);
+			fmt.flush();
+		}
+		
+		char[1] zero = '\0';
+		arrrr.write(zero[]);
+
+		File.set("shader.tmp.cgfx", arrrr.slice());
 	}
 
 
