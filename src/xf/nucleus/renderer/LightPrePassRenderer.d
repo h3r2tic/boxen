@@ -227,6 +227,7 @@ class LightPrePassRenderer : Renderer {
 			GraphNodeId[]	topological;		// allocated off the KernelGraph's allocator
 			GraphNodeId		input;
 			GraphNodeId		output;
+			ParamList*		dataNodeParams;
 
 			int inputs(int delegate(ref int, ref Param) sink) {
 				final inputNode = graph.getNode(input);
@@ -347,6 +348,16 @@ class LightPrePassRenderer : Renderer {
 				.allocArrayNoInit!(GraphNodeId)(illum.graph.numNodes);
 
 			findTopologicalOrder(illum.graph.backend_readOnly, illum.topological);
+
+			bool dataNodeFound = false;
+			foreach (n; illum.graph.iterNodes(KernelGraph.NodeType.Data)) {
+				assert (
+					!dataNodeFound,
+					"Only one Data node currently allowed for Illum kernels. Lazy."
+				);
+				illum.dataNodeParams = illum.graph.getNode(n).getParamList();
+				dataNodeFound = true;
+			}
 
 			pragma (msg, "TODO: update the surface param texture");
 		}
@@ -917,8 +928,25 @@ float farPlaneDistance <
 				);
 
 				foreach (i, par; &illum.outputs) {
+					GraphNodeId	srcNid;
+					Param*		srcParam;
+
+					if (!getOutputParamIndirect(
+						illum.graph,
+						illum.output,
+						par.name,
+						&srcNid,
+						&srcParam
+					)) {
+						error(
+							"No flow to {}.{}. Should have been caught earlier.",
+							illum.output,
+							par.name
+						);
+					}
+
 					fmt.format("\tbridge__{} = ", i);
-					emitSourceParamName(ctx, illum.graph, null, illum.output, par.name);
+					emitSourceParamName(ctx, illum.graph, null, srcNid, srcParam.name);
 					fmt(';').newline();
 				}
 
@@ -936,7 +964,53 @@ float farPlaneDistance <
 		CodegenContext* ctx
 	) {
 		final fmt = ctx.sink;
-		fmt("diffuse = float4(0.1); specular = 0;");
+
+		void surfParam(int i) {
+			fmt.formatln(
+				"getSurfaceParam.value({})",
+				(cast(float)i + 1.5f) / maxSurfaceParams
+			);
+		}
+
+		void illumIdxBranch(int i, void delegate() dg) {
+			if (i > 0) {
+				fmt("else ");
+			}
+			
+			fmt.formatln(
+				"if (brdf__Index < {}) {{",
+				(cast(float)i + 0.5f) / maxSurfaces
+			).newline;
+
+			dg();
+
+			fmt.newline()('}');
+		}
+		
+		fmt("float brdf__Index = ");
+		surfParam(-1);
+		fmt(".x;").newline;
+
+		foreach (illumIdx, illum; _illumData) {
+			illumIdxBranch(illumIdx, {
+				fmt("BRDF__")(illumIdx)(" brdf__inst;");
+				if (illum.dataNodeParams) foreach (i, param; *illum.dataNodeParams) {
+					fmt.formatln("brdf__inst.{} = ", param.name);
+					surfParam(i);
+					switch (param.type) {
+						case "float":
+							fmt(".x"); break;
+						case "float2":
+							fmt(".xy"); break;
+						case "float3":
+							fmt(".xyz"); break;
+						default: break;
+					}
+					fmt(';').newline;
+				}
+				fmt("brdf__inst.main(normal, intensity, lightSize, toLight, toEye, diffuse, specular);");
+			});
+		}
 	}
 
 
