@@ -69,9 +69,9 @@ struct FramebufferConfig {
 
 struct FramebufferSettings {
 	bool[FramebufferConfig.numColorAttachments]
-						clearColorEnabled = true;
+						clearColorEnabled;
 	vec4[FramebufferConfig.numColorAttachments]
-						clearColorValue = vec4.zero;
+						clearColorValue;
 						
 	bool				clearDepthEnabled = true;
 	float				clearDepthValue = 1.0f;

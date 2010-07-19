@@ -1052,7 +1052,7 @@ float farPlaneDistance <
 			});
 		}
 
-		fmt("else { diffuse = float4(1, 0, 0, 0); specular = float4(1, 0, 0, 0); }").newline;
+		fmt("else { diffuse = float4(1, 0, 1, 0); specular = float4(1, 0, 1, 0); }").newline;
 
 		//fmt("diffuse = brdf__Index * 128;");
 	}
@@ -1708,11 +1708,14 @@ float farPlaneDistance <
 
 
 	// TODO
-	override void onLightCreated(LightId) {
+	override void onLightCreated(LightId lightId) {
+		assert (lightEI.length == lightId);
+		lightEI ~= EffectInstance.init;
 	}
 	
 	// TODO
 	override void onLightDisposed(LightId) {
+		assert (false, "TODO");
 	}
 	
 	// TODO
@@ -1720,73 +1723,103 @@ float farPlaneDistance <
 	}
 
 
-	EffectInstance	lightEI;
-	EffectInfo		lightEffectInfo;
+	EffectInstance[]	lightEI;
+	EffectInfo			lightEffectInfo;
 
-		VertexBuffer	_vb;
-		VertexAttrib	_va;
-		IndexBuffer		_ib;
+	VertexBuffer	_vb;
+	VertexAttrib	_va;
+	IndexBuffer		_ib;
 	
 
 	void renderLights(Light[] lights) {
 		if (lightEffectInfo.effect is null) {
 			lightEffectInfo = buildLightEffect(lights[0].kernelName);
-			auto effect = lightEffectInfo.effect;
-			auto efInst = lightEI = _backend.instantiateEffect(effect);
 
-				// HACK
-				allocateDefaultUniformStorage(efInst);
-				setEffectInstanceUniformDefaults(&lightEffectInfo, efInst);
-
-				vec3[24] positions = void;
-				positions[] = Primitives.Cube.positions[];
-				foreach (ref v; positions) {
-					v *= 100;
-				}
-
-				_vb = _backend.createVertexBuffer(
-					BufferUsage.StaticDraw,
-					cast(void[])positions
-				);
-				_va = VertexAttrib(
-					0,
-					vec3.sizeof,
-					VertexAttrib.Type.Vec3
-				);
-				_ib = _backend.createIndexBuffer(
-					BufferUsage.StaticDraw,
-					Primitives.Cube.indices
-				);
-
-			final vdata = efInst.getVaryingParamData("VertexProgram.structure__position");
-			vdata.buffer = &_vb;
-			vdata.attrib = &_va;
-
-			if (auto pp = efInst.getUniformPtrPtr("structure__depthSampler")) {
-				*cast(Texture**)pp = &_depthTex;
+			vec3[24] positions = void;
+			positions[] = Primitives.Cube.positions[];
+			foreach (ref v; positions) {
+				v *= 100;
 			}
-			if (auto pp = efInst.getUniformPtrPtr("structure__packed1Sampler")) {
-				*cast(Texture**)pp = &_packed1Tex;
-			}
-			if (auto pp = efInst.getUniformPtrPtr("structure__surfaceParamSampler")) {
-				*cast(Texture**)pp = &_surfaceParamTex;
-			}
+
+			_vb = _backend.createVertexBuffer(
+				BufferUsage.StaticDraw,
+				cast(void[])positions
+			);
+			_va = VertexAttrib(
+				0,
+				vec3.sizeof,
+				VertexAttrib.Type.Vec3
+			);
+			_ib = _backend.createIndexBuffer(
+				BufferUsage.StaticDraw,
+				Primitives.Cube.indices
+			);
 		}
 
-		final renderList = _backend.createRenderList();
-		assert (renderList !is null);
-		scope (success) _backend.disposeRenderList(renderList);
+		foreach (light; lights) {
+			if (!lightEI[light._id].valid) {
+				auto effect = lightEffectInfo.effect;
+				auto efInst = lightEI[light._id] = _backend.instantiateEffect(effect);
 
-		final bin = renderList.getBin(lightEffectInfo.effect);
-		final rdata = bin.add(lightEI);
-		*rdata = typeof(*rdata).init;
-		rdata.coordSys = CoordSys.identity;
-		final id = &rdata.indexData;
-		id.indexBuffer	= _ib;
-		id.numIndices	= Primitives.Cube.indices.length;
-		id.maxIndex		= 7;
+				allocateDefaultUniformStorage(efInst);
+				
+				// HACK
+				setEffectInstanceUniformDefaults(&lightEffectInfo, efInst);
 
-		_backend.render(renderList);
+				final vdata = efInst.getVaryingParamData("VertexProgram.structure__position");
+				vdata.buffer = &_vb;
+				vdata.attrib = &_va;
+
+				if (auto pp = efInst.getUniformPtrPtr("structure__depthSampler")) {
+					*cast(Texture**)pp = &_depthTex;
+				}
+				if (auto pp = efInst.getUniformPtrPtr("structure__packed1Sampler")) {
+					*cast(Texture**)pp = &_packed1Tex;
+				}
+				if (auto pp = efInst.getUniformPtrPtr("structure__surfaceParamSampler")) {
+					*cast(Texture**)pp = &_surfaceParamTex;
+				}
+			}
+
+			auto efInst = lightEI[light._id];
+
+			final renderList = _backend.createRenderList();
+			assert (renderList !is null);
+			scope (success) _backend.disposeRenderList(renderList);
+
+			light.setKernelData(
+				KernelParamInterface(
+				
+					// getVaryingParam
+					null,
+
+					// getUniformParam
+					(cstring name) {
+						char[256] fqn;
+						sprintf(fqn.ptr, "light%u__%.*s", 0, name);
+
+						if (auto p = efInst.getUniformPtrPtr(fromStringz(fqn.ptr))) {
+							return p;
+						} else {
+							return cast(void**)null;
+						}
+					},
+
+					// setIndexData
+					null
+			));
+
+			final bin = renderList.getBin(lightEffectInfo.effect);
+			final rdata = bin.add(efInst);
+			*rdata = typeof(*rdata).init;
+			rdata.coordSys = CoordSys.identity;
+			final id = &rdata.indexData;
+			id.indexBuffer	= _ib;
+			id.numIndices	= Primitives.Cube.indices.length;
+			id.maxIndex		= 7;
+
+			_backend.render(renderList);
+		}
 	}
 
 	
@@ -1914,14 +1947,22 @@ float farPlaneDistance <
 			}
 
 			_backend.state.sRGB = false;
+			_backend.state.depth.enabled = true;
+			_backend.state.blend.enabled = false;
 			_backend.render(blist);
 
 			// HACK
 			_backend.state.depth.enabled = false;
 			_backend.framebuffer = _lightFB;
 			_backend.clearBuffers();
+
+			with (_backend.state.blend) {
+				enabled = true;
+				src = Factor.One;
+				dst = Factor.One;
+			}
+
 			renderLights(.lights);
-			_backend.state.depth.enabled = true;
 		}
 
 		final blist = _backend.createRenderList();
