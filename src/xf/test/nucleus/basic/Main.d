@@ -217,6 +217,7 @@ class TestApp : GfxApp {
 		nr = Nucleus.createRenderer("LightPrePass", rendererBackend, kdefRegistry);
 		//nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
 		kdefRegistry.registerObserver(nr);
+		registerLightObserver(nr);
 
 		post = new PostProcessor(rendererBackend, kdefRegistry);
 		post.setKernel("TestPost");

@@ -16,6 +16,7 @@ private {
 abstract class Light {
 	CoordSys	transform;
 	vec4		lumIntens = vec4.one;		// uh oh, luminous intensity
+	LightId		_id;
 
 	abstract cstring kernelName();
 	abstract void setKernelData(KernelParamInterface);
@@ -51,6 +52,7 @@ LightId createLight(Light l) {
 	}
 
 	lights[res] = l;
+	l._id = res;
 
 	foreach (o; _lightObservers) {
 		o.onLightCreated(res);

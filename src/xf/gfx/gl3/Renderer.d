@@ -1896,6 +1896,8 @@ private struct FramebufferImpl {
 		res.refCount = 1;
 		res.handle = handle;
 		res.initAttachmentIds();
+		res.settings.clearColorValue[] = vec4.zero;
+		res.settings.clearColorEnabled[] = true;
 		return res;
 	}
 
