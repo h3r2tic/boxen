@@ -8,10 +8,13 @@ LightPrePassGeomOut = kernel(
 ) {
 	out_depth = -position.z / farPlaneDistance;
 
-	float scale = 1.7777;
+	/+float scale = 1.7777;
 	float2 enc = normal.xy / (normal.z+1);
 	enc /= scale;
-	enc = enc*0.5+0.5;
+	enc = enc*0.5+0.5;+/
+
+	float f = sqrt(8*normal.z+8);
+	float2 enc = normal.xy / f + 0.5;
 	
 	out_packed1 = float4(enc, surfaceId, 0);
 };
@@ -87,12 +90,20 @@ LightPrePassLightIn = graph {
 			out materialId <type float>,
 			out param1 <type float>
 		) {
-			// enc4 is float4, with .rg containing encoded normal
+/+			// enc4 is float4, with .rg containing encoded normal
 			float scale = 1.7777;
 			float3 nn = float3(input.xy * float2(2*scale,2*scale), 1.0) + float3(-scale,-scale,0);
 			float g = 2.0 / dot(nn.xyz,nn.xyz);
 			normal.xy = g*nn.xy;
-			normal.z = g-1;
+			normal.z = g-1;+/
+
+			float2 enc = input.xy;
+			float2 fenc = enc*4-2;
+			float f = dot(fenc,fenc);
+			float g = sqrt(1-f/4);
+			normal.xy = fenc*g;
+			normal.z = 1-f/2;
+
 			materialId = input.z;
 			param1 = input.w;
 		};
