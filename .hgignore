@@ -32,6 +32,9 @@ syntax: glob
 *.dot
 *.idb
 *.pdb
+*.ttf
+*.moduleDeps
+*.dot.png
 geany_run_script.bat
 src/xf/test/media/*
 src/xf/havok/HavokC.cpp.i
@@ -44,3 +47,4 @@ src/xf/havok/vs2008/Debug
 src/xf/havok/vs2008/Release
 src/xf/test/unit/NucleusGraph/*.png
 src/hsfexp/Debug
+src/hsfexp/Release
