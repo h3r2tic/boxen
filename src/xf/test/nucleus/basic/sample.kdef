@@ -170,8 +170,9 @@ TestLight = graph Light {
 		) {
 			toLight = lightPos - position;
 			float atten = length(toLight) / influenceRadius;
-			intensity = lumIntens * max(0.0, (4.0 * exp(-6* atten) - 0.01));
+//			intensity = lumIntens * max(0.0, (4.0 * exp(-6* atten) - 0.01));
 //			intensity = lumIntens / dot(toLight, toLight).xxxx;
+			intensity = (1.0 - smoothstep(0.7, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
 			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 			toLight = normalize(toLight);
 		};
