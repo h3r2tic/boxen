@@ -16,11 +16,13 @@ private {
 abstract class Light {
 	vec3	position = { x: 0, y: 1, z: 2 };
 	vec4	lumIntens = vec4.one;		// uh oh, luminous intensity
+	float	influenceRadius = 0;
 	LightId	_id;
 
-	float	influenceRadius() {
-		// cuts off at 0.01 assuming 1/r2 attenuation
-		return sqrt(dot(vec4(0.2126, 0.7152, 0.0722, 0), lumIntens) * 100.0f);
+	void	calcInfluenceRadius() {
+		// cuts off at 0.01 luma assuming 1/r2 attenuation
+		float meh = dot(vec4(0.2126, 0.7152, 0.0722, 0), lumIntens) * 100.0f;
+		influenceRadius = meh <= 0 ? 0 : sqrt(meh);
 	}
 
 	abstract cstring kernelName();
