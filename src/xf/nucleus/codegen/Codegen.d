@@ -14,11 +14,14 @@ private {
 		xf.nucleus.codegen.Misc,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.GraphOps,
+		xf.nucleus.graph.GraphMisc,
 		xf.nucleus.graph.Simplify,
 		xf.nucleus.graph.KernelGraphOps;
 
 	import
 		xf.mem.StackBuffer;
+
+	import tango.io.device.File;
 }
 
 
@@ -48,13 +51,21 @@ void codegen(
 		}
 	}
 
-	assert (vinputNodeId.valid, "No Input node found. That should be resolved earlier");
-	assert (foutputNodeId.valid, "No Output node found. That should be resolved earlier");
-	
-
-	if (!rasterNode.valid) {
-		error("'Rasterize' node not found, can't codegen :(");
+	if (rasterNode.valid && setup.gsNode.valid) {
+		error("Can only have a Rasterize xor a geometry shader node, not both.");
+	} else if (!rasterNode.valid && !setup.gsNode.valid) {
+		error("'Rasterize' or geometry shader node not found, can't codegen :(");
 	}
+
+	bool wantGeometryShader = false;
+
+	if (setup.gsNode.valid) {
+		wantGeometryShader = true;
+		rasterNode = setup.gsNode;
+	}
+
+	assert (vinputNodeId.valid, "Input node not found. That should be resolved earlier");
+	assert (foutputNodeId.valid, "Output node not found. That should be resolved earlier");
 
 	// Remove the unreachable nodes. The backend is readonly, but as we won't
 	// be adding nodes to the graph any further, it's safe to remove the backend nodes
@@ -81,16 +92,19 @@ void codegen(
 		nodeDomains[node.id] = GPUDomain.Vertex;
 		++numVertexNodes;
 	}, rasterNode);
-	nodeDomains[rasterNode.id] = GPUDomain.Vertex;
+	
+	nodeDomains[rasterNode.id] =
+		(wantGeometryShader ? GPUDomain.Geometry : GPUDomain.Vertex);
 
 	void outputGraphToDot() {
-		/+File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
+		File.set("graph.dot", toGraphviz(graph, (GraphNodeId nid) {
 			switch (nodeDomains[nid.id]) {
 				case GPUDomain.Vertex: return " : vert"[];
+				case GPUDomain.Geometry: return " : geom"[];
 				case GPUDomain.Fragment: return " : frag"[];
 				default: assert (false);
 			}
-		}));+/
+		}));
 	}
 
 	outputGraphToDot();
@@ -102,6 +116,10 @@ void codegen(
 	
 	moveToVertexIter: foreach (nid; topological) {
 		if (!nid.valid || GPUDomain.Vertex == nodeDomains[nid.id]) {
+			continue;
+		}
+
+		if (GPUDomain.Geometry == nodeDomains[nid.id]) {
 			continue;
 		}
 
@@ -182,20 +200,20 @@ void codegen(
 	 * have the 'VertexProgram' scope.
 	*/
 
-	void _iterVOutputParams(void delegate(GraphNodeId, Param*) sink) {
+	void _iterOutputParams(GPUDomain stage, void delegate(GraphNodeId, Param*, GraphNodeId, cstring) sink) {
 		foreach (nid, node; graph.iterNodes) {
-			if (nodeDomains[nid.id] != GPUDomain.Vertex) {
+			if (nodeDomains[nid.id] > stage) {
 				continue;
 			}
 
 			foreach (con; graph.flow.iterOutgoingConnections(nid)) {
-				if (nodeDomains[con.id] != GPUDomain.Fragment) {
+				if (nodeDomains[con.id] <= stage) {
 					continue;
 				}
 
 				foreach (fl; graph.flow.iterDataFlow(nid, con)) {
 					auto param = node.getOutputParam(fl.from);
-					sink(nid, param);
+					sink(nid, param, con, fl.to);
 				}
 			}
 		}
@@ -207,32 +225,26 @@ void codegen(
 	 * or the /input/ params if anothes node type is passed as the vertex input.
 	 */
 
-	uword numVinputs = 0;
-	foreach (ref p; *vinputNodeParams) {
-		if (NT.Input == vinputNT || p.isInput) {
-			++numVinputs;
+	final vinputs = stack.gatherArray((void delegate(lazy CgParam) sink) {
+		foreach (ref p; *vinputNodeParams) {
+			if (NT.Input == vinputNT || p.isInput) {
+				sink(CgParam(
+					vinputNodeId,
+					&p,
+					vinputNodeId,
+					p.name
+				));
+			}
 		}
-	}
-
-
-	CgParam[] vinputs = stack.allocArray!(CgParam)(numVinputs);
-	numVinputs = 0;
-	foreach (ref p; *vinputNodeParams) {
-		if (NT.Input == vinputNT || p.isInput) {
-			vinputs[numVinputs++] = CgParam(
-				vinputNodeId,
-				&p
-			);
-		}
-	}
+	});
 
 	
 	CgParam[] voutputs; {
-		// one extra for the POSITION
-		uword numVOutputParams = 1;
+		// one extra for the POSITION in case of using a Rasterize node
+		uword numVOutputParams = wantGeometryShader ? 0 : 1;
 
 		// Count them all, with possible repetitions
-		_iterVOutputParams((GraphNodeId, Param*) {
+		_iterOutputParams(GPUDomain.Vertex, (GraphNodeId, Param*, GraphNodeId, cstring) {
 			++numVOutputParams;
 		});
 
@@ -242,25 +254,37 @@ void codegen(
 
 		numVOutputParams = 0;
 
-		findPosParam: foreach (from; graph.flow.iterIncomingConnections(rasterNode)) {
-			foreach (fl; graph.flow.iterDataFlow(from, rasterNode)) {
-				assert (0 == numVOutputParams);
-				
-				voutputs[0] = CgParam(
-					from,
-					graph.getNode(from).getOutputParam(fl.from),
-					BindingSemantic("POSITION")
-				);
-				
-				numVOutputParams = 1;
-				break findPosParam;
+		if (!wantGeometryShader) {
+			findPosParam: foreach (from; graph.flow.iterIncomingConnections(rasterNode)) {
+				foreach (fl; graph.flow.iterDataFlow(from, rasterNode)) {
+					assert (0 == numVOutputParams);
+					
+					voutputs[0] = CgParam(
+						from,
+						graph.getNode(from).getOutputParam(fl.from),
+						rasterNode,
+						fl.to,
+						BindingSemantic("POSITION")
+					);
+					
+					numVOutputParams = 1;
+					break findPosParam;
+				}
 			}
-		}
 
-		assert (1 == numVOutputParams);
+			assert (1 == numVOutputParams);
+		}
 		
-		_iterVOutputParams((GraphNodeId nid, Param* param) {
-			foreach (ref cgp; voutputs[1..numVOutputParams]) {
+		_iterOutputParams(GPUDomain.Vertex,
+		(GraphNodeId nid, Param* param, GraphNodeId dstNid, cstring dstName) {
+			foreach (ref cgp; voutputs
+				[	(wantGeometryShader
+					? 0
+					: 1)	// without a geometry shader, the POSITION
+					..		// output turns into a WPOS in the fragment shader
+					numVOutputParams
+				]
+			) {
 				if (cgp.param is param) {
 					return;
 				}
@@ -268,22 +292,70 @@ void codegen(
 
 			voutputs[numVOutputParams++] = CgParam(
 				nid,
-				param
+				param,
+				dstNid,
+				dstName
 			);
 		});
 
 		// Shrink the array to contain just the unique params
 		voutputs = voutputs[0..numVOutputParams];
 	}
+	
+	CgParam[] finputs, ginputs, goutputs;
 
-	graph.removeNode(rasterNode);
+	if (wantGeometryShader) {
+		ginputs = voutputs;
+		
+		// one extra for the POSITION
+		uword numGOutputParams = 1;
+
+		// Count them all, with possible repetitions
+		_iterOutputParams(GPUDomain.Geometry, (GraphNodeId, Param*, GraphNodeId, cstring) {
+			++numGOutputParams;
+		});
+
+		goutputs = stack.allocArray!(CgParam)(numGOutputParams);
+
+		// Now count and gather just the unique ones
+
+		goutputs[0] = CgParam(
+			rasterNode,
+			graph.getNode(rasterNode).getOutputParam("clipSpacePosition"),
+			GraphNodeId.init,
+			null,
+			BindingSemantic("POSITION")
+		);
+
+		numGOutputParams = 1;
+		
+		_iterOutputParams(GPUDomain.Geometry, (GraphNodeId nid, Param* param, GraphNodeId dstNode, cstring dstParam) {
+			foreach (ref cgp; goutputs[1..numGOutputParams]) {
+				if (cgp.param is param) {
+					return;
+				}
+			}
+
+			goutputs[numGOutputParams++] = CgParam(
+				nid,
+				param,
+				dstNode,
+				dstParam
+			);
+		});
+
+		// Shrink the array to contain just the unique params
+		goutputs = goutputs[0..numGOutputParams];
+		
+		finputs = goutputs[1..$];		// without the POSITION param
+	} else {
+		finputs = voutputs[1..$];		// without the POSITION param
+		graph.removeNode(rasterNode);
+	}
 
 	// Need to recalc it after the simplification and removal of the Rasterize node
 	topological = topological[0..graph.numNodes];
 	findTopologicalOrder(graphBack, topological);
-
-	alias voutputs finputs;
-
 
 	/*
 	 * The outputs to consider are either the /input/ params of an Output node
@@ -322,12 +394,16 @@ void codegen(
 				foutputs[numFoutputs++] = CgParam(
 					srcNid,
 					srcParam,
+					GraphNodeId.init,
+					null,
 					BindingSemantic.parse(srcParam.semantic.getTrait("bindingSemantic"))
 				);
 			} else {
 				foutputs[numFoutputs++] = CgParam(
 					srcNid,
-					srcParam
+					srcParam,
+					GraphNodeId.init,
+					null
 				);
 			}
 		}
@@ -367,6 +443,7 @@ void codegen(
 
 	assignTexcoords(vinputs);
 	assignTexcoords(voutputs);
+	assignTexcoords(goutputs);
 
 	// ---- dump all uniforms ----
 
@@ -374,7 +451,17 @@ void codegen(
 
 	// ----
 
-	final graphs = emitCompositesAndFuncs(stack, ctx, graph);
+	final gsFunc = wantGeometryShader ? graph.getNode(rasterNode).func.func : null;
+
+	final graphs = emitCompositesAndFuncs(stack, ctx, graph,
+		(KernelGraph kg, GraphNodeId nid) {
+			// Don't emit the geometry shader's kernel
+			return
+				!wantGeometryShader
+			||	NT.Func != kg.getNode(nid).type
+			||	gsFunc !is kg.getNode(nid).func.func;
+		}
+	);
 
 	// ----
 
@@ -402,6 +489,22 @@ void codegen(
 		graphs[0].node2compName
 	);
 
+	if (wantGeometryShader) {
+		ctx.domain = GPUDomain.Geometry;
+		
+		codegenGeometryProgram(
+			ctx,
+			graph,
+			nodeDomains,
+			"GeometryProgram",
+			ginputs,
+			goutputs,
+			rasterNode,
+			graphs[0].node2funcName,
+			graphs[0].node2compName
+		);
+	}
+
 	// ---- codegen the fragment shader ----
 
 	ctx.domain = GPUDomain.Fragment;
@@ -411,7 +514,7 @@ void codegen(
 		graph,
 		nodeDomains,
 		"FragmentProgram",
-		finputs[1..$],	// without the POSITION param
+		finputs,
 		foutputs,
 		(void delegate(GraphNodeId) sink) {
 			foreach (nid; topological) {
@@ -500,5 +603,104 @@ void domainCodegen(
 		sink(';').newline();
 	}
 
+	sink("}").newline();
+}
+
+
+void codegenGeometryProgram(
+	CodegenContext* ctx,
+	KernelGraph graph,
+	GPUDomain[] nodeDomains,
+	cstring domainFuncName,
+	CgParam[] inputs,
+	CgParam[] outputs,
+	GraphNodeId gsNode,
+	cstring[] node2funcName,
+	cstring[] node2compName
+) {
+	auto sink = ctx.sink;
+	
+	sink("POINT TRIANGLE_OUT ");		// tmp
+	sink.formatln("void {} (", domainFuncName);
+	
+	foreach (i, par; inputs) {
+		assert (par.param.hasTypeConstraint);
+
+		sink("\tin AttribArray<");
+		sink(par.param.type);
+		sink("> ");
+		emitSourceParamName(ctx, graph, nodeDomains, par.node, par.param.name);
+		sink(" : ");
+		par.bindingSemantic.writeOut(sink);
+		
+		if (i+1 != inputs.length) {
+			sink(",");
+		}
+		
+		sink.newline();
+	}
+	sink(") {").newline();
+	sink("int vert__I;").newline();
+
+	final gsFuncNode = graph.getNode(gsNode).func();
+	final gsFuncParams = gsFuncNode.params;
+	
+	foreach (i, par; inputs) {
+		foreach (con; graph.flow.iterOutgoingConnections(par.node)) {
+			if (nodeDomains[con.id] < GPUDomain.Geometry) {
+				continue;
+			}
+			
+			foreach (fl; graph.flow.iterDataFlow(par.node, con)) {
+				if (fl.from == par.param.name) {
+					if (con == gsNode) {
+						sink("AttribArray<")(par.param.type)("> ")(fl.to)(" = ");
+						emitSourceParamName(ctx, graph, nodeDomains, par.node, par.param.name);
+						sink(';').newline;
+					} else {
+						sink.formatln("/* {} from {} to {} skipped. */", par.param.name, par.node.id, con.id);
+					}
+				}
+			}
+		}
+	}
+
+	foreach (par; gsFuncParams) {
+		if (par.isOutput) {
+			sink(par.type)(' ')(par.name)(';').newline;
+		}
+	}
+
+	{
+	sink("#define emitVertex(vert__i) ( vert__I = (vert__i),\\").newline;
+	sink("emitVertex(\\").newline;
+		
+		uint parI = 0;
+		foreach (i, par; outputs) {
+			assert (par.param.hasTypeConstraint);
+
+			if (parI != 0) {
+				sink(",  \\").newline;
+			}
+			++parI;
+			
+			if (par.node == gsNode) {
+				sink(par.param.name);
+			} else {
+				emitSourceParamName(ctx, graph, nodeDomains, par.node, par.param.name);
+				sink("[vert__I]");
+			}
+			sink(" : ");
+			par.bindingSemantic.writeOut(sink);
+		}
+		
+	sink("))").newline();
+	}
+
+	gsFuncNode.func.code.writeOut((char[] text) {
+		sink(text);
+	});
+
+	sink("#undef emitVertex").newline();
 	sink("}").newline();
 }

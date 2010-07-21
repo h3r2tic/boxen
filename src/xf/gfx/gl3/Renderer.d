@@ -1466,8 +1466,15 @@ class Renderer : IRenderer {
 			gl.Disable(BLEND);
 		}
 		
-		if (s.cullFace.enabled) {
+		if (s.cullFace.enabled && (s.cullFace.front || s.cullFace.back)) {
 			gl.Enable(CULL_FACE);
+			if (s.cullFace.front && s.cullFace.back) {
+				gl.CullFace(FRONT_AND_BACK);
+			} else if (s.cullFace.front) {
+				gl.CullFace(FRONT);
+			} else {
+				gl.CullFace(BACK);
+			}
 		} else {
 			gl.Disable(CULL_FACE);
 		}
@@ -1484,6 +1491,12 @@ class Renderer : IRenderer {
 			gl.Enable(FRAMEBUFFER_SRGB_EXT);
 		} else {
 			gl.Disable(FRAMEBUFFER_SRGB_EXT);
+		}
+
+		if (s.depthClamp) {
+			gl.Enable(DEPTH_CLAMP);
+		} else {
+			gl.Disable(DEPTH_CLAMP);
 		}
 
 		{
@@ -1690,6 +1703,8 @@ class Renderer : IRenderer {
 
 			
 		effect.bind();
+		scope (exit) effect.unbind();
+		
 		setObjUniforms(
 			effect.getUniformPtrsDataPtr(),
 			effect.getUniformParamGroup(),
@@ -1789,6 +1804,11 @@ class Renderer : IRenderer {
 					);
 				}
 			} else {
+				size_t offset = obj.indexData.indexOffset
+					* (IndexType.U16 == obj.indexData.indexBuffer.indexType
+					? 2
+					: 4);
+				
 				if (1 == obj.numInstances) {
 					if (	obj.indexData.minIndex != 0
 						||	obj.indexData.maxIndex != typeof(obj.indexData.maxIndex).max)
@@ -1799,14 +1819,14 @@ class Renderer : IRenderer {
 							obj.indexData.maxIndex,
 							obj.indexData.numIndices,
 							enumToGL(obj.indexData.indexBuffer.indexType),
-							cast(void*)obj.indexData.indexOffset
+							cast(void*)offset
 						);
 					} else {
 						gl.DrawElements(
 							enumToGL(obj.indexData.topology),
 							obj.indexData.numIndices,
 							enumToGL(obj.indexData.indexBuffer.indexType),
-							cast(void*)obj.indexData.indexOffset
+							cast(void*)offset
 						);
 					}
 				} else if (obj.numInstances > 1) {
@@ -1814,7 +1834,7 @@ class Renderer : IRenderer {
 						enumToGL(obj.indexData.topology),
 						obj.indexData.numIndices,
 						enumToGL(obj.indexData.indexBuffer.indexType),
-						cast(void*)obj.indexData.indexOffset,
+						cast(void*)offset,
 						obj.numInstances
 					);
 				}

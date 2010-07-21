@@ -14,9 +14,14 @@ private {
 
 
 abstract class Light {
-	CoordSys	transform;
-	vec4		lumIntens = vec4.one;		// uh oh, luminous intensity
-	LightId		_id;
+	vec3	position = { x: 0, y: 1, z: 2 };
+	vec4	lumIntens = vec4.one;		// uh oh, luminous intensity
+	LightId	_id;
+
+	float	influenceRadius() {
+		// cuts off at 0.01 assuming 1/r2 attenuation
+		return sqrt(dot(vec4(0.2126, 0.7152, 0.0722, 0), lumIntens) * 100.0f);
+	}
 
 	abstract cstring kernelName();
 	abstract void setKernelData(KernelParamInterface);

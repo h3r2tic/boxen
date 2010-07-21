@@ -151,7 +151,6 @@ class TestLight : Light {
 		);
 	}
 
-	vec3	position = { x: 0, y: 1, z: 2 };
 	float	radius;
 }
 

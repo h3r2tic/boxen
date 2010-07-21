@@ -30,7 +30,7 @@ LightPrePassLightIn = graph {
 	input = node {
 		type = input;
 		params = (
-			position <type float3 + use position + basis model>
+			posRadius <type float4>
 		);
 	};
 
@@ -45,7 +45,69 @@ LightPrePassLightIn = graph {
 
 	rast = node {
 		type = kernel;
-		kernel = Rasterize;
+		kernel = kernel GeometryShader(
+			in posRadius <type float4>
+		) {
+			for (int i = 0; i < posRadius.length; ++i) {
+				float cubeHalfSize = posRadius[i].w;
+
+				float4 xshift = float4(cubeHalfSize, 0, 0, 0);
+				float4 yshift = float4(0, cubeHalfSize, 0, 0);
+				float4 zshift = float4(0, 0, cubeHalfSize, 0);
+
+				float4 pos = float4(posRadius[i].xyz, 1.0);
+				float4 v000 = mul(worldToClip, pos - xshift - yshift - zshift);
+				float4 v001 = mul(worldToClip, pos - xshift - yshift + zshift);
+				float4 v010 = mul(worldToClip, pos - xshift + yshift - zshift);
+				float4 v011 = mul(worldToClip, pos - xshift + yshift + zshift);
+				float4 v100 = mul(worldToClip, pos + xshift - yshift - zshift);
+				float4 v101 = mul(worldToClip, pos + xshift - yshift + zshift);
+				float4 v110 = mul(worldToClip, pos + xshift + yshift - zshift);
+				float4 v111 = mul(worldToClip, pos + xshift + yshift + zshift);
+				
+				// front face
+				clipSpacePosition = v011; emitVertex(i);
+				clipSpacePosition = v001; emitVertex(i);
+				clipSpacePosition = v111; emitVertex(i);
+				clipSpacePosition = v101; emitVertex(i);
+				restartStrip();
+				
+				// left face
+				clipSpacePosition = v010; emitVertex(i);
+				clipSpacePosition = v000; emitVertex(i);
+				clipSpacePosition = v011; emitVertex(i);
+				clipSpacePosition = v001; emitVertex(i);
+				restartStrip();
+				
+				// right face
+				clipSpacePosition = v111; emitVertex(i);
+				clipSpacePosition = v101; emitVertex(i);
+				clipSpacePosition = v110; emitVertex(i);
+				clipSpacePosition = v100; emitVertex(i);
+				restartStrip();
+				
+				// back face
+				clipSpacePosition = v110; emitVertex(i);
+				clipSpacePosition = v100; emitVertex(i);
+				clipSpacePosition = v010; emitVertex(i);
+				clipSpacePosition = v000; emitVertex(i);
+				restartStrip();
+				
+				// bottom face
+				clipSpacePosition = v001; emitVertex(i);
+				clipSpacePosition = v000; emitVertex(i);
+				clipSpacePosition = v101; emitVertex(i);
+				clipSpacePosition = v100; emitVertex(i);
+				restartStrip();
+				
+				// top face
+				clipSpacePosition = v010; emitVertex(i);
+				clipSpacePosition = v011; emitVertex(i);
+				clipSpacePosition = v110; emitVertex(i);
+				clipSpacePosition = v111; emitVertex(i);
+				restartStrip();
+			}
+		};
 	};
 
 	genScreenUV = node {
@@ -130,9 +192,9 @@ LightPrePassLightIn = graph {
 		);
 	};
 
-	connect input.position rast.inPos;
-	connect input.position genScreenUV.position;
-	connect input.position reconstructPosition.position;
+	connect input.posRadius rast.posRadius;
+	connect rast.clipSpacePosition genScreenUV.position;
+	connect rast.clipSpacePosition reconstructPosition.position;
 	
 	connect genScreenUV.uv sampleDepth.uv;
 	connect genScreenUV.uv samplePacked1.uv;

@@ -34,6 +34,8 @@ struct RenderState {
 
 	struct CullFace {
 		bool	enabled = false;
+		bool	front = false;
+		bool	back = true;
 	}
 
 	struct Viewport {
@@ -64,4 +66,5 @@ struct RenderState {
 	Line		line;
 	Point		point;
 	bool		sRGB = true;
+	bool		depthClamp = false;
 }

@@ -34,6 +34,10 @@ Rasterize = kernel(
 	in inPos <type float4 + use position + basis clip>
 );
 
+GeometryShader = kernel(
+	out clipSpacePosition <type float4 + use position + basis clip>
+);
+
 Image = kernel(
 	in uv <type float2 + use uv>,
 	out sample <type float4>

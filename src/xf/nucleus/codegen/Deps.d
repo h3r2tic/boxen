@@ -34,7 +34,11 @@ private struct SubgraphData {
 }
 
 
-void emitInterfaces(KernelGraph graph, CodegenContext* ctx) {
+void emitInterfaces(
+		KernelGraph graph,
+		CodegenContext* ctx,
+		bool delegate(KernelGraph, GraphNodeId) filter = null
+) {
 	scope stack = new StackBuffer;
 	final sink = ctx.sink;
 
@@ -88,6 +92,10 @@ void emitInterfaces(KernelGraph graph, CodegenContext* ctx) {
 	
 	void worker(KernelGraph graph) {
 		foreach (nid, node; graph.iterNodes) {
+			if (filter !is null && !filter(graph, nid)) {
+				continue;
+			}
+			
 			if (ctx.getInterface !is null) {
 				foreach (par; *node.getParamList()) {
 					if (par.hasPlainSemantic && par.hasTypeConstraint) {
@@ -117,9 +125,9 @@ void emitGraphCompositesAndFuncs(
 	KernelGraph graph,
 	uint graphIdx,
 	SubgraphData[] graphs,
-	CodeSink sink,
-	
-	StackBufferUnsafe stack
+	CodeSink sink,	
+	StackBufferUnsafe stack,
+	bool delegate(KernelGraph, GraphNodeId) filter = null
 ) {
 	// ---- dump all composites ----
 
@@ -128,6 +136,9 @@ void emitGraphCompositesAndFuncs(
 
 		foreach (nid, node; graph.iterNodes) {
 			if (NT.Composite != node.type) {
+				continue;
+			}
+			if (filter !is null && !filter(graph, nid)) {
 				continue;
 			}
 
@@ -169,7 +180,8 @@ void emitGraphCompositesAndFuncs(
 					compNode._graphIdx,
 					graphs,
 					sink,
-					stack
+					stack,
+					filter
 				);
 
 				sink("struct ")(compName)(" : ")(func.name)(" {").newline;
@@ -278,6 +290,9 @@ void emitGraphCompositesAndFuncs(
 			if (NT.Func != node.type) {
 				continue;
 			}
+			if (filter !is null && !filter(graph, nid)) {
+				continue;
+			}
 
 			auto	funcNode = node.func();
 			uword	overloadIndex = 0;
@@ -365,11 +380,16 @@ void emitGraphCompositesAndFuncs(
 SubgraphData[] emitCompositesAndFuncs(
 	StackBufferUnsafe stack,
 	CodegenContext* ctx,
-	KernelGraph graph
+	KernelGraph graph,
+	bool delegate(KernelGraph, GraphNodeId) filter = null
 ) {
 	word numGraphs = 1;
 	void findNumGraphs(KernelGraph graph) {
 		foreach (nid, ref node; graph.iterNodes) {
+			if (filter !is null && !filter(graph, nid)) {
+				continue;
+			}
+			
 			if (NT.Composite == node.type) {
 				auto compNode = node.composite();
 				assert (compNode.graph !is null);
@@ -385,7 +405,7 @@ SubgraphData[] emitCompositesAndFuncs(
 
 	// ----
 	
-	emitInterfaces(graph, ctx);
+	emitInterfaces(graph, ctx, filter);
 
 	final graphs = stack.allocArray!(SubgraphData)(numGraphs);
 	emitGraphCompositesAndFuncs(
@@ -394,7 +414,8 @@ SubgraphData[] emitCompositesAndFuncs(
 		0,
 		graphs,
 		ctx.sink,
-		stack
+		stack,
+		filter
 	);
 
 	return graphs;

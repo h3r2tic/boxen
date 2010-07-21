@@ -261,6 +261,19 @@ class CgEffect : Effect {
 		defaultHandleCgError();
 	}
 	
+
+	override void unbind() {
+		defaultHandleCgError();
+		
+		cgGLDisableProfile(cgGetProgramProfile(_vertexProgram));
+		if (_opts.useGeometryProgram) {
+			cgGLDisableProfile(cgGetProgramProfile(_geometryProgram));
+		}
+		cgGLDisableProfile(cgGetProgramProfile(_fragmentProgram));
+		
+		defaultHandleCgError();
+	}
+
 	
 	override void bindUniformBuffer(int idx, Buffer buf) {
 		defaultHandleCgError();

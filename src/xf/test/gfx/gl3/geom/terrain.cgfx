@@ -1,0 +1,89 @@
+struct vertInput {
+	float3 position : POSITION;
+};
+
+struct fragInput {
+	float3 position : TEXCOORD0;
+	float2 texCoord : TEXCOORD1;
+};
+
+
+float3x4 modelToWorld;
+float4x4 worldToView <
+	string scope = "effect";
+>;
+float4x4 viewToClip <
+	string scope = "effect";
+>;
+
+float3 terrainScale;
+
+
+void VertexProgram(
+	in vertInput input,
+	out fragInput output
+) {
+	output.texCoord = input.position.xz;
+	input.position *= terrainScale;
+	float3 worldPos = mul(modelToWorld, float4(input.position, 1));
+	output.position = worldPos;
+}
+
+
+#define emitVertex(i) emitVertex( \
+	out_position : POSITION, \
+	out_attr0 : TEXCOORD0, \
+	out_attr1 : TEXCOORD1 \
+)
+TRIANGLE
+void GeometryProgram(
+	AttribArray<float3> attr0 : TEXCOORD0,
+	AttribArray<float2> attr1 : TEXCOORD1
+) {
+	float4 out_position;
+	float3 out_attr0;
+	float2 out_attr1;
+
+	for (int i = 0; i < attr0.length; ++i) {
+		out_position = mul(viewToClip, mul(worldToView, float4(attr0[i], 1.0)));
+		out_attr0 = attr0[i];
+		out_attr1 = attr1[i];
+		emitVertex(i);
+	}
+
+	restartStrip();
+
+	for (int i = 0; i < attr0.length; ++i) {
+		out_position = mul(viewToClip, mul(worldToView, float4(attr0[i], 1.0) + float4(0, -20, 0, 0)));
+		out_attr0 = attr0[i];
+		out_attr1 = attr1[i];
+		emitVertex(i);
+	}
+
+	restartStrip();
+
+	for (int i = 0; i < attr0.length; ++i) {
+		out_position = mul(viewToClip, mul(worldToView, float4(attr0[i], 1.0) + float4(0, -40, 0, 0)));
+		out_attr0 = attr0[i];
+		out_attr1 = attr1[i];
+		emitVertex(i);
+	}
+}
+#undef emitVertex
+
+
+void FragmentProgram(
+	in fragInput input,
+	uniform sampler2D albedoTex,
+	uniform sampler2D detailTex,
+	uniform sampler2D lightTex,
+	out float4 output : COLOR
+) {
+	float2 tc = float2(input.texCoord.x, 1.0f - input.texCoord.y);
+	output = tex2D(albedoTex, tc);
+	output *= saturate(tex2D(detailTex, tc * 10.f) + 0.3f);
+	output += (tex2D(detailTex, tc * 33.3f) - 0.5f) * 0.7f;
+	output *= tex2D(lightTex, tc);
+	output *= 6.0f;
+	//output = float4(1, 1, 1, 1) * (input.position.y - 0.5f) / 3;
+}
