@@ -1665,6 +1665,11 @@ float farPlaneDistance <
 
 	// TODO
 	override void onLightCreated(LightId lightId) {
+		if (lightId >= maxLights) {
+			// HACK
+			error("Increase the maxLights constant in the LightPrePassRenderer.");
+		}
+		
 		assert (lightEI.length == lightId);
 		lightEI ~= EffectInstance.init;
 	}
@@ -1718,7 +1723,7 @@ float farPlaneDistance <
 				}
 
 				u32 idx = light._id;
-				_ib.setSubData(u32.sizeof * light._id, cast(void[])((&idx)[0..1]));
+				_ib.setSubData(u32.sizeof * idx, cast(void[])((&idx)[0..1]));
 			}
 
 			auto efInst = lightEI[light._id];
@@ -1752,6 +1757,8 @@ float farPlaneDistance <
 			vec4 posRadius = void;
 			posRadius.xyz = light.position;
 			posRadius.w = light.influenceRadius;
+
+			light.calcInfluenceRadius();
 			
 			_vb.setSubData(vec4.sizeof * light._id, cast(void[])((&posRadius)[0..1]));
 

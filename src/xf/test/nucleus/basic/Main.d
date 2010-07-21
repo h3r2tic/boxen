@@ -132,6 +132,7 @@ class TestLight : Light {
 		kpi.bindUniform("lightPos", &position);
 		kpi.bindUniform("lumIntens", &lumIntens);
 		kpi.bindUniform("radius", &radius);
+		kpi.bindUniform("influenceRadius", &influenceRadius);
 	}
 	
 	override void determineInfluenced(

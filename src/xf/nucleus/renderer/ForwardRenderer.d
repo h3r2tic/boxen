@@ -1037,6 +1037,10 @@ float3 eyePosition <
 		final blist = _backend.createRenderList();
 		scope (exit) _backend.disposeRenderList(blist);
 
+		foreach (l; .lights) {
+			l.calcInfluenceRadius();
+		}
+
 		foreach (idx, rid; rids) {
 			final ei = _renderableEI[rid];
 			final bin = blist.getBin(ei.getEffect);
