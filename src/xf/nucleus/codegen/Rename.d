@@ -62,6 +62,8 @@ void emitSourceParamName(
 		if (nodeDomains is null) {
 			ctx.sink(pname);
 		} else if (nodeDomains[nid.id] == ctx.domain) {
+			// uh huh o_O ... why is this branch even here, what does it do? xD
+			assert (GPUDomain.Vertex == ctx.domain);
 			ctx.sink("structure__");
 			ctx.sink(pname);
 		} else {

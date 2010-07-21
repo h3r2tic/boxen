@@ -321,3 +321,95 @@ void buildKernelGraph(
 
 	assert (totalNodes == nodeI);
 }
+
+
+private struct BuilderSubgraphInfo {
+	GraphNodeId[]	nodes;
+	GraphNodeId		input;
+	GraphNodeId		output;
+
+	bool singleNode() {
+		return nodes.length <= 1;
+	}
+}
+
+
+pragma (msg, "Move GraphBuilder out to its own module. Take the one from LPP.");
+struct GraphBuilder {
+	SourceKernelType	sourceKernelType;
+	uword				sourceLightIndex;
+	bool				spawnDataNodes = true;
+	GraphNodeId[]		dataNodeSource;
+
+
+	void build(
+			KernelGraph kg,
+			KernelImpl kernel,
+			BuilderSubgraphInfo* info,
+			StackBufferUnsafe stack,
+			void delegate(cstring, GraphNodeId) nodeWatcher = null
+	) {
+		assert (info !is null);
+		
+		if (KernelImpl.Type.Kernel == kernel.type) {
+			if (!kernel.kernel.isConcrete) {
+				error("Trying to use an abstract function for a kernel in a graph");
+			}
+
+			final nid = kg.addFuncNode(cast(Function)kernel.kernel.func);
+
+			if (stack) {
+				info.nodes = stack.allocArrayNoInit!(GraphNodeId)(1);
+			}
+
+			if (info.nodes) {
+				info.nodes[0] = nid;
+			}
+			
+			info.input = info.output = nid;
+		} else {
+			if (stack) {
+				info.nodes = stack.allocArrayNoInit!(GraphNodeId)(
+					numGraphFlattenedNodes(kernel.graph)
+				);
+			}
+			
+			buildKernelGraph(
+				kernel.graph,
+				kg,
+				(uint nidx, cstring name, GraphDefNode def, GraphNodeId delegate() getNid) {
+					if (!spawnDataNodes && "data" == def.type) {
+						final nid = dataNodeSource[nidx];
+						if (info.nodes) {
+							info.nodes[nidx] = nid;
+						}
+						return nid;
+					} else {
+						final nid = getNid();
+						final n = kg.getNode(nid);
+
+						if (nodeWatcher) {
+							nodeWatcher(name, nid);
+						}
+
+						if (info.nodes) {
+							info.nodes[nidx] = nid;
+						}
+
+						if (KernelGraph.NodeType.Input == n.type) {
+							info.input = nid;
+						} else if (KernelGraph.NodeType.Output == n.type) {
+							info.output = nid;
+						} else if (KernelGraph.NodeType.Data == n.type) {
+							n.data.sourceKernelType = sourceKernelType;
+							n.data.sourceLightIndex = sourceLightIndex;
+						}
+						
+						return nid;
+					}
+				}
+			);
+		}
+	}
+}
+

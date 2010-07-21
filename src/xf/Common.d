@@ -9,6 +9,7 @@ public {
 	import tango.stdc.stringz : fromStringz, toStringz;
 	import tango.core.Thread : Thread;
 	import tango.core.Traits;
+	import tango.core.Tuple;
 	import intrinsic = std.intrinsic;
 }
 

@@ -224,6 +224,7 @@ abstract class Effect {
 	abstract Effect copy();
 	abstract void compile();
 	abstract void bind();
+	abstract void unbind();
 	abstract void bindUniformBuffer(int, Buffer);
 	
 	size_t	uniformPtrsDataSize;

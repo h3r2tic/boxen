@@ -98,7 +98,12 @@ abstract class Scope {
 				}
 			} else {
 				// TODO: better error msg
-				throw new Exception("no variable '" ~ prefix ~ "' in scope " ~ this.classinfo.name);
+				error(
+					"No variable '{}' in scope {}. Only got: {}.",
+					prefix,
+					this.classinfo.name,
+					_varNames
+				);
 			}
 		} else {
 			*finalName = name;

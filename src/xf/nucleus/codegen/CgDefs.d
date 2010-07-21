@@ -45,5 +45,7 @@ package struct BindingSemantic {
 package struct CgParam {
 	GraphNodeId		node;
 	Param*			param;
+	GraphNodeId		dstNode;
+	cstring			dstName;
 	BindingSemantic	bindingSemantic;
 }

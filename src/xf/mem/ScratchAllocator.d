@@ -56,12 +56,22 @@ template MScratchAllocator() {
 	}
 
 
+	T[] gatherArray(T)(void delegate(void delegate(lazy T)) gen) {
+		size_t num = 0;
+		gen((lazy T) { ++num; });
+		final res = allocArrayNoInit!(T)(num);
+		size_t i = 0;
+		gen((lazy T t) { res[i++] = t; });
+		assert (num == i);
+		return res;
+	}
+
+
 	T[] dupArray(T)(T[] arr, bool throwExc = true) {
 		final copy = allocArrayNoInit!(T)(arr.length, throwExc);
 		copy[] = arr;
 		return copy;
 	}
-
 	alias dupArray!(char) dupString;
 
 

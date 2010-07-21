@@ -60,6 +60,7 @@ private {
 		xf.gfx.Buffer,
 		xf.gfx.VertexBuffer,
 		xf.gfx.IndexBuffer,
+		xf.gfx.IndexData,
 		xf.omg.core.LinearAlgebra,
 		xf.omg.core.CoordSys,
 		xf.omg.util.ViewSettings,
@@ -87,98 +88,13 @@ private {
 
 
 
-private struct SubgraphInfo {
-	GraphNodeId[]	nodes;
-	GraphNodeId		input;
-	GraphNodeId		output;
-
-	bool singleNode() {
-		return nodes.length <= 1;
-	}
-}
-
-
-pragma (msg, "Move GraphBuilder out to its own module. Take the one from LPP.");
-struct GraphBuilder {
-	SourceKernelType	sourceKernelType;
-	uword				sourceLightIndex;
-	bool				spawnDataNodes = true;
-	GraphNodeId[]		dataNodeSource;
-
-
-	void build(
-			KernelGraph kg,
-			KernelImpl kernel,
-			SubgraphInfo* info,
-			StackBufferUnsafe stack
-	) {
-		assert (info !is null);
-		
-		if (KernelImpl.Type.Kernel == kernel.type) {
-			if (!kernel.kernel.isConcrete) {
-				error("Trying to use an abstract function for a kernel in a graph");
-			}
-
-			final nid = kg.addFuncNode(cast(Function)kernel.kernel.func);
-
-			if (stack) {
-				info.nodes = stack.allocArrayNoInit!(GraphNodeId)(1);
-			}
-
-			if (info.nodes) {
-				info.nodes[0] = nid;
-			}
-			
-			info.input = info.output = nid;
-		} else {
-			if (stack) {
-				info.nodes = stack.allocArrayNoInit!(GraphNodeId)(
-					numGraphFlattenedNodes(kernel.graph)
-				);
-			}
-			
-			buildKernelGraph(
-				kernel.graph,
-				kg,
-				(uint nidx, cstring, GraphDefNode def, GraphNodeId delegate() getNid) {
-					if (!spawnDataNodes && "data" == def.type) {
-						final nid = dataNodeSource[nidx];
-						if (info.nodes) {
-							info.nodes[nidx] = nid;
-						}
-						return nid;
-					} else {
-						final nid = getNid();
-						final n = kg.getNode(nid);
-
-						if (info.nodes) {
-							info.nodes[nidx] = nid;
-						}
-
-						if (KernelGraph.NodeType.Input == n.type) {
-							info.input = nid;
-						} else if (KernelGraph.NodeType.Output == n.type) {
-							info.output = nid;
-						} else if (KernelGraph.NodeType.Data == n.type) {
-							n.data.sourceKernelType = sourceKernelType;
-							n.data.sourceLightIndex = sourceLightIndex;
-						}
-						
-						return nid;
-					}
-				}
-			);
-		}
-	}
-}
-
-
 class LightPrePassRenderer : Renderer {
 	mixin MRenderer!("LightPrePass");
 
 	enum {
 		maxSurfaceParams = 8,
-		maxSurfaces = 256
+		maxSurfaces = 256,
+		maxLights = 16*1024		// arbitrary
 	}
 
 	
@@ -189,6 +105,7 @@ class LightPrePassRenderer : Renderer {
 		_finalEffectCache = new typeof(_finalEffectCache);
 		super(backend);
 		createSurfaceParamTex();
+		createLightParamBuf();
 	}
 
 
@@ -205,6 +122,26 @@ class LightPrePassRenderer : Renderer {
 			treq
 		);
 		assert (_surfaceParamTex.valid);
+	}
+
+
+	private void createLightParamBuf() {
+		_vb = _backend.createVertexBuffer(
+			BufferUsage.StaticDraw,
+			maxLights * vec4.sizeof,
+			null
+		);
+		_va = VertexAttrib(
+			0,
+			vec4.sizeof,
+			VertexAttrib.Type.Vec4
+		);
+		_ib = _backend.createIndexBuffer(
+			BufferUsage.StaticDraw,
+			maxLights * u32.sizeof,
+			null,
+			IndexType.U32
+		);
 	}
 
 
@@ -327,7 +264,7 @@ class LightPrePassRenderer : Renderer {
 			GraphBuilder builder;
 			builder.sourceKernelType = SourceKernelType.Composite;
 
-			SubgraphInfo info;
+			BuilderSubgraphInfo info;
 			builder.build(illum.graph, def.illumKernel, &info, null);
 
 			ConvCtx convCtx;
@@ -441,8 +378,8 @@ class LightPrePassRenderer : Renderer {
 
 		// ---- Build the Structure kernel graph
 
-		SubgraphInfo structureInfo;
-		SubgraphInfo pigmentInfo;
+		BuilderSubgraphInfo structureInfo;
+		BuilderSubgraphInfo pigmentInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -534,7 +471,7 @@ class LightPrePassRenderer : Renderer {
 			param.type = "float";
 		}
 
-		SubgraphInfo outInfo;
+		BuilderSubgraphInfo outInfo;
 		{
 			final kernel = _kdefRegistry.getKernel("LightPrePassGeomOut");
 			GraphBuilder builder;
@@ -702,22 +639,29 @@ float farPlaneDistance <
 			}
 		}
 
-		SubgraphInfo inInfo;
+		GraphNodeId gsNode;
+
+		BuilderSubgraphInfo inInfo;
 		{
 			final kernel = _kdefRegistry.getKernel("LightPrePassLightIn");
 			GraphBuilder builder;
 			builder.sourceKernelType = SourceKernelType.Structure;
-			builder.build(kg, kernel, &inInfo, stack);
+			builder.build(kg, kernel, &inInfo, stack, (cstring name, GraphNodeId nid) {
+				if ("rast" == name) {
+					gsNode = nid;
+				}
+			});
 			assert (inInfo.input.valid);
 			assert (inInfo.output.valid);
 		}
+		assert (gsNode.valid);
 
 		convertGraphDataFlowExceptOutput(
 			kg,
 			convCtx
 		);
 
-		SubgraphInfo lightInfo;
+		BuilderSubgraphInfo lightInfo;
 		{
 			final kernel = _kdefRegistry.getKernel(lightKernel);
 			GraphBuilder builder;
@@ -818,6 +762,9 @@ float3x4 modelToWorld;
 float4x4 worldToView <
 	string scope = "effect";
 >;
+float4x4 worldToClip <
+	string scope = "effect";
+>;
 float4x4 viewToWorld <
 	string scope = "effect";
 >;
@@ -840,6 +787,7 @@ float farPlaneDistance <
 		CodegenSetup cgSetup;
 		cgSetup.inputNode = inInfo.input;
 		cgSetup.outputNode = BRDFnode;
+		cgSetup.gsNode = gsNode;
 
 		codegen(
 			stack,
@@ -854,9 +802,12 @@ float farPlaneDistance <
 
 		File.set("shader.tmp.cgfx", arrrr.slice());
 
+		EffectCompilationOptions ecopts;
+		ecopts.useGeometryProgram = true;
 		final effect = effectInfo.effect = _backend.createEffect(
 			null,
-			EffectSource.stringz(cast(char*)arrrr.slice().ptr)
+			EffectSource.stringz(cast(char*)arrrr.slice().ptr),
+			ecopts
 		);
 
 		effect.compile();
@@ -887,6 +838,7 @@ float farPlaneDistance <
 		if (uniforms) {
 			setUniform("worldToView", &worldToView);
 			setUniform("viewToWorld", &viewToWorld);
+			setUniform("worldToClip", &worldToClip);
 			setUniform("viewToClip", &viewToClip);
 			setUniform("clipToView", &clipToView);
 			setUniform("eyePosition", &eyePosition);
@@ -1143,8 +1095,8 @@ float farPlaneDistance <
 
 		// ---- Build the Structure kernel graph
 
-		SubgraphInfo structureInfo;
-		SubgraphInfo pigmentInfo;
+		BuilderSubgraphInfo structureInfo;
+		BuilderSubgraphInfo pigmentInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -1235,7 +1187,7 @@ float farPlaneDistance <
 			param.type = "float";
 		}
 
-		SubgraphInfo outInfo;
+		BuilderSubgraphInfo outInfo;
 		{
 			final kernel = _kdefRegistry.getKernel("LightPrePassFinalOut");
 			GraphBuilder builder;
@@ -1325,6 +1277,9 @@ float3x4 modelToWorld;
 float4x4 worldToView <
 	string scope = "effect";
 >;
+float4x4 worldToClip <
+	string scope = "effect";
+>;
 float4x4 viewToWorld <
 	string scope = "effect";
 >;
@@ -1374,6 +1329,7 @@ float farPlaneDistance <
 
 		if (uniforms) {
 			setUniform("worldToView", &worldToView);
+			setUniform("worldToClip", &worldToClip);
 			setUniform("viewToWorld", &viewToWorld);
 			setUniform("viewToClip", &viewToClip);
 			setUniform("clipToView", &clipToView);
@@ -1726,6 +1682,7 @@ float farPlaneDistance <
 	EffectInstance[]	lightEI;
 	EffectInfo			lightEffectInfo;
 
+
 	VertexBuffer	_vb;
 	VertexAttrib	_va;
 	IndexBuffer		_ib;
@@ -1734,26 +1691,6 @@ float farPlaneDistance <
 	void renderLights(Light[] lights) {
 		if (lightEffectInfo.effect is null) {
 			lightEffectInfo = buildLightEffect(lights[0].kernelName);
-
-			vec3[24] positions = void;
-			positions[] = Primitives.Cube.positions[];
-			foreach (ref v; positions) {
-				v *= 100;
-			}
-
-			_vb = _backend.createVertexBuffer(
-				BufferUsage.StaticDraw,
-				cast(void[])positions
-			);
-			_va = VertexAttrib(
-				0,
-				vec3.sizeof,
-				VertexAttrib.Type.Vec3
-			);
-			_ib = _backend.createIndexBuffer(
-				BufferUsage.StaticDraw,
-				Primitives.Cube.indices
-			);
 		}
 
 		foreach (light; lights) {
@@ -1766,7 +1703,7 @@ float farPlaneDistance <
 				// HACK
 				setEffectInstanceUniformDefaults(&lightEffectInfo, efInst);
 
-				final vdata = efInst.getVaryingParamData("VertexProgram.structure__position");
+				final vdata = efInst.getVaryingParamData("VertexProgram.structure__posRadius");
 				vdata.buffer = &_vb;
 				vdata.attrib = &_va;
 
@@ -1779,6 +1716,9 @@ float farPlaneDistance <
 				if (auto pp = efInst.getUniformPtrPtr("structure__surfaceParamSampler")) {
 					*cast(Texture**)pp = &_surfaceParamTex;
 				}
+
+				u32 idx = light._id;
+				_ib.setSubData(u32.sizeof * light._id, cast(void[])((&idx)[0..1]));
 			}
 
 			auto efInst = lightEI[light._id];
@@ -1809,14 +1749,22 @@ float farPlaneDistance <
 					null
 			));
 
+			vec4 posRadius = void;
+			posRadius.xyz = light.position;
+			posRadius.w = light.influenceRadius;
+			
+			_vb.setSubData(vec4.sizeof * light._id, cast(void[])((&posRadius)[0..1]));
+
 			final bin = renderList.getBin(lightEffectInfo.effect);
 			final rdata = bin.add(efInst);
 			*rdata = typeof(*rdata).init;
 			rdata.coordSys = CoordSys.identity;
 			final id = &rdata.indexData;
 			id.indexBuffer	= _ib;
-			id.numIndices	= Primitives.Cube.indices.length;
-			id.maxIndex		= 7;
+			id.indexOffset	= light._id;
+			id.numIndices	= 1;
+			id.maxIndex		= light._id;
+			id.topology		= MeshTopology.Points;
 
 			_backend.render(renderList);
 		}
@@ -1827,6 +1775,7 @@ float farPlaneDistance <
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.clipToView = this.viewToClip.inverse();
 		this.worldToView = vs.computeViewMatrix();
+		this.worldToClip = this.viewToClip * this.worldToView;
 		this.viewToWorld = this.worldToView.inverse();
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
 		this.farPlaneDistance = vs.farPlaneDistance;
@@ -1951,6 +1900,13 @@ float farPlaneDistance <
 			_backend.state.blend.enabled = false;
 			_backend.render(blist);
 
+			_backend.state.depthClamp = true;
+			with (_backend.state.cullFace) {
+				enabled = true;
+				front = true;
+				back = false;
+			}
+
 			// HACK
 			_backend.state.depth.enabled = false;
 			_backend.framebuffer = _lightFB;
@@ -2001,6 +1957,7 @@ float farPlaneDistance <
 		Framebuffer	_lightFB;
 
 		mat4	worldToView;
+		mat4	worldToClip;
 		mat4	viewToWorld;
 		mat4	viewToClip;
 		mat4	clipToView;

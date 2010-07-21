@@ -63,5 +63,6 @@ struct CodegenContext {
 struct CodegenSetup {
 	KernelGraph	graph;
 	GraphNodeId	inputNode;
-	GraphNodeId	outputNode;
+	GraphNodeId outputNode;
+	GraphNodeId gsNode;		// geometry shader output node
 }

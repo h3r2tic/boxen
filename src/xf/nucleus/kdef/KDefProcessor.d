@@ -1,6 +1,8 @@
 module xf.nucleus.kdef.KDefProcessor;
 
 private {
+	import tango.core.Tuple;
+	
 	import
 		xf.nucleus.kdef.model.IKDefFileParser,
 		xf.nucleus.kdef.model.KDefInvalidation,
@@ -24,7 +26,8 @@ private {
 
 	import
 		xf.mem.ScratchAllocator,
-		xf.mem.StackBuffer;
+		xf.mem.StackBuffer,
+		xf.mem.Gather;
 		
 	import xf.utils.Graph	: findTopologicalOrder, CycleHandlingMode;
 	import xf.utils.Memory	: alloc, free, append;
@@ -660,95 +663,51 @@ class KDefProcessor {
 		
 				
 		void process(Scope sc, Allocator allocator) {
-			// TODO: refactor this pattern
-			{
-				size_t num = 0;
+			gatherArrays!(string, Value)(sc.mem,
+			(void delegate(lazy string, lazy Value) gen) {
 				foreach (stmt_; sc.statements) {
-					if (cast(AssignStatement)stmt_) {
-						++num;
-					}				
-				}
-
-				if (num > 0) {
-					scope stack = new StackBuffer;
-					
-					string[]	names = sc.mem.allocArrayNoInit!(string)(num);
-					Value[]		values = sc.mem.allocArrayNoInit!(Value)(num);
-
-					num = 0;
-					foreach (stmt_; sc.statements) {
-						if (auto stmt = cast(AssignStatement)stmt_) {
-							names[num] = stmt.name;
-							values[num] = stmt.value;
-							++num;
-						}
+					if (auto stmt = cast(AssignStatement)stmt_) {
+						gen(stmt.name, stmt.value);
 					}
-
-					sc.doAssign(names, values);
 				}
-			}
+			},
+			(string[] names, Value[] values) {
+				sc.doAssign(names, values);
+			});
 
-			// TODO: refactor this pattern
-			{
-				size_t num = 0;
+			gatherArrays!(string, string)(sc.mem,
+			(void delegate(lazy string, lazy string) gen) {
 				foreach (stmt_; sc.statements) {
 					if (auto stmt = cast(ConnectStatement)stmt_) {
-						++num;
-					}
-				}
-
-				if (num > 0) {
-					scope stack = new StackBuffer;
-						
-					string[]	from = sc.mem.allocArrayNoInit!(string)(num);
-					string[]	to = sc.mem.allocArrayNoInit!(string)(num);
-
-					num = 0;
-					foreach (stmt_; sc.statements) {
-						if (auto stmt = cast(ConnectStatement)stmt_) {
-							if (auto graph = cast(GraphDef)sc) {
-								from[num] = stmt.from;
-								to[num] = stmt.to;
-							} else {
-								throw new Exception("connections only allowed at graph scope");
-							}
-							++num;
+						if (auto graph = cast(GraphDef)sc) {
+							gen(stmt.from, stmt.to);
+						} else {
+							throw new Exception("connections only allowed at graph scope");
 						}
 					}
-
-					(cast(GraphDef)sc).doConnect(from, to);
 				}
-			}
+			},
+			(string[] from, string[] to) {
+				(cast(GraphDef)sc).doConnect(from, to);
+			});
 
-			// TODO: refactor this pattern
-			{
-				size_t num = 0;
+			gatherArrays!(string)(sc.mem,
+			(void delegate(lazy string) gen) {
 				foreach (stmt_; sc.statements) {
 					if (auto stmt = cast(NoAutoFlowStatement)stmt_) {
-						++num;
-					}
-				}
-
-				if (num > 0) {
-					scope stack = new StackBuffer;
-						
-					string[] to = sc.mem.allocArrayNoInit!(string)(num);
-
-					num = 0;
-					foreach (stmt_; sc.statements) {
-						if (auto stmt = cast(NoAutoFlowStatement)stmt_) {
-							if (auto graph = cast(GraphDef)sc) {
-								to[num] = stmt.to;
-							} else {
-								error("Can't use noauto outside of graph definitions.");
-							}
-							++num;
+						if (auto graph = cast(GraphDef)sc) {
+							gen(stmt.to);
+						} else {
+							error("Can't use noauto outside of graph definitions.");
 						}
 					}
-
-					(cast(GraphDef)sc).setNoAuto(to);
 				}
-			}
+			},
+			(string[] to) {
+				(cast(GraphDef)sc).setNoAuto(to);
+			});
+			
+			
 
 			foreach (stmt_; sc.statements) {
 				if (auto stmt = cast(ConnectStatement)stmt_) {
