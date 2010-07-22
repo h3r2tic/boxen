@@ -45,6 +45,9 @@ private {
 	import tango.io.vfs.FileFolder;
 	import Path = tango.io.Path;
 	import tango.io.Stdout;
+	
+	import tango.math.random.Kiss;
+	import xf.omg.color.HSV;
 }
 
 
@@ -190,6 +193,11 @@ class TestApp : GfxApp {
 
 
 	TestLight[]		lights;
+	vec3[]			lightOffsets;
+	float[]			lightDists;
+	float[]			lightSpeeds;
+	float[]			lightAngles;
+	vec4[]			lightIllums;
 
 	IKDefRegistry	kdefRegistry;
 	FileFolder		vfs;
@@ -260,9 +268,21 @@ class TestApp : GfxApp {
 
 		// ----
 
-		const numLights = 3;
+		const numLights = 30;
 		for (int i = 0; i < numLights; ++i) {
 			createLight((lights ~= new TestLight)[$-1]);
+			lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
+			lightAngles ~= Kiss.instance.fraction() * 360.0f;
+			lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
+			lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+
+			float h = cast(float)i / numLights;//Kiss.instance.fraction();
+			float s = 0.9f;
+			float v = 1.0f;
+
+			vec4 rgba = vec4.zero;
+			hsv2rgb(h, s, v, &rgba.r, &rgba.g, &rgba.b);
+			lightIllums ~= rgba;
 		}
 
 		// ----
@@ -310,38 +330,48 @@ class TestApp : GfxApp {
 
 		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
 
-		cstring model = `../../media/mesh/soldier.hsf`;
-		float scale = 1.0f;
-		/+cstring model = `../../media/mesh/masha.hsf`;
-		float scale = 0.02f;+/
+		version (Sibenik) {
+			cstring model = `../../media/mesh/sibenik.hsf`;
+			float scale = 1f;
 
-		loadScene(
-			model, scale, CoordSys(vec3fi[-2, 0, 0]),
-			"TestSurface1", "TestMaterial"
-		);
-		
-		loadScene(
-			model, scale, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
-			"TestSurface2", "TestMaterial"
-		);
+			loadScene(
+				model, scale, CoordSys(vec3fi[0, 1, 0]),
+				"TestSurface3", "TestMaterial"
+			);
+		} else {
+			/+cstring model = `../../media/mesh/soldier.hsf`;
+			float scale = 1.0f;+/
+			cstring model = `../../media/mesh/masha.hsf`;
+			float scale = 0.02f;
 
-		loadScene(
-			model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
-			"TestSurface3", "TestMaterial"
-		);
+			/+loadScene(
+				model, scale, CoordSys(vec3fi[-2, 0, 0]),
+				"TestSurface1", "TestMaterial"
+			);+/
+			
+			loadScene(
+				model, scale, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
+				"TestSurface2", "TestMaterial"
+			);
 
-		loadScene(
-			model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
-			"TestSurface4", "TestMaterial"
-		);
+			loadScene(
+				model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
+				"TestSurface3", "TestMaterial"
+			);
 
-		/+cstring model = `../../media/mesh/lightTest.hsf`;
-		float scale = 0.01f;
+			/+loadScene(
+				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
+				"TestSurface4", "TestMaterial"
+			);+/
 
-		loadScene(
-			model, scale, CoordSys(vec3fi[0, 1, 0]),
-			"TestSurface3", "TestMaterial"
-		);+/
+			/+cstring model = `../../media/mesh/lightTest.hsf`;
+			float scale = 0.01f;
+
+			loadScene(
+				model, scale, CoordSys(vec3fi[0, 1, 0]),
+				"TestSurface3", "TestMaterial"
+			);+/
+		}
 
 		{
 			mainFb = rendererBackend.framebuffer;
@@ -376,10 +406,11 @@ class TestApp : GfxApp {
 
 
 	override void render() {
-		static float lightRot = 0.0f;
-		lightRot += 0.1f;
+		for (int li = 0; li < lights.length; ++li) {
+			lightAngles[li] += lightSpeeds[li];
+		}
 
-		static float lightDist = 1.0f;
+		static float lightDist = 0.8f;
 		if (keyboard.keyDown(KeySym._1)) {
 			lightDist *= 0.995f;
 		}
@@ -387,11 +418,7 @@ class TestApp : GfxApp {
 			lightDist /= 0.995f;
 		}
 		
-		lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, 0) + vec3(0, 0, -2) * lightDist);
-		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 0) + vec3(0, 0, 2) * lightDist);
-		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 0) + vec3(0, 0, 2) * lightDist);
-
-		static float lightScale = 1.0f;
+		static float lightScale = 0.15f;
 		if (keyboard.keyDown(KeySym.Down)) {
 			lightScale *= 0.99f;
 		}
@@ -399,7 +426,7 @@ class TestApp : GfxApp {
 			lightScale /= 0.99f;
 		}
 
-		static float lightRad = 2.0f;
+		static float lightRad = 1.0f;
 		if (keyboard.keyDown(KeySym._3)) {
 			lightRad *= 0.99f;
 		}
@@ -407,7 +434,7 @@ class TestApp : GfxApp {
 			lightRad /= 0.99f;
 		}
 
-		static float bgColor = 0.01f;
+		static float bgColor = 0.005f;
 		
 		if (keyboard.keyDown(KeySym.Left)) {
 			bgColor *= 0.99f;
@@ -416,13 +443,23 @@ class TestApp : GfxApp {
 			bgColor /= 0.99f;
 		}
 
+		foreach (li, l; lights) {
+			l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
+			l.lumIntens = lightIllums[li] * lightScale;
+			l.radius = lightRad;
+		}
+
+		/+lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, 0) + vec3(0, 0, -2) * lightDist);
+		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 0) + vec3(0, 0, 2) * lightDist);
+		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 0) + vec3(0, 0, 2) * lightDist);
+
 		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0) * lightScale;
 		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0) * lightScale;
 		lights[2].lumIntens = vec4(0.3, 1.0, 0.6, 0) * lightScale;
 		
 		lights[0].radius = lightRad;
 		lights[1].radius = lightRad;
-		lights[2].radius = lightRad;
+		lights[2].radius = lightRad;+/
 
 		// move some objects
 
@@ -460,7 +497,7 @@ class TestApp : GfxApp {
 			}
 		});
 
-		static bool wantPost = false;
+		static bool wantPost = true;
 
 		static bool prevKeyDown = false;
 		bool keyDown = keyboard.keyDown(KeySym.space);
@@ -468,6 +505,12 @@ class TestApp : GfxApp {
 			wantPost ^= true;
 		}
 		prevKeyDown = keyDown;
+
+		with (rendererBackend.state.cullFace) {
+			enabled = true;
+			front = false;
+			back = true;
+		}
 
 		if (wantPost) {
 			rendererBackend.framebuffer = texFb;
