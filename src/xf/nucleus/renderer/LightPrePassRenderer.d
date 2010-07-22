@@ -957,6 +957,8 @@ float farPlaneDistance <
 	) {
 		final fmt = ctx.sink;
 
+		fmt("if (all(intensity <= 0.0)) discard;").newline;
+
 		void surfParam(int i) {
 			fmt.format(
 				"getSurfaceParam.value({:f.16})",
@@ -1816,7 +1818,7 @@ float farPlaneDistance <
 
 			{
 				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.DEPTH_COMPONENT24;
+				treq.internalFormat = TextureInternalFormat.DEPTH_COMPONENT32F;
 				treq.minFilter = TextureMinFilter.Nearest;
 				treq.magFilter = TextureMagFilter.Nearest;
 				treq.wrapS = TextureWrap.ClampToEdge;

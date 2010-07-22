@@ -1158,11 +1158,24 @@ private bool buildFunctionSubgraph(
 		
 		void delegate(Param*, GraphNodeId) freeParamSink,
 		DynamicBitSet* clonedNodesSet,
+		DynamicBitSet* visitedNodesSet,
+		GraphNodeId[] oldToNew,
 		KernelGraph newGraph,
 		GraphNodeId newGraphDataNode,
 		GraphNodeId oldGraphCompNode,
 		GraphNodeId* newNode
 ) {
+	if (clonedNodesSet.isSet(id.id)) {
+		*newNode = oldToNew[id.id];
+		assert (newNode.valid);
+		return true;
+	} else if (visitedNodesSet.isSet(id.id)) {
+		return false;
+	}
+	visitedNodesSet.set(id.id);
+	
+	//log.trace("buildFunctionSubgraph");
+	
 	bool result = false;
 	scope stack = new StackBuffer;
 
@@ -1187,12 +1200,16 @@ private bool buildFunctionSubgraph(
 
 		GraphNodeId prevNode;
 		
+		//log.trace("buildFunctionSubgraph -> buildFunctionSubgraph");
+
 		if (buildFunctionSubgraph(
 			graph,
 			from,
 			paramFilter,
 			freeParamSink,
 			clonedNodesSet,
+			visitedNodesSet,
+			oldToNew,
 			newGraph,
 			newGraphDataNode,
 			oldGraphCompNode,
@@ -1201,6 +1218,7 @@ private bool buildFunctionSubgraph(
 			if (!result) {
 				auto node = graph.getNode(id);
 				*newNode = newGraph.addNode(node.type);
+				oldToNew[id.id] = *newNode;
 				node.copyTo(newGraph.getNode(*newNode));
 				clonedNodesSet.set(id.id);
 				result = true;
@@ -1210,6 +1228,8 @@ private bool buildFunctionSubgraph(
 				newGraph.flow.addDataFlow(prevNode, fl.from, *newNode, fl.to);
 			}
 		}
+
+		//log.trace("buildFunctionSubgraph returned.");
 	}
 
 	foreach (i, ref param; *plist) {
@@ -1222,6 +1242,7 @@ private bool buildFunctionSubgraph(
 				if (!result) {
 					auto node = graph.getNode(id);
 					*newNode = newGraph.addNode(node.type);
+					oldToNew[id.id] = *newNode;
 					node.copyTo(newGraph.getNode(*newNode));
 					clonedNodesSet.set(id.id);
 					result = true;
@@ -1449,7 +1470,15 @@ private bool doManualFlow(
 			DynamicBitSet clonedNodesSet;
 			clonedNodesSet.alloc(graph.capacity, &stack.allocRaw);
 			clonedNodesSet.clearAll();
+
+			DynamicBitSet visitedNodesSet;
+			visitedNodesSet.alloc(graph.capacity, &stack.allocRaw);
+			visitedNodesSet.clearAll();
+
+			final oldToNew = stack.allocArray!(GraphNodeId)(graph.capacity);
 			
+
+			//log.trace("doManualFlow -> buildFunctionSubgraph");
 
 			buildFunctionSubgraph(
 				graph,
@@ -1504,6 +1533,8 @@ private bool doManualFlow(
 				},
 
 				&clonedNodesSet,
+				&visitedNodesSet,
+				oldToNew,
 				subgraph,
 				dataNodeId,
 				compNodeId,
