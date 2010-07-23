@@ -446,6 +446,9 @@ void codegen(
 		assert (voutputs.length > 0);
 		voutputs[0].bindingSemantic.name = "POSITION";
 		voutputs[0].bindingSemantic.index = 0;
+	} else {
+		vinputs[0].bindingSemantic.name = "POSITION";
+		vinputs[0].bindingSemantic.index = 0;
 	}
 
 	assignTexcoords(vinputs);

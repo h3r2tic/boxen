@@ -207,14 +207,14 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ resampling
 	- buffer format selection
 
-~	light pre-pass
++	light pre-pass
 	+ create a subgraph for each illumination kernel used by registeded surfaces
 	+ dump each subgraph to Cg code
 	+ generate a large if statement, choosing the appropriate subgraph
 	+ fix the codegen so that shared functions only get emitted once
 	+ wire the outputs of a particular illum kernel to fragment outputs
-	- proper light volumes
-	- z-clamp for light volumes
+	+ proper light volumes
+	+ z-clamp for light volumes
 
 -	editor
 -	shadows

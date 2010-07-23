@@ -6,83 +6,6 @@ CheckerGen = kernel Image(
 };
 
 
-BlurImage = kernel(
-	in uv <type float2>,
-	in offset <type float2>,
-	in img <type Image>,
-	out sample <type float4>
-) {
-    // 1D Gaussian 7 taps coefficients
-    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
-
-	float4 res = 0;
-
-	res += img.sample(uv - offset) * coeff[0];
-	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
-	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
-	res += img.sample(uv) * coeff[3];
-	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
-	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
-	res += img.sample(uv + offset) * coeff[6];
-
-	sample = res;
-};
-
-
-BlurImageOffHalf = kernel(
-	in uv <type float2>,
-	in offset <type float2>,
-	in img <type Image>,
-	out sample <type float4>
-) {
-    // 1D Gaussian 7 taps coefficients
-    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
-
-	float4 res = 0;
-
-	res += img.sample(uv - offset * (3.15 / 3)) * coeff[0];
-	res += img.sample(uv - offset * (2.15 / 3)) * coeff[1];
-	res += img.sample(uv - offset * (1.15 / 3)) * coeff[2];
-	res += img.sample(uv - offset * (0.15 / 3)) * coeff[3] * 0.5;
-	res += img.sample(uv + offset * (0.15 / 3)) * coeff[3] * 0.5;
-	res += img.sample(uv + offset * (1.15 / 3)) * coeff[4];
-	res += img.sample(uv + offset * (2.15 / 3)) * coeff[5];
-	res += img.sample(uv + offset * (3.15 / 3)) * coeff[6];
-
-	sample = res;
-};
-
-
-BlurImage2 = kernel(
-	in uv <type float2>,
-	in offset <type float2>,
-	in img <type Image>,
-	out sample <type float4>
-) {
-	uv += offset / 24;
-
-    // 1D Gaussian 7 taps coefficients
-    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
-
-	float4 res = 0;
-	res += img.sample(uv - offset * (3.2 / 3)) * coeff[0] * 0.5;
-	res += img.sample(uv - offset * (2.7 / 3)) * coeff[0] * 0.5;
-	res += img.sample(uv - offset * (2.2 / 3)) * coeff[1] * 0.5;
-	res += img.sample(uv - offset * (1.7 / 3)) * coeff[1] * 0.5;
-	res += img.sample(uv - offset * (1.2 / 3)) * coeff[2] * 0.5;
-	res += img.sample(uv - offset * (0.7 / 3)) * coeff[2] * 0.5;
-	res += img.sample(uv - offset * (0.2 / 3)) * coeff[3] * 0.5;
-	res += img.sample(uv + offset * (0.2 / 3)) * coeff[3] * 0.5;
-	res += img.sample(uv + offset * (0.7 / 3)) * coeff[4] * 0.5;
-	res += img.sample(uv + offset * (1.2 / 3)) * coeff[4] * 0.5;
-	res += img.sample(uv + offset * (1.7 / 3)) * coeff[5] * 0.5;
-	res += img.sample(uv + offset * (2.2 / 3)) * coeff[5] * 0.5;
-	res += img.sample(uv + offset * (2.7 / 3)) * coeff[6] * 0.5;
-	res += img.sample(uv + offset * (3.2 / 3)) * coeff[6] * 0.5;
-	sample = res;
-};
-
-
 DefaultMeshStructure = graph Structure {
 	node_0 = node {
 		type = input;
@@ -270,6 +193,83 @@ SpecularOnly = kernel Pigment {
 	out_specular = float4(1);
 	out_diffuse = float4(0);
 	out_normal = normal;
+};
+
+
+BlurImage = kernel(
+	in uv <type float2>,
+	in offset <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+
+	res += img.sample(uv - offset) * coeff[0];
+	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
+	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
+	res += img.sample(uv) * coeff[3];
+	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
+	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
+	res += img.sample(uv + offset) * coeff[6];
+
+	sample = res;
+};
+
+
+BlurImageOffHalf = kernel(
+	in uv <type float2>,
+	in offset <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+
+	res += img.sample(uv - offset * (3.15 / 3)) * coeff[0];
+	res += img.sample(uv - offset * (2.15 / 3)) * coeff[1];
+	res += img.sample(uv - offset * (1.15 / 3)) * coeff[2];
+	res += img.sample(uv - offset * (0.15 / 3)) * coeff[3] * 0.5;
+	res += img.sample(uv + offset * (0.15 / 3)) * coeff[3] * 0.5;
+	res += img.sample(uv + offset * (1.15 / 3)) * coeff[4];
+	res += img.sample(uv + offset * (2.15 / 3)) * coeff[5];
+	res += img.sample(uv + offset * (3.15 / 3)) * coeff[6];
+
+	sample = res;
+};
+
+
+BlurImage2 = kernel(
+	in uv <type float2>,
+	in offset <type float2>,
+	in img <type Image>,
+	out sample <type float4>
+) {
+	uv += offset / 24;
+
+    // 1D Gaussian 7 taps coefficients
+    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
+
+	float4 res = 0;
+	res += img.sample(uv - offset * (3.2 / 3)) * coeff[0] * 0.5;
+	res += img.sample(uv - offset * (2.7 / 3)) * coeff[0] * 0.5;
+	res += img.sample(uv - offset * (2.2 / 3)) * coeff[1] * 0.5;
+	res += img.sample(uv - offset * (1.7 / 3)) * coeff[1] * 0.5;
+	res += img.sample(uv - offset * (1.2 / 3)) * coeff[2] * 0.5;
+	res += img.sample(uv - offset * (0.7 / 3)) * coeff[2] * 0.5;
+	res += img.sample(uv - offset * (0.2 / 3)) * coeff[3] * 0.5;
+	res += img.sample(uv + offset * (0.2 / 3)) * coeff[3] * 0.5;
+	res += img.sample(uv + offset * (0.7 / 3)) * coeff[4] * 0.5;
+	res += img.sample(uv + offset * (1.2 / 3)) * coeff[4] * 0.5;
+	res += img.sample(uv + offset * (1.7 / 3)) * coeff[5] * 0.5;
+	res += img.sample(uv + offset * (2.2 / 3)) * coeff[5] * 0.5;
+	res += img.sample(uv + offset * (2.7 / 3)) * coeff[6] * 0.5;
+	res += img.sample(uv + offset * (3.2 / 3)) * coeff[6] * 0.5;
+	sample = res;
 };
 
 

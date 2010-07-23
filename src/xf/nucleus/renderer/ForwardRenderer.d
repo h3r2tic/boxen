@@ -771,10 +771,13 @@ class ForwardRenderer : Renderer {
 		cgSetup.inputNode = structureInfo.input;
 		cgSetup.outputNode = pigmentInfo.output;
 
+		final ctx = CodegenContext(&stack.allocRaw);
+
 		final effect = effectInfo.effect = compileKernelGraph(
 			null,
 			kg,
 			cgSetup,
+			&ctx,
 			_backend,
 			(CodeSink fmt) {
 				fmt(
