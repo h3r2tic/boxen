@@ -36,17 +36,23 @@ enum {
 }
 
 
-void defaultHandleCgError() {
+void defaultHandleCgError(cstring extra = null) {
 	final err = cgGetError();
 	if (err != CG_NO_ERROR) {
-		error("Cg error: {}", fromStringz(cgGetErrorString(err)));
+		if (extra) {
+			error("Cg error: {} ( {} )", fromStringz(cgGetErrorString(err)), extra);
+		} else {
+			error("Cg error: {}", fromStringz(cgGetErrorString(err)));
+		}
 	}
 }
 
 
 
 class CgEffect : Effect {
-	this (cstring name, CGeffect handle, GL gl, EffectCompilationOptions opts) {
+	this (CGcontext	context, EffectSource source, cstring name, CGeffect handle, GL gl, EffectCompilationOptions opts) {
+		this._context = context;
+		this._source = source;
 		this._name = name;
 		this._handle = handle;
 		this.gl[] = gl;
@@ -56,8 +62,11 @@ class CgEffect : Effect {
 
 		_opts = opts;
 		_useGeometryProgram = opts.useGeometryProgram;
-		
-		findCgPrograms();
+
+		if (opts.useGeometryProgram) {
+			assert (opts.geomProgramInput != GeomProgramInput.Invalid);
+			assert (opts.geomProgramOutput != GeomProgramOutput.Invalid);
+		}
 	}
 	
 	
@@ -74,6 +83,20 @@ class CgEffect : Effect {
 		}
 	}
 	
+
+	static CGprofile getGLSLProfileForDomain(GPUDomain domain) {
+		switch (domain) {
+			case GPUDomain.Vertex:
+				return CG_PROFILE_GLSLV;
+			case GPUDomain.Geometry:
+				return CG_PROFILE_GLSLG;
+			case GPUDomain.Fragment:
+				return CG_PROFILE_GLSLF;
+			default:
+				assert (false);
+		}
+	}
+
 	
 	final override void setArraySize(cstring name, size_t size) {
 		final array = _getEffectParameter(name);
@@ -109,6 +132,8 @@ class CgEffect : Effect {
 	
 	
 	final override void setUniformType(cstring name, cstring typeName) {
+		_typeBindings[name.dup] = typeName.dup;
+		
 		final param = _getEffectParameter(name);
 		if (param is null) {
 			error("setUniformType: Invalid parameter '{}'", name);
@@ -183,13 +208,25 @@ class CgEffect : Effect {
 			error("Error copying Cg effect '{}': unknown reason :(", _name);
 		}
 
-		final res = new CgEffect(_name, nh, gl, _opts);
+		final res = new CgEffect(_context, _source, _name, nh, gl, _opts);
 		this.copyToNew(res);
 		return res;
+	}
+
+
+	override void copyToNew(Effect ef_) {
+		// TODO: mem
+		super.copyToNew(ef_);
+		final ef = cast(CgEffect)ef_;
+		foreach (k, v; _typeBindings) {
+			ef._typeBindings[k] = v;
+		}
 	}
 	
 	
 	final override void compile() {
+		findCgPrograms();
+
 		if (_compiled) {
 			error(
 				"Trying to compile an already compiled Cg effect (name='{}').",
@@ -197,12 +234,87 @@ class CgEffect : Effect {
 			);
 		}
 
-		foreach (domain, prog; &iterCgPrograms) {
-			if (!cgIsProgramCompiled(prog)) {
-				auto dname = GPUDomainName(domain);
-				
-				log.info("Compiling a Cg program for the {} domain.", dname);
-				cgCompileProgram(prog);
+		if (!_isGLSL) {
+			foreach (domain, prog; &iterCgPrograms) {
+				if (!cgIsProgramCompiled(prog)) {
+					auto dname = GPUDomainName(domain);
+					
+					log.info("Compiling a Cg program for the {} domain.", dname);
+					cgCompileProgram(prog);
+
+					auto err = cgGetError();
+					switch (err) {
+						case CG_INVALID_PROGRAM_HANDLE_ERROR: {
+							error("Program handle passed to cgCompileProgram was not valid");
+						} break;
+						
+						case CG_COMPILER_ERROR: {
+							error(
+								"Program compilation error for domain {}\n{}",
+								dname,
+								fromStringz(cgGetLastListing(cgGetEffectContext(_handle)))
+							);
+						} break;
+						
+						case CG_NO_ERROR: {
+						} break;
+						
+						default: {
+							error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
+						}
+					}
+					defaultHandleCgError();
+					
+					cgGLLoadProgram(prog);
+					defaultHandleCgError();
+				} else {
+					log.trace("Good, Cg program already compiled.");
+				}
+			}
+		} else {
+			CGprogram combined;
+
+			assert (_vertexProgram !is null);
+			assert (_fragmentProgram !is null);
+
+			defaultHandleCgError();
+			
+			if (_opts.useGeometryProgram) {
+				assert (_geometryProgram !is null);
+				CGprogram[3] progs = void;
+				progs[0] = _vertexProgram;
+				progs[1] = _geometryProgram;
+				progs[2] = _fragmentProgram;
+				_combinedProgram = combined = cgCombinePrograms(3, progs.ptr);
+				defaultHandleCgError();
+				cgDestroyProgram(_vertexProgram);
+				cgDestroyProgram(_geometryProgram);
+				cgDestroyProgram(_fragmentProgram);
+				_vertexProgram = cgGetProgramDomainProgram(combined, 0);
+				_geometryProgram = cgGetProgramDomainProgram(combined, 1);
+				_fragmentProgram = cgGetProgramDomainProgram(combined, 2);
+				assert (_vertexProgram !is null);
+				assert (_geometryProgram !is null);
+				assert (_fragmentProgram !is null);
+			} else {
+				CGprogram[2] progs = void;
+				progs[0] = _vertexProgram;
+				progs[1] = _fragmentProgram;			
+				_combinedProgram = combined = cgCombinePrograms(2, progs.ptr);
+				defaultHandleCgError();
+				cgDestroyProgram(_vertexProgram);
+				cgDestroyProgram(_fragmentProgram);
+				_vertexProgram = cgGetProgramDomainProgram(combined, 0);
+				_fragmentProgram = cgGetProgramDomainProgram(combined, 1);
+				assert (_vertexProgram !is null);
+				assert (_fragmentProgram !is null);
+			}
+
+			defaultHandleCgError();
+
+			if (!cgIsProgramCompiled(combined)) {
+				log.info("Compiling a combined Cg program.");
+				cgCompileProgram(combined);
 
 				auto err = cgGetError();
 				switch (err) {
@@ -212,9 +324,8 @@ class CgEffect : Effect {
 					
 					case CG_COMPILER_ERROR: {
 						error(
-							"Program compilation error for domain {}\n{}",
-							dname,
-							fromStringz(cgGetLastListing(cgGetEffectContext(_handle)))
+							"Program compilation error\n{}",
+							fromStringz(cgGetLastListing(_context))
 						);
 					} break;
 					
@@ -225,14 +336,16 @@ class CgEffect : Effect {
 						error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
 					}
 				}
-				
-				cgGLLoadProgram(prog);
-				defaultHandleCgError();
-			} else {
-				log.trace("Good, Cg program already compiled.");
 			}
+
+			printf("src:\n%s\n", cgGetProgramString(combined, CG_COMPILED_PROGRAM));
+
+			assert (combined !is null);
+			defaultHandleCgError();
+			cgGLLoadProgram(combined);
+			defaultHandleCgError();
 		}
-		
+
 		scope buf = new StackBuffer;
 		auto builder = CgEffectBuilder(buf);
 		
@@ -323,19 +436,183 @@ class CgEffect : Effect {
 
 		defaultHandleCgError();
 	}
-	
+
+	private {
+		import tango.text.convert.Format;
+		import tango.stdc.stdlib : system;
+		import Search = tango.text.Search;
+		import tango.io.device.File;
+	}
 	
 	package {
-		CGprogram extractProgram(char* name, GPUDomain domain) {
-			final profile = getProfileForDomain(domain);
+		CGprogram compileGLSLProgram(char* name, CGprofile profile) {
+			cstring srcFile = "CgEffect.glsl.src";
+			cstring tmpFile = "CgEffect.glsl";
+
+			if (_isGLSL) {
+				cstring sourceString;
+
+				switch (_source._type) {
+					case EffectSource.Type.String: {
+						sourceString = _source.dataString;
+						break;
+					}
+					case EffectSource.Type.FilePath: {
+						sourceString = cast(char[])File.get(_source.dataString);
+						break;
+					}
+					default: assert (false);
+				}
+
+				File.set(srcFile, cast(void[])Search.find("INSTANCEID").replace(sourceString, "FOGCOORD"));
+			} else {
+				switch (_source._type) {
+					case EffectSource.Type.String: {
+						File.set(srcFile, cast(void[])_source.dataString);
+						break;
+					}
+					case EffectSource.Type.FilePath: {
+						srcFile = _source.dataString;
+						break;
+					}
+					default: assert (false);
+				}
+			}
 			
-			final prog = cgCreateProgramFromEffect(
-				_handle,
+			cstring cmdLine = Format("cgc -entry {} -profile {} -o {} ", fromStringz(name), fromStringz(cgGetProfileString(profile)), tmpFile); {
+				uword i = 0;
+				char** optimals = cgGLGetOptimalOptions(profile);
+				if (optimals !is null && *optimals !is null) {
+					cmdLine ~= "-profileopts ";					
+					for (char** it = optimals; *it; ++it, ++i) {
+						if (i != 0) cmdLine ~= ',';
+						cmdLine ~= fromStringz(*it);
+					}
+					cmdLine ~= ' ';
+				}
+
+				foreach (k, v; _typeBindings) {
+					char[256] buf;
+					sprintf(buf.ptr, "-type %.*s=%.*s ", k, v);
+					cmdLine ~= fromStringz(buf.ptr);
+				}
+
+				cmdLine ~= srcFile;
+				cmdLine ~= '\0';
+			}
+			
+			printf("cmdline: %s\n", cmdLine.ptr);
+			system(cmdLine.ptr);
+
+			char** optimals = cgGLGetOptimalOptions(profile);
+			char** options;
+			scope stack = new StackBuffer;
+
+			if (_isGLSL) {
+				File.set(tmpFile, cast(void[])Search.find("gl_FogCoord").replace(cast(char[])File.get(tmpFile), "gl_InstanceID"));
+
+				if (CG_PROFILE_GLSLG == profile) {
+					// Cg as of beta 3 does not generate input and output types for geometry programs
+					
+					uword num = 0;
+					for (char** it = optimals; it && *it; ++it) {
+						++num;
+					}
+
+					options = stack.allocArrayNoInit!(char*)(num+3).ptr;
+					if (num) {
+						memcpy(options, optimals, num * (char*).sizeof);
+					}
+					options[num] = ([
+						cast(char*)null,
+						"POINT",
+						"LINE",
+						"LINE_ADJ",
+						"TRIANGLE",
+						"TRIANGLE_ADJ"
+					][_opts.geomProgramInput]);
+					
+					options[num+1] = ([
+						cast(char*)null,
+						"POINT_OUT",
+						"LINE_OUT",
+						"TRIANGLE_OUT"
+					][_opts.geomProgramOutput]);
+					
+					options[num+2] = null;
+				} else {
+					options = optimals;
+				}
+			}
+
+			for (char** it = options; it && *it; ++it) {
+				printf("opt: %s\n", *it);
+			}
+
+			return cgCreateProgramFromFile(
+				_context,
+				CG_OBJECT,
+				tmpFile.ptr,
 				profile,
-				name,
-				cgGLGetOptimalOptions(profile)
+				"main",
+				options
 			);
+		}
+		
+		
+		CGprogram extractProgram(char* name, GPUDomain domain) {
+			final profile = _opts.useNVExtensions
+				? getProfileForDomain(domain)
+				: getGLSLProfileForDomain(domain);
+
+			_isGLSL =
+				CG_PROFILE_GLSLV == profile
+			||	CG_PROFILE_GLSLF == profile
+			||	CG_PROFILE_GLSLG == profile;
 			
+
+			CGprogram prog;
+
+			switch (_source._type) {
+				case EffectSource.Type.String: {
+					prog = cgCreateProgram(
+						_context,
+						CG_SOURCE,
+						_source.dataStringz,
+						profile,
+						name,
+						cgGLGetOptimalOptions(profile)
+					);
+					break;
+				}
+				case EffectSource.Type.FilePath: {
+					prog = cgCreateProgramFromFile(
+						_context,
+						CG_SOURCE,
+						_source.dataStringz,
+						profile,
+						name,
+						cgGLGetOptimalOptions(profile)
+					);
+					break;
+				}
+				default: assert (false);
+			}
+
+			// cgCombinePrograms does not work with programs loaded via CG_OBJECT
+			// hence this part will need to stay out. Then, perhaps the workaround
+			// for instancing may not be needed later anyway.
+
+			/+final prog =
+				_isGLSL
+				? compileGLSLProgram(name, profile)
+				: cgCreateProgramFromEffect(
+					_handle,
+					profile,
+					name,
+					cgGLGetOptimalOptions(profile)
+				);+/
+
 			auto err = cgGetError();
 			switch (err) {
 				case CG_INVALID_EFFECT_HANDLE_ERROR: {
@@ -353,7 +630,7 @@ class CgEffect : Effect {
 				case CG_COMPILER_ERROR: {
 					error(
 						"Compilation error\n{}",
-						fromStringz(cgGetLastListing(cgGetEffectContext(_handle)))
+						fromStringz(cgGetLastListing(_context))
 					);
 				} break;
 				
@@ -361,7 +638,7 @@ class CgEffect : Effect {
 				case CG_INVALID_PROGRAM_HANDLE_ERROR: {
 					error(
 						"Compilation error\n{}",
-						fromStringz(cgGetLastListing(cgGetEffectContext(_handle)))
+						fromStringz(cgGetLastListing(_context))
 					);
 				}
 				
@@ -376,49 +653,58 @@ class CgEffect : Effect {
 			if (prog is null) {
 				error("Program '{}' not found", fromStringz(name));
 			}
+
+			log.info("Program compiled :o");
 			
 			return prog;
 		}
 		
 
 		CGparameter _getEffectParameter(cstring name) {
-			cstring realName;
-			if (name.startsWith(fromStringz(_domainProgramNames[
-				GPUDomain.Vertex
-			]), &realName)) {
-				if (_vertexProgram is null) {
-					return null;
-				} else {
-					return _getProgramParameter(_vertexProgram, realName[1..$]);
-				}
-			}
-			else if (name.startsWith(fromStringz(_domainProgramNames[
-				GPUDomain.Fragment
-			]), &realName)) {
-				if (_fragmentProgram is null) {
-					return null;
-				} else {
-					return _getProgramParameter(_fragmentProgram, realName[1..$]);
-				}
-			}
-			else if (
-				_opts.useGeometryProgram
-				&& name.startsWith(fromStringz(_domainProgramNames[
-					GPUDomain.Geometry
-				]), &realName))
-			{
-				if (_geometryProgram is null) {
-					return null;
-				} else {
-					return _getProgramParameter(_geometryProgram, realName[1..$]);
-				}
-			}
-			else {
+			if (_isGLSL) {
 				char[256] buf = void;
 				return cgGetNamedEffectParameter(
 					_handle,
 					toStringz(name, buf[])
 				);
+			} else {
+				cstring realName;
+				if (name.startsWith(fromStringz(_domainProgramNames[
+					GPUDomain.Vertex
+				]), &realName)) {
+					if (_vertexProgram is null) {
+						return null;
+					} else {
+						return _getProgramParameter(_vertexProgram, realName[1..$]);
+					}
+				}
+				else if (name.startsWith(fromStringz(_domainProgramNames[
+					GPUDomain.Fragment
+				]), &realName)) {
+					if (_fragmentProgram is null) {
+						return null;
+					} else {
+						return _getProgramParameter(_fragmentProgram, realName[1..$]);
+					}
+				}
+				else if (
+					_opts.useGeometryProgram
+					&& name.startsWith(fromStringz(_domainProgramNames[
+						GPUDomain.Geometry
+					]), &realName))
+				{
+					if (_geometryProgram is null) {
+						return null;
+					} else {
+						return _getProgramParameter(_geometryProgram, realName[1..$]);
+					}
+				} else {
+					char[256] buf = void;
+					return cgGetNamedEffectParameter(
+						_handle,
+						toStringz(name, buf[])
+					);
+				}
 			}
 		}
 		
@@ -474,7 +760,16 @@ class CgEffect : Effect {
 		
 		// return true if processed and should be skipped from normal params
 		private bool processSpecialParam(CGparameter p) {
-			if (0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))) {
+			if (
+				0 == strcmp("INSTANCEID", cgGetParameterSemantic(p))
+
+				// This is here because the GLSL support uses a massive kludge
+				// for instancing, since Cg as of version 3 beta does not support
+				// the INSTANCEID semantic in GLSL profiles. It's changed to the
+				// supported FOGCOORD and then changed back in the generated
+				// GLSL code, which is subsequently fed back into Cg
+			||	0 == strcmp("FOGCOORD", cgGetParameterSemantic(p))
+			) {
 				return true;
 			} else {
 				return false;
@@ -499,6 +794,9 @@ class CgEffect : Effect {
 				log.trace("Found a shared effect param: '{}'.", fromStringz(name));
 
 				bool usedAnywhere = false;
+
+				CGparameter target = p;
+				assert (target !is null);
 				
 				foreach (domain, prog; &iterCgPrograms) {
 					if (auto p2 = cgGetNamedProgramParameter(
@@ -521,8 +819,8 @@ class CgEffect : Effect {
 						
 						usedAnywhere = true;
 
-						if (CG_PARAMETERCLASS_SAMPLER == cgGetParameterClass(p)) {
-							p = p2;
+						if (CG_PARAMETERCLASS_SAMPLER == cgGetParameterClass(target)) {
+							target = p2;
 							log.warn(
 								"Restricting a shared sampler parameter to just one"
 								" domain ({}), since Cg can't handle it othewise :(",
@@ -531,7 +829,7 @@ class CgEffect : Effect {
 							break;
 						}
 
-						cgConnectParameter(p, p2);
+						cgConnectParameter(target, p2);
 						auto err = cgGetError();
 						switch (err) {
 							case CG_PARAMETERS_DO_NOT_MATCH_ERROR: {
@@ -558,7 +856,7 @@ class CgEffect : Effect {
 				}
 				
 				if (usedAnywhere) {
-					builder.registerFoundParam(p, true, GPUDomain.init);
+					builder.registerFoundParam(target, true, GPUDomain.init);
 				}
 			}
 		}
@@ -601,12 +899,18 @@ class CgEffect : Effect {
 		}
 		
 				
-		cstring		_name;
-		CGeffect	_handle;
-		CGprogram	_vertexProgram;
-		CGprogram	_geometryProgram;
-		CGprogram	_fragmentProgram;
-		GL			gl;
+		CGcontext		_context;
+		EffectSource	_source;
+		cstring			_name;
+		CGeffect		_handle;
+		CGprogram		_combinedProgram;
+		CGprogram		_vertexProgram;
+		CGprogram		_geometryProgram;
+		CGprogram		_fragmentProgram;
+		bool			_isGLSL;
+		GL				gl;
+
+		cstring[cstring]	_typeBindings;
 
 		EffectCompilationOptions	_opts;
 	}
@@ -1237,7 +1541,7 @@ struct CgEffectBuilder {
 			effect.instanceDataSize
 		);
 	}
-	
+
 	
 	struct UniformScope {
 		RegisteredParam*	uniforms = null;

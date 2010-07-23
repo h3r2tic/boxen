@@ -441,6 +441,13 @@ void codegen(
 		}
 	}
 
+	// lolglsl
+	if (wantGeometryShader) {
+		assert (voutputs.length > 0);
+		voutputs[0].bindingSemantic.name = "POSITION";
+		voutputs[0].bindingSemantic.index = 0;
+	}
+
 	assignTexcoords(vinputs);
 	assignTexcoords(voutputs);
 	assignTexcoords(goutputs);

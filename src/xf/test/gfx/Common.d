@@ -448,7 +448,7 @@ Mesh[] loadHsfModel(
 
 			// Create a uniform buffer for the environment and bind it to the effect
 			
-			if (!envUB.valid) {
+			if (!envUB.valid && effect.uniformBuffers.length > 0) {
 				final envUBData = &effect.uniformBuffers[0];
 				final envUBSize = envUBData.totalSize;
 				
@@ -506,7 +506,7 @@ Mesh[] loadHsfModel(
 			// Finalize the mesh
 			
 			mesh.effectInstance = efInst;
-			//mesh.numInstances = numInstances;
+			mesh.numInstances = numInstances;
 		}
 		
 		auto mesh = &meshes[meshIdx];
@@ -843,7 +843,7 @@ Mesh[] loadModel(
 
 			// Create a uniform buffer for the environment and bind it to the effect
 			
-			if (!envUB.valid) {
+			if (!envUB.valid && effect.uniformBuffers.length > 0) {
 				final envUBData = &effect.uniformBuffers[0];
 				final envUBSize = envUBData.totalSize;
 				

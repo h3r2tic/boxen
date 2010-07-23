@@ -57,8 +57,23 @@ private {
 		xf.gfx.Log : log = gfxLog, error = gfxError;
 		
 	static import tango.core.Array;
+	import Search = tango.text.Search;
 }
 
+
+
+struct RendererCaps {
+	static RendererCaps opCall(GL gl) {
+		cstring ext = fromStringz(gl.GetString(EXTENSIONS));
+		RendererCaps caps;
+		caps.depthClamp = Search.find("GL_ARB_depth_clamp").within(ext);
+		caps.isNV = 0 == strcmp("NVIDIA Corporation", gl.GetString(VENDOR));
+		return caps;
+	}
+	
+	bool	isNV;
+	bool	depthClamp;
+}
 
 
 class Renderer : IRenderer {
@@ -100,6 +115,9 @@ class Renderer : IRenderer {
 			
 		RenderState
 			_nextState;
+
+		RendererCaps
+			_caps;
 	}
 
 
@@ -140,6 +158,8 @@ class Renderer : IRenderer {
 		use (_window) in (GL gl) {
 			_cgCompiler = new CgCompiler(gl);
 			this.gl[] = gl;
+
+			_caps = RendererCaps(gl);
 
 			gl.Enable(FRAMEBUFFER_SRGB_EXT);
 		};
@@ -259,6 +279,10 @@ class Renderer : IRenderer {
 	
 	
 	Effect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts) {
+		if (_caps.isNV) {
+			opts.useNVExtensions = true;
+		}
+
 		final effect = _cgCompiler.createEffect(name, source, opts);
 		effect._idxInRenderer = _effects.length;
 		effect.renderOrdinal = _effects.length;
@@ -1421,9 +1445,13 @@ class Renderer : IRenderer {
 	
 	// implements IRenderer
 	void render(RenderList* renderList, RenderCallbacks rcb) {
+		//log.trace("render at {}", __LINE__);
 		renderList.computeMatrices();
+		//log.trace("render at {}", __LINE__);
 		bindCurrentFramebuffer();
+		//log.trace("render at {}", __LINE__);
 		setupRenderStates(_nextState);
+		//log.trace("render at {}", __LINE__);
 
 		foreach (eidx, ref renderBin; renderList.bins) {
 			if (eidx >= _effects.length) {
@@ -1435,7 +1463,9 @@ class Renderer : IRenderer {
 				);
 			}
 			
+		//log.trace("render at {}", __LINE__);
 			render(_effects[eidx].effect, &renderBin.objects, &rcb);
+		//log.trace("render at {}", __LINE__);
 		}
 	}
 
@@ -1452,6 +1482,8 @@ class Renderer : IRenderer {
 	
 	
 	void setupRenderStates(RenderState s) {
+		//log.trace("render at {}", __LINE__);
+
 		if (s.depth.enabled) {
 			gl.Enable(DEPTH_TEST);
 			gl.DepthMask(s.depth.writeMask);
@@ -1459,6 +1491,8 @@ class Renderer : IRenderer {
 			gl.Disable(DEPTH_TEST);
 		}
 		
+		//log.trace("render at {}", __LINE__);
+
 		if (s.blend.enabled) {
 			gl.Enable(BLEND);
 			gl.BlendFunc(enumToGL(s.blend.src), enumToGL(s.blend.dst));
@@ -1466,6 +1500,8 @@ class Renderer : IRenderer {
 			gl.Disable(BLEND);
 		}
 		
+		//log.trace("render at {}", __LINE__);
+
 		if (s.cullFace.enabled && (s.cullFace.front || s.cullFace.back)) {
 			gl.Enable(CULL_FACE);
 			if (s.cullFace.front && s.cullFace.back) {
@@ -1479,6 +1515,8 @@ class Renderer : IRenderer {
 			gl.Disable(CULL_FACE);
 		}
 
+		//log.trace("render at {}", __LINE__);
+
 		if (s.scissor.enabled) {
 			final sc = &s.scissor;
 			gl.Scissor(sc.x, sc.y, sc.width, sc.height);
@@ -1487,25 +1525,37 @@ class Renderer : IRenderer {
 			gl.Disable(SCISSOR_TEST);
 		}
 
+		//log.trace("render at {}", __LINE__);
+
 		if (s.sRGB) {
 			gl.Enable(FRAMEBUFFER_SRGB_EXT);
 		} else {
 			gl.Disable(FRAMEBUFFER_SRGB_EXT);
 		}
 
-		if (s.depthClamp) {
-			gl.Enable(DEPTH_CLAMP);
-		} else {
-			gl.Disable(DEPTH_CLAMP);
+		//log.trace("render at {}", __LINE__);
+
+		if (_caps.depthClamp) {
+			if (s.depthClamp) {
+				gl.Enable(DEPTH_CLAMP);
+			} else {
+				gl.Disable(DEPTH_CLAMP);
+			}
 		}
+
+		//log.trace("render at {}", __LINE__);
 
 		{
 			final v = &s.viewport;
 			gl.Viewport(v.x, v.y, v.width, v.height);
 		}
 
+		//log.trace("render at {}", __LINE__);
+
 		gl.LineWidth(s.line.width);
 		gl.PointSize(s.point.size);
+
+		//log.trace("render at {}", __LINE__);
 	}
 	
 	
@@ -1517,6 +1567,8 @@ class Renderer : IRenderer {
 		if (0 == objects.length) {
 			return;
 		}
+
+		//log.trace("render at {}", __LINE__);
 		
 		void** prevUniformValues = null;
 		
@@ -1528,6 +1580,7 @@ class Renderer : IRenderer {
 				bool minimize,
 				EffectInstanceImpl* efInst
 		) {
+		//log.trace("render at {}", __LINE__);
 			defaultHandleCgError();
 			
 			final up = &paramGroup.params;
@@ -1539,11 +1592,13 @@ class Renderer : IRenderer {
 				uniformValues =
 					efInst.getUniformPtrsDataPtr();
 			}
+		//log.trace("render at {}", __LINE__);
 			
 			scope (success) if (minimize) {
 				prevUniformValues =
 					efInst.getUniformPtrsDataPtr();
 			}
+		//log.trace("render at {}", __LINE__);
 			
 			for (int ui = 0; ui < numUniforms; ++ui) {
 				if (base[ui] is null) {
@@ -1562,7 +1617,9 @@ class Renderer : IRenderer {
 					}
 				}+/
 				
+		//log.trace("render at {}", __LINE__);
 				if (typeid(Texture) is up.typeInfo[ui]) {
+		//log.trace("render at {}", __LINE__);
 					final tex = cast(Texture*)(base[ui]);
 					if (tex.valid) {
 						// log.trace("cgGLSetTextureParameter({})", tex.getApiHandle());
@@ -1570,6 +1627,7 @@ class Renderer : IRenderer {
 						
 						final prev = cgGLGetTextureParameter(cgParam);
 						final cur = tex.getApiHandle();
+		//log.trace("render at {}", __LINE__);
 						
 						if (cur != prev) {
 							cgGLSetTextureParameter(
@@ -1578,43 +1636,54 @@ class Renderer : IRenderer {
 							);
 							++_stats.numTextureChanges;
 						}
+		//log.trace("render at {}", __LINE__);
 						
 						cgGLEnableTextureParameter(cgParam);
 						defaultHandleCgError();
+		//log.trace("render at {}", __LINE__);
 					}
+		//log.trace("render at {}", __LINE__);
 				} else switch (up.baseType[ui]) {
+		//log.trace("render at {}", __LINE__);
 					case ParamBaseType.Float: {
-						auto func = &cgSetParameter1fv;
+						auto func = cgSetParameter1fv;
+		//log.trace("render at {}", __LINE__);
 						switch (up.numFields[ui]) {
 							case 1: break;
 							case 2: {
-								func = &cgSetParameter2fv;
+								func = cgSetParameter2fv;
 							} break;
 							case 3: {
-								func = &cgSetParameter3fv;
+								func = cgSetParameter3fv;
 							} break;
 							case 4: {
-								func = &cgSetParameter4fv;
+								func = cgSetParameter4fv;
 							} break;
 							default: {
-								func = &cgSetMatrixParameterfc;
+								func = cgSetMatrixParameterfc;
 							}
 						}
 						
+		//log.trace("render at {}", __LINE__);
 						func(
 							cast(CGparameter)up.param[ui],
 							cast(float*)(base[ui])
 						);
+		//log.trace("render at {}", __LINE__);
 						defaultHandleCgError();
+		//log.trace("render at {}", __LINE__);
 					} break;
 
 					case ParamBaseType.Int: {
+		//log.trace("render at {}", __LINE__);
 						cgSetParameterValueic(
 							cast(CGparameter)up.param[ui],
 							up.numFields[ui],
 							cast(int*)(base[ui])
 						);
+		//log.trace("render at {}", __LINE__);
 						defaultHandleCgError();
+		//log.trace("render at {}", __LINE__);
 					} break;
 					
 					default: assert (false);
@@ -1622,40 +1691,49 @@ class Renderer : IRenderer {
 			}
 		}
 		
+		//log.trace("render at {}", __LINE__);
 		
 		void unsetObjUniforms(
 				void** base,
 				RawUniformParamGroup* paramGroup
 		) {
+		//log.trace("render at {}", __LINE__);
 			final up = &paramGroup.params;
 			final numUniforms = up.length;
 
+		//log.trace("render at {}", __LINE__);
 			for (int ui = 0; ui < numUniforms; ++ui) {
 				//final unifDS = up.dataSlice[ui];
 				
 				if (typeid(Texture) is up.typeInfo[ui]) {
 					final tex = cast(Texture*)(base[ui]);
 					if (tex.valid) {
+		//log.trace("render at {}", __LINE__);
 						cgGLDisableTextureParameter(
 							cast(CGparameter)up.param[ui]
 						);
+		//log.trace("render at {}", __LINE__);
 					}
 				}
 			}
 		}
 		
+		//log.trace("render at {}", __LINE__);
 		
 		void setObjVaryings(EffectInstanceImpl* obj) {
 			defaultHandleCgError();
 
+		//log.trace("render at {}", __LINE__);
 			if (!obj._varyingParamsDirty) {
 				return;
 			} else {
 				obj._varyingParamsDirty = false;
 			}
+		//log.trace("render at {}", __LINE__);
 			
 			final vp = &effect.varyingParams;
 			final numVaryings = vp.length;
+		//log.trace("render at {}", __LINE__);
 			
 			auto varyingData = obj.getVaryingParamDataPtr();
 			final varyingParams = obj._proto.varyingParams.param;
@@ -1663,13 +1741,16 @@ class Renderer : IRenderer {
 
 			for (uword idx = 0; idx < numVaryings; ++idx) {
 				final data = varyingData + idx;
+		//log.trace("render at {}", __LINE__);
 				
 				final buf = data.buffer;
 				final attr = data.attrib;
 
 				assert (buf !is null, varyingNames[idx] ~ " is null.");
 				assert (attr !is null, varyingNames[idx] ~ " is null.");
+				assert (buf.valid, varyingNames[idx] ~ " has an invalid buffer bound.");
 
+		//log.trace("render at {}", __LINE__);
 				GLenum glType = void;
 				switch (attr.scalarType) {
 					case attr.ScalarType.Float: {
@@ -1680,15 +1761,21 @@ class Renderer : IRenderer {
 						error("Unhandled scalar type: {}", attr.scalarType);
 					}
 				}
+		//log.trace("render at {}", __LINE__);
 				
 				final param
 					= cast(CGparameter)varyingParams[idx];
 
+		//log.trace("render at {}", __LINE__);
 				buf.bind();
-				defaultHandleCgError();
+		//log.trace("render at {}", __LINE__);
+				defaultHandleCgError(varyingNames[idx]);
+		//log.trace("render at {}", __LINE__);
 
 				cgGLEnableClientState(param);
-				defaultHandleCgError();
+		//log.trace("render at {}", __LINE__);
+				defaultHandleCgError(varyingNames[idx]);
+		//log.trace("render at {}", __LINE__);
 
 				cgGLSetParameterPointer(
 					param,
@@ -1697,13 +1784,19 @@ class Renderer : IRenderer {
 					attr.stride,
 					cast(void*)attr.offset
 				);
-				defaultHandleCgError();
+		//log.trace("render at {}", __LINE__);
+				defaultHandleCgError(varyingNames[idx]);
+		//log.trace("render at {}", __LINE__);
 			}
+		//log.trace("render at {}", __LINE__);
 		}
 
 			
+		//log.trace("render at {}", __LINE__);
 		effect.bind();
+		//log.trace("render at {}", __LINE__);
 		scope (exit) effect.unbind();
+		//log.trace("render at {}", __LINE__);
 		
 		setObjUniforms(
 			effect.getUniformPtrsDataPtr(),
@@ -1711,6 +1804,7 @@ class Renderer : IRenderer {
 			false,
 			effectInstances[objects.eiRenderOrdinal[0]]
 		);
+		//log.trace("render at {}", __LINE__);
 		
 		final instUnifParams = effect.objectInstanceUniformParams();
 		final modelToWorldIndex	= instUnifParams.getUniformIndex("modelToWorld");
@@ -1719,10 +1813,12 @@ class Renderer : IRenderer {
 
 		bool minimizeStateChanges = false;		// <-
 		
+		//log.trace("render at {}", __LINE__);
 		for (uword objIdx = 0; objIdx < objects.length; ++objIdx) {
 			final obj = &objects.renderable[objIdx];
 			final efInst = effectInstances[objects.eiRenderOrdinal[objIdx]];
 			
+		//log.trace("render at {}", __LINE__);
 			if (	0 == obj.indexData.numIndices
 				&&	0 == (obj.flags & RenderableData.Flags.NoIndices)
 			) {
@@ -1732,17 +1828,21 @@ class Renderer : IRenderer {
 					efInst.getUniformPtrsDataPtr();
 			}
 			
+		//log.trace("render at {}", __LINE__);
 			setObjUniforms(
 				efInst.getUniformPtrsDataPtr(),
 				efInst.getUniformParamGroup(),
 				minimizeStateChanges,			// <-
 				efInst
 			);
+		//log.trace("render at {}", __LINE__);
 			
 			minimizeStateChanges = true;		// <-
+		//log.trace("render at {}", __LINE__);
 			
 			efInst._vertexArray.bind();
 			setObjVaryings(efInst);
+		//log.trace("render at {}", __LINE__);
 
 			if (0 == (obj.flags & RenderableData.Flags.NoIndices)) {
 			//if (0 == obj.flags & obj.flags.IndexBufferBound) {
@@ -1750,20 +1850,25 @@ class Renderer : IRenderer {
 					continue;
 				}
 
+		//log.trace("render at {}", __LINE__);
 				//obj.flags |= obj.flags.IndexBufferBound;
 				obj.indexData.indexBuffer.bind();
+		//log.trace("render at {}", __LINE__);
 			//}
 			}
 			
+		//log.trace("render at {}", __LINE__);
 
 			// model <-> world matrices are special and always set for every object
 
+		//log.trace("render at {}", __LINE__);
 			if (modelToWorldIndex != UniformParamIndex.init) {
 				cgSetMatrixParameterfc(
 					cast(CGparameter)instUnifParams.params.param[modelToWorldIndex],
 					cast(float*)(objects.modelToWorld + objIdx)
 				);
 			}
+		//log.trace("render at {}", __LINE__);
 			
 			if (worldToModelIndex != UniformParamIndex.init) {
 				cgSetMatrixParameterfc(
@@ -1771,6 +1876,7 @@ class Renderer : IRenderer {
 					cast(float*)(objects.worldToModel + objIdx)
 				);
 			}
+		//log.trace("render at {}", __LINE__);
 
 			if (modelScaleIndex != UniformParamIndex.init) {
 				cgSetParameter3fv(
@@ -1778,30 +1884,37 @@ class Renderer : IRenderer {
 					obj.scale.ptr
 				);
 			}
+		//log.trace("render at {}", __LINE__);
 			
 			// ----
 
 			if (rcb.beforeRenderObject !is null) {
 				rcb.beforeRenderObject(effect, objIdx);
 			}
+		//log.trace("render at {}", __LINE__);
 
 			// ----
 
 
 			if ((obj.flags & RenderableData.Flags.NoIndices) != 0) {
+		//log.trace("render at {}", __LINE__);
 				if (1 == obj.numInstances) {
+		//log.trace("render at {}", __LINE__);
 					gl.DrawArrays(
 						enumToGL(obj.indexData.topology),
 						obj.indexData.indexOffset,
 						obj.indexData.numIndices
 					);
+		//log.trace("render at {}", __LINE__);
 				} else {
+		//log.trace("render at {}", __LINE__);
 					gl.DrawArraysInstanced(
 						enumToGL(obj.indexData.topology),
 						obj.indexData.indexOffset,
 						obj.indexData.numIndices,
 						obj.numInstances
 					);
+		//log.trace("render at {}", __LINE__);
 				}
 			} else {
 				size_t offset = obj.indexData.indexOffset
@@ -1813,6 +1926,7 @@ class Renderer : IRenderer {
 					if (	obj.indexData.minIndex != 0
 						||	obj.indexData.maxIndex != typeof(obj.indexData.maxIndex).max)
 					{
+		//log.trace("render at {}", __LINE__);
 						gl.DrawRangeElements(
 							enumToGL(obj.indexData.topology),
 							obj.indexData.minIndex,
@@ -1821,15 +1935,19 @@ class Renderer : IRenderer {
 							enumToGL(obj.indexData.indexBuffer.indexType),
 							cast(void*)offset
 						);
+		//log.trace("render at {}", __LINE__);
 					} else {
+		//log.trace("render at {}", __LINE__);
 						gl.DrawElements(
 							enumToGL(obj.indexData.topology),
 							obj.indexData.numIndices,
 							enumToGL(obj.indexData.indexBuffer.indexType),
 							cast(void*)offset
 						);
+		//log.trace("render at {}", __LINE__);
 					}
 				} else if (obj.numInstances > 1) {
+		//log.trace("render at {}", __LINE__);
 					gl.DrawElementsInstanced(
 						enumToGL(obj.indexData.topology),
 						obj.indexData.numIndices,
@@ -1837,15 +1955,19 @@ class Renderer : IRenderer {
 						cast(void*)offset,
 						obj.numInstances
 					);
+		//log.trace("render at {}", __LINE__);
 				}
 			}
+		//log.trace("render at {}", __LINE__);
 			
 			// prevent state leaking
 			unsetObjUniforms(
 				efInst.getUniformPtrsDataPtr(),
 				efInst.getUniformParamGroup()
 			);
+		//log.trace("render at {}", __LINE__);
 		}
+		//log.trace("render at {}", __LINE__);
 	}
 }
 
