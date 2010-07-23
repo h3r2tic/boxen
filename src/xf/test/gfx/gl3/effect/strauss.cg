@@ -72,7 +72,7 @@ void StraussBRDF(
 	
 	specular_s = max(0.0f, specular_s);
 	specular_d = max(0.0f, specular_d);
-	diffuse_ = max(float3(0, 0, 0), diffuse_);
+	diffuse_ = max(0.0, diffuse_);
 
 	// Composite the final result, ensuring
 	// the values are >= 0.0f yields better results. Some

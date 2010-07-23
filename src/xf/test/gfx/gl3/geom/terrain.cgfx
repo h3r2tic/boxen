@@ -2,11 +2,6 @@ struct vertInput {
 	float3 position : POSITION;
 };
 
-struct fragInput {
-	float3 position : TEXCOORD0;
-	float2 texCoord : TEXCOORD1;
-};
-
 
 float3x4 modelToWorld;
 float4x4 worldToView <
@@ -21,12 +16,13 @@ float3 terrainScale;
 
 void VertexProgram(
 	in vertInput input,
-	out fragInput output
+	out float3 position : POSITION,
+	out float2 texCoord : TEXCOORD1
 ) {
-	output.texCoord = input.position.xz;
+	texCoord = input.position.xz;
 	input.position *= terrainScale;
-	float3 worldPos = mul(modelToWorld, float4(input.position, 1));
-	output.position = worldPos;
+	float3 worldPos = mul(modelToWorld, float4(input.position, 1.0)).xyz;
+	position = worldPos;
 }
 
 
@@ -35,9 +31,9 @@ void VertexProgram(
 	out_attr0 : TEXCOORD0, \
 	out_attr1 : TEXCOORD1 \
 )
-TRIANGLE
+TRIANGLE TRIANGLE_OUT
 void GeometryProgram(
-	AttribArray<float3> attr0 : TEXCOORD0,
+	AttribArray<float3> attr0 : POSITION,
 	AttribArray<float2> attr1 : TEXCOORD1
 ) {
 	float4 out_position;
@@ -73,17 +69,18 @@ void GeometryProgram(
 
 
 void FragmentProgram(
-	in fragInput input,
+	in float3 position : TEXCOORD0,
+	in float2 texCoord : TEXCOORD1,
 	uniform sampler2D albedoTex,
 	uniform sampler2D detailTex,
 	uniform sampler2D lightTex,
 	out float4 output : COLOR
 ) {
-	float2 tc = float2(input.texCoord.x, 1.0f - input.texCoord.y);
+	float2 tc = float2(texCoord.x, 1.0f - texCoord.y);
 	output = tex2D(albedoTex, tc);
 	output *= saturate(tex2D(detailTex, tc * 10.f) + 0.3f);
 	output += (tex2D(detailTex, tc * 33.3f) - 0.5f) * 0.7f;
 	output *= tex2D(lightTex, tc);
 	output *= 6.0f;
-	//output = float4(1, 1, 1, 1) * (input.position.y - 0.5f) / 3;
+	//output = float4(1, 1, 1, 1) * (position.y - 0.5f) / 3;
 }

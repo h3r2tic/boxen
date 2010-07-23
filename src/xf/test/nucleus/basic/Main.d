@@ -543,6 +543,14 @@ class TestApp : GfxApp {
 }
 
 
+import tango.stdc.stdio : getchar;
+
 void main(cstring[] args) {
-	(new TestApp).run;
+	try {
+		(new TestApp).run;
+	} catch (Exception e) {
+		e.writeOut((cstring s) { Stdout(s); });
+		Stdout.newline();
+		getchar();
+	}
 }

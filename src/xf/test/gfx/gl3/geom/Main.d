@@ -169,6 +169,8 @@ class TestApp : GfxApp {
 
 		EffectCompilationOptions opts;
 		opts.useGeometryProgram = true;
+		opts.geomProgramInput = GeomProgramInput.Triangle;
+		opts.geomProgramOutput = GeomProgramOutput.Triangle;
 
 		terrainEffect = renderer.createEffect(
 			"terrain",

@@ -182,8 +182,19 @@ class TestApp : GfxApp {
 				0.02f
 			);+/
 
-
 			meshes ~= loadHsfModel(
+				renderer,
+				effect,
+				`C:\coding\projects\boxen\src\xf\test\media\mesh\tank.hsf`,
+				envUB,
+				CoordSys(vec3fi[0, -1, -0.5]),
+				tm,
+				0.01f,
+				10
+			);
+
+
+			/+meshes ~= loadHsfModel(
 				renderer,
 				effect,
 				`C:\Users\h3r3tic\Documents\3dsMax\export\foo.hsf`,
@@ -235,7 +246,7 @@ class TestApp : GfxApp {
 				CoordSys(vec3fi[-1.5, -1, -2.5]),
 				tm,
 				0.01f
-			);
+			);+/
 		}
 		
 		
@@ -289,7 +300,7 @@ class TestApp : GfxApp {
 		lightPulse += timeDelta * 10.f;
 
 		// update the shared environment params
-		{
+		if (effect.uniformBuffers.length > 0) {
 			final envUBData = &effect.uniformBuffers[0];
 			
 			/+size_t lightScaleOffset = envUBData.params.dataSlice[

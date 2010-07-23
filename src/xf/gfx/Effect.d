@@ -46,8 +46,29 @@ enum ParamBaseType : ushort {
 }
 
 
+enum GeomProgramInput {
+	Invalid,
+	Point,
+	Line,
+	LineAdj,
+	Triangle,
+	TriangleAdj
+}
+
+
+enum GeomProgramOutput {
+	Invalid,
+	Point,
+	Line,
+	Triangle
+}
+
+
 struct EffectCompilationOptions {
-	bool useGeometryProgram = false;
+	bool				useGeometryProgram = false;
+	GeomProgramInput	geomProgramInput;
+	GeomProgramOutput	geomProgramOutput;
+	bool				useNVExtensions = false;
 }
 
 
@@ -592,6 +613,11 @@ struct EffectSource {
 
 	static EffectSource stringz(char* s) {
 		return EffectSource(fromStringz(s), s, Type.String);
+	}
+
+	cstring dataString() {
+		assert (_data !is null);
+		return _data;
 	}
 
 	char* dataStringz() {

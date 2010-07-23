@@ -9,6 +9,7 @@ public {
 private {
 	import GLTypes = xf.gfx.api.gl3.GLTypes;
 	import tango.stdc.stringz;
+	import tango.stdc.stdio;
 }
 
 
@@ -61,10 +62,14 @@ void loadPlatformFunctions_(void* function(char*) loadFuncFromLib) {
 }
 
 
+//import tango.stdc.string;
 public void* getExtensionFuncPtr(char* name) {
+//	if (0 == strcmp("wglChoosePixelFormatARB", name)) return null;
 	auto foo = wglGetProcAddress(name);
-	assert (foo, `wglGetProcAddress couldnt load: '` ~ fromStringz(name) ~ `'`);
+	printf("getExtensionFuncPtr(%s) -> %p\n", name, foo);
 	return foo;
+	//assert (foo, `wglGetProcAddress couldnt load: '` ~ fromStringz(name) ~ `'`);
+	//return foo;
 }
 
 

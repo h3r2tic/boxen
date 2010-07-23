@@ -25,6 +25,7 @@ struct Mesh {
 	CoordSys		coordSys = CoordSys.identity;
 	EffectInstance	effectInstance;
 	IndexData		indexData;
+	uint			numInstances = 1;
 	
 
 	Effect effect() {
@@ -58,7 +59,7 @@ struct Mesh {
 		rd.coordSys = coordSys;
 		rd.scale = vec3.one;
 		rd.indexData = indexData;
-		rd.numInstances = 1;
+		rd.numInstances = numInstances;
 		rd.flags = RenderableData.Flags.None;
 	}
 }

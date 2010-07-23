@@ -681,1391 +681,1978 @@ void loadCgGLFunctions_(void* function(char*) loadFuncFromLib) {
 
 
 
-
-
-
-
-CGenum cgSetLockingPolicy(ParameterTupleOf!(fp_cgSetLockingPolicy) params__) {
-	return checkedCall("cgSetLockingPolicy", fp_cgSetLockingPolicy, params__);
-}
-CGenum cgGetLockingPolicy(ParameterTupleOf!(fp_cgGetLockingPolicy) params__) {
-	return checkedCall("cgGetLockingPolicy", fp_cgGetLockingPolicy, params__);
-}
-CGenum cgSetSemanticCasePolicy(ParameterTupleOf!(fp_cgSetSemanticCasePolicy) params__) {
-	return checkedCall("cgSetSemanticCasePolicy", fp_cgSetSemanticCasePolicy, params__);
-}
-CGenum cgGetSemanticCasePolicy(ParameterTupleOf!(fp_cgGetSemanticCasePolicy) params__) {
-	return checkedCall("cgGetSemanticCasePolicy", fp_cgGetSemanticCasePolicy, params__);
-}
-
-/*** Context functions ***/
-
-CGcontext cgCreateContext(ParameterTupleOf!(fp_cgCreateContext) params__) {
-	return checkedCall("cgCreateContext", fp_cgCreateContext, params__);
-} 
-void cgDestroyContext(ParameterTupleOf!(fp_cgDestroyContext) params__) {
-	return checkedCall("cgDestroyContext", fp_cgDestroyContext, params__);
-} 
-CGbool cgIsContext(ParameterTupleOf!(fp_cgIsContext) params__) {
-	return checkedCall("cgIsContext", fp_cgIsContext, params__);
-}
-char * cgGetLastListing(ParameterTupleOf!(fp_cgGetLastListing) params__) {
-	return checkedCall("cgGetLastListing", fp_cgGetLastListing, params__);
-}
-void cgSetLastListing(ParameterTupleOf!(fp_cgSetLastListing) params__) {
-	return checkedCall("cgSetLastListing", fp_cgSetLastListing, params__);
-}
-void cgSetAutoCompile(ParameterTupleOf!(fp_cgSetAutoCompile) params__) {
-	return checkedCall("cgSetAutoCompile", fp_cgSetAutoCompile, params__);
-}
-CGenum cgGetAutoCompile(ParameterTupleOf!(fp_cgGetAutoCompile) params__) {
-	return checkedCall("cgGetAutoCompile", fp_cgGetAutoCompile, params__);
-}
-void cgSetParameterSettingMode(ParameterTupleOf!(fp_cgSetParameterSettingMode) params__) {
-	return checkedCall("cgSetParameterSettingMode", fp_cgSetParameterSettingMode, params__);
-}
-CGenum cgGetParameterSettingMode(ParameterTupleOf!(fp_cgGetParameterSettingMode) params__) {
-	return checkedCall("cgGetParameterSettingMode", fp_cgGetParameterSettingMode, params__);
-}
-
-/*** Program functions ***/
-
-CGprogram cgCreateProgram(ParameterTupleOf!(fp_cgCreateProgram) params__) {
-	return checkedCall("cgCreateProgram", fp_cgCreateProgram, params__);
-}
-CGprogram cgCreateProgramFromFile(ParameterTupleOf!(fp_cgCreateProgramFromFile) params__) {
-	return checkedCall("cgCreateProgramFromFile", fp_cgCreateProgramFromFile, params__);
-}
-CGprogram cgCopyProgram(ParameterTupleOf!(fp_cgCopyProgram) params__) {
-	return checkedCall("cgCopyProgram", fp_cgCopyProgram, params__);
-} 
-void cgDestroyProgram(ParameterTupleOf!(fp_cgDestroyProgram) params__) {
-	return checkedCall("cgDestroyProgram", fp_cgDestroyProgram, params__);
-} 
-
-CGprogram cgGetFirstProgram(ParameterTupleOf!(fp_cgGetFirstProgram) params__) {
-	return checkedCall("cgGetFirstProgram", fp_cgGetFirstProgram, params__);
-}
-CGprogram cgGetNextProgram(ParameterTupleOf!(fp_cgGetNextProgram) params__) {
-	return checkedCall("cgGetNextProgram", fp_cgGetNextProgram, params__);
-}
-CGcontext cgGetProgramContext(ParameterTupleOf!(fp_cgGetProgramContext) params__) {
-	return checkedCall("cgGetProgramContext", fp_cgGetProgramContext, params__);
-}
-CGbool cgIsProgram(ParameterTupleOf!(fp_cgIsProgram) params__) {
-	return checkedCall("cgIsProgram", fp_cgIsProgram, params__);
-} 
-
-void cgCompileProgram(ParameterTupleOf!(fp_cgCompileProgram) params__) {
-	return checkedCall("cgCompileProgram", fp_cgCompileProgram, params__);
-} 
-CGbool cgIsProgramCompiled(ParameterTupleOf!(fp_cgIsProgramCompiled) params__) {
-	return checkedCall("cgIsProgramCompiled", fp_cgIsProgramCompiled, params__);
-} 
-char * cgGetProgramString(ParameterTupleOf!(fp_cgGetProgramString) params__) {
-	return checkedCall("cgGetProgramString", fp_cgGetProgramString, params__);
-} 
-CGprofile cgGetProgramProfile(ParameterTupleOf!(fp_cgGetProgramProfile) params__) {
-	return checkedCall("cgGetProgramProfile", fp_cgGetProgramProfile, params__);
-} 
-char ** cgGetProgramOptions(ParameterTupleOf!(fp_cgGetProgramOptions) params__) {
-	return checkedCall("cgGetProgramOptions", fp_cgGetProgramOptions, params__);
-}
-void cgSetProgramProfile(ParameterTupleOf!(fp_cgSetProgramProfile) params__) {
-	return checkedCall("cgSetProgramProfile", fp_cgSetProgramProfile, params__);
-}
-CGenum cgGetProgramInput(ParameterTupleOf!(fp_cgGetProgramInput) params__) {
-	return checkedCall("cgGetProgramInput", fp_cgGetProgramInput, params__);
-}
-CGenum cgGetProgramOutput(ParameterTupleOf!(fp_cgGetProgramOutput) params__) {
-	return checkedCall("cgGetProgramOutput", fp_cgGetProgramOutput, params__);
-}
-void cgSetPassProgramParameters(ParameterTupleOf!(fp_cgSetPassProgramParameters) params__) {
-	return checkedCall("cgSetPassProgramParameters", fp_cgSetPassProgramParameters, params__);
-}
-void cgUpdateProgramParameters(ParameterTupleOf!(fp_cgUpdateProgramParameters) params__) {
-	return checkedCall("cgUpdateProgramParameters", fp_cgUpdateProgramParameters, params__);
-}
-
-/*** Parameter functions ***/
-
-CGparameter cgCreateParameter(ParameterTupleOf!(fp_cgCreateParameter) params__) {
-	return checkedCall("cgCreateParameter", fp_cgCreateParameter, params__);
-}
-CGparameter cgCreateParameterArray(ParameterTupleOf!(fp_cgCreateParameterArray) params__) {
-	return checkedCall("cgCreateParameterArray", fp_cgCreateParameterArray, params__);
-}
-CGparameter cgCreateParameterMultiDimArray(ParameterTupleOf!(fp_cgCreateParameterMultiDimArray) params__) {
-	return checkedCall("cgCreateParameterMultiDimArray", fp_cgCreateParameterMultiDimArray, params__);
-}
-void cgDestroyParameter(ParameterTupleOf!(fp_cgDestroyParameter) params__) {
-	return checkedCall("cgDestroyParameter", fp_cgDestroyParameter, params__);
-}
-void cgConnectParameter(ParameterTupleOf!(fp_cgConnectParameter) params__) {
-	return checkedCall("cgConnectParameter", fp_cgConnectParameter, params__);
-}
-void cgDisconnectParameter(ParameterTupleOf!(fp_cgDisconnectParameter) params__) {
-	return checkedCall("cgDisconnectParameter", fp_cgDisconnectParameter, params__);
-}
-CGparameter cgGetConnectedParameter(ParameterTupleOf!(fp_cgGetConnectedParameter) params__) {
-	return checkedCall("cgGetConnectedParameter", fp_cgGetConnectedParameter, params__);
-}
-
-int cgGetNumConnectedToParameters(ParameterTupleOf!(fp_cgGetNumConnectedToParameters) params__) {
-	return checkedCall("cgGetNumConnectedToParameters", fp_cgGetNumConnectedToParameters, params__);
-}
-CGparameter cgGetConnectedToParameter(ParameterTupleOf!(fp_cgGetConnectedToParameter) params__) {
-	return checkedCall("cgGetConnectedToParameter", fp_cgGetConnectedToParameter, params__);
-}
-
-CGparameter cgGetNamedParameter(ParameterTupleOf!(fp_cgGetNamedParameter) params__) {
-	return checkedCall("cgGetNamedParameter", fp_cgGetNamedParameter, params__);
-}
-CGparameter cgGetNamedProgramParameter(ParameterTupleOf!(fp_cgGetNamedProgramParameter) params__) {
-	return checkedCall("cgGetNamedProgramParameter", fp_cgGetNamedProgramParameter, params__);
-}
-
-CGparameter cgGetFirstParameter(ParameterTupleOf!(fp_cgGetFirstParameter) params__) {
-	return checkedCall("cgGetFirstParameter", fp_cgGetFirstParameter, params__);
-}
-CGparameter cgGetNextParameter(ParameterTupleOf!(fp_cgGetNextParameter) params__) {
-	return checkedCall("cgGetNextParameter", fp_cgGetNextParameter, params__);
-}
-CGparameter cgGetFirstLeafParameter(ParameterTupleOf!(fp_cgGetFirstLeafParameter) params__) {
-	return checkedCall("cgGetFirstLeafParameter", fp_cgGetFirstLeafParameter, params__);
-}
-CGparameter cgGetNextLeafParameter(ParameterTupleOf!(fp_cgGetNextLeafParameter) params__) {
-	return checkedCall("cgGetNextLeafParameter", fp_cgGetNextLeafParameter, params__);
-}
-
-CGparameter cgGetFirstStructParameter(ParameterTupleOf!(fp_cgGetFirstStructParameter) params__) {
-	return checkedCall("cgGetFirstStructParameter", fp_cgGetFirstStructParameter, params__);
-}
-CGparameter cgGetNamedStructParameter(ParameterTupleOf!(fp_cgGetNamedStructParameter) params__) {
-	return checkedCall("cgGetNamedStructParameter", fp_cgGetNamedStructParameter, params__);
-}
-
-CGparameter cgGetFirstDependentParameter(ParameterTupleOf!(fp_cgGetFirstDependentParameter) params__) {
-	return checkedCall("cgGetFirstDependentParameter", fp_cgGetFirstDependentParameter, params__);
-}
-
-CGparameter cgGetArrayParameter(ParameterTupleOf!(fp_cgGetArrayParameter) params__) {
-	return checkedCall("cgGetArrayParameter", fp_cgGetArrayParameter, params__);
-}
-int cgGetArrayDimension(ParameterTupleOf!(fp_cgGetArrayDimension) params__) {
-	return checkedCall("cgGetArrayDimension", fp_cgGetArrayDimension, params__);
-}
-CGtype cgGetArrayType(ParameterTupleOf!(fp_cgGetArrayType) params__) {
-	return checkedCall("cgGetArrayType", fp_cgGetArrayType, params__);
-}
-int cgGetArraySize(ParameterTupleOf!(fp_cgGetArraySize) params__) {
-	return checkedCall("cgGetArraySize", fp_cgGetArraySize, params__);
-}
-int cgGetArrayTotalSize(ParameterTupleOf!(fp_cgGetArrayTotalSize) params__) {
-	return checkedCall("cgGetArrayTotalSize", fp_cgGetArrayTotalSize, params__);
-}
-void cgSetArraySize(ParameterTupleOf!(fp_cgSetArraySize) params__) {
-	return checkedCall("cgSetArraySize", fp_cgSetArraySize, params__);
-}
-void cgSetMultiDimArraySize(ParameterTupleOf!(fp_cgSetMultiDimArraySize) params__) {
-	return checkedCall("cgSetMultiDimArraySize", fp_cgSetMultiDimArraySize, params__);
-}
-
-CGprogram cgGetParameterProgram(ParameterTupleOf!(fp_cgGetParameterProgram) params__) {
-	return checkedCall("cgGetParameterProgram", fp_cgGetParameterProgram, params__);
-}
-CGcontext cgGetParameterContext(ParameterTupleOf!(fp_cgGetParameterContext) params__) {
-	return checkedCall("cgGetParameterContext", fp_cgGetParameterContext, params__);
-}
-CGbool cgIsParameter(ParameterTupleOf!(fp_cgIsParameter) params__) {
-	return checkedCall("cgIsParameter", fp_cgIsParameter, params__);
-}
-char * cgGetParameterName(ParameterTupleOf!(fp_cgGetParameterName) params__) {
-	return checkedCall("cgGetParameterName", fp_cgGetParameterName, params__);
-}
-CGtype cgGetParameterType(ParameterTupleOf!(fp_cgGetParameterType) params__) {
-	return checkedCall("cgGetParameterType", fp_cgGetParameterType, params__);
-}
-CGtype cgGetParameterBaseType(ParameterTupleOf!(fp_cgGetParameterBaseType) params__) {
-	return checkedCall("cgGetParameterBaseType", fp_cgGetParameterBaseType, params__);
-}
-CGparameterclass cgGetParameterClass(ParameterTupleOf!(fp_cgGetParameterClass) params__) {
-	return checkedCall("cgGetParameterClass", fp_cgGetParameterClass, params__);
-}
-char * cgGetParameterClassString(ParameterTupleOf!(fp_cgGetParameterClassString) params__) {
-	return checkedCall("cgGetParameterClassString", fp_cgGetParameterClassString, params__);
-}
-int cgGetParameterRows(ParameterTupleOf!(fp_cgGetParameterRows) params__) {
-	return checkedCall("cgGetParameterRows", fp_cgGetParameterRows, params__);
-}
-int cgGetParameterColumns(ParameterTupleOf!(fp_cgGetParameterColumns) params__) {
-	return checkedCall("cgGetParameterColumns", fp_cgGetParameterColumns, params__);
-}
-CGtype cgGetParameterNamedType(ParameterTupleOf!(fp_cgGetParameterNamedType) params__) {
-	return checkedCall("cgGetParameterNamedType", fp_cgGetParameterNamedType, params__);
-}
-char * cgGetParameterSemantic(ParameterTupleOf!(fp_cgGetParameterSemantic) params__) {
-	return checkedCall("cgGetParameterSemantic", fp_cgGetParameterSemantic, params__);
-}
-CGresource cgGetParameterResource(ParameterTupleOf!(fp_cgGetParameterResource) params__) {
-	return checkedCall("cgGetParameterResource", fp_cgGetParameterResource, params__);
-}
-CGresource cgGetParameterBaseResource(ParameterTupleOf!(fp_cgGetParameterBaseResource) params__) {
-	return checkedCall("cgGetParameterBaseResource", fp_cgGetParameterBaseResource, params__);
-}
-uint cgGetParameterResourceIndex(ParameterTupleOf!(fp_cgGetParameterResourceIndex) params__) {
-	return checkedCall("cgGetParameterResourceIndex", fp_cgGetParameterResourceIndex, params__);
-}
-CGenum cgGetParameterVariability(ParameterTupleOf!(fp_cgGetParameterVariability) params__) {
-	return checkedCall("cgGetParameterVariability", fp_cgGetParameterVariability, params__);
-}
-CGenum cgGetParameterDirection(ParameterTupleOf!(fp_cgGetParameterDirection) params__) {
-	return checkedCall("cgGetParameterDirection", fp_cgGetParameterDirection, params__);
-}
-CGbool cgIsParameterReferenced(ParameterTupleOf!(fp_cgIsParameterReferenced) params__) {
-	return checkedCall("cgIsParameterReferenced", fp_cgIsParameterReferenced, params__);
-}
-CGbool cgIsParameterUsed(ParameterTupleOf!(fp_cgIsParameterUsed) params__) {
-	return checkedCall("cgIsParameterUsed", fp_cgIsParameterUsed, params__);
-}
-double * cgGetParameterValues(ParameterTupleOf!(fp_cgGetParameterValues) params__) {
-	return checkedCall("cgGetParameterValues", fp_cgGetParameterValues, params__);
-}
-void cgSetParameterValuedr(ParameterTupleOf!(fp_cgSetParameterValuedr) params__) {
-	return checkedCall("cgSetParameterValuedr", fp_cgSetParameterValuedr, params__);
-}
-void cgSetParameterValuedc(ParameterTupleOf!(fp_cgSetParameterValuedc) params__) {
-	return checkedCall("cgSetParameterValuedc", fp_cgSetParameterValuedc, params__);
-}
-void cgSetParameterValuefr(ParameterTupleOf!(fp_cgSetParameterValuefr) params__) {
-	return checkedCall("cgSetParameterValuefr", fp_cgSetParameterValuefr, params__);
-}
-void cgSetParameterValuefc(ParameterTupleOf!(fp_cgSetParameterValuefc) params__) {
-	return checkedCall("cgSetParameterValuefc", fp_cgSetParameterValuefc, params__);
-}
-void cgSetParameterValueir(ParameterTupleOf!(fp_cgSetParameterValueir) params__) {
-	return checkedCall("cgSetParameterValueir", fp_cgSetParameterValueir, params__);
-}
-void cgSetParameterValueic(ParameterTupleOf!(fp_cgSetParameterValueic) params__) {
-	return checkedCall("cgSetParameterValueic", fp_cgSetParameterValueic, params__);
-}
-int cgGetParameterValuedr(ParameterTupleOf!(fp_cgGetParameterValuedr) params__) {
-	return checkedCall("cgGetParameterValuedr", fp_cgGetParameterValuedr, params__);
-}
-int cgGetParameterValuedc(ParameterTupleOf!(fp_cgGetParameterValuedc) params__) {
-	return checkedCall("cgGetParameterValuedc", fp_cgGetParameterValuedc, params__);
-}
-int cgGetParameterValuefr(ParameterTupleOf!(fp_cgGetParameterValuefr) params__) {
-	return checkedCall("cgGetParameterValuefr", fp_cgGetParameterValuefr, params__);
-}
-int cgGetParameterValuefc(ParameterTupleOf!(fp_cgGetParameterValuefc) params__) {
-	return checkedCall("cgGetParameterValuefc", fp_cgGetParameterValuefc, params__);
-}
-int cgGetParameterValueir(ParameterTupleOf!(fp_cgGetParameterValueir) params__) {
-	return checkedCall("cgGetParameterValueir", fp_cgGetParameterValueir, params__);
-}
-int cgGetParameterValueic(ParameterTupleOf!(fp_cgGetParameterValueic) params__) {
-	return checkedCall("cgGetParameterValueic", fp_cgGetParameterValueic, params__);
-}
-char * cgGetStringParameterValue(ParameterTupleOf!(fp_cgGetStringParameterValue) params__) {
-	return checkedCall("cgGetStringParameterValue", fp_cgGetStringParameterValue, params__);
-}
-void cgSetStringParameterValue(ParameterTupleOf!(fp_cgSetStringParameterValue) params__) {
-	return checkedCall("cgSetStringParameterValue", fp_cgSetStringParameterValue, params__);
-}
-
-int cgGetParameterOrdinalNumber(ParameterTupleOf!(fp_cgGetParameterOrdinalNumber) params__) {
-	return checkedCall("cgGetParameterOrdinalNumber", fp_cgGetParameterOrdinalNumber, params__);
-}
-CGbool cgIsParameterGlobal(ParameterTupleOf!(fp_cgIsParameterGlobal) params__) {
-	return checkedCall("cgIsParameterGlobal", fp_cgIsParameterGlobal, params__);
-}
-int cgGetParameterIndex(ParameterTupleOf!(fp_cgGetParameterIndex) params__) {
-	return checkedCall("cgGetParameterIndex", fp_cgGetParameterIndex, params__);
-}
-
-void cgSetParameterVariability(ParameterTupleOf!(fp_cgSetParameterVariability) params__) {
-	return checkedCall("cgSetParameterVariability", fp_cgSetParameterVariability, params__);
-}
-void cgSetParameterSemantic(ParameterTupleOf!(fp_cgSetParameterSemantic) params__) {
-	return checkedCall("cgSetParameterSemantic", fp_cgSetParameterSemantic, params__);
-}
-
-void cgSetParameter1f(ParameterTupleOf!(fp_cgSetParameter1f) params__) {
-	return checkedCall("cgSetParameter1f", fp_cgSetParameter1f, params__);
-}
-void cgSetParameter2f(ParameterTupleOf!(fp_cgSetParameter2f) params__) {
-	return checkedCall("cgSetParameter2f", fp_cgSetParameter2f, params__);
-}
-void cgSetParameter3f(ParameterTupleOf!(fp_cgSetParameter3f) params__) {
-	return checkedCall("cgSetParameter3f", fp_cgSetParameter3f, params__);
-}
-void cgSetParameter4f(ParameterTupleOf!(fp_cgSetParameter4f) params__) {
-	return checkedCall("cgSetParameter4f", fp_cgSetParameter4f, params__);
-}
-void cgSetParameter1d(ParameterTupleOf!(fp_cgSetParameter1d) params__) {
-	return checkedCall("cgSetParameter1d", fp_cgSetParameter1d, params__);
-}
-void cgSetParameter2d(ParameterTupleOf!(fp_cgSetParameter2d) params__) {
-	return checkedCall("cgSetParameter2d", fp_cgSetParameter2d, params__);
-}
-void cgSetParameter3d(ParameterTupleOf!(fp_cgSetParameter3d) params__) {
-	return checkedCall("cgSetParameter3d", fp_cgSetParameter3d, params__);
-}
-void cgSetParameter4d(ParameterTupleOf!(fp_cgSetParameter4d) params__) {
-	return checkedCall("cgSetParameter4d", fp_cgSetParameter4d, params__);
-}
-void cgSetParameter1i(ParameterTupleOf!(fp_cgSetParameter1i) params__) {
-	return checkedCall("cgSetParameter1i", fp_cgSetParameter1i, params__);
-}
-void cgSetParameter2i(ParameterTupleOf!(fp_cgSetParameter2i) params__) {
-	return checkedCall("cgSetParameter2i", fp_cgSetParameter2i, params__);
-}
-void cgSetParameter3i(ParameterTupleOf!(fp_cgSetParameter3i) params__) {
-	return checkedCall("cgSetParameter3i", fp_cgSetParameter3i, params__);
-}
-void cgSetParameter4i(ParameterTupleOf!(fp_cgSetParameter4i) params__) {
-	return checkedCall("cgSetParameter4i", fp_cgSetParameter4i, params__);
-}
-
-void cgSetParameter1iv(ParameterTupleOf!(fp_cgSetParameter1iv) params__) {
-	return checkedCall("cgSetParameter1iv", fp_cgSetParameter1iv, params__);
-}
-void cgSetParameter2iv(ParameterTupleOf!(fp_cgSetParameter2iv) params__) {
-	return checkedCall("cgSetParameter2iv", fp_cgSetParameter2iv, params__);
-}
-void cgSetParameter3iv(ParameterTupleOf!(fp_cgSetParameter3iv) params__) {
-	return checkedCall("cgSetParameter3iv", fp_cgSetParameter3iv, params__);
-}
-void cgSetParameter4iv(ParameterTupleOf!(fp_cgSetParameter4iv) params__) {
-	return checkedCall("cgSetParameter4iv", fp_cgSetParameter4iv, params__);
-}
-void cgSetParameter1fv(ParameterTupleOf!(fp_cgSetParameter1fv) params__) {
-	return checkedCall("cgSetParameter1fv", fp_cgSetParameter1fv, params__);
-}
-void cgSetParameter2fv(ParameterTupleOf!(fp_cgSetParameter2fv) params__) {
-	return checkedCall("cgSetParameter2fv", fp_cgSetParameter2fv, params__);
-}
-void cgSetParameter3fv(ParameterTupleOf!(fp_cgSetParameter3fv) params__) {
-	return checkedCall("cgSetParameter3fv", fp_cgSetParameter3fv, params__);
-}
-void cgSetParameter4fv(ParameterTupleOf!(fp_cgSetParameter4fv) params__) {
-	return checkedCall("cgSetParameter4fv", fp_cgSetParameter4fv, params__);
-}
-void cgSetParameter1dv(ParameterTupleOf!(fp_cgSetParameter1dv) params__) {
-	return checkedCall("cgSetParameter1dv", fp_cgSetParameter1dv, params__);
-}
-void cgSetParameter2dv(ParameterTupleOf!(fp_cgSetParameter2dv) params__) {
-	return checkedCall("cgSetParameter2dv", fp_cgSetParameter2dv, params__);
-}
-void cgSetParameter3dv(ParameterTupleOf!(fp_cgSetParameter3dv) params__) {
-	return checkedCall("cgSetParameter3dv", fp_cgSetParameter3dv, params__);
-}
-void cgSetParameter4dv(ParameterTupleOf!(fp_cgSetParameter4dv) params__) {
-	return checkedCall("cgSetParameter4dv", fp_cgSetParameter4dv, params__);
-}
-
-void cgSetMatrixParameterir(ParameterTupleOf!(fp_cgSetMatrixParameterir) params__) {
-	return checkedCall("cgSetMatrixParameterir", fp_cgSetMatrixParameterir, params__);
-}
-void cgSetMatrixParameterdr(ParameterTupleOf!(fp_cgSetMatrixParameterdr) params__) {
-	return checkedCall("cgSetMatrixParameterdr", fp_cgSetMatrixParameterdr, params__);
-}
-void cgSetMatrixParameterfr(ParameterTupleOf!(fp_cgSetMatrixParameterfr) params__) {
-	return checkedCall("cgSetMatrixParameterfr", fp_cgSetMatrixParameterfr, params__);
-}
-void cgSetMatrixParameteric(ParameterTupleOf!(fp_cgSetMatrixParameteric) params__) {
-	return checkedCall("cgSetMatrixParameteric", fp_cgSetMatrixParameteric, params__);
-}
-void cgSetMatrixParameterdc(ParameterTupleOf!(fp_cgSetMatrixParameterdc) params__) {
-	return checkedCall("cgSetMatrixParameterdc", fp_cgSetMatrixParameterdc, params__);
-}
-void cgSetMatrixParameterfc(ParameterTupleOf!(fp_cgSetMatrixParameterfc) params__) {
-	return checkedCall("cgSetMatrixParameterfc", fp_cgSetMatrixParameterfc, params__);
-}
-
-void cgGetMatrixParameterir(ParameterTupleOf!(fp_cgGetMatrixParameterir) params__) {
-	return checkedCall("cgGetMatrixParameterir", fp_cgGetMatrixParameterir, params__);
-}
-void cgGetMatrixParameterdr(ParameterTupleOf!(fp_cgGetMatrixParameterdr) params__) {
-	return checkedCall("cgGetMatrixParameterdr", fp_cgGetMatrixParameterdr, params__);
-}
-void cgGetMatrixParameterfr(ParameterTupleOf!(fp_cgGetMatrixParameterfr) params__) {
-	return checkedCall("cgGetMatrixParameterfr", fp_cgGetMatrixParameterfr, params__);
-}
-void cgGetMatrixParameteric(ParameterTupleOf!(fp_cgGetMatrixParameteric) params__) {
-	return checkedCall("cgGetMatrixParameteric", fp_cgGetMatrixParameteric, params__);
-}
-void cgGetMatrixParameterdc(ParameterTupleOf!(fp_cgGetMatrixParameterdc) params__) {
-	return checkedCall("cgGetMatrixParameterdc", fp_cgGetMatrixParameterdc, params__);
-}
-void cgGetMatrixParameterfc(ParameterTupleOf!(fp_cgGetMatrixParameterfc) params__) {
-	return checkedCall("cgGetMatrixParameterfc", fp_cgGetMatrixParameterfc, params__);
-}
-
-CGparameter cgGetNamedSubParameter(ParameterTupleOf!(fp_cgGetNamedSubParameter) params__) {
-	return checkedCall("cgGetNamedSubParameter", fp_cgGetNamedSubParameter, params__);
-}
-
-/*** Type Functions ***/
-
-char * cgGetTypeString(ParameterTupleOf!(fp_cgGetTypeString) params__) {
-	return checkedCall("cgGetTypeString", fp_cgGetTypeString, params__);
-}
-CGtype cgGetType(ParameterTupleOf!(fp_cgGetType) params__) {
-	return checkedCall("cgGetType", fp_cgGetType, params__);
-}
-
-CGtype cgGetNamedUserType(ParameterTupleOf!(fp_cgGetNamedUserType) params__) {
-	return checkedCall("cgGetNamedUserType", fp_cgGetNamedUserType, params__);
-}
-
-int cgGetNumUserTypes(ParameterTupleOf!(fp_cgGetNumUserTypes) params__) {
-	return checkedCall("cgGetNumUserTypes", fp_cgGetNumUserTypes, params__);
-}
-CGtype cgGetUserType(ParameterTupleOf!(fp_cgGetUserType) params__) {
-	return checkedCall("cgGetUserType", fp_cgGetUserType, params__);
-}
-
-int cgGetNumParentTypes(ParameterTupleOf!(fp_cgGetNumParentTypes) params__) {
-	return checkedCall("cgGetNumParentTypes", fp_cgGetNumParentTypes, params__);
-}
-CGtype cgGetParentType(ParameterTupleOf!(fp_cgGetParentType) params__) {
-	return checkedCall("cgGetParentType", fp_cgGetParentType, params__);
-}
-
-CGbool cgIsParentType(ParameterTupleOf!(fp_cgIsParentType) params__) {
-	return checkedCall("cgIsParentType", fp_cgIsParentType, params__);
-}
-CGbool cgIsInterfaceType(ParameterTupleOf!(fp_cgIsInterfaceType) params__) {
-	return checkedCall("cgIsInterfaceType", fp_cgIsInterfaceType, params__);
-}
-
-/*** Resource Functions ***/
-
-char * cgGetResourceString(ParameterTupleOf!(fp_cgGetResourceString) params__) {
-	return checkedCall("cgGetResourceString", fp_cgGetResourceString, params__);
-}
-CGresource cgGetResource(ParameterTupleOf!(fp_cgGetResource) params__) {
-	return checkedCall("cgGetResource", fp_cgGetResource, params__);
-}
-
-/*** Enum Functions ***/
-
-char * cgGetEnumString(ParameterTupleOf!(fp_cgGetEnumString) params__) {
-	return checkedCall("cgGetEnumString", fp_cgGetEnumString, params__);
-}
-CGenum cgGetEnum(ParameterTupleOf!(fp_cgGetEnum) params__) {
-	return checkedCall("cgGetEnum", fp_cgGetEnum, params__);
-}
-
-/*** Profile Functions ***/
-
-char * cgGetProfileString(ParameterTupleOf!(fp_cgGetProfileString) params__) {
-	return checkedCall("cgGetProfileString", fp_cgGetProfileString, params__);
-}
-CGprofile cgGetProfile(ParameterTupleOf!(fp_cgGetProfile) params__) {
-	return checkedCall("cgGetProfile", fp_cgGetProfile, params__);
-}
-
-/*** Error Functions ***/
-
-CGerror cgGetError(ParameterTupleOf!(fp_cgGetError) params__) {
-	return checkedCall("cgGetError", fp_cgGetError, params__);
-}
-CGerror cgGetFirstError(ParameterTupleOf!(fp_cgGetFirstError) params__) {
-	return checkedCall("cgGetFirstError", fp_cgGetFirstError, params__);
-}
-char * cgGetErrorString(ParameterTupleOf!(fp_cgGetErrorString) params__) {
-	return checkedCall("cgGetErrorString", fp_cgGetErrorString, params__);
-}
-char * cgGetLastErrorString(ParameterTupleOf!(fp_cgGetLastErrorString) params__) {
-	return checkedCall("cgGetLastErrorString", fp_cgGetLastErrorString, params__);
-}
-void cgSetErrorCallback(ParameterTupleOf!(fp_cgSetErrorCallback) params__) {
-	return checkedCall("cgSetErrorCallback", fp_cgSetErrorCallback, params__);
-}
-CGerrorCallbackFunc cgGetErrorCallback(ParameterTupleOf!(fp_cgGetErrorCallback) params__) {
-	return checkedCall("cgGetErrorCallback", fp_cgGetErrorCallback, params__);
-}
-void cgSetErrorHandler(ParameterTupleOf!(fp_cgSetErrorHandler) params__) {
-	return checkedCall("cgSetErrorHandler", fp_cgSetErrorHandler, params__);
-}
-CGerrorHandlerFunc cgGetErrorHandler(ParameterTupleOf!(fp_cgGetErrorHandler) params__) {
-	return checkedCall("cgGetErrorHandler", fp_cgGetErrorHandler, params__);
-}
-
-/*** Misc Functions ***/
-
-char * cgGetString(ParameterTupleOf!(fp_cgGetString) params__) {
-	return checkedCall("cgGetString", fp_cgGetString, params__);
-}
-
-
-/*** CgFX Functions ***/
-
-CGeffect cgCreateEffect(ParameterTupleOf!(fp_cgCreateEffect) params__) {
-	return checkedCall("cgCreateEffect", fp_cgCreateEffect, params__);
-}
-CGeffect cgCreateEffectFromFile(ParameterTupleOf!(fp_cgCreateEffectFromFile) params__) {
-	return checkedCall("cgCreateEffectFromFile", fp_cgCreateEffectFromFile, params__);
-}
-CGeffect cgCopyEffect(ParameterTupleOf!(fp_cgCopyEffect) params__) {
-	return checkedCall("cgCopyEffect", fp_cgCopyEffect, params__);
-} 
-void cgDestroyEffect(ParameterTupleOf!(fp_cgDestroyEffect) params__) {
-	return checkedCall("cgDestroyEffect", fp_cgDestroyEffect, params__);
-}
-CGcontext cgGetEffectContext(ParameterTupleOf!(fp_cgGetEffectContext) params__) {
-	return checkedCall("cgGetEffectContext", fp_cgGetEffectContext, params__);
-}
-CGbool cgIsEffect(ParameterTupleOf!(fp_cgIsEffect) params__) {
-	return checkedCall("cgIsEffect", fp_cgIsEffect, params__);
-}
-
-CGeffect cgGetFirstEffect(ParameterTupleOf!(fp_cgGetFirstEffect) params__) {
-	return checkedCall("cgGetFirstEffect", fp_cgGetFirstEffect, params__);
-}
-CGeffect cgGetNextEffect(ParameterTupleOf!(fp_cgGetNextEffect) params__) {
-	return checkedCall("cgGetNextEffect", fp_cgGetNextEffect, params__);
-}
-
-CGprogram cgCreateProgramFromEffect(ParameterTupleOf!(fp_cgCreateProgramFromEffect) params__) {
-	return checkedCall("cgCreateProgramFromEffect", fp_cgCreateProgramFromEffect, params__);
-}
-
-CGtechnique cgGetFirstTechnique(ParameterTupleOf!(fp_cgGetFirstTechnique) params__) {
-	return checkedCall("cgGetFirstTechnique", fp_cgGetFirstTechnique, params__);
-}
-CGtechnique cgGetNextTechnique(ParameterTupleOf!(fp_cgGetNextTechnique) params__) {
-	return checkedCall("cgGetNextTechnique", fp_cgGetNextTechnique, params__);
-}
-CGtechnique cgGetNamedTechnique(ParameterTupleOf!(fp_cgGetNamedTechnique) params__) {
-	return checkedCall("cgGetNamedTechnique", fp_cgGetNamedTechnique, params__);
-}
-char * cgGetTechniqueName(ParameterTupleOf!(fp_cgGetTechniqueName) params__) {
-	return checkedCall("cgGetTechniqueName", fp_cgGetTechniqueName, params__);
-}
-CGbool cgIsTechnique(ParameterTupleOf!(fp_cgIsTechnique) params__) {
-	return checkedCall("cgIsTechnique", fp_cgIsTechnique, params__);
-}
-CGbool cgValidateTechnique(ParameterTupleOf!(fp_cgValidateTechnique) params__) {
-	return checkedCall("cgValidateTechnique", fp_cgValidateTechnique, params__);
-}
-CGbool cgIsTechniqueValidated(ParameterTupleOf!(fp_cgIsTechniqueValidated) params__) {
-	return checkedCall("cgIsTechniqueValidated", fp_cgIsTechniqueValidated, params__);
-}
-CGeffect cgGetTechniqueEffect(ParameterTupleOf!(fp_cgGetTechniqueEffect) params__) {
-	return checkedCall("cgGetTechniqueEffect", fp_cgGetTechniqueEffect, params__);
-}
-
-CGpass cgGetFirstPass(ParameterTupleOf!(fp_cgGetFirstPass) params__) {
-	return checkedCall("cgGetFirstPass", fp_cgGetFirstPass, params__);
-}
-CGpass cgGetNamedPass(ParameterTupleOf!(fp_cgGetNamedPass) params__) {
-	return checkedCall("cgGetNamedPass", fp_cgGetNamedPass, params__);
-}
-CGpass cgGetNextPass(ParameterTupleOf!(fp_cgGetNextPass) params__) {
-	return checkedCall("cgGetNextPass", fp_cgGetNextPass, params__);
-}
-CGbool cgIsPass(ParameterTupleOf!(fp_cgIsPass) params__) {
-	return checkedCall("cgIsPass", fp_cgIsPass, params__);
-}
-char * cgGetPassName(ParameterTupleOf!(fp_cgGetPassName) params__) {
-	return checkedCall("cgGetPassName", fp_cgGetPassName, params__);
-} 
-CGtechnique cgGetPassTechnique(ParameterTupleOf!(fp_cgGetPassTechnique) params__) {
-	return checkedCall("cgGetPassTechnique", fp_cgGetPassTechnique, params__);
-}
-
-void cgSetPassState(ParameterTupleOf!(fp_cgSetPassState) params__) {
-	return checkedCall("cgSetPassState", fp_cgSetPassState, params__);
-}
-void cgResetPassState(ParameterTupleOf!(fp_cgResetPassState) params__) {
-	return checkedCall("cgResetPassState", fp_cgResetPassState, params__);
-}
-
-CGstateassignment cgGetFirstStateAssignment(ParameterTupleOf!(fp_cgGetFirstStateAssignment) params__) {
-	return checkedCall("cgGetFirstStateAssignment", fp_cgGetFirstStateAssignment, params__);
-}
-CGstateassignment cgGetNamedStateAssignment(ParameterTupleOf!(fp_cgGetNamedStateAssignment) params__) {
-	return checkedCall("cgGetNamedStateAssignment", fp_cgGetNamedStateAssignment, params__);
-}
-CGstateassignment cgGetNextStateAssignment(ParameterTupleOf!(fp_cgGetNextStateAssignment) params__) {
-	return checkedCall("cgGetNextStateAssignment", fp_cgGetNextStateAssignment, params__);
-}
-CGbool cgIsStateAssignment(ParameterTupleOf!(fp_cgIsStateAssignment) params__) {
-	return checkedCall("cgIsStateAssignment", fp_cgIsStateAssignment, params__);
-}
-CGbool cgCallStateSetCallback(ParameterTupleOf!(fp_cgCallStateSetCallback) params__) {
-	return checkedCall("cgCallStateSetCallback", fp_cgCallStateSetCallback, params__);
-}
-CGbool cgCallStateValidateCallback(ParameterTupleOf!(fp_cgCallStateValidateCallback) params__) {
-	return checkedCall("cgCallStateValidateCallback", fp_cgCallStateValidateCallback, params__);
-}
-CGbool cgCallStateResetCallback(ParameterTupleOf!(fp_cgCallStateResetCallback) params__) {
-	return checkedCall("cgCallStateResetCallback", fp_cgCallStateResetCallback, params__);
-}
-CGpass cgGetStateAssignmentPass(ParameterTupleOf!(fp_cgGetStateAssignmentPass) params__) {
-	return checkedCall("cgGetStateAssignmentPass", fp_cgGetStateAssignmentPass, params__);
-}
-CGparameter cgGetSamplerStateAssignmentParameter(ParameterTupleOf!(fp_cgGetSamplerStateAssignmentParameter) params__) {
-	return checkedCall("cgGetSamplerStateAssignmentParameter", fp_cgGetSamplerStateAssignmentParameter, params__);
-}
-
- float * cgGetFloatStateAssignmentValues(ParameterTupleOf!(fp_cgGetFloatStateAssignmentValues) params__) {
-	return checkedCall("cgGetFloatStateAssignmentValues", fp_cgGetFloatStateAssignmentValues, params__);
-}
- int * cgGetIntStateAssignmentValues(ParameterTupleOf!(fp_cgGetIntStateAssignmentValues) params__) {
-	return checkedCall("cgGetIntStateAssignmentValues", fp_cgGetIntStateAssignmentValues, params__);
-}
- CGbool * cgGetBoolStateAssignmentValues(ParameterTupleOf!(fp_cgGetBoolStateAssignmentValues) params__) {
-	return checkedCall("cgGetBoolStateAssignmentValues", fp_cgGetBoolStateAssignmentValues, params__);
-}
- char * cgGetStringStateAssignmentValue(ParameterTupleOf!(fp_cgGetStringStateAssignmentValue) params__) {
-	return checkedCall("cgGetStringStateAssignmentValue", fp_cgGetStringStateAssignmentValue, params__);
-}
-CGprogram cgGetProgramStateAssignmentValue(ParameterTupleOf!(fp_cgGetProgramStateAssignmentValue) params__) {
-	return checkedCall("cgGetProgramStateAssignmentValue", fp_cgGetProgramStateAssignmentValue, params__);
-}
-CGparameter cgGetTextureStateAssignmentValue(ParameterTupleOf!(fp_cgGetTextureStateAssignmentValue) params__) {
-	return checkedCall("cgGetTextureStateAssignmentValue", fp_cgGetTextureStateAssignmentValue, params__);
-}
-CGparameter cgGetSamplerStateAssignmentValue(ParameterTupleOf!(fp_cgGetSamplerStateAssignmentValue) params__) {
-	return checkedCall("cgGetSamplerStateAssignmentValue", fp_cgGetSamplerStateAssignmentValue, params__);
-}
-int cgGetStateAssignmentIndex(ParameterTupleOf!(fp_cgGetStateAssignmentIndex) params__) {
-	return checkedCall("cgGetStateAssignmentIndex", fp_cgGetStateAssignmentIndex, params__);
-}
-
-int cgGetNumDependentStateAssignmentParameters(ParameterTupleOf!(fp_cgGetNumDependentStateAssignmentParameters) params__) {
-	return checkedCall("cgGetNumDependentStateAssignmentParameters", fp_cgGetNumDependentStateAssignmentParameters, params__);
-}
-CGparameter cgGetDependentStateAssignmentParameter(ParameterTupleOf!(fp_cgGetDependentStateAssignmentParameter) params__) {
-	return checkedCall("cgGetDependentStateAssignmentParameter", fp_cgGetDependentStateAssignmentParameter, params__);
-}
-
-CGparameter cgGetConnectedStateAssignmentParameter(ParameterTupleOf!(fp_cgGetConnectedStateAssignmentParameter) params__) {
-	return checkedCall("cgGetConnectedStateAssignmentParameter", fp_cgGetConnectedStateAssignmentParameter, params__);
-}
-
-CGstate cgGetStateAssignmentState(ParameterTupleOf!(fp_cgGetStateAssignmentState) params__) {
-	return checkedCall("cgGetStateAssignmentState", fp_cgGetStateAssignmentState, params__);
-}
-CGstate cgGetSamplerStateAssignmentState(ParameterTupleOf!(fp_cgGetSamplerStateAssignmentState) params__) {
-	return checkedCall("cgGetSamplerStateAssignmentState", fp_cgGetSamplerStateAssignmentState, params__);
-}
-
-CGstate cgCreateState(ParameterTupleOf!(fp_cgCreateState) params__) {
-	return checkedCall("cgCreateState", fp_cgCreateState, params__);
-}
-CGstate cgCreateArrayState(ParameterTupleOf!(fp_cgCreateArrayState) params__) {
-	return checkedCall("cgCreateArrayState", fp_cgCreateArrayState, params__);
-}
-void cgSetStateCallbacks(ParameterTupleOf!(fp_cgSetStateCallbacks) params__) {
-	return checkedCall("cgSetStateCallbacks", fp_cgSetStateCallbacks, params__);
-}
-CGstatecallback cgGetStateSetCallback(ParameterTupleOf!(fp_cgGetStateSetCallback) params__) {
-	return checkedCall("cgGetStateSetCallback", fp_cgGetStateSetCallback, params__);
-}
-CGstatecallback cgGetStateResetCallback(ParameterTupleOf!(fp_cgGetStateResetCallback) params__) {
-	return checkedCall("cgGetStateResetCallback", fp_cgGetStateResetCallback, params__);
-}
-CGstatecallback cgGetStateValidateCallback(ParameterTupleOf!(fp_cgGetStateValidateCallback) params__) {
-	return checkedCall("cgGetStateValidateCallback", fp_cgGetStateValidateCallback, params__);
-}
-CGcontext cgGetStateContext(ParameterTupleOf!(fp_cgGetStateContext) params__) {
-	return checkedCall("cgGetStateContext", fp_cgGetStateContext, params__);
-}
-CGtype cgGetStateType(ParameterTupleOf!(fp_cgGetStateType) params__) {
-	return checkedCall("cgGetStateType", fp_cgGetStateType, params__);
-}
- char * cgGetStateName(ParameterTupleOf!(fp_cgGetStateName) params__) {
-	return checkedCall("cgGetStateName", fp_cgGetStateName, params__);
-}
-CGstate cgGetNamedState(ParameterTupleOf!(fp_cgGetNamedState) params__) {
-	return checkedCall("cgGetNamedState", fp_cgGetNamedState, params__);
-}
-CGstate cgGetFirstState(ParameterTupleOf!(fp_cgGetFirstState) params__) {
-	return checkedCall("cgGetFirstState", fp_cgGetFirstState, params__);
-}
-CGstate cgGetNextState(ParameterTupleOf!(fp_cgGetNextState) params__) {
-	return checkedCall("cgGetNextState", fp_cgGetNextState, params__);
-}
-CGbool cgIsState(ParameterTupleOf!(fp_cgIsState) params__) {
-	return checkedCall("cgIsState", fp_cgIsState, params__);
-}
-void cgAddStateEnumerant(ParameterTupleOf!(fp_cgAddStateEnumerant) params__) {
-	return checkedCall("cgAddStateEnumerant", fp_cgAddStateEnumerant, params__);
-}
-
-CGstate cgCreateSamplerState(ParameterTupleOf!(fp_cgCreateSamplerState) params__) {
-	return checkedCall("cgCreateSamplerState", fp_cgCreateSamplerState, params__);
-}
-CGstate cgCreateArraySamplerState(ParameterTupleOf!(fp_cgCreateArraySamplerState) params__) {
-	return checkedCall("cgCreateArraySamplerState", fp_cgCreateArraySamplerState, params__);
-}
-CGstate cgGetNamedSamplerState(ParameterTupleOf!(fp_cgGetNamedSamplerState) params__) {
-	return checkedCall("cgGetNamedSamplerState", fp_cgGetNamedSamplerState, params__);
-}
-CGstate cgGetFirstSamplerState(ParameterTupleOf!(fp_cgGetFirstSamplerState) params__) {
-	return checkedCall("cgGetFirstSamplerState", fp_cgGetFirstSamplerState, params__);
-}
-
-CGstateassignment cgGetFirstSamplerStateAssignment(ParameterTupleOf!(fp_cgGetFirstSamplerStateAssignment) params__) {
-	return checkedCall("cgGetFirstSamplerStateAssignment", fp_cgGetFirstSamplerStateAssignment, params__);
-}
-CGstateassignment cgGetNamedSamplerStateAssignment(ParameterTupleOf!(fp_cgGetNamedSamplerStateAssignment) params__) {
-	return checkedCall("cgGetNamedSamplerStateAssignment", fp_cgGetNamedSamplerStateAssignment, params__);
-}
-void cgSetSamplerState(ParameterTupleOf!(fp_cgSetSamplerState) params__) {
-	return checkedCall("cgSetSamplerState", fp_cgSetSamplerState, params__);
-}
-
-CGparameter cgGetNamedEffectParameter(ParameterTupleOf!(fp_cgGetNamedEffectParameter) params__) {
-	return checkedCall("cgGetNamedEffectParameter", fp_cgGetNamedEffectParameter, params__);
-}
-CGparameter cgGetFirstLeafEffectParameter(ParameterTupleOf!(fp_cgGetFirstLeafEffectParameter) params__) {
-	return checkedCall("cgGetFirstLeafEffectParameter", fp_cgGetFirstLeafEffectParameter, params__);
-}
-CGparameter cgGetFirstEffectParameter(ParameterTupleOf!(fp_cgGetFirstEffectParameter) params__) {
-	return checkedCall("cgGetFirstEffectParameter", fp_cgGetFirstEffectParameter, params__);
-}
-CGparameter cgGetEffectParameterBySemantic(ParameterTupleOf!(fp_cgGetEffectParameterBySemantic) params__) {
-	return checkedCall("cgGetEffectParameterBySemantic", fp_cgGetEffectParameterBySemantic, params__);
-}
-
-CGannotation cgGetFirstTechniqueAnnotation(ParameterTupleOf!(fp_cgGetFirstTechniqueAnnotation) params__) {
-	return checkedCall("cgGetFirstTechniqueAnnotation", fp_cgGetFirstTechniqueAnnotation, params__);
-}
-CGannotation cgGetFirstPassAnnotation(ParameterTupleOf!(fp_cgGetFirstPassAnnotation) params__) {
-	return checkedCall("cgGetFirstPassAnnotation", fp_cgGetFirstPassAnnotation, params__);
-}
-CGannotation cgGetFirstParameterAnnotation(ParameterTupleOf!(fp_cgGetFirstParameterAnnotation) params__) {
-	return checkedCall("cgGetFirstParameterAnnotation", fp_cgGetFirstParameterAnnotation, params__);
-}
-CGannotation cgGetFirstProgramAnnotation(ParameterTupleOf!(fp_cgGetFirstProgramAnnotation) params__) {
-	return checkedCall("cgGetFirstProgramAnnotation", fp_cgGetFirstProgramAnnotation, params__);
-}
-CGannotation cgGetFirstEffectAnnotation(ParameterTupleOf!(fp_cgGetFirstEffectAnnotation) params__) {
-	return checkedCall("cgGetFirstEffectAnnotation", fp_cgGetFirstEffectAnnotation, params__);
-}
-CGannotation cgGetNextAnnotation(ParameterTupleOf!(fp_cgGetNextAnnotation) params__) {
-	return checkedCall("cgGetNextAnnotation", fp_cgGetNextAnnotation, params__);
-}
-
-CGannotation cgGetNamedTechniqueAnnotation(ParameterTupleOf!(fp_cgGetNamedTechniqueAnnotation) params__) {
-	return checkedCall("cgGetNamedTechniqueAnnotation", fp_cgGetNamedTechniqueAnnotation, params__);
-}
-CGannotation cgGetNamedPassAnnotation(ParameterTupleOf!(fp_cgGetNamedPassAnnotation) params__) {
-	return checkedCall("cgGetNamedPassAnnotation", fp_cgGetNamedPassAnnotation, params__);
-}
-CGannotation cgGetNamedParameterAnnotation(ParameterTupleOf!(fp_cgGetNamedParameterAnnotation) params__) {
-	return checkedCall("cgGetNamedParameterAnnotation", fp_cgGetNamedParameterAnnotation, params__);
-}
-CGannotation cgGetNamedProgramAnnotation(ParameterTupleOf!(fp_cgGetNamedProgramAnnotation) params__) {
-	return checkedCall("cgGetNamedProgramAnnotation", fp_cgGetNamedProgramAnnotation, params__);
-}
-CGannotation cgGetNamedEffectAnnotation(ParameterTupleOf!(fp_cgGetNamedEffectAnnotation) params__) {
-	return checkedCall("cgGetNamedEffectAnnotation", fp_cgGetNamedEffectAnnotation, params__);
-}
-
-CGbool cgIsAnnotation(ParameterTupleOf!(fp_cgIsAnnotation) params__) {
-	return checkedCall("cgIsAnnotation", fp_cgIsAnnotation, params__);
-}
-
- char * cgGetAnnotationName(ParameterTupleOf!(fp_cgGetAnnotationName) params__) {
-	return checkedCall("cgGetAnnotationName", fp_cgGetAnnotationName, params__);
-}
-CGtype cgGetAnnotationType(ParameterTupleOf!(fp_cgGetAnnotationType) params__) {
-	return checkedCall("cgGetAnnotationType", fp_cgGetAnnotationType, params__);
-}
-
- float * cgGetFloatAnnotationValues(ParameterTupleOf!(fp_cgGetFloatAnnotationValues) params__) {
-	return checkedCall("cgGetFloatAnnotationValues", fp_cgGetFloatAnnotationValues, params__);
-}
- int * cgGetIntAnnotationValues(ParameterTupleOf!(fp_cgGetIntAnnotationValues) params__) {
-	return checkedCall("cgGetIntAnnotationValues", fp_cgGetIntAnnotationValues, params__);
-}
- char * cgGetStringAnnotationValue(ParameterTupleOf!(fp_cgGetStringAnnotationValue) params__) {
-	return checkedCall("cgGetStringAnnotationValue", fp_cgGetStringAnnotationValue, params__);
-}
- char *  * cgGetStringAnnotationValues(ParameterTupleOf!(fp_cgGetStringAnnotationValues) params__) {
-	return checkedCall("cgGetStringAnnotationValues", fp_cgGetStringAnnotationValues, params__);
-}
- CGbool * cgGetBoolAnnotationValues(ParameterTupleOf!(fp_cgGetBoolAnnotationValues) params__) {
-	return checkedCall("cgGetBoolAnnotationValues", fp_cgGetBoolAnnotationValues, params__);
-}
- int * cgGetBooleanAnnotationValues(ParameterTupleOf!(fp_cgGetBooleanAnnotationValues) params__) {
-	return checkedCall("cgGetBooleanAnnotationValues", fp_cgGetBooleanAnnotationValues, params__);
-}
-
-int cgGetNumDependentAnnotationParameters(ParameterTupleOf!(fp_cgGetNumDependentAnnotationParameters) params__) {
-	return checkedCall("cgGetNumDependentAnnotationParameters", fp_cgGetNumDependentAnnotationParameters, params__);
-}
-CGparameter cgGetDependentAnnotationParameter(ParameterTupleOf!(fp_cgGetDependentAnnotationParameter) params__) {
-	return checkedCall("cgGetDependentAnnotationParameter", fp_cgGetDependentAnnotationParameter, params__);
-}
-
-void cgEvaluateProgram(ParameterTupleOf!(fp_cgEvaluateProgram) params__) {
-	return checkedCall("cgEvaluateProgram", fp_cgEvaluateProgram, params__);
-}
-
-/*** Cg 1.5 Additions ***/
-
-CGbool cgSetEffectName(ParameterTupleOf!(fp_cgSetEffectName) params__) {
-	return checkedCall("cgSetEffectName", fp_cgSetEffectName, params__);
-}
- char * cgGetEffectName(ParameterTupleOf!(fp_cgGetEffectName) params__) {
-	return checkedCall("cgGetEffectName", fp_cgGetEffectName, params__);
-}
-CGeffect cgGetNamedEffect(ParameterTupleOf!(fp_cgGetNamedEffect) params__) {
-	return checkedCall("cgGetNamedEffect", fp_cgGetNamedEffect, params__);
-}
-CGparameter cgCreateEffectParameter(ParameterTupleOf!(fp_cgCreateEffectParameter) params__) {
-	return checkedCall("cgCreateEffectParameter", fp_cgCreateEffectParameter, params__);
-}
-
-CGtechnique cgCreateTechnique(ParameterTupleOf!(fp_cgCreateTechnique) params__) {
-	return checkedCall("cgCreateTechnique", fp_cgCreateTechnique, params__);
-}
-
-CGparameter cgCreateEffectParameterArray(ParameterTupleOf!(fp_cgCreateEffectParameterArray) params__) {
-	return checkedCall("cgCreateEffectParameterArray", fp_cgCreateEffectParameterArray, params__);
-} 
-CGparameter cgCreateEffectParameterMultiDimArray(ParameterTupleOf!(fp_cgCreateEffectParameterMultiDimArray) params__) {
-	return checkedCall("cgCreateEffectParameterMultiDimArray", fp_cgCreateEffectParameterMultiDimArray, params__);
-} 
-
-CGpass cgCreatePass(ParameterTupleOf!(fp_cgCreatePass) params__) {
-	return checkedCall("cgCreatePass", fp_cgCreatePass, params__);
-}
-
-CGstateassignment cgCreateStateAssignment(ParameterTupleOf!(fp_cgCreateStateAssignment) params__) {
-	return checkedCall("cgCreateStateAssignment", fp_cgCreateStateAssignment, params__);
-}
-CGstateassignment cgCreateStateAssignmentIndex(ParameterTupleOf!(fp_cgCreateStateAssignmentIndex) params__) {
-	return checkedCall("cgCreateStateAssignmentIndex", fp_cgCreateStateAssignmentIndex, params__);
-}
-CGstateassignment cgCreateSamplerStateAssignment(ParameterTupleOf!(fp_cgCreateSamplerStateAssignment) params__) {
-	return checkedCall("cgCreateSamplerStateAssignment", fp_cgCreateSamplerStateAssignment, params__);
-}
-
-CGbool cgSetFloatStateAssignment(ParameterTupleOf!(fp_cgSetFloatStateAssignment) params__) {
-	return checkedCall("cgSetFloatStateAssignment", fp_cgSetFloatStateAssignment, params__);
-}
-CGbool cgSetIntStateAssignment(ParameterTupleOf!(fp_cgSetIntStateAssignment) params__) {
-	return checkedCall("cgSetIntStateAssignment", fp_cgSetIntStateAssignment, params__);
-}
-CGbool cgSetBoolStateAssignment(ParameterTupleOf!(fp_cgSetBoolStateAssignment) params__) {
-	return checkedCall("cgSetBoolStateAssignment", fp_cgSetBoolStateAssignment, params__);
-}
-CGbool cgSetStringStateAssignment(ParameterTupleOf!(fp_cgSetStringStateAssignment) params__) {
-	return checkedCall("cgSetStringStateAssignment", fp_cgSetStringStateAssignment, params__);
-}
-CGbool cgSetProgramStateAssignment(ParameterTupleOf!(fp_cgSetProgramStateAssignment) params__) {
-	return checkedCall("cgSetProgramStateAssignment", fp_cgSetProgramStateAssignment, params__);
-}
-CGbool cgSetSamplerStateAssignment(ParameterTupleOf!(fp_cgSetSamplerStateAssignment) params__) {
-	return checkedCall("cgSetSamplerStateAssignment", fp_cgSetSamplerStateAssignment, params__);
-}
-CGbool cgSetTextureStateAssignment(ParameterTupleOf!(fp_cgSetTextureStateAssignment) params__) {
-	return checkedCall("cgSetTextureStateAssignment", fp_cgSetTextureStateAssignment, params__);
-}
-
-CGbool cgSetFloatArrayStateAssignment(ParameterTupleOf!(fp_cgSetFloatArrayStateAssignment) params__) {
-	return checkedCall("cgSetFloatArrayStateAssignment", fp_cgSetFloatArrayStateAssignment, params__);
-}
-CGbool cgSetIntArrayStateAssignment(ParameterTupleOf!(fp_cgSetIntArrayStateAssignment) params__) {
-	return checkedCall("cgSetIntArrayStateAssignment", fp_cgSetIntArrayStateAssignment, params__);
-}
-CGbool cgSetBoolArrayStateAssignment(ParameterTupleOf!(fp_cgSetBoolArrayStateAssignment) params__) {
-	return checkedCall("cgSetBoolArrayStateAssignment", fp_cgSetBoolArrayStateAssignment, params__);
-}
-
-CGannotation cgCreateTechniqueAnnotation(ParameterTupleOf!(fp_cgCreateTechniqueAnnotation) params__) {
-	return checkedCall("cgCreateTechniqueAnnotation", fp_cgCreateTechniqueAnnotation, params__);
-}
-CGannotation cgCreatePassAnnotation(ParameterTupleOf!(fp_cgCreatePassAnnotation) params__) {
-	return checkedCall("cgCreatePassAnnotation", fp_cgCreatePassAnnotation, params__);
-}
-CGannotation cgCreateParameterAnnotation(ParameterTupleOf!(fp_cgCreateParameterAnnotation) params__) {
-	return checkedCall("cgCreateParameterAnnotation", fp_cgCreateParameterAnnotation, params__);
-}
-CGannotation cgCreateProgramAnnotation(ParameterTupleOf!(fp_cgCreateProgramAnnotation) params__) {
-	return checkedCall("cgCreateProgramAnnotation", fp_cgCreateProgramAnnotation, params__);
-}
-CGannotation cgCreateEffectAnnotation(ParameterTupleOf!(fp_cgCreateEffectAnnotation) params__) {
-	return checkedCall("cgCreateEffectAnnotation", fp_cgCreateEffectAnnotation, params__);
-}
-
-CGbool cgSetIntAnnotation(ParameterTupleOf!(fp_cgSetIntAnnotation) params__) {
-	return checkedCall("cgSetIntAnnotation", fp_cgSetIntAnnotation, params__);
-}
-CGbool cgSetFloatAnnotation(ParameterTupleOf!(fp_cgSetFloatAnnotation) params__) {
-	return checkedCall("cgSetFloatAnnotation", fp_cgSetFloatAnnotation, params__);
-}
-CGbool cgSetBoolAnnotation(ParameterTupleOf!(fp_cgSetBoolAnnotation) params__) {
-	return checkedCall("cgSetBoolAnnotation", fp_cgSetBoolAnnotation, params__);
-}
-CGbool cgSetStringAnnotation(ParameterTupleOf!(fp_cgSetStringAnnotation) params__) {
-	return checkedCall("cgSetStringAnnotation", fp_cgSetStringAnnotation, params__);
-}
-
- char * cgGetStateEnumerantName(ParameterTupleOf!(fp_cgGetStateEnumerantName) params__) {
-	return checkedCall("cgGetStateEnumerantName", fp_cgGetStateEnumerantName, params__);
-}
-int cgGetStateEnumerantValue(ParameterTupleOf!(fp_cgGetStateEnumerantValue) params__) {
-	return checkedCall("cgGetStateEnumerantValue", fp_cgGetStateEnumerantValue, params__);
-}
-
-CGeffect cgGetParameterEffect(ParameterTupleOf!(fp_cgGetParameterEffect) params__) {
-	return checkedCall("cgGetParameterEffect", fp_cgGetParameterEffect, params__);
-}
-
-CGparameterclass cgGetTypeClass(ParameterTupleOf!(fp_cgGetTypeClass) params__) {
-	return checkedCall("cgGetTypeClass", fp_cgGetTypeClass, params__);
-}
-CGtype cgGetTypeBase(ParameterTupleOf!(fp_cgGetTypeBase) params__) {
-	return checkedCall("cgGetTypeBase", fp_cgGetTypeBase, params__);
-}
-CGbool cgGetTypeSizes(ParameterTupleOf!(fp_cgGetTypeSizes) params__) {
-	return checkedCall("cgGetTypeSizes", fp_cgGetTypeSizes, params__);
-}
-void cgGetMatrixSize(ParameterTupleOf!(fp_cgGetMatrixSize) params__) {
-	return checkedCall("cgGetMatrixSize", fp_cgGetMatrixSize, params__);
-}
-
-int cgGetNumProgramDomains(ParameterTupleOf!(fp_cgGetNumProgramDomains) params__) {
-	return checkedCall("cgGetNumProgramDomains", fp_cgGetNumProgramDomains, params__);
-}
-CGprogram cgGetProgramDomainProgram(ParameterTupleOf!(fp_cgGetProgramDomainProgram) params__) {
-	return checkedCall("cgGetProgramDomainProgram", fp_cgGetProgramDomainProgram, params__);
-}
-CGdomain cgGetProfileDomain(ParameterTupleOf!(fp_cgGetProfileDomain) params__) {
-	return checkedCall("cgGetProfileDomain", fp_cgGetProfileDomain, params__);
-}
-CGprogram cgCombinePrograms(ParameterTupleOf!(fp_cgCombinePrograms) params__) {
-	return checkedCall("cgCombinePrograms", fp_cgCombinePrograms, params__);
-}
-CGprogram cgCombinePrograms2(ParameterTupleOf!(fp_cgCombinePrograms2) params__) {
-	return checkedCall("cgCombinePrograms2", fp_cgCombinePrograms2, params__);
-}
-CGprogram cgCombinePrograms3(ParameterTupleOf!(fp_cgCombinePrograms3) params__) {
-	return checkedCall("cgCombinePrograms3", fp_cgCombinePrograms3, params__);
-}
-CGprofile cgGetProgramDomainProfile(ParameterTupleOf!(fp_cgGetProgramDomainProfile) params__) {
-	return checkedCall("cgGetProgramDomainProfile", fp_cgGetProgramDomainProfile, params__);
-}
-
-/*** CGobj Functions ***/
-CGobj cgCreateObj(ParameterTupleOf!(fp_cgCreateObj) params__) {
-	return checkedCall("cgCreateObj", fp_cgCreateObj, params__);
-}
-CGobj cgCreateObjFromFile(ParameterTupleOf!(fp_cgCreateObjFromFile) params__) {
-	return checkedCall("cgCreateObjFromFile", fp_cgCreateObjFromFile, params__);
-}
-void cgDestroyObj(ParameterTupleOf!(fp_cgDestroyObj) params__) {
-	return checkedCall("cgDestroyObj", fp_cgDestroyObj, params__);
-}
-
-int cgGetParameterResourceSize(ParameterTupleOf!(fp_cgGetParameterResourceSize) params__) {
-	return checkedCall("cgGetParameterResourceSize", fp_cgGetParameterResourceSize, params__);
-}
-CGtype cgGetParameterResourceType(ParameterTupleOf!(fp_cgGetParameterResourceType) params__) {
-	return checkedCall("cgGetParameterResourceType", fp_cgGetParameterResourceType, params__);
-}
-int cgGetParameterBufferIndex(ParameterTupleOf!(fp_cgGetParameterBufferIndex) params__) {
-	return checkedCall("cgGetParameterBufferIndex", fp_cgGetParameterBufferIndex, params__);
-}
-int cgGetParameterBufferOffset(ParameterTupleOf!(fp_cgGetParameterBufferOffset) params__) {
-	return checkedCall("cgGetParameterBufferOffset", fp_cgGetParameterBufferOffset, params__);
-}
-
-CGbuffer cgCreateBuffer(ParameterTupleOf!(fp_cgCreateBuffer) params__) {
-	return checkedCall("cgCreateBuffer", fp_cgCreateBuffer, params__);
-}
-void cgSetBufferData(ParameterTupleOf!(fp_cgSetBufferData) params__) {
-	return checkedCall("cgSetBufferData", fp_cgSetBufferData, params__);
-}
-void cgSetBufferSubData(ParameterTupleOf!(fp_cgSetBufferSubData) params__) {
-	return checkedCall("cgSetBufferSubData", fp_cgSetBufferSubData, params__);
-}
-void cgSetProgramBuffer(ParameterTupleOf!(fp_cgSetProgramBuffer) params__) {
-	return checkedCall("cgSetProgramBuffer", fp_cgSetProgramBuffer, params__);
-}
-
-void * cgMapBuffer(ParameterTupleOf!(fp_cgMapBuffer) params__) {
-	return checkedCall("cgMapBuffer", fp_cgMapBuffer, params__);
-}
-void cgUnmapBuffer(ParameterTupleOf!(fp_cgUnmapBuffer) params__) {
-	return checkedCall("cgUnmapBuffer", fp_cgUnmapBuffer, params__);
-}
-void cgDestroyBuffer(ParameterTupleOf!(fp_cgDestroyBuffer) params__) {
-	return checkedCall("cgDestroyBuffer", fp_cgDestroyBuffer, params__);
-}
-CGbuffer cgGetProgramBuffer(ParameterTupleOf!(fp_cgGetProgramBuffer) params__) {
-	return checkedCall("cgGetProgramBuffer", fp_cgGetProgramBuffer, params__);
-}
-int cgGetBufferSize(ParameterTupleOf!(fp_cgGetBufferSize) params__) {
-	return checkedCall("cgGetBufferSize", fp_cgGetBufferSize, params__);
-}
-int cgGetProgramBufferMaxSize(ParameterTupleOf!(fp_cgGetProgramBufferMaxSize) params__) {
-	return checkedCall("cgGetProgramBufferMaxSize", fp_cgGetProgramBufferMaxSize, params__);
-}
-int cgGetProgramBufferMaxIndex(ParameterTupleOf!(fp_cgGetProgramBufferMaxIndex) params__) {
-	return checkedCall("cgGetProgramBufferMaxIndex", fp_cgGetProgramBufferMaxIndex, params__);
-}
-
-
-
-
-
-
-
-/******************************************************************************
- *** Profile Functions 
- *****************************************************************************/
-
-CGbool cgGLIsProfileSupported(ParameterTupleOf!(fp_cgGLIsProfileSupported) params__) {
-	return checkedCall("cgGLIsProfileSupported", fp_cgGLIsProfileSupported, params__);
-}
-
-void cgGLEnableProfile(ParameterTupleOf!(fp_cgGLEnableProfile) params__) {
-	return checkedCall("cgGLEnableProfile", fp_cgGLEnableProfile, params__);
-}
-void cgGLDisableProfile(ParameterTupleOf!(fp_cgGLDisableProfile) params__) {
-	return checkedCall("cgGLDisableProfile", fp_cgGLDisableProfile, params__);
-}
-
-CGprofile cgGLGetLatestProfile(ParameterTupleOf!(fp_cgGLGetLatestProfile) params__) {
-	return checkedCall("cgGLGetLatestProfile", fp_cgGLGetLatestProfile, params__);
-}
-void cgGLSetOptimalOptions(ParameterTupleOf!(fp_cgGLSetOptimalOptions) params__) {
-	return checkedCall("cgGLSetOptimalOptions", fp_cgGLSetOptimalOptions, params__);
-}
-char** cgGLGetOptimalOptions(ParameterTupleOf!(fp_cgGLGetOptimalOptions) params__) {
-	return checkedCall("cgGLGetOptimalOptions", fp_cgGLGetOptimalOptions, params__);
-}
-
-/******************************************************************************
- *** Program Managment Functions 
- *****************************************************************************/
-
-void cgGLLoadProgram(ParameterTupleOf!(fp_cgGLLoadProgram) params__) {
-	return checkedCall("cgGLLoadProgram", fp_cgGLLoadProgram, params__);
-}
-CGbool cgGLIsProgramLoaded(ParameterTupleOf!(fp_cgGLIsProgramLoaded) params__) {
-	return checkedCall("cgGLIsProgramLoaded", fp_cgGLIsProgramLoaded, params__);
-}
-void cgGLBindProgram(ParameterTupleOf!(fp_cgGLBindProgram) params__) {
-	return checkedCall("cgGLBindProgram", fp_cgGLBindProgram, params__);
-}
-void cgGLUnbindProgram(ParameterTupleOf!(fp_cgGLUnbindProgram) params__) {
-	return checkedCall("cgGLUnbindProgram", fp_cgGLUnbindProgram, params__);
-}
-GLuint cgGLGetProgramID(ParameterTupleOf!(fp_cgGLGetProgramID) params__) {
-	return checkedCall("cgGLGetProgramID", fp_cgGLGetProgramID, params__);
-}
-
-/******************************************************************************
- *** Parameter Managment Functions 
- *****************************************************************************/
-
-void cgGLSetParameter1f(ParameterTupleOf!(fp_cgGLSetParameter1f) params__) {
-	return checkedCall("cgGLSetParameter1f", fp_cgGLSetParameter1f, params__);
-}
-
-void cgGLSetParameter2f(ParameterTupleOf!(fp_cgGLSetParameter2f) params__) {
-	return checkedCall("cgGLSetParameter2f", fp_cgGLSetParameter2f, params__);
-}
-
-void cgGLSetParameter3f(ParameterTupleOf!(fp_cgGLSetParameter3f) params__) {
-	return checkedCall("cgGLSetParameter3f", fp_cgGLSetParameter3f, params__);
-}
-
-void cgGLSetParameter4f(ParameterTupleOf!(fp_cgGLSetParameter4f) params__) {
-	return checkedCall("cgGLSetParameter4f", fp_cgGLSetParameter4f, params__);
-}
-
-void cgGLSetParameter1fv(ParameterTupleOf!(fp_cgGLSetParameter1fv) params__) {
-	return checkedCall("cgGLSetParameter1fv", fp_cgGLSetParameter1fv, params__);
-}
-
-void cgGLSetParameter2fv(ParameterTupleOf!(fp_cgGLSetParameter2fv) params__) {
-	return checkedCall("cgGLSetParameter2fv", fp_cgGLSetParameter2fv, params__);
-}
-
-void cgGLSetParameter3fv(ParameterTupleOf!(fp_cgGLSetParameter3fv) params__) {
-	return checkedCall("cgGLSetParameter3fv", fp_cgGLSetParameter3fv, params__);
-}
-
-void cgGLSetParameter4fv(ParameterTupleOf!(fp_cgGLSetParameter4fv) params__) {
-	return checkedCall("cgGLSetParameter4fv", fp_cgGLSetParameter4fv, params__);
-}
-
-void cgGLSetParameter1d(ParameterTupleOf!(fp_cgGLSetParameter1d) params__) {
-	return checkedCall("cgGLSetParameter1d", fp_cgGLSetParameter1d, params__);
-}
-
-void cgGLSetParameter2d(ParameterTupleOf!(fp_cgGLSetParameter2d) params__) {
-	return checkedCall("cgGLSetParameter2d", fp_cgGLSetParameter2d, params__);
-}
-
-void cgGLSetParameter3d(ParameterTupleOf!(fp_cgGLSetParameter3d) params__) {
-	return checkedCall("cgGLSetParameter3d", fp_cgGLSetParameter3d, params__);
-}
-
-void cgGLSetParameter4d(ParameterTupleOf!(fp_cgGLSetParameter4d) params__) {
-	return checkedCall("cgGLSetParameter4d", fp_cgGLSetParameter4d, params__);
-}
-
-void cgGLSetParameter1dv(ParameterTupleOf!(fp_cgGLSetParameter1dv) params__) {
-	return checkedCall("cgGLSetParameter1dv", fp_cgGLSetParameter1dv, params__);
-}
-
-void cgGLSetParameter2dv(ParameterTupleOf!(fp_cgGLSetParameter2dv) params__) {
-	return checkedCall("cgGLSetParameter2dv", fp_cgGLSetParameter2dv, params__);
-}
-
-void cgGLSetParameter3dv(ParameterTupleOf!(fp_cgGLSetParameter3dv) params__) {
-	return checkedCall("cgGLSetParameter3dv", fp_cgGLSetParameter3dv, params__);
-}
-
-void cgGLSetParameter4dv(ParameterTupleOf!(fp_cgGLSetParameter4dv) params__) {
-	return checkedCall("cgGLSetParameter4dv", fp_cgGLSetParameter4dv, params__);
-}
-
-void cgGLGetParameter1f(ParameterTupleOf!(fp_cgGLGetParameter1f) params__) {
-	return checkedCall("cgGLGetParameter1f", fp_cgGLGetParameter1f, params__);
-}
-
-void cgGLGetParameter2f(ParameterTupleOf!(fp_cgGLGetParameter2f) params__) {
-	return checkedCall("cgGLGetParameter2f", fp_cgGLGetParameter2f, params__);
-}
-
-void cgGLGetParameter3f(ParameterTupleOf!(fp_cgGLGetParameter3f) params__) {
-	return checkedCall("cgGLGetParameter3f", fp_cgGLGetParameter3f, params__);
-}
-
-void cgGLGetParameter4f(ParameterTupleOf!(fp_cgGLGetParameter4f) params__) {
-	return checkedCall("cgGLGetParameter4f", fp_cgGLGetParameter4f, params__);
-}
-
-void cgGLGetParameter1d(ParameterTupleOf!(fp_cgGLGetParameter1d) params__) {
-	return checkedCall("cgGLGetParameter1d", fp_cgGLGetParameter1d, params__);
-}
-
-void cgGLGetParameter2d(ParameterTupleOf!(fp_cgGLGetParameter2d) params__) {
-	return checkedCall("cgGLGetParameter2d", fp_cgGLGetParameter2d, params__);
-}
-
-void cgGLGetParameter3d(ParameterTupleOf!(fp_cgGLGetParameter3d) params__) {
-	return checkedCall("cgGLGetParameter3d", fp_cgGLGetParameter3d, params__);
-}
-
-void cgGLGetParameter4d(ParameterTupleOf!(fp_cgGLGetParameter4d) params__) {
-	return checkedCall("cgGLGetParameter4d", fp_cgGLGetParameter4d, params__);
-}
-
-void cgGLSetParameterArray1f(ParameterTupleOf!(fp_cgGLSetParameterArray1f) params__) {
-	return checkedCall("cgGLSetParameterArray1f", fp_cgGLSetParameterArray1f, params__);
-}
-
-void cgGLSetParameterArray2f(ParameterTupleOf!(fp_cgGLSetParameterArray2f) params__) {
-	return checkedCall("cgGLSetParameterArray2f", fp_cgGLSetParameterArray2f, params__);
-}
-
-void cgGLSetParameterArray3f(ParameterTupleOf!(fp_cgGLSetParameterArray3f) params__) {
-	return checkedCall("cgGLSetParameterArray3f", fp_cgGLSetParameterArray3f, params__);
-}
-
-void cgGLSetParameterArray4f(ParameterTupleOf!(fp_cgGLSetParameterArray4f) params__) {
-	return checkedCall("cgGLSetParameterArray4f", fp_cgGLSetParameterArray4f, params__);
-}
-
-void cgGLSetParameterArray1d(ParameterTupleOf!(fp_cgGLSetParameterArray1d) params__) {
-	return checkedCall("cgGLSetParameterArray1d", fp_cgGLSetParameterArray1d, params__);
-}
-
-void cgGLSetParameterArray2d(ParameterTupleOf!(fp_cgGLSetParameterArray2d) params__) {
-	return checkedCall("cgGLSetParameterArray2d", fp_cgGLSetParameterArray2d, params__);
-}
-
-void cgGLSetParameterArray3d(ParameterTupleOf!(fp_cgGLSetParameterArray3d) params__) {
-	return checkedCall("cgGLSetParameterArray3d", fp_cgGLSetParameterArray3d, params__);
-}
-
-void cgGLSetParameterArray4d(ParameterTupleOf!(fp_cgGLSetParameterArray4d) params__) {
-	return checkedCall("cgGLSetParameterArray4d", fp_cgGLSetParameterArray4d, params__);
-}
-
-void cgGLGetParameterArray1f(ParameterTupleOf!(fp_cgGLGetParameterArray1f) params__) {
-	return checkedCall("cgGLGetParameterArray1f", fp_cgGLGetParameterArray1f, params__);
-}
-
-void cgGLGetParameterArray2f(ParameterTupleOf!(fp_cgGLGetParameterArray2f) params__) {
-	return checkedCall("cgGLGetParameterArray2f", fp_cgGLGetParameterArray2f, params__);
-}
-
-void cgGLGetParameterArray3f(ParameterTupleOf!(fp_cgGLGetParameterArray3f) params__) {
-	return checkedCall("cgGLGetParameterArray3f", fp_cgGLGetParameterArray3f, params__);
-}
-
-void cgGLGetParameterArray4f(ParameterTupleOf!(fp_cgGLGetParameterArray4f) params__) {
-	return checkedCall("cgGLGetParameterArray4f", fp_cgGLGetParameterArray4f, params__);
-}
-
-void cgGLGetParameterArray1d(ParameterTupleOf!(fp_cgGLGetParameterArray1d) params__) {
-	return checkedCall("cgGLGetParameterArray1d", fp_cgGLGetParameterArray1d, params__);
-}
-
-void cgGLGetParameterArray2d(ParameterTupleOf!(fp_cgGLGetParameterArray2d) params__) {
-	return checkedCall("cgGLGetParameterArray2d", fp_cgGLGetParameterArray2d, params__);
-}
-
-void cgGLGetParameterArray3d(ParameterTupleOf!(fp_cgGLGetParameterArray3d) params__) {
-	return checkedCall("cgGLGetParameterArray3d", fp_cgGLGetParameterArray3d, params__);
-}
-
-void cgGLGetParameterArray4d(ParameterTupleOf!(fp_cgGLGetParameterArray4d) params__) {
-	return checkedCall("cgGLGetParameterArray4d", fp_cgGLGetParameterArray4d, params__);
-}
-
-void cgGLSetParameterPointer(ParameterTupleOf!(fp_cgGLSetParameterPointer) params__) {
-	return checkedCall("cgGLSetParameterPointer", fp_cgGLSetParameterPointer, params__);
-}
-
-void cgGLEnableClientState(ParameterTupleOf!(fp_cgGLEnableClientState) params__) {
-	return checkedCall("cgGLEnableClientState", fp_cgGLEnableClientState, params__);
-}
-void cgGLDisableClientState(ParameterTupleOf!(fp_cgGLDisableClientState) params__) {
-	return checkedCall("cgGLDisableClientState", fp_cgGLDisableClientState, params__);
-}
-
-/******************************************************************************
- *** Matrix Parameter Managment Functions 
- *****************************************************************************/
-
-void cgGLSetMatrixParameterdr(ParameterTupleOf!(fp_cgGLSetMatrixParameterdr) params__) {
-	return checkedCall("cgGLSetMatrixParameterdr", fp_cgGLSetMatrixParameterdr, params__);
-}
-void cgGLSetMatrixParameterfr(ParameterTupleOf!(fp_cgGLSetMatrixParameterfr) params__) {
-	return checkedCall("cgGLSetMatrixParameterfr", fp_cgGLSetMatrixParameterfr, params__);
-}
-void cgGLSetMatrixParameterdc(ParameterTupleOf!(fp_cgGLSetMatrixParameterdc) params__) {
-	return checkedCall("cgGLSetMatrixParameterdc", fp_cgGLSetMatrixParameterdc, params__);
-}
-void cgGLSetMatrixParameterfc(ParameterTupleOf!(fp_cgGLSetMatrixParameterfc) params__) {
-	return checkedCall("cgGLSetMatrixParameterfc", fp_cgGLSetMatrixParameterfc, params__);
-}
-
-void cgGLGetMatrixParameterdr(ParameterTupleOf!(fp_cgGLGetMatrixParameterdr) params__) {
-	return checkedCall("cgGLGetMatrixParameterdr", fp_cgGLGetMatrixParameterdr, params__);
-}
-void cgGLGetMatrixParameterfr(ParameterTupleOf!(fp_cgGLGetMatrixParameterfr) params__) {
-	return checkedCall("cgGLGetMatrixParameterfr", fp_cgGLGetMatrixParameterfr, params__);
-}
-void cgGLGetMatrixParameterdc(ParameterTupleOf!(fp_cgGLGetMatrixParameterdc) params__) {
-	return checkedCall("cgGLGetMatrixParameterdc", fp_cgGLGetMatrixParameterdc, params__);
-}
-void cgGLGetMatrixParameterfc(ParameterTupleOf!(fp_cgGLGetMatrixParameterfc) params__) {
-	return checkedCall("cgGLGetMatrixParameterfc", fp_cgGLGetMatrixParameterfc, params__);
-}
-
-void cgGLSetStateMatrixParameter(ParameterTupleOf!(fp_cgGLSetStateMatrixParameter) params__) {
-	return checkedCall("cgGLSetStateMatrixParameter", fp_cgGLSetStateMatrixParameter, params__);
-}
-
-void cgGLSetMatrixParameterArrayfc(ParameterTupleOf!(fp_cgGLSetMatrixParameterArrayfc) params__) {
-	return checkedCall("cgGLSetMatrixParameterArrayfc", fp_cgGLSetMatrixParameterArrayfc, params__);
-}
-
-void cgGLSetMatrixParameterArrayfr(ParameterTupleOf!(fp_cgGLSetMatrixParameterArrayfr) params__) {
-	return checkedCall("cgGLSetMatrixParameterArrayfr", fp_cgGLSetMatrixParameterArrayfr, params__);
-}
-
-void cgGLSetMatrixParameterArraydc(ParameterTupleOf!(fp_cgGLSetMatrixParameterArraydc) params__) {
-	return checkedCall("cgGLSetMatrixParameterArraydc", fp_cgGLSetMatrixParameterArraydc, params__);
-}
-
-void cgGLSetMatrixParameterArraydr(ParameterTupleOf!(fp_cgGLSetMatrixParameterArraydr) params__) {
-	return checkedCall("cgGLSetMatrixParameterArraydr", fp_cgGLSetMatrixParameterArraydr, params__);
-}
-
-void cgGLGetMatrixParameterArrayfc(ParameterTupleOf!(fp_cgGLGetMatrixParameterArrayfc) params__) {
-	return checkedCall("cgGLGetMatrixParameterArrayfc", fp_cgGLGetMatrixParameterArrayfc, params__);
-}
-
-void cgGLGetMatrixParameterArrayfr(ParameterTupleOf!(fp_cgGLGetMatrixParameterArrayfr) params__) {
-	return checkedCall("cgGLGetMatrixParameterArrayfr", fp_cgGLGetMatrixParameterArrayfr, params__);
-}
-
-void cgGLGetMatrixParameterArraydc(ParameterTupleOf!(fp_cgGLGetMatrixParameterArraydc) params__) {
-	return checkedCall("cgGLGetMatrixParameterArraydc", fp_cgGLGetMatrixParameterArraydc, params__);
-}
-
-void cgGLGetMatrixParameterArraydr(ParameterTupleOf!(fp_cgGLGetMatrixParameterArraydr) params__) {
-	return checkedCall("cgGLGetMatrixParameterArraydr", fp_cgGLGetMatrixParameterArraydr, params__);
-}
-
-/******************************************************************************
- *** Texture Parameter Managment Functions
- *****************************************************************************/
-
-void cgGLSetTextureParameter(ParameterTupleOf!(fp_cgGLSetTextureParameter) params__) {
-	return checkedCall("cgGLSetTextureParameter", fp_cgGLSetTextureParameter, params__);
-}
-GLuint cgGLGetTextureParameter(ParameterTupleOf!(fp_cgGLGetTextureParameter) params__) {
-	return checkedCall("cgGLGetTextureParameter", fp_cgGLGetTextureParameter, params__);
-}
-void cgGLEnableTextureParameter(ParameterTupleOf!(fp_cgGLEnableTextureParameter) params__) {
-	return checkedCall("cgGLEnableTextureParameter", fp_cgGLEnableTextureParameter, params__);
-}
-void cgGLDisableTextureParameter(ParameterTupleOf!(fp_cgGLDisableTextureParameter) params__) {
-	return checkedCall("cgGLDisableTextureParameter", fp_cgGLDisableTextureParameter, params__);
-}
-GLenum cgGLGetTextureEnum(ParameterTupleOf!(fp_cgGLGetTextureEnum) params__) {
-	return checkedCall("cgGLGetTextureEnum", fp_cgGLGetTextureEnum, params__);
-}
-
-void cgGLSetManageTextureParameters(ParameterTupleOf!(fp_cgGLSetManageTextureParameters) params__) {
-	return checkedCall("cgGLSetManageTextureParameters", fp_cgGLSetManageTextureParameters, params__);
-}
-CGbool cgGLGetManageTextureParameters(ParameterTupleOf!(fp_cgGLGetManageTextureParameters) params__) {
-	return checkedCall("cgGLGetManageTextureParameters", fp_cgGLGetManageTextureParameters, params__);
-}
-
-void cgGLSetupSampler(ParameterTupleOf!(fp_cgGLSetupSampler) params__) {
-	return checkedCall("cgGLSetupSampler", fp_cgGLSetupSampler, params__);
-}
-void cgGLRegisterStates(ParameterTupleOf!(fp_cgGLRegisterStates) params__) {
-	return checkedCall("cgGLRegisterStates", fp_cgGLRegisterStates, params__);
-}
-
-void cgGLEnableProgramProfiles(ParameterTupleOf!(fp_cgGLEnableProgramProfiles) params__) {
-	return checkedCall("cgGLEnableProgramProfiles", fp_cgGLEnableProgramProfiles, params__);
-}
-void cgGLDisableProgramProfiles(ParameterTupleOf!(fp_cgGLDisableProgramProfiles) params__) {
-	return checkedCall("cgGLDisableProgramProfiles", fp_cgGLDisableProgramProfiles, params__);
-}
-
-/******************************************************************************
- *** Misc Functions
- *****************************************************************************/
-
-void cgGLSetDebugMode(ParameterTupleOf!(fp_cgGLSetDebugMode) params__) {
-	return checkedCall("cgGLSetDebugMode", fp_cgGLSetDebugMode, params__);
-}
-
-/******************************************************************************
- *** Buffer Functions
- *****************************************************************************/
-
-CGbuffer cgGLCreateBuffer(ParameterTupleOf!(fp_cgGLCreateBuffer) params__) {
-	return checkedCall("cgGLCreateBuffer", fp_cgGLCreateBuffer, params__);
-}
-GLuint cgGLGetBufferObject(ParameterTupleOf!(fp_cgGLGetBufferObject) params__) {
-	return checkedCall("cgGLGetBufferObject", fp_cgGLGetBufferObject, params__);
+version (CgAutoErrorChecking) {
+	CGenum cgSetLockingPolicy(ParameterTupleOf!(fp_cgSetLockingPolicy) params__) {
+		return checkedCall("cgSetLockingPolicy", fp_cgSetLockingPolicy, params__);
+	}
+	CGenum cgGetLockingPolicy(ParameterTupleOf!(fp_cgGetLockingPolicy) params__) {
+		return checkedCall("cgGetLockingPolicy", fp_cgGetLockingPolicy, params__);
+	}
+	CGenum cgSetSemanticCasePolicy(ParameterTupleOf!(fp_cgSetSemanticCasePolicy) params__) {
+		return checkedCall("cgSetSemanticCasePolicy", fp_cgSetSemanticCasePolicy, params__);
+	}
+	CGenum cgGetSemanticCasePolicy(ParameterTupleOf!(fp_cgGetSemanticCasePolicy) params__) {
+		return checkedCall("cgGetSemanticCasePolicy", fp_cgGetSemanticCasePolicy, params__);
+	}
+
+	/*** Context functions ***/
+
+	CGcontext cgCreateContext(ParameterTupleOf!(fp_cgCreateContext) params__) {
+		return checkedCall("cgCreateContext", fp_cgCreateContext, params__);
+	} 
+	void cgDestroyContext(ParameterTupleOf!(fp_cgDestroyContext) params__) {
+		return checkedCall("cgDestroyContext", fp_cgDestroyContext, params__);
+	} 
+	CGbool cgIsContext(ParameterTupleOf!(fp_cgIsContext) params__) {
+		return checkedCall("cgIsContext", fp_cgIsContext, params__);
+	}
+	char * cgGetLastListing(ParameterTupleOf!(fp_cgGetLastListing) params__) {
+		return checkedCall("cgGetLastListing", fp_cgGetLastListing, params__);
+	}
+	void cgSetLastListing(ParameterTupleOf!(fp_cgSetLastListing) params__) {
+		return checkedCall("cgSetLastListing", fp_cgSetLastListing, params__);
+	}
+	void cgSetAutoCompile(ParameterTupleOf!(fp_cgSetAutoCompile) params__) {
+		return checkedCall("cgSetAutoCompile", fp_cgSetAutoCompile, params__);
+	}
+	CGenum cgGetAutoCompile(ParameterTupleOf!(fp_cgGetAutoCompile) params__) {
+		return checkedCall("cgGetAutoCompile", fp_cgGetAutoCompile, params__);
+	}
+	void cgSetParameterSettingMode(ParameterTupleOf!(fp_cgSetParameterSettingMode) params__) {
+		return checkedCall("cgSetParameterSettingMode", fp_cgSetParameterSettingMode, params__);
+	}
+	CGenum cgGetParameterSettingMode(ParameterTupleOf!(fp_cgGetParameterSettingMode) params__) {
+		return checkedCall("cgGetParameterSettingMode", fp_cgGetParameterSettingMode, params__);
+	}
+
+	/*** Program functions ***/
+
+	CGprogram cgCreateProgram(ParameterTupleOf!(fp_cgCreateProgram) params__) {
+		return checkedCall("cgCreateProgram", fp_cgCreateProgram, params__);
+	}
+	CGprogram cgCreateProgramFromFile(ParameterTupleOf!(fp_cgCreateProgramFromFile) params__) {
+		return checkedCall("cgCreateProgramFromFile", fp_cgCreateProgramFromFile, params__);
+	}
+	CGprogram cgCopyProgram(ParameterTupleOf!(fp_cgCopyProgram) params__) {
+		return checkedCall("cgCopyProgram", fp_cgCopyProgram, params__);
+	} 
+	void cgDestroyProgram(ParameterTupleOf!(fp_cgDestroyProgram) params__) {
+		return checkedCall("cgDestroyProgram", fp_cgDestroyProgram, params__);
+	} 
+
+	CGprogram cgGetFirstProgram(ParameterTupleOf!(fp_cgGetFirstProgram) params__) {
+		return checkedCall("cgGetFirstProgram", fp_cgGetFirstProgram, params__);
+	}
+	CGprogram cgGetNextProgram(ParameterTupleOf!(fp_cgGetNextProgram) params__) {
+		return checkedCall("cgGetNextProgram", fp_cgGetNextProgram, params__);
+	}
+	CGcontext cgGetProgramContext(ParameterTupleOf!(fp_cgGetProgramContext) params__) {
+		return checkedCall("cgGetProgramContext", fp_cgGetProgramContext, params__);
+	}
+	CGbool cgIsProgram(ParameterTupleOf!(fp_cgIsProgram) params__) {
+		return checkedCall("cgIsProgram", fp_cgIsProgram, params__);
+	} 
+
+	void cgCompileProgram(ParameterTupleOf!(fp_cgCompileProgram) params__) {
+		return checkedCall("cgCompileProgram", fp_cgCompileProgram, params__);
+	} 
+	CGbool cgIsProgramCompiled(ParameterTupleOf!(fp_cgIsProgramCompiled) params__) {
+		return checkedCall("cgIsProgramCompiled", fp_cgIsProgramCompiled, params__);
+	} 
+	char * cgGetProgramString(ParameterTupleOf!(fp_cgGetProgramString) params__) {
+		return checkedCall("cgGetProgramString", fp_cgGetProgramString, params__);
+	} 
+	CGprofile cgGetProgramProfile(ParameterTupleOf!(fp_cgGetProgramProfile) params__) {
+		return checkedCall("cgGetProgramProfile", fp_cgGetProgramProfile, params__);
+	} 
+	char ** cgGetProgramOptions(ParameterTupleOf!(fp_cgGetProgramOptions) params__) {
+		return checkedCall("cgGetProgramOptions", fp_cgGetProgramOptions, params__);
+	}
+	void cgSetProgramProfile(ParameterTupleOf!(fp_cgSetProgramProfile) params__) {
+		return checkedCall("cgSetProgramProfile", fp_cgSetProgramProfile, params__);
+	}
+	CGenum cgGetProgramInput(ParameterTupleOf!(fp_cgGetProgramInput) params__) {
+		return checkedCall("cgGetProgramInput", fp_cgGetProgramInput, params__);
+	}
+	CGenum cgGetProgramOutput(ParameterTupleOf!(fp_cgGetProgramOutput) params__) {
+		return checkedCall("cgGetProgramOutput", fp_cgGetProgramOutput, params__);
+	}
+	void cgSetPassProgramParameters(ParameterTupleOf!(fp_cgSetPassProgramParameters) params__) {
+		return checkedCall("cgSetPassProgramParameters", fp_cgSetPassProgramParameters, params__);
+	}
+	void cgUpdateProgramParameters(ParameterTupleOf!(fp_cgUpdateProgramParameters) params__) {
+		return checkedCall("cgUpdateProgramParameters", fp_cgUpdateProgramParameters, params__);
+	}
+
+	/*** Parameter functions ***/
+
+	CGparameter cgCreateParameter(ParameterTupleOf!(fp_cgCreateParameter) params__) {
+		return checkedCall("cgCreateParameter", fp_cgCreateParameter, params__);
+	}
+	CGparameter cgCreateParameterArray(ParameterTupleOf!(fp_cgCreateParameterArray) params__) {
+		return checkedCall("cgCreateParameterArray", fp_cgCreateParameterArray, params__);
+	}
+	CGparameter cgCreateParameterMultiDimArray(ParameterTupleOf!(fp_cgCreateParameterMultiDimArray) params__) {
+		return checkedCall("cgCreateParameterMultiDimArray", fp_cgCreateParameterMultiDimArray, params__);
+	}
+	void cgDestroyParameter(ParameterTupleOf!(fp_cgDestroyParameter) params__) {
+		return checkedCall("cgDestroyParameter", fp_cgDestroyParameter, params__);
+	}
+	void cgConnectParameter(ParameterTupleOf!(fp_cgConnectParameter) params__) {
+		return checkedCall("cgConnectParameter", fp_cgConnectParameter, params__);
+	}
+	void cgDisconnectParameter(ParameterTupleOf!(fp_cgDisconnectParameter) params__) {
+		return checkedCall("cgDisconnectParameter", fp_cgDisconnectParameter, params__);
+	}
+	CGparameter cgGetConnectedParameter(ParameterTupleOf!(fp_cgGetConnectedParameter) params__) {
+		return checkedCall("cgGetConnectedParameter", fp_cgGetConnectedParameter, params__);
+	}
+
+	int cgGetNumConnectedToParameters(ParameterTupleOf!(fp_cgGetNumConnectedToParameters) params__) {
+		return checkedCall("cgGetNumConnectedToParameters", fp_cgGetNumConnectedToParameters, params__);
+	}
+	CGparameter cgGetConnectedToParameter(ParameterTupleOf!(fp_cgGetConnectedToParameter) params__) {
+		return checkedCall("cgGetConnectedToParameter", fp_cgGetConnectedToParameter, params__);
+	}
+
+	CGparameter cgGetNamedParameter(ParameterTupleOf!(fp_cgGetNamedParameter) params__) {
+		return checkedCall("cgGetNamedParameter", fp_cgGetNamedParameter, params__);
+	}
+	CGparameter cgGetNamedProgramParameter(ParameterTupleOf!(fp_cgGetNamedProgramParameter) params__) {
+		return checkedCall("cgGetNamedProgramParameter", fp_cgGetNamedProgramParameter, params__);
+	}
+
+	CGparameter cgGetFirstParameter(ParameterTupleOf!(fp_cgGetFirstParameter) params__) {
+		return checkedCall("cgGetFirstParameter", fp_cgGetFirstParameter, params__);
+	}
+	CGparameter cgGetNextParameter(ParameterTupleOf!(fp_cgGetNextParameter) params__) {
+		return checkedCall("cgGetNextParameter", fp_cgGetNextParameter, params__);
+	}
+	CGparameter cgGetFirstLeafParameter(ParameterTupleOf!(fp_cgGetFirstLeafParameter) params__) {
+		return checkedCall("cgGetFirstLeafParameter", fp_cgGetFirstLeafParameter, params__);
+	}
+	CGparameter cgGetNextLeafParameter(ParameterTupleOf!(fp_cgGetNextLeafParameter) params__) {
+		return checkedCall("cgGetNextLeafParameter", fp_cgGetNextLeafParameter, params__);
+	}
+
+	CGparameter cgGetFirstStructParameter(ParameterTupleOf!(fp_cgGetFirstStructParameter) params__) {
+		return checkedCall("cgGetFirstStructParameter", fp_cgGetFirstStructParameter, params__);
+	}
+	CGparameter cgGetNamedStructParameter(ParameterTupleOf!(fp_cgGetNamedStructParameter) params__) {
+		return checkedCall("cgGetNamedStructParameter", fp_cgGetNamedStructParameter, params__);
+	}
+
+	CGparameter cgGetFirstDependentParameter(ParameterTupleOf!(fp_cgGetFirstDependentParameter) params__) {
+		return checkedCall("cgGetFirstDependentParameter", fp_cgGetFirstDependentParameter, params__);
+	}
+
+	CGparameter cgGetArrayParameter(ParameterTupleOf!(fp_cgGetArrayParameter) params__) {
+		return checkedCall("cgGetArrayParameter", fp_cgGetArrayParameter, params__);
+	}
+	int cgGetArrayDimension(ParameterTupleOf!(fp_cgGetArrayDimension) params__) {
+		return checkedCall("cgGetArrayDimension", fp_cgGetArrayDimension, params__);
+	}
+	CGtype cgGetArrayType(ParameterTupleOf!(fp_cgGetArrayType) params__) {
+		return checkedCall("cgGetArrayType", fp_cgGetArrayType, params__);
+	}
+	int cgGetArraySize(ParameterTupleOf!(fp_cgGetArraySize) params__) {
+		return checkedCall("cgGetArraySize", fp_cgGetArraySize, params__);
+	}
+	int cgGetArrayTotalSize(ParameterTupleOf!(fp_cgGetArrayTotalSize) params__) {
+		return checkedCall("cgGetArrayTotalSize", fp_cgGetArrayTotalSize, params__);
+	}
+	void cgSetArraySize(ParameterTupleOf!(fp_cgSetArraySize) params__) {
+		return checkedCall("cgSetArraySize", fp_cgSetArraySize, params__);
+	}
+	void cgSetMultiDimArraySize(ParameterTupleOf!(fp_cgSetMultiDimArraySize) params__) {
+		return checkedCall("cgSetMultiDimArraySize", fp_cgSetMultiDimArraySize, params__);
+	}
+
+	CGprogram cgGetParameterProgram(ParameterTupleOf!(fp_cgGetParameterProgram) params__) {
+		return checkedCall("cgGetParameterProgram", fp_cgGetParameterProgram, params__);
+	}
+	CGcontext cgGetParameterContext(ParameterTupleOf!(fp_cgGetParameterContext) params__) {
+		return checkedCall("cgGetParameterContext", fp_cgGetParameterContext, params__);
+	}
+	CGbool cgIsParameter(ParameterTupleOf!(fp_cgIsParameter) params__) {
+		return checkedCall("cgIsParameter", fp_cgIsParameter, params__);
+	}
+	char * cgGetParameterName(ParameterTupleOf!(fp_cgGetParameterName) params__) {
+		return checkedCall("cgGetParameterName", fp_cgGetParameterName, params__);
+	}
+	CGtype cgGetParameterType(ParameterTupleOf!(fp_cgGetParameterType) params__) {
+		return checkedCall("cgGetParameterType", fp_cgGetParameterType, params__);
+	}
+	CGtype cgGetParameterBaseType(ParameterTupleOf!(fp_cgGetParameterBaseType) params__) {
+		return checkedCall("cgGetParameterBaseType", fp_cgGetParameterBaseType, params__);
+	}
+	CGparameterclass cgGetParameterClass(ParameterTupleOf!(fp_cgGetParameterClass) params__) {
+		return checkedCall("cgGetParameterClass", fp_cgGetParameterClass, params__);
+	}
+	char * cgGetParameterClassString(ParameterTupleOf!(fp_cgGetParameterClassString) params__) {
+		return checkedCall("cgGetParameterClassString", fp_cgGetParameterClassString, params__);
+	}
+	int cgGetParameterRows(ParameterTupleOf!(fp_cgGetParameterRows) params__) {
+		return checkedCall("cgGetParameterRows", fp_cgGetParameterRows, params__);
+	}
+	int cgGetParameterColumns(ParameterTupleOf!(fp_cgGetParameterColumns) params__) {
+		return checkedCall("cgGetParameterColumns", fp_cgGetParameterColumns, params__);
+	}
+	CGtype cgGetParameterNamedType(ParameterTupleOf!(fp_cgGetParameterNamedType) params__) {
+		return checkedCall("cgGetParameterNamedType", fp_cgGetParameterNamedType, params__);
+	}
+	char * cgGetParameterSemantic(ParameterTupleOf!(fp_cgGetParameterSemantic) params__) {
+		return checkedCall("cgGetParameterSemantic", fp_cgGetParameterSemantic, params__);
+	}
+	CGresource cgGetParameterResource(ParameterTupleOf!(fp_cgGetParameterResource) params__) {
+		return checkedCall("cgGetParameterResource", fp_cgGetParameterResource, params__);
+	}
+	CGresource cgGetParameterBaseResource(ParameterTupleOf!(fp_cgGetParameterBaseResource) params__) {
+		return checkedCall("cgGetParameterBaseResource", fp_cgGetParameterBaseResource, params__);
+	}
+	uint cgGetParameterResourceIndex(ParameterTupleOf!(fp_cgGetParameterResourceIndex) params__) {
+		return checkedCall("cgGetParameterResourceIndex", fp_cgGetParameterResourceIndex, params__);
+	}
+	CGenum cgGetParameterVariability(ParameterTupleOf!(fp_cgGetParameterVariability) params__) {
+		return checkedCall("cgGetParameterVariability", fp_cgGetParameterVariability, params__);
+	}
+	CGenum cgGetParameterDirection(ParameterTupleOf!(fp_cgGetParameterDirection) params__) {
+		return checkedCall("cgGetParameterDirection", fp_cgGetParameterDirection, params__);
+	}
+	CGbool cgIsParameterReferenced(ParameterTupleOf!(fp_cgIsParameterReferenced) params__) {
+		return checkedCall("cgIsParameterReferenced", fp_cgIsParameterReferenced, params__);
+	}
+	CGbool cgIsParameterUsed(ParameterTupleOf!(fp_cgIsParameterUsed) params__) {
+		return checkedCall("cgIsParameterUsed", fp_cgIsParameterUsed, params__);
+	}
+	double * cgGetParameterValues(ParameterTupleOf!(fp_cgGetParameterValues) params__) {
+		return checkedCall("cgGetParameterValues", fp_cgGetParameterValues, params__);
+	}
+	void cgSetParameterValuedr(ParameterTupleOf!(fp_cgSetParameterValuedr) params__) {
+		return checkedCall("cgSetParameterValuedr", fp_cgSetParameterValuedr, params__);
+	}
+	void cgSetParameterValuedc(ParameterTupleOf!(fp_cgSetParameterValuedc) params__) {
+		return checkedCall("cgSetParameterValuedc", fp_cgSetParameterValuedc, params__);
+	}
+	void cgSetParameterValuefr(ParameterTupleOf!(fp_cgSetParameterValuefr) params__) {
+		return checkedCall("cgSetParameterValuefr", fp_cgSetParameterValuefr, params__);
+	}
+	void cgSetParameterValuefc(ParameterTupleOf!(fp_cgSetParameterValuefc) params__) {
+		return checkedCall("cgSetParameterValuefc", fp_cgSetParameterValuefc, params__);
+	}
+	void cgSetParameterValueir(ParameterTupleOf!(fp_cgSetParameterValueir) params__) {
+		return checkedCall("cgSetParameterValueir", fp_cgSetParameterValueir, params__);
+	}
+	void cgSetParameterValueic(ParameterTupleOf!(fp_cgSetParameterValueic) params__) {
+		return checkedCall("cgSetParameterValueic", fp_cgSetParameterValueic, params__);
+	}
+	int cgGetParameterValuedr(ParameterTupleOf!(fp_cgGetParameterValuedr) params__) {
+		return checkedCall("cgGetParameterValuedr", fp_cgGetParameterValuedr, params__);
+	}
+	int cgGetParameterValuedc(ParameterTupleOf!(fp_cgGetParameterValuedc) params__) {
+		return checkedCall("cgGetParameterValuedc", fp_cgGetParameterValuedc, params__);
+	}
+	int cgGetParameterValuefr(ParameterTupleOf!(fp_cgGetParameterValuefr) params__) {
+		return checkedCall("cgGetParameterValuefr", fp_cgGetParameterValuefr, params__);
+	}
+	int cgGetParameterValuefc(ParameterTupleOf!(fp_cgGetParameterValuefc) params__) {
+		return checkedCall("cgGetParameterValuefc", fp_cgGetParameterValuefc, params__);
+	}
+	int cgGetParameterValueir(ParameterTupleOf!(fp_cgGetParameterValueir) params__) {
+		return checkedCall("cgGetParameterValueir", fp_cgGetParameterValueir, params__);
+	}
+	int cgGetParameterValueic(ParameterTupleOf!(fp_cgGetParameterValueic) params__) {
+		return checkedCall("cgGetParameterValueic", fp_cgGetParameterValueic, params__);
+	}
+	char * cgGetStringParameterValue(ParameterTupleOf!(fp_cgGetStringParameterValue) params__) {
+		return checkedCall("cgGetStringParameterValue", fp_cgGetStringParameterValue, params__);
+	}
+	void cgSetStringParameterValue(ParameterTupleOf!(fp_cgSetStringParameterValue) params__) {
+		return checkedCall("cgSetStringParameterValue", fp_cgSetStringParameterValue, params__);
+	}
+
+	int cgGetParameterOrdinalNumber(ParameterTupleOf!(fp_cgGetParameterOrdinalNumber) params__) {
+		return checkedCall("cgGetParameterOrdinalNumber", fp_cgGetParameterOrdinalNumber, params__);
+	}
+	CGbool cgIsParameterGlobal(ParameterTupleOf!(fp_cgIsParameterGlobal) params__) {
+		return checkedCall("cgIsParameterGlobal", fp_cgIsParameterGlobal, params__);
+	}
+	int cgGetParameterIndex(ParameterTupleOf!(fp_cgGetParameterIndex) params__) {
+		return checkedCall("cgGetParameterIndex", fp_cgGetParameterIndex, params__);
+	}
+
+	void cgSetParameterVariability(ParameterTupleOf!(fp_cgSetParameterVariability) params__) {
+		return checkedCall("cgSetParameterVariability", fp_cgSetParameterVariability, params__);
+	}
+	void cgSetParameterSemantic(ParameterTupleOf!(fp_cgSetParameterSemantic) params__) {
+		return checkedCall("cgSetParameterSemantic", fp_cgSetParameterSemantic, params__);
+	}
+
+	void cgSetParameter1f(ParameterTupleOf!(fp_cgSetParameter1f) params__) {
+		return checkedCall("cgSetParameter1f", fp_cgSetParameter1f, params__);
+	}
+	void cgSetParameter2f(ParameterTupleOf!(fp_cgSetParameter2f) params__) {
+		return checkedCall("cgSetParameter2f", fp_cgSetParameter2f, params__);
+	}
+	void cgSetParameter3f(ParameterTupleOf!(fp_cgSetParameter3f) params__) {
+		return checkedCall("cgSetParameter3f", fp_cgSetParameter3f, params__);
+	}
+	void cgSetParameter4f(ParameterTupleOf!(fp_cgSetParameter4f) params__) {
+		return checkedCall("cgSetParameter4f", fp_cgSetParameter4f, params__);
+	}
+	void cgSetParameter1d(ParameterTupleOf!(fp_cgSetParameter1d) params__) {
+		return checkedCall("cgSetParameter1d", fp_cgSetParameter1d, params__);
+	}
+	void cgSetParameter2d(ParameterTupleOf!(fp_cgSetParameter2d) params__) {
+		return checkedCall("cgSetParameter2d", fp_cgSetParameter2d, params__);
+	}
+	void cgSetParameter3d(ParameterTupleOf!(fp_cgSetParameter3d) params__) {
+		return checkedCall("cgSetParameter3d", fp_cgSetParameter3d, params__);
+	}
+	void cgSetParameter4d(ParameterTupleOf!(fp_cgSetParameter4d) params__) {
+		return checkedCall("cgSetParameter4d", fp_cgSetParameter4d, params__);
+	}
+	void cgSetParameter1i(ParameterTupleOf!(fp_cgSetParameter1i) params__) {
+		return checkedCall("cgSetParameter1i", fp_cgSetParameter1i, params__);
+	}
+	void cgSetParameter2i(ParameterTupleOf!(fp_cgSetParameter2i) params__) {
+		return checkedCall("cgSetParameter2i", fp_cgSetParameter2i, params__);
+	}
+	void cgSetParameter3i(ParameterTupleOf!(fp_cgSetParameter3i) params__) {
+		return checkedCall("cgSetParameter3i", fp_cgSetParameter3i, params__);
+	}
+	void cgSetParameter4i(ParameterTupleOf!(fp_cgSetParameter4i) params__) {
+		return checkedCall("cgSetParameter4i", fp_cgSetParameter4i, params__);
+	}
+
+	void cgSetParameter1iv(ParameterTupleOf!(fp_cgSetParameter1iv) params__) {
+		return checkedCall("cgSetParameter1iv", fp_cgSetParameter1iv, params__);
+	}
+	void cgSetParameter2iv(ParameterTupleOf!(fp_cgSetParameter2iv) params__) {
+		return checkedCall("cgSetParameter2iv", fp_cgSetParameter2iv, params__);
+	}
+	void cgSetParameter3iv(ParameterTupleOf!(fp_cgSetParameter3iv) params__) {
+		return checkedCall("cgSetParameter3iv", fp_cgSetParameter3iv, params__);
+	}
+	void cgSetParameter4iv(ParameterTupleOf!(fp_cgSetParameter4iv) params__) {
+		return checkedCall("cgSetParameter4iv", fp_cgSetParameter4iv, params__);
+	}
+	void cgSetParameter1fv(ParameterTupleOf!(fp_cgSetParameter1fv) params__) {
+		return checkedCall("cgSetParameter1fv", fp_cgSetParameter1fv, params__);
+	}
+	void cgSetParameter2fv(ParameterTupleOf!(fp_cgSetParameter2fv) params__) {
+		return checkedCall("cgSetParameter2fv", fp_cgSetParameter2fv, params__);
+	}
+	void cgSetParameter3fv(ParameterTupleOf!(fp_cgSetParameter3fv) params__) {
+		return checkedCall("cgSetParameter3fv", fp_cgSetParameter3fv, params__);
+	}
+	void cgSetParameter4fv(ParameterTupleOf!(fp_cgSetParameter4fv) params__) {
+		return checkedCall("cgSetParameter4fv", fp_cgSetParameter4fv, params__);
+	}
+	void cgSetParameter1dv(ParameterTupleOf!(fp_cgSetParameter1dv) params__) {
+		return checkedCall("cgSetParameter1dv", fp_cgSetParameter1dv, params__);
+	}
+	void cgSetParameter2dv(ParameterTupleOf!(fp_cgSetParameter2dv) params__) {
+		return checkedCall("cgSetParameter2dv", fp_cgSetParameter2dv, params__);
+	}
+	void cgSetParameter3dv(ParameterTupleOf!(fp_cgSetParameter3dv) params__) {
+		return checkedCall("cgSetParameter3dv", fp_cgSetParameter3dv, params__);
+	}
+	void cgSetParameter4dv(ParameterTupleOf!(fp_cgSetParameter4dv) params__) {
+		return checkedCall("cgSetParameter4dv", fp_cgSetParameter4dv, params__);
+	}
+
+	void cgSetMatrixParameterir(ParameterTupleOf!(fp_cgSetMatrixParameterir) params__) {
+		return checkedCall("cgSetMatrixParameterir", fp_cgSetMatrixParameterir, params__);
+	}
+	void cgSetMatrixParameterdr(ParameterTupleOf!(fp_cgSetMatrixParameterdr) params__) {
+		return checkedCall("cgSetMatrixParameterdr", fp_cgSetMatrixParameterdr, params__);
+	}
+	void cgSetMatrixParameterfr(ParameterTupleOf!(fp_cgSetMatrixParameterfr) params__) {
+		return checkedCall("cgSetMatrixParameterfr", fp_cgSetMatrixParameterfr, params__);
+	}
+	void cgSetMatrixParameteric(ParameterTupleOf!(fp_cgSetMatrixParameteric) params__) {
+		return checkedCall("cgSetMatrixParameteric", fp_cgSetMatrixParameteric, params__);
+	}
+	void cgSetMatrixParameterdc(ParameterTupleOf!(fp_cgSetMatrixParameterdc) params__) {
+		return checkedCall("cgSetMatrixParameterdc", fp_cgSetMatrixParameterdc, params__);
+	}
+	void cgSetMatrixParameterfc(ParameterTupleOf!(fp_cgSetMatrixParameterfc) params__) {
+		return checkedCall("cgSetMatrixParameterfc", fp_cgSetMatrixParameterfc, params__);
+	}
+
+	void cgGetMatrixParameterir(ParameterTupleOf!(fp_cgGetMatrixParameterir) params__) {
+		return checkedCall("cgGetMatrixParameterir", fp_cgGetMatrixParameterir, params__);
+	}
+	void cgGetMatrixParameterdr(ParameterTupleOf!(fp_cgGetMatrixParameterdr) params__) {
+		return checkedCall("cgGetMatrixParameterdr", fp_cgGetMatrixParameterdr, params__);
+	}
+	void cgGetMatrixParameterfr(ParameterTupleOf!(fp_cgGetMatrixParameterfr) params__) {
+		return checkedCall("cgGetMatrixParameterfr", fp_cgGetMatrixParameterfr, params__);
+	}
+	void cgGetMatrixParameteric(ParameterTupleOf!(fp_cgGetMatrixParameteric) params__) {
+		return checkedCall("cgGetMatrixParameteric", fp_cgGetMatrixParameteric, params__);
+	}
+	void cgGetMatrixParameterdc(ParameterTupleOf!(fp_cgGetMatrixParameterdc) params__) {
+		return checkedCall("cgGetMatrixParameterdc", fp_cgGetMatrixParameterdc, params__);
+	}
+	void cgGetMatrixParameterfc(ParameterTupleOf!(fp_cgGetMatrixParameterfc) params__) {
+		return checkedCall("cgGetMatrixParameterfc", fp_cgGetMatrixParameterfc, params__);
+	}
+
+	CGparameter cgGetNamedSubParameter(ParameterTupleOf!(fp_cgGetNamedSubParameter) params__) {
+		return checkedCall("cgGetNamedSubParameter", fp_cgGetNamedSubParameter, params__);
+	}
+
+	/*** Type Functions ***/
+
+	char * cgGetTypeString(ParameterTupleOf!(fp_cgGetTypeString) params__) {
+		return checkedCall("cgGetTypeString", fp_cgGetTypeString, params__);
+	}
+	CGtype cgGetType(ParameterTupleOf!(fp_cgGetType) params__) {
+		return checkedCall("cgGetType", fp_cgGetType, params__);
+	}
+
+	CGtype cgGetNamedUserType(ParameterTupleOf!(fp_cgGetNamedUserType) params__) {
+		return checkedCall("cgGetNamedUserType", fp_cgGetNamedUserType, params__);
+	}
+
+	int cgGetNumUserTypes(ParameterTupleOf!(fp_cgGetNumUserTypes) params__) {
+		return checkedCall("cgGetNumUserTypes", fp_cgGetNumUserTypes, params__);
+	}
+	CGtype cgGetUserType(ParameterTupleOf!(fp_cgGetUserType) params__) {
+		return checkedCall("cgGetUserType", fp_cgGetUserType, params__);
+	}
+
+	int cgGetNumParentTypes(ParameterTupleOf!(fp_cgGetNumParentTypes) params__) {
+		return checkedCall("cgGetNumParentTypes", fp_cgGetNumParentTypes, params__);
+	}
+	CGtype cgGetParentType(ParameterTupleOf!(fp_cgGetParentType) params__) {
+		return checkedCall("cgGetParentType", fp_cgGetParentType, params__);
+	}
+
+	CGbool cgIsParentType(ParameterTupleOf!(fp_cgIsParentType) params__) {
+		return checkedCall("cgIsParentType", fp_cgIsParentType, params__);
+	}
+	CGbool cgIsInterfaceType(ParameterTupleOf!(fp_cgIsInterfaceType) params__) {
+		return checkedCall("cgIsInterfaceType", fp_cgIsInterfaceType, params__);
+	}
+
+	/*** Resource Functions ***/
+
+	char * cgGetResourceString(ParameterTupleOf!(fp_cgGetResourceString) params__) {
+		return checkedCall("cgGetResourceString", fp_cgGetResourceString, params__);
+	}
+	CGresource cgGetResource(ParameterTupleOf!(fp_cgGetResource) params__) {
+		return checkedCall("cgGetResource", fp_cgGetResource, params__);
+	}
+
+	/*** Enum Functions ***/
+
+	char * cgGetEnumString(ParameterTupleOf!(fp_cgGetEnumString) params__) {
+		return checkedCall("cgGetEnumString", fp_cgGetEnumString, params__);
+	}
+	CGenum cgGetEnum(ParameterTupleOf!(fp_cgGetEnum) params__) {
+		return checkedCall("cgGetEnum", fp_cgGetEnum, params__);
+	}
+
+	/*** Profile Functions ***/
+
+	char * cgGetProfileString(ParameterTupleOf!(fp_cgGetProfileString) params__) {
+		return checkedCall("cgGetProfileString", fp_cgGetProfileString, params__);
+	}
+	CGprofile cgGetProfile(ParameterTupleOf!(fp_cgGetProfile) params__) {
+		return checkedCall("cgGetProfile", fp_cgGetProfile, params__);
+	}
+
+	/*** Error Functions ***/
+
+	CGerror cgGetError(ParameterTupleOf!(fp_cgGetError) params__) {
+		return checkedCall("cgGetError", fp_cgGetError, params__);
+	}
+	CGerror cgGetFirstError(ParameterTupleOf!(fp_cgGetFirstError) params__) {
+		return checkedCall("cgGetFirstError", fp_cgGetFirstError, params__);
+	}
+	char * cgGetErrorString(ParameterTupleOf!(fp_cgGetErrorString) params__) {
+		return checkedCall("cgGetErrorString", fp_cgGetErrorString, params__);
+	}
+	char * cgGetLastErrorString(ParameterTupleOf!(fp_cgGetLastErrorString) params__) {
+		return checkedCall("cgGetLastErrorString", fp_cgGetLastErrorString, params__);
+	}
+	void cgSetErrorCallback(ParameterTupleOf!(fp_cgSetErrorCallback) params__) {
+		return checkedCall("cgSetErrorCallback", fp_cgSetErrorCallback, params__);
+	}
+	CGerrorCallbackFunc cgGetErrorCallback(ParameterTupleOf!(fp_cgGetErrorCallback) params__) {
+		return checkedCall("cgGetErrorCallback", fp_cgGetErrorCallback, params__);
+	}
+	void cgSetErrorHandler(ParameterTupleOf!(fp_cgSetErrorHandler) params__) {
+		return checkedCall("cgSetErrorHandler", fp_cgSetErrorHandler, params__);
+	}
+	CGerrorHandlerFunc cgGetErrorHandler(ParameterTupleOf!(fp_cgGetErrorHandler) params__) {
+		return checkedCall("cgGetErrorHandler", fp_cgGetErrorHandler, params__);
+	}
+
+	/*** Misc Functions ***/
+
+	char * cgGetString(ParameterTupleOf!(fp_cgGetString) params__) {
+		return checkedCall("cgGetString", fp_cgGetString, params__);
+	}
+
+
+	/*** CgFX Functions ***/
+
+	CGeffect cgCreateEffect(ParameterTupleOf!(fp_cgCreateEffect) params__) {
+		return checkedCall("cgCreateEffect", fp_cgCreateEffect, params__);
+	}
+	CGeffect cgCreateEffectFromFile(ParameterTupleOf!(fp_cgCreateEffectFromFile) params__) {
+		return checkedCall("cgCreateEffectFromFile", fp_cgCreateEffectFromFile, params__);
+	}
+	CGeffect cgCopyEffect(ParameterTupleOf!(fp_cgCopyEffect) params__) {
+		return checkedCall("cgCopyEffect", fp_cgCopyEffect, params__);
+	} 
+	void cgDestroyEffect(ParameterTupleOf!(fp_cgDestroyEffect) params__) {
+		return checkedCall("cgDestroyEffect", fp_cgDestroyEffect, params__);
+	}
+	CGcontext cgGetEffectContext(ParameterTupleOf!(fp_cgGetEffectContext) params__) {
+		return checkedCall("cgGetEffectContext", fp_cgGetEffectContext, params__);
+	}
+	CGbool cgIsEffect(ParameterTupleOf!(fp_cgIsEffect) params__) {
+		return checkedCall("cgIsEffect", fp_cgIsEffect, params__);
+	}
+
+	CGeffect cgGetFirstEffect(ParameterTupleOf!(fp_cgGetFirstEffect) params__) {
+		return checkedCall("cgGetFirstEffect", fp_cgGetFirstEffect, params__);
+	}
+	CGeffect cgGetNextEffect(ParameterTupleOf!(fp_cgGetNextEffect) params__) {
+		return checkedCall("cgGetNextEffect", fp_cgGetNextEffect, params__);
+	}
+
+	CGprogram cgCreateProgramFromEffect(ParameterTupleOf!(fp_cgCreateProgramFromEffect) params__) {
+		return checkedCall("cgCreateProgramFromEffect", fp_cgCreateProgramFromEffect, params__);
+	}
+
+	CGtechnique cgGetFirstTechnique(ParameterTupleOf!(fp_cgGetFirstTechnique) params__) {
+		return checkedCall("cgGetFirstTechnique", fp_cgGetFirstTechnique, params__);
+	}
+	CGtechnique cgGetNextTechnique(ParameterTupleOf!(fp_cgGetNextTechnique) params__) {
+		return checkedCall("cgGetNextTechnique", fp_cgGetNextTechnique, params__);
+	}
+	CGtechnique cgGetNamedTechnique(ParameterTupleOf!(fp_cgGetNamedTechnique) params__) {
+		return checkedCall("cgGetNamedTechnique", fp_cgGetNamedTechnique, params__);
+	}
+	char * cgGetTechniqueName(ParameterTupleOf!(fp_cgGetTechniqueName) params__) {
+		return checkedCall("cgGetTechniqueName", fp_cgGetTechniqueName, params__);
+	}
+	CGbool cgIsTechnique(ParameterTupleOf!(fp_cgIsTechnique) params__) {
+		return checkedCall("cgIsTechnique", fp_cgIsTechnique, params__);
+	}
+	CGbool cgValidateTechnique(ParameterTupleOf!(fp_cgValidateTechnique) params__) {
+		return checkedCall("cgValidateTechnique", fp_cgValidateTechnique, params__);
+	}
+	CGbool cgIsTechniqueValidated(ParameterTupleOf!(fp_cgIsTechniqueValidated) params__) {
+		return checkedCall("cgIsTechniqueValidated", fp_cgIsTechniqueValidated, params__);
+	}
+	CGeffect cgGetTechniqueEffect(ParameterTupleOf!(fp_cgGetTechniqueEffect) params__) {
+		return checkedCall("cgGetTechniqueEffect", fp_cgGetTechniqueEffect, params__);
+	}
+
+	CGpass cgGetFirstPass(ParameterTupleOf!(fp_cgGetFirstPass) params__) {
+		return checkedCall("cgGetFirstPass", fp_cgGetFirstPass, params__);
+	}
+	CGpass cgGetNamedPass(ParameterTupleOf!(fp_cgGetNamedPass) params__) {
+		return checkedCall("cgGetNamedPass", fp_cgGetNamedPass, params__);
+	}
+	CGpass cgGetNextPass(ParameterTupleOf!(fp_cgGetNextPass) params__) {
+		return checkedCall("cgGetNextPass", fp_cgGetNextPass, params__);
+	}
+	CGbool cgIsPass(ParameterTupleOf!(fp_cgIsPass) params__) {
+		return checkedCall("cgIsPass", fp_cgIsPass, params__);
+	}
+	char * cgGetPassName(ParameterTupleOf!(fp_cgGetPassName) params__) {
+		return checkedCall("cgGetPassName", fp_cgGetPassName, params__);
+	} 
+	CGtechnique cgGetPassTechnique(ParameterTupleOf!(fp_cgGetPassTechnique) params__) {
+		return checkedCall("cgGetPassTechnique", fp_cgGetPassTechnique, params__);
+	}
+
+	void cgSetPassState(ParameterTupleOf!(fp_cgSetPassState) params__) {
+		return checkedCall("cgSetPassState", fp_cgSetPassState, params__);
+	}
+	void cgResetPassState(ParameterTupleOf!(fp_cgResetPassState) params__) {
+		return checkedCall("cgResetPassState", fp_cgResetPassState, params__);
+	}
+
+	CGstateassignment cgGetFirstStateAssignment(ParameterTupleOf!(fp_cgGetFirstStateAssignment) params__) {
+		return checkedCall("cgGetFirstStateAssignment", fp_cgGetFirstStateAssignment, params__);
+	}
+	CGstateassignment cgGetNamedStateAssignment(ParameterTupleOf!(fp_cgGetNamedStateAssignment) params__) {
+		return checkedCall("cgGetNamedStateAssignment", fp_cgGetNamedStateAssignment, params__);
+	}
+	CGstateassignment cgGetNextStateAssignment(ParameterTupleOf!(fp_cgGetNextStateAssignment) params__) {
+		return checkedCall("cgGetNextStateAssignment", fp_cgGetNextStateAssignment, params__);
+	}
+	CGbool cgIsStateAssignment(ParameterTupleOf!(fp_cgIsStateAssignment) params__) {
+		return checkedCall("cgIsStateAssignment", fp_cgIsStateAssignment, params__);
+	}
+	CGbool cgCallStateSetCallback(ParameterTupleOf!(fp_cgCallStateSetCallback) params__) {
+		return checkedCall("cgCallStateSetCallback", fp_cgCallStateSetCallback, params__);
+	}
+	CGbool cgCallStateValidateCallback(ParameterTupleOf!(fp_cgCallStateValidateCallback) params__) {
+		return checkedCall("cgCallStateValidateCallback", fp_cgCallStateValidateCallback, params__);
+	}
+	CGbool cgCallStateResetCallback(ParameterTupleOf!(fp_cgCallStateResetCallback) params__) {
+		return checkedCall("cgCallStateResetCallback", fp_cgCallStateResetCallback, params__);
+	}
+	CGpass cgGetStateAssignmentPass(ParameterTupleOf!(fp_cgGetStateAssignmentPass) params__) {
+		return checkedCall("cgGetStateAssignmentPass", fp_cgGetStateAssignmentPass, params__);
+	}
+	CGparameter cgGetSamplerStateAssignmentParameter(ParameterTupleOf!(fp_cgGetSamplerStateAssignmentParameter) params__) {
+		return checkedCall("cgGetSamplerStateAssignmentParameter", fp_cgGetSamplerStateAssignmentParameter, params__);
+	}
+
+	 float * cgGetFloatStateAssignmentValues(ParameterTupleOf!(fp_cgGetFloatStateAssignmentValues) params__) {
+		return checkedCall("cgGetFloatStateAssignmentValues", fp_cgGetFloatStateAssignmentValues, params__);
+	}
+	 int * cgGetIntStateAssignmentValues(ParameterTupleOf!(fp_cgGetIntStateAssignmentValues) params__) {
+		return checkedCall("cgGetIntStateAssignmentValues", fp_cgGetIntStateAssignmentValues, params__);
+	}
+	 CGbool * cgGetBoolStateAssignmentValues(ParameterTupleOf!(fp_cgGetBoolStateAssignmentValues) params__) {
+		return checkedCall("cgGetBoolStateAssignmentValues", fp_cgGetBoolStateAssignmentValues, params__);
+	}
+	 char * cgGetStringStateAssignmentValue(ParameterTupleOf!(fp_cgGetStringStateAssignmentValue) params__) {
+		return checkedCall("cgGetStringStateAssignmentValue", fp_cgGetStringStateAssignmentValue, params__);
+	}
+	CGprogram cgGetProgramStateAssignmentValue(ParameterTupleOf!(fp_cgGetProgramStateAssignmentValue) params__) {
+		return checkedCall("cgGetProgramStateAssignmentValue", fp_cgGetProgramStateAssignmentValue, params__);
+	}
+	CGparameter cgGetTextureStateAssignmentValue(ParameterTupleOf!(fp_cgGetTextureStateAssignmentValue) params__) {
+		return checkedCall("cgGetTextureStateAssignmentValue", fp_cgGetTextureStateAssignmentValue, params__);
+	}
+	CGparameter cgGetSamplerStateAssignmentValue(ParameterTupleOf!(fp_cgGetSamplerStateAssignmentValue) params__) {
+		return checkedCall("cgGetSamplerStateAssignmentValue", fp_cgGetSamplerStateAssignmentValue, params__);
+	}
+	int cgGetStateAssignmentIndex(ParameterTupleOf!(fp_cgGetStateAssignmentIndex) params__) {
+		return checkedCall("cgGetStateAssignmentIndex", fp_cgGetStateAssignmentIndex, params__);
+	}
+
+	int cgGetNumDependentStateAssignmentParameters(ParameterTupleOf!(fp_cgGetNumDependentStateAssignmentParameters) params__) {
+		return checkedCall("cgGetNumDependentStateAssignmentParameters", fp_cgGetNumDependentStateAssignmentParameters, params__);
+	}
+	CGparameter cgGetDependentStateAssignmentParameter(ParameterTupleOf!(fp_cgGetDependentStateAssignmentParameter) params__) {
+		return checkedCall("cgGetDependentStateAssignmentParameter", fp_cgGetDependentStateAssignmentParameter, params__);
+	}
+
+	CGparameter cgGetConnectedStateAssignmentParameter(ParameterTupleOf!(fp_cgGetConnectedStateAssignmentParameter) params__) {
+		return checkedCall("cgGetConnectedStateAssignmentParameter", fp_cgGetConnectedStateAssignmentParameter, params__);
+	}
+
+	CGstate cgGetStateAssignmentState(ParameterTupleOf!(fp_cgGetStateAssignmentState) params__) {
+		return checkedCall("cgGetStateAssignmentState", fp_cgGetStateAssignmentState, params__);
+	}
+	CGstate cgGetSamplerStateAssignmentState(ParameterTupleOf!(fp_cgGetSamplerStateAssignmentState) params__) {
+		return checkedCall("cgGetSamplerStateAssignmentState", fp_cgGetSamplerStateAssignmentState, params__);
+	}
+
+	CGstate cgCreateState(ParameterTupleOf!(fp_cgCreateState) params__) {
+		return checkedCall("cgCreateState", fp_cgCreateState, params__);
+	}
+	CGstate cgCreateArrayState(ParameterTupleOf!(fp_cgCreateArrayState) params__) {
+		return checkedCall("cgCreateArrayState", fp_cgCreateArrayState, params__);
+	}
+	void cgSetStateCallbacks(ParameterTupleOf!(fp_cgSetStateCallbacks) params__) {
+		return checkedCall("cgSetStateCallbacks", fp_cgSetStateCallbacks, params__);
+	}
+	CGstatecallback cgGetStateSetCallback(ParameterTupleOf!(fp_cgGetStateSetCallback) params__) {
+		return checkedCall("cgGetStateSetCallback", fp_cgGetStateSetCallback, params__);
+	}
+	CGstatecallback cgGetStateResetCallback(ParameterTupleOf!(fp_cgGetStateResetCallback) params__) {
+		return checkedCall("cgGetStateResetCallback", fp_cgGetStateResetCallback, params__);
+	}
+	CGstatecallback cgGetStateValidateCallback(ParameterTupleOf!(fp_cgGetStateValidateCallback) params__) {
+		return checkedCall("cgGetStateValidateCallback", fp_cgGetStateValidateCallback, params__);
+	}
+	CGcontext cgGetStateContext(ParameterTupleOf!(fp_cgGetStateContext) params__) {
+		return checkedCall("cgGetStateContext", fp_cgGetStateContext, params__);
+	}
+	CGtype cgGetStateType(ParameterTupleOf!(fp_cgGetStateType) params__) {
+		return checkedCall("cgGetStateType", fp_cgGetStateType, params__);
+	}
+	 char * cgGetStateName(ParameterTupleOf!(fp_cgGetStateName) params__) {
+		return checkedCall("cgGetStateName", fp_cgGetStateName, params__);
+	}
+	CGstate cgGetNamedState(ParameterTupleOf!(fp_cgGetNamedState) params__) {
+		return checkedCall("cgGetNamedState", fp_cgGetNamedState, params__);
+	}
+	CGstate cgGetFirstState(ParameterTupleOf!(fp_cgGetFirstState) params__) {
+		return checkedCall("cgGetFirstState", fp_cgGetFirstState, params__);
+	}
+	CGstate cgGetNextState(ParameterTupleOf!(fp_cgGetNextState) params__) {
+		return checkedCall("cgGetNextState", fp_cgGetNextState, params__);
+	}
+	CGbool cgIsState(ParameterTupleOf!(fp_cgIsState) params__) {
+		return checkedCall("cgIsState", fp_cgIsState, params__);
+	}
+	void cgAddStateEnumerant(ParameterTupleOf!(fp_cgAddStateEnumerant) params__) {
+		return checkedCall("cgAddStateEnumerant", fp_cgAddStateEnumerant, params__);
+	}
+
+	CGstate cgCreateSamplerState(ParameterTupleOf!(fp_cgCreateSamplerState) params__) {
+		return checkedCall("cgCreateSamplerState", fp_cgCreateSamplerState, params__);
+	}
+	CGstate cgCreateArraySamplerState(ParameterTupleOf!(fp_cgCreateArraySamplerState) params__) {
+		return checkedCall("cgCreateArraySamplerState", fp_cgCreateArraySamplerState, params__);
+	}
+	CGstate cgGetNamedSamplerState(ParameterTupleOf!(fp_cgGetNamedSamplerState) params__) {
+		return checkedCall("cgGetNamedSamplerState", fp_cgGetNamedSamplerState, params__);
+	}
+	CGstate cgGetFirstSamplerState(ParameterTupleOf!(fp_cgGetFirstSamplerState) params__) {
+		return checkedCall("cgGetFirstSamplerState", fp_cgGetFirstSamplerState, params__);
+	}
+
+	CGstateassignment cgGetFirstSamplerStateAssignment(ParameterTupleOf!(fp_cgGetFirstSamplerStateAssignment) params__) {
+		return checkedCall("cgGetFirstSamplerStateAssignment", fp_cgGetFirstSamplerStateAssignment, params__);
+	}
+	CGstateassignment cgGetNamedSamplerStateAssignment(ParameterTupleOf!(fp_cgGetNamedSamplerStateAssignment) params__) {
+		return checkedCall("cgGetNamedSamplerStateAssignment", fp_cgGetNamedSamplerStateAssignment, params__);
+	}
+	void cgSetSamplerState(ParameterTupleOf!(fp_cgSetSamplerState) params__) {
+		return checkedCall("cgSetSamplerState", fp_cgSetSamplerState, params__);
+	}
+
+	CGparameter cgGetNamedEffectParameter(ParameterTupleOf!(fp_cgGetNamedEffectParameter) params__) {
+		return checkedCall("cgGetNamedEffectParameter", fp_cgGetNamedEffectParameter, params__);
+	}
+	CGparameter cgGetFirstLeafEffectParameter(ParameterTupleOf!(fp_cgGetFirstLeafEffectParameter) params__) {
+		return checkedCall("cgGetFirstLeafEffectParameter", fp_cgGetFirstLeafEffectParameter, params__);
+	}
+	CGparameter cgGetFirstEffectParameter(ParameterTupleOf!(fp_cgGetFirstEffectParameter) params__) {
+		return checkedCall("cgGetFirstEffectParameter", fp_cgGetFirstEffectParameter, params__);
+	}
+	CGparameter cgGetEffectParameterBySemantic(ParameterTupleOf!(fp_cgGetEffectParameterBySemantic) params__) {
+		return checkedCall("cgGetEffectParameterBySemantic", fp_cgGetEffectParameterBySemantic, params__);
+	}
+
+	CGannotation cgGetFirstTechniqueAnnotation(ParameterTupleOf!(fp_cgGetFirstTechniqueAnnotation) params__) {
+		return checkedCall("cgGetFirstTechniqueAnnotation", fp_cgGetFirstTechniqueAnnotation, params__);
+	}
+	CGannotation cgGetFirstPassAnnotation(ParameterTupleOf!(fp_cgGetFirstPassAnnotation) params__) {
+		return checkedCall("cgGetFirstPassAnnotation", fp_cgGetFirstPassAnnotation, params__);
+	}
+	CGannotation cgGetFirstParameterAnnotation(ParameterTupleOf!(fp_cgGetFirstParameterAnnotation) params__) {
+		return checkedCall("cgGetFirstParameterAnnotation", fp_cgGetFirstParameterAnnotation, params__);
+	}
+	CGannotation cgGetFirstProgramAnnotation(ParameterTupleOf!(fp_cgGetFirstProgramAnnotation) params__) {
+		return checkedCall("cgGetFirstProgramAnnotation", fp_cgGetFirstProgramAnnotation, params__);
+	}
+	CGannotation cgGetFirstEffectAnnotation(ParameterTupleOf!(fp_cgGetFirstEffectAnnotation) params__) {
+		return checkedCall("cgGetFirstEffectAnnotation", fp_cgGetFirstEffectAnnotation, params__);
+	}
+	CGannotation cgGetNextAnnotation(ParameterTupleOf!(fp_cgGetNextAnnotation) params__) {
+		return checkedCall("cgGetNextAnnotation", fp_cgGetNextAnnotation, params__);
+	}
+
+	CGannotation cgGetNamedTechniqueAnnotation(ParameterTupleOf!(fp_cgGetNamedTechniqueAnnotation) params__) {
+		return checkedCall("cgGetNamedTechniqueAnnotation", fp_cgGetNamedTechniqueAnnotation, params__);
+	}
+	CGannotation cgGetNamedPassAnnotation(ParameterTupleOf!(fp_cgGetNamedPassAnnotation) params__) {
+		return checkedCall("cgGetNamedPassAnnotation", fp_cgGetNamedPassAnnotation, params__);
+	}
+	CGannotation cgGetNamedParameterAnnotation(ParameterTupleOf!(fp_cgGetNamedParameterAnnotation) params__) {
+		return checkedCall("cgGetNamedParameterAnnotation", fp_cgGetNamedParameterAnnotation, params__);
+	}
+	CGannotation cgGetNamedProgramAnnotation(ParameterTupleOf!(fp_cgGetNamedProgramAnnotation) params__) {
+		return checkedCall("cgGetNamedProgramAnnotation", fp_cgGetNamedProgramAnnotation, params__);
+	}
+	CGannotation cgGetNamedEffectAnnotation(ParameterTupleOf!(fp_cgGetNamedEffectAnnotation) params__) {
+		return checkedCall("cgGetNamedEffectAnnotation", fp_cgGetNamedEffectAnnotation, params__);
+	}
+
+	CGbool cgIsAnnotation(ParameterTupleOf!(fp_cgIsAnnotation) params__) {
+		return checkedCall("cgIsAnnotation", fp_cgIsAnnotation, params__);
+	}
+
+	 char * cgGetAnnotationName(ParameterTupleOf!(fp_cgGetAnnotationName) params__) {
+		return checkedCall("cgGetAnnotationName", fp_cgGetAnnotationName, params__);
+	}
+	CGtype cgGetAnnotationType(ParameterTupleOf!(fp_cgGetAnnotationType) params__) {
+		return checkedCall("cgGetAnnotationType", fp_cgGetAnnotationType, params__);
+	}
+
+	 float * cgGetFloatAnnotationValues(ParameterTupleOf!(fp_cgGetFloatAnnotationValues) params__) {
+		return checkedCall("cgGetFloatAnnotationValues", fp_cgGetFloatAnnotationValues, params__);
+	}
+	 int * cgGetIntAnnotationValues(ParameterTupleOf!(fp_cgGetIntAnnotationValues) params__) {
+		return checkedCall("cgGetIntAnnotationValues", fp_cgGetIntAnnotationValues, params__);
+	}
+	 char * cgGetStringAnnotationValue(ParameterTupleOf!(fp_cgGetStringAnnotationValue) params__) {
+		return checkedCall("cgGetStringAnnotationValue", fp_cgGetStringAnnotationValue, params__);
+	}
+	 char *  * cgGetStringAnnotationValues(ParameterTupleOf!(fp_cgGetStringAnnotationValues) params__) {
+		return checkedCall("cgGetStringAnnotationValues", fp_cgGetStringAnnotationValues, params__);
+	}
+	 CGbool * cgGetBoolAnnotationValues(ParameterTupleOf!(fp_cgGetBoolAnnotationValues) params__) {
+		return checkedCall("cgGetBoolAnnotationValues", fp_cgGetBoolAnnotationValues, params__);
+	}
+	 int * cgGetBooleanAnnotationValues(ParameterTupleOf!(fp_cgGetBooleanAnnotationValues) params__) {
+		return checkedCall("cgGetBooleanAnnotationValues", fp_cgGetBooleanAnnotationValues, params__);
+	}
+
+	int cgGetNumDependentAnnotationParameters(ParameterTupleOf!(fp_cgGetNumDependentAnnotationParameters) params__) {
+		return checkedCall("cgGetNumDependentAnnotationParameters", fp_cgGetNumDependentAnnotationParameters, params__);
+	}
+	CGparameter cgGetDependentAnnotationParameter(ParameterTupleOf!(fp_cgGetDependentAnnotationParameter) params__) {
+		return checkedCall("cgGetDependentAnnotationParameter", fp_cgGetDependentAnnotationParameter, params__);
+	}
+
+	void cgEvaluateProgram(ParameterTupleOf!(fp_cgEvaluateProgram) params__) {
+		return checkedCall("cgEvaluateProgram", fp_cgEvaluateProgram, params__);
+	}
+
+	/*** Cg 1.5 Additions ***/
+
+	CGbool cgSetEffectName(ParameterTupleOf!(fp_cgSetEffectName) params__) {
+		return checkedCall("cgSetEffectName", fp_cgSetEffectName, params__);
+	}
+	 char * cgGetEffectName(ParameterTupleOf!(fp_cgGetEffectName) params__) {
+		return checkedCall("cgGetEffectName", fp_cgGetEffectName, params__);
+	}
+	CGeffect cgGetNamedEffect(ParameterTupleOf!(fp_cgGetNamedEffect) params__) {
+		return checkedCall("cgGetNamedEffect", fp_cgGetNamedEffect, params__);
+	}
+	CGparameter cgCreateEffectParameter(ParameterTupleOf!(fp_cgCreateEffectParameter) params__) {
+		return checkedCall("cgCreateEffectParameter", fp_cgCreateEffectParameter, params__);
+	}
+
+	CGtechnique cgCreateTechnique(ParameterTupleOf!(fp_cgCreateTechnique) params__) {
+		return checkedCall("cgCreateTechnique", fp_cgCreateTechnique, params__);
+	}
+
+	CGparameter cgCreateEffectParameterArray(ParameterTupleOf!(fp_cgCreateEffectParameterArray) params__) {
+		return checkedCall("cgCreateEffectParameterArray", fp_cgCreateEffectParameterArray, params__);
+	} 
+	CGparameter cgCreateEffectParameterMultiDimArray(ParameterTupleOf!(fp_cgCreateEffectParameterMultiDimArray) params__) {
+		return checkedCall("cgCreateEffectParameterMultiDimArray", fp_cgCreateEffectParameterMultiDimArray, params__);
+	} 
+
+	CGpass cgCreatePass(ParameterTupleOf!(fp_cgCreatePass) params__) {
+		return checkedCall("cgCreatePass", fp_cgCreatePass, params__);
+	}
+
+	CGstateassignment cgCreateStateAssignment(ParameterTupleOf!(fp_cgCreateStateAssignment) params__) {
+		return checkedCall("cgCreateStateAssignment", fp_cgCreateStateAssignment, params__);
+	}
+	CGstateassignment cgCreateStateAssignmentIndex(ParameterTupleOf!(fp_cgCreateStateAssignmentIndex) params__) {
+		return checkedCall("cgCreateStateAssignmentIndex", fp_cgCreateStateAssignmentIndex, params__);
+	}
+	CGstateassignment cgCreateSamplerStateAssignment(ParameterTupleOf!(fp_cgCreateSamplerStateAssignment) params__) {
+		return checkedCall("cgCreateSamplerStateAssignment", fp_cgCreateSamplerStateAssignment, params__);
+	}
+
+	CGbool cgSetFloatStateAssignment(ParameterTupleOf!(fp_cgSetFloatStateAssignment) params__) {
+		return checkedCall("cgSetFloatStateAssignment", fp_cgSetFloatStateAssignment, params__);
+	}
+	CGbool cgSetIntStateAssignment(ParameterTupleOf!(fp_cgSetIntStateAssignment) params__) {
+		return checkedCall("cgSetIntStateAssignment", fp_cgSetIntStateAssignment, params__);
+	}
+	CGbool cgSetBoolStateAssignment(ParameterTupleOf!(fp_cgSetBoolStateAssignment) params__) {
+		return checkedCall("cgSetBoolStateAssignment", fp_cgSetBoolStateAssignment, params__);
+	}
+	CGbool cgSetStringStateAssignment(ParameterTupleOf!(fp_cgSetStringStateAssignment) params__) {
+		return checkedCall("cgSetStringStateAssignment", fp_cgSetStringStateAssignment, params__);
+	}
+	CGbool cgSetProgramStateAssignment(ParameterTupleOf!(fp_cgSetProgramStateAssignment) params__) {
+		return checkedCall("cgSetProgramStateAssignment", fp_cgSetProgramStateAssignment, params__);
+	}
+	CGbool cgSetSamplerStateAssignment(ParameterTupleOf!(fp_cgSetSamplerStateAssignment) params__) {
+		return checkedCall("cgSetSamplerStateAssignment", fp_cgSetSamplerStateAssignment, params__);
+	}
+	CGbool cgSetTextureStateAssignment(ParameterTupleOf!(fp_cgSetTextureStateAssignment) params__) {
+		return checkedCall("cgSetTextureStateAssignment", fp_cgSetTextureStateAssignment, params__);
+	}
+
+	CGbool cgSetFloatArrayStateAssignment(ParameterTupleOf!(fp_cgSetFloatArrayStateAssignment) params__) {
+		return checkedCall("cgSetFloatArrayStateAssignment", fp_cgSetFloatArrayStateAssignment, params__);
+	}
+	CGbool cgSetIntArrayStateAssignment(ParameterTupleOf!(fp_cgSetIntArrayStateAssignment) params__) {
+		return checkedCall("cgSetIntArrayStateAssignment", fp_cgSetIntArrayStateAssignment, params__);
+	}
+	CGbool cgSetBoolArrayStateAssignment(ParameterTupleOf!(fp_cgSetBoolArrayStateAssignment) params__) {
+		return checkedCall("cgSetBoolArrayStateAssignment", fp_cgSetBoolArrayStateAssignment, params__);
+	}
+
+	CGannotation cgCreateTechniqueAnnotation(ParameterTupleOf!(fp_cgCreateTechniqueAnnotation) params__) {
+		return checkedCall("cgCreateTechniqueAnnotation", fp_cgCreateTechniqueAnnotation, params__);
+	}
+	CGannotation cgCreatePassAnnotation(ParameterTupleOf!(fp_cgCreatePassAnnotation) params__) {
+		return checkedCall("cgCreatePassAnnotation", fp_cgCreatePassAnnotation, params__);
+	}
+	CGannotation cgCreateParameterAnnotation(ParameterTupleOf!(fp_cgCreateParameterAnnotation) params__) {
+		return checkedCall("cgCreateParameterAnnotation", fp_cgCreateParameterAnnotation, params__);
+	}
+	CGannotation cgCreateProgramAnnotation(ParameterTupleOf!(fp_cgCreateProgramAnnotation) params__) {
+		return checkedCall("cgCreateProgramAnnotation", fp_cgCreateProgramAnnotation, params__);
+	}
+	CGannotation cgCreateEffectAnnotation(ParameterTupleOf!(fp_cgCreateEffectAnnotation) params__) {
+		return checkedCall("cgCreateEffectAnnotation", fp_cgCreateEffectAnnotation, params__);
+	}
+
+	CGbool cgSetIntAnnotation(ParameterTupleOf!(fp_cgSetIntAnnotation) params__) {
+		return checkedCall("cgSetIntAnnotation", fp_cgSetIntAnnotation, params__);
+	}
+	CGbool cgSetFloatAnnotation(ParameterTupleOf!(fp_cgSetFloatAnnotation) params__) {
+		return checkedCall("cgSetFloatAnnotation", fp_cgSetFloatAnnotation, params__);
+	}
+	CGbool cgSetBoolAnnotation(ParameterTupleOf!(fp_cgSetBoolAnnotation) params__) {
+		return checkedCall("cgSetBoolAnnotation", fp_cgSetBoolAnnotation, params__);
+	}
+	CGbool cgSetStringAnnotation(ParameterTupleOf!(fp_cgSetStringAnnotation) params__) {
+		return checkedCall("cgSetStringAnnotation", fp_cgSetStringAnnotation, params__);
+	}
+
+	 char * cgGetStateEnumerantName(ParameterTupleOf!(fp_cgGetStateEnumerantName) params__) {
+		return checkedCall("cgGetStateEnumerantName", fp_cgGetStateEnumerantName, params__);
+	}
+	int cgGetStateEnumerantValue(ParameterTupleOf!(fp_cgGetStateEnumerantValue) params__) {
+		return checkedCall("cgGetStateEnumerantValue", fp_cgGetStateEnumerantValue, params__);
+	}
+
+	CGeffect cgGetParameterEffect(ParameterTupleOf!(fp_cgGetParameterEffect) params__) {
+		return checkedCall("cgGetParameterEffect", fp_cgGetParameterEffect, params__);
+	}
+
+	CGparameterclass cgGetTypeClass(ParameterTupleOf!(fp_cgGetTypeClass) params__) {
+		return checkedCall("cgGetTypeClass", fp_cgGetTypeClass, params__);
+	}
+	CGtype cgGetTypeBase(ParameterTupleOf!(fp_cgGetTypeBase) params__) {
+		return checkedCall("cgGetTypeBase", fp_cgGetTypeBase, params__);
+	}
+	CGbool cgGetTypeSizes(ParameterTupleOf!(fp_cgGetTypeSizes) params__) {
+		return checkedCall("cgGetTypeSizes", fp_cgGetTypeSizes, params__);
+	}
+	void cgGetMatrixSize(ParameterTupleOf!(fp_cgGetMatrixSize) params__) {
+		return checkedCall("cgGetMatrixSize", fp_cgGetMatrixSize, params__);
+	}
+
+	int cgGetNumProgramDomains(ParameterTupleOf!(fp_cgGetNumProgramDomains) params__) {
+		return checkedCall("cgGetNumProgramDomains", fp_cgGetNumProgramDomains, params__);
+	}
+	CGprogram cgGetProgramDomainProgram(ParameterTupleOf!(fp_cgGetProgramDomainProgram) params__) {
+		return checkedCall("cgGetProgramDomainProgram", fp_cgGetProgramDomainProgram, params__);
+	}
+	CGdomain cgGetProfileDomain(ParameterTupleOf!(fp_cgGetProfileDomain) params__) {
+		return checkedCall("cgGetProfileDomain", fp_cgGetProfileDomain, params__);
+	}
+	CGprogram cgCombinePrograms(ParameterTupleOf!(fp_cgCombinePrograms) params__) {
+		return checkedCall("cgCombinePrograms", fp_cgCombinePrograms, params__);
+	}
+	CGprogram cgCombinePrograms2(ParameterTupleOf!(fp_cgCombinePrograms2) params__) {
+		return checkedCall("cgCombinePrograms2", fp_cgCombinePrograms2, params__);
+	}
+	CGprogram cgCombinePrograms3(ParameterTupleOf!(fp_cgCombinePrograms3) params__) {
+		return checkedCall("cgCombinePrograms3", fp_cgCombinePrograms3, params__);
+	}
+	CGprofile cgGetProgramDomainProfile(ParameterTupleOf!(fp_cgGetProgramDomainProfile) params__) {
+		return checkedCall("cgGetProgramDomainProfile", fp_cgGetProgramDomainProfile, params__);
+	}
+
+	/*** CGobj Functions ***/
+	CGobj cgCreateObj(ParameterTupleOf!(fp_cgCreateObj) params__) {
+		return checkedCall("cgCreateObj", fp_cgCreateObj, params__);
+	}
+	CGobj cgCreateObjFromFile(ParameterTupleOf!(fp_cgCreateObjFromFile) params__) {
+		return checkedCall("cgCreateObjFromFile", fp_cgCreateObjFromFile, params__);
+	}
+	void cgDestroyObj(ParameterTupleOf!(fp_cgDestroyObj) params__) {
+		return checkedCall("cgDestroyObj", fp_cgDestroyObj, params__);
+	}
+
+	int cgGetParameterResourceSize(ParameterTupleOf!(fp_cgGetParameterResourceSize) params__) {
+		return checkedCall("cgGetParameterResourceSize", fp_cgGetParameterResourceSize, params__);
+	}
+	CGtype cgGetParameterResourceType(ParameterTupleOf!(fp_cgGetParameterResourceType) params__) {
+		return checkedCall("cgGetParameterResourceType", fp_cgGetParameterResourceType, params__);
+	}
+	int cgGetParameterBufferIndex(ParameterTupleOf!(fp_cgGetParameterBufferIndex) params__) {
+		return checkedCall("cgGetParameterBufferIndex", fp_cgGetParameterBufferIndex, params__);
+	}
+	int cgGetParameterBufferOffset(ParameterTupleOf!(fp_cgGetParameterBufferOffset) params__) {
+		return checkedCall("cgGetParameterBufferOffset", fp_cgGetParameterBufferOffset, params__);
+	}
+
+	CGbuffer cgCreateBuffer(ParameterTupleOf!(fp_cgCreateBuffer) params__) {
+		return checkedCall("cgCreateBuffer", fp_cgCreateBuffer, params__);
+	}
+	void cgSetBufferData(ParameterTupleOf!(fp_cgSetBufferData) params__) {
+		return checkedCall("cgSetBufferData", fp_cgSetBufferData, params__);
+	}
+	void cgSetBufferSubData(ParameterTupleOf!(fp_cgSetBufferSubData) params__) {
+		return checkedCall("cgSetBufferSubData", fp_cgSetBufferSubData, params__);
+	}
+	void cgSetProgramBuffer(ParameterTupleOf!(fp_cgSetProgramBuffer) params__) {
+		return checkedCall("cgSetProgramBuffer", fp_cgSetProgramBuffer, params__);
+	}
+
+	void * cgMapBuffer(ParameterTupleOf!(fp_cgMapBuffer) params__) {
+		return checkedCall("cgMapBuffer", fp_cgMapBuffer, params__);
+	}
+	void cgUnmapBuffer(ParameterTupleOf!(fp_cgUnmapBuffer) params__) {
+		return checkedCall("cgUnmapBuffer", fp_cgUnmapBuffer, params__);
+	}
+	void cgDestroyBuffer(ParameterTupleOf!(fp_cgDestroyBuffer) params__) {
+		return checkedCall("cgDestroyBuffer", fp_cgDestroyBuffer, params__);
+	}
+	CGbuffer cgGetProgramBuffer(ParameterTupleOf!(fp_cgGetProgramBuffer) params__) {
+		return checkedCall("cgGetProgramBuffer", fp_cgGetProgramBuffer, params__);
+	}
+	int cgGetBufferSize(ParameterTupleOf!(fp_cgGetBufferSize) params__) {
+		return checkedCall("cgGetBufferSize", fp_cgGetBufferSize, params__);
+	}
+	int cgGetProgramBufferMaxSize(ParameterTupleOf!(fp_cgGetProgramBufferMaxSize) params__) {
+		return checkedCall("cgGetProgramBufferMaxSize", fp_cgGetProgramBufferMaxSize, params__);
+	}
+	int cgGetProgramBufferMaxIndex(ParameterTupleOf!(fp_cgGetProgramBufferMaxIndex) params__) {
+		return checkedCall("cgGetProgramBufferMaxIndex", fp_cgGetProgramBufferMaxIndex, params__);
+	}
+
+
+
+
+
+
+
+	/******************************************************************************
+	 *** Profile Functions 
+	 *****************************************************************************/
+
+	CGbool cgGLIsProfileSupported(ParameterTupleOf!(fp_cgGLIsProfileSupported) params__) {
+		return checkedCall("cgGLIsProfileSupported", fp_cgGLIsProfileSupported, params__);
+	}
+
+	void cgGLEnableProfile(ParameterTupleOf!(fp_cgGLEnableProfile) params__) {
+		return checkedCall("cgGLEnableProfile", fp_cgGLEnableProfile, params__);
+	}
+	void cgGLDisableProfile(ParameterTupleOf!(fp_cgGLDisableProfile) params__) {
+		return checkedCall("cgGLDisableProfile", fp_cgGLDisableProfile, params__);
+	}
+
+	CGprofile cgGLGetLatestProfile(ParameterTupleOf!(fp_cgGLGetLatestProfile) params__) {
+		return checkedCall("cgGLGetLatestProfile", fp_cgGLGetLatestProfile, params__);
+	}
+	void cgGLSetOptimalOptions(ParameterTupleOf!(fp_cgGLSetOptimalOptions) params__) {
+		return checkedCall("cgGLSetOptimalOptions", fp_cgGLSetOptimalOptions, params__);
+	}
+	char** cgGLGetOptimalOptions(ParameterTupleOf!(fp_cgGLGetOptimalOptions) params__) {
+		return checkedCall("cgGLGetOptimalOptions", fp_cgGLGetOptimalOptions, params__);
+	}
+
+	/******************************************************************************
+	 *** Program Managment Functions 
+	 *****************************************************************************/
+
+	void cgGLLoadProgram(ParameterTupleOf!(fp_cgGLLoadProgram) params__) {
+		return checkedCall("cgGLLoadProgram", fp_cgGLLoadProgram, params__);
+	}
+	CGbool cgGLIsProgramLoaded(ParameterTupleOf!(fp_cgGLIsProgramLoaded) params__) {
+		return checkedCall("cgGLIsProgramLoaded", fp_cgGLIsProgramLoaded, params__);
+	}
+	void cgGLBindProgram(ParameterTupleOf!(fp_cgGLBindProgram) params__) {
+		return checkedCall("cgGLBindProgram", fp_cgGLBindProgram, params__);
+	}
+	void cgGLUnbindProgram(ParameterTupleOf!(fp_cgGLUnbindProgram) params__) {
+		return checkedCall("cgGLUnbindProgram", fp_cgGLUnbindProgram, params__);
+	}
+	GLuint cgGLGetProgramID(ParameterTupleOf!(fp_cgGLGetProgramID) params__) {
+		return checkedCall("cgGLGetProgramID", fp_cgGLGetProgramID, params__);
+	}
+
+	/******************************************************************************
+	 *** Parameter Managment Functions 
+	 *****************************************************************************/
+
+	void cgGLSetParameter1f(ParameterTupleOf!(fp_cgGLSetParameter1f) params__) {
+		return checkedCall("cgGLSetParameter1f", fp_cgGLSetParameter1f, params__);
+	}
+
+	void cgGLSetParameter2f(ParameterTupleOf!(fp_cgGLSetParameter2f) params__) {
+		return checkedCall("cgGLSetParameter2f", fp_cgGLSetParameter2f, params__);
+	}
+
+	void cgGLSetParameter3f(ParameterTupleOf!(fp_cgGLSetParameter3f) params__) {
+		return checkedCall("cgGLSetParameter3f", fp_cgGLSetParameter3f, params__);
+	}
+
+	void cgGLSetParameter4f(ParameterTupleOf!(fp_cgGLSetParameter4f) params__) {
+		return checkedCall("cgGLSetParameter4f", fp_cgGLSetParameter4f, params__);
+	}
+
+	void cgGLSetParameter1fv(ParameterTupleOf!(fp_cgGLSetParameter1fv) params__) {
+		return checkedCall("cgGLSetParameter1fv", fp_cgGLSetParameter1fv, params__);
+	}
+
+	void cgGLSetParameter2fv(ParameterTupleOf!(fp_cgGLSetParameter2fv) params__) {
+		return checkedCall("cgGLSetParameter2fv", fp_cgGLSetParameter2fv, params__);
+	}
+
+	void cgGLSetParameter3fv(ParameterTupleOf!(fp_cgGLSetParameter3fv) params__) {
+		return checkedCall("cgGLSetParameter3fv", fp_cgGLSetParameter3fv, params__);
+	}
+
+	void cgGLSetParameter4fv(ParameterTupleOf!(fp_cgGLSetParameter4fv) params__) {
+		return checkedCall("cgGLSetParameter4fv", fp_cgGLSetParameter4fv, params__);
+	}
+
+	void cgGLSetParameter1d(ParameterTupleOf!(fp_cgGLSetParameter1d) params__) {
+		return checkedCall("cgGLSetParameter1d", fp_cgGLSetParameter1d, params__);
+	}
+
+	void cgGLSetParameter2d(ParameterTupleOf!(fp_cgGLSetParameter2d) params__) {
+		return checkedCall("cgGLSetParameter2d", fp_cgGLSetParameter2d, params__);
+	}
+
+	void cgGLSetParameter3d(ParameterTupleOf!(fp_cgGLSetParameter3d) params__) {
+		return checkedCall("cgGLSetParameter3d", fp_cgGLSetParameter3d, params__);
+	}
+
+	void cgGLSetParameter4d(ParameterTupleOf!(fp_cgGLSetParameter4d) params__) {
+		return checkedCall("cgGLSetParameter4d", fp_cgGLSetParameter4d, params__);
+	}
+
+	void cgGLSetParameter1dv(ParameterTupleOf!(fp_cgGLSetParameter1dv) params__) {
+		return checkedCall("cgGLSetParameter1dv", fp_cgGLSetParameter1dv, params__);
+	}
+
+	void cgGLSetParameter2dv(ParameterTupleOf!(fp_cgGLSetParameter2dv) params__) {
+		return checkedCall("cgGLSetParameter2dv", fp_cgGLSetParameter2dv, params__);
+	}
+
+	void cgGLSetParameter3dv(ParameterTupleOf!(fp_cgGLSetParameter3dv) params__) {
+		return checkedCall("cgGLSetParameter3dv", fp_cgGLSetParameter3dv, params__);
+	}
+
+	void cgGLSetParameter4dv(ParameterTupleOf!(fp_cgGLSetParameter4dv) params__) {
+		return checkedCall("cgGLSetParameter4dv", fp_cgGLSetParameter4dv, params__);
+	}
+
+	void cgGLGetParameter1f(ParameterTupleOf!(fp_cgGLGetParameter1f) params__) {
+		return checkedCall("cgGLGetParameter1f", fp_cgGLGetParameter1f, params__);
+	}
+
+	void cgGLGetParameter2f(ParameterTupleOf!(fp_cgGLGetParameter2f) params__) {
+		return checkedCall("cgGLGetParameter2f", fp_cgGLGetParameter2f, params__);
+	}
+
+	void cgGLGetParameter3f(ParameterTupleOf!(fp_cgGLGetParameter3f) params__) {
+		return checkedCall("cgGLGetParameter3f", fp_cgGLGetParameter3f, params__);
+	}
+
+	void cgGLGetParameter4f(ParameterTupleOf!(fp_cgGLGetParameter4f) params__) {
+		return checkedCall("cgGLGetParameter4f", fp_cgGLGetParameter4f, params__);
+	}
+
+	void cgGLGetParameter1d(ParameterTupleOf!(fp_cgGLGetParameter1d) params__) {
+		return checkedCall("cgGLGetParameter1d", fp_cgGLGetParameter1d, params__);
+	}
+
+	void cgGLGetParameter2d(ParameterTupleOf!(fp_cgGLGetParameter2d) params__) {
+		return checkedCall("cgGLGetParameter2d", fp_cgGLGetParameter2d, params__);
+	}
+
+	void cgGLGetParameter3d(ParameterTupleOf!(fp_cgGLGetParameter3d) params__) {
+		return checkedCall("cgGLGetParameter3d", fp_cgGLGetParameter3d, params__);
+	}
+
+	void cgGLGetParameter4d(ParameterTupleOf!(fp_cgGLGetParameter4d) params__) {
+		return checkedCall("cgGLGetParameter4d", fp_cgGLGetParameter4d, params__);
+	}
+
+	void cgGLSetParameterArray1f(ParameterTupleOf!(fp_cgGLSetParameterArray1f) params__) {
+		return checkedCall("cgGLSetParameterArray1f", fp_cgGLSetParameterArray1f, params__);
+	}
+
+	void cgGLSetParameterArray2f(ParameterTupleOf!(fp_cgGLSetParameterArray2f) params__) {
+		return checkedCall("cgGLSetParameterArray2f", fp_cgGLSetParameterArray2f, params__);
+	}
+
+	void cgGLSetParameterArray3f(ParameterTupleOf!(fp_cgGLSetParameterArray3f) params__) {
+		return checkedCall("cgGLSetParameterArray3f", fp_cgGLSetParameterArray3f, params__);
+	}
+
+	void cgGLSetParameterArray4f(ParameterTupleOf!(fp_cgGLSetParameterArray4f) params__) {
+		return checkedCall("cgGLSetParameterArray4f", fp_cgGLSetParameterArray4f, params__);
+	}
+
+	void cgGLSetParameterArray1d(ParameterTupleOf!(fp_cgGLSetParameterArray1d) params__) {
+		return checkedCall("cgGLSetParameterArray1d", fp_cgGLSetParameterArray1d, params__);
+	}
+
+	void cgGLSetParameterArray2d(ParameterTupleOf!(fp_cgGLSetParameterArray2d) params__) {
+		return checkedCall("cgGLSetParameterArray2d", fp_cgGLSetParameterArray2d, params__);
+	}
+
+	void cgGLSetParameterArray3d(ParameterTupleOf!(fp_cgGLSetParameterArray3d) params__) {
+		return checkedCall("cgGLSetParameterArray3d", fp_cgGLSetParameterArray3d, params__);
+	}
+
+	void cgGLSetParameterArray4d(ParameterTupleOf!(fp_cgGLSetParameterArray4d) params__) {
+		return checkedCall("cgGLSetParameterArray4d", fp_cgGLSetParameterArray4d, params__);
+	}
+
+	void cgGLGetParameterArray1f(ParameterTupleOf!(fp_cgGLGetParameterArray1f) params__) {
+		return checkedCall("cgGLGetParameterArray1f", fp_cgGLGetParameterArray1f, params__);
+	}
+
+	void cgGLGetParameterArray2f(ParameterTupleOf!(fp_cgGLGetParameterArray2f) params__) {
+		return checkedCall("cgGLGetParameterArray2f", fp_cgGLGetParameterArray2f, params__);
+	}
+
+	void cgGLGetParameterArray3f(ParameterTupleOf!(fp_cgGLGetParameterArray3f) params__) {
+		return checkedCall("cgGLGetParameterArray3f", fp_cgGLGetParameterArray3f, params__);
+	}
+
+	void cgGLGetParameterArray4f(ParameterTupleOf!(fp_cgGLGetParameterArray4f) params__) {
+		return checkedCall("cgGLGetParameterArray4f", fp_cgGLGetParameterArray4f, params__);
+	}
+
+	void cgGLGetParameterArray1d(ParameterTupleOf!(fp_cgGLGetParameterArray1d) params__) {
+		return checkedCall("cgGLGetParameterArray1d", fp_cgGLGetParameterArray1d, params__);
+	}
+
+	void cgGLGetParameterArray2d(ParameterTupleOf!(fp_cgGLGetParameterArray2d) params__) {
+		return checkedCall("cgGLGetParameterArray2d", fp_cgGLGetParameterArray2d, params__);
+	}
+
+	void cgGLGetParameterArray3d(ParameterTupleOf!(fp_cgGLGetParameterArray3d) params__) {
+		return checkedCall("cgGLGetParameterArray3d", fp_cgGLGetParameterArray3d, params__);
+	}
+
+	void cgGLGetParameterArray4d(ParameterTupleOf!(fp_cgGLGetParameterArray4d) params__) {
+		return checkedCall("cgGLGetParameterArray4d", fp_cgGLGetParameterArray4d, params__);
+	}
+
+	void cgGLSetParameterPointer(ParameterTupleOf!(fp_cgGLSetParameterPointer) params__) {
+		return checkedCall("cgGLSetParameterPointer", fp_cgGLSetParameterPointer, params__);
+	}
+
+	void cgGLEnableClientState(ParameterTupleOf!(fp_cgGLEnableClientState) params__) {
+		return checkedCall("cgGLEnableClientState", fp_cgGLEnableClientState, params__);
+	}
+	void cgGLDisableClientState(ParameterTupleOf!(fp_cgGLDisableClientState) params__) {
+		return checkedCall("cgGLDisableClientState", fp_cgGLDisableClientState, params__);
+	}
+
+	/******************************************************************************
+	 *** Matrix Parameter Managment Functions 
+	 *****************************************************************************/
+
+	void cgGLSetMatrixParameterdr(ParameterTupleOf!(fp_cgGLSetMatrixParameterdr) params__) {
+		return checkedCall("cgGLSetMatrixParameterdr", fp_cgGLSetMatrixParameterdr, params__);
+	}
+	void cgGLSetMatrixParameterfr(ParameterTupleOf!(fp_cgGLSetMatrixParameterfr) params__) {
+		return checkedCall("cgGLSetMatrixParameterfr", fp_cgGLSetMatrixParameterfr, params__);
+	}
+	void cgGLSetMatrixParameterdc(ParameterTupleOf!(fp_cgGLSetMatrixParameterdc) params__) {
+		return checkedCall("cgGLSetMatrixParameterdc", fp_cgGLSetMatrixParameterdc, params__);
+	}
+	void cgGLSetMatrixParameterfc(ParameterTupleOf!(fp_cgGLSetMatrixParameterfc) params__) {
+		return checkedCall("cgGLSetMatrixParameterfc", fp_cgGLSetMatrixParameterfc, params__);
+	}
+
+	void cgGLGetMatrixParameterdr(ParameterTupleOf!(fp_cgGLGetMatrixParameterdr) params__) {
+		return checkedCall("cgGLGetMatrixParameterdr", fp_cgGLGetMatrixParameterdr, params__);
+	}
+	void cgGLGetMatrixParameterfr(ParameterTupleOf!(fp_cgGLGetMatrixParameterfr) params__) {
+		return checkedCall("cgGLGetMatrixParameterfr", fp_cgGLGetMatrixParameterfr, params__);
+	}
+	void cgGLGetMatrixParameterdc(ParameterTupleOf!(fp_cgGLGetMatrixParameterdc) params__) {
+		return checkedCall("cgGLGetMatrixParameterdc", fp_cgGLGetMatrixParameterdc, params__);
+	}
+	void cgGLGetMatrixParameterfc(ParameterTupleOf!(fp_cgGLGetMatrixParameterfc) params__) {
+		return checkedCall("cgGLGetMatrixParameterfc", fp_cgGLGetMatrixParameterfc, params__);
+	}
+
+	void cgGLSetStateMatrixParameter(ParameterTupleOf!(fp_cgGLSetStateMatrixParameter) params__) {
+		return checkedCall("cgGLSetStateMatrixParameter", fp_cgGLSetStateMatrixParameter, params__);
+	}
+
+	void cgGLSetMatrixParameterArrayfc(ParameterTupleOf!(fp_cgGLSetMatrixParameterArrayfc) params__) {
+		return checkedCall("cgGLSetMatrixParameterArrayfc", fp_cgGLSetMatrixParameterArrayfc, params__);
+	}
+
+	void cgGLSetMatrixParameterArrayfr(ParameterTupleOf!(fp_cgGLSetMatrixParameterArrayfr) params__) {
+		return checkedCall("cgGLSetMatrixParameterArrayfr", fp_cgGLSetMatrixParameterArrayfr, params__);
+	}
+
+	void cgGLSetMatrixParameterArraydc(ParameterTupleOf!(fp_cgGLSetMatrixParameterArraydc) params__) {
+		return checkedCall("cgGLSetMatrixParameterArraydc", fp_cgGLSetMatrixParameterArraydc, params__);
+	}
+
+	void cgGLSetMatrixParameterArraydr(ParameterTupleOf!(fp_cgGLSetMatrixParameterArraydr) params__) {
+		return checkedCall("cgGLSetMatrixParameterArraydr", fp_cgGLSetMatrixParameterArraydr, params__);
+	}
+
+	void cgGLGetMatrixParameterArrayfc(ParameterTupleOf!(fp_cgGLGetMatrixParameterArrayfc) params__) {
+		return checkedCall("cgGLGetMatrixParameterArrayfc", fp_cgGLGetMatrixParameterArrayfc, params__);
+	}
+
+	void cgGLGetMatrixParameterArrayfr(ParameterTupleOf!(fp_cgGLGetMatrixParameterArrayfr) params__) {
+		return checkedCall("cgGLGetMatrixParameterArrayfr", fp_cgGLGetMatrixParameterArrayfr, params__);
+	}
+
+	void cgGLGetMatrixParameterArraydc(ParameterTupleOf!(fp_cgGLGetMatrixParameterArraydc) params__) {
+		return checkedCall("cgGLGetMatrixParameterArraydc", fp_cgGLGetMatrixParameterArraydc, params__);
+	}
+
+	void cgGLGetMatrixParameterArraydr(ParameterTupleOf!(fp_cgGLGetMatrixParameterArraydr) params__) {
+		return checkedCall("cgGLGetMatrixParameterArraydr", fp_cgGLGetMatrixParameterArraydr, params__);
+	}
+
+	/******************************************************************************
+	 *** Texture Parameter Managment Functions
+	 *****************************************************************************/
+
+	void cgGLSetTextureParameter(ParameterTupleOf!(fp_cgGLSetTextureParameter) params__) {
+		return checkedCall("cgGLSetTextureParameter", fp_cgGLSetTextureParameter, params__);
+	}
+	GLuint cgGLGetTextureParameter(ParameterTupleOf!(fp_cgGLGetTextureParameter) params__) {
+		return checkedCall("cgGLGetTextureParameter", fp_cgGLGetTextureParameter, params__);
+	}
+	void cgGLEnableTextureParameter(ParameterTupleOf!(fp_cgGLEnableTextureParameter) params__) {
+		return checkedCall("cgGLEnableTextureParameter", fp_cgGLEnableTextureParameter, params__);
+	}
+	void cgGLDisableTextureParameter(ParameterTupleOf!(fp_cgGLDisableTextureParameter) params__) {
+		return checkedCall("cgGLDisableTextureParameter", fp_cgGLDisableTextureParameter, params__);
+	}
+	GLenum cgGLGetTextureEnum(ParameterTupleOf!(fp_cgGLGetTextureEnum) params__) {
+		return checkedCall("cgGLGetTextureEnum", fp_cgGLGetTextureEnum, params__);
+	}
+
+	void cgGLSetManageTextureParameters(ParameterTupleOf!(fp_cgGLSetManageTextureParameters) params__) {
+		return checkedCall("cgGLSetManageTextureParameters", fp_cgGLSetManageTextureParameters, params__);
+	}
+	CGbool cgGLGetManageTextureParameters(ParameterTupleOf!(fp_cgGLGetManageTextureParameters) params__) {
+		return checkedCall("cgGLGetManageTextureParameters", fp_cgGLGetManageTextureParameters, params__);
+	}
+
+	void cgGLSetupSampler(ParameterTupleOf!(fp_cgGLSetupSampler) params__) {
+		return checkedCall("cgGLSetupSampler", fp_cgGLSetupSampler, params__);
+	}
+	void cgGLRegisterStates(ParameterTupleOf!(fp_cgGLRegisterStates) params__) {
+		return checkedCall("cgGLRegisterStates", fp_cgGLRegisterStates, params__);
+	}
+
+	void cgGLEnableProgramProfiles(ParameterTupleOf!(fp_cgGLEnableProgramProfiles) params__) {
+		return checkedCall("cgGLEnableProgramProfiles", fp_cgGLEnableProgramProfiles, params__);
+	}
+	void cgGLDisableProgramProfiles(ParameterTupleOf!(fp_cgGLDisableProgramProfiles) params__) {
+		return checkedCall("cgGLDisableProgramProfiles", fp_cgGLDisableProgramProfiles, params__);
+	}
+
+	/******************************************************************************
+	 *** Misc Functions
+	 *****************************************************************************/
+
+	void cgGLSetDebugMode(ParameterTupleOf!(fp_cgGLSetDebugMode) params__) {
+		return checkedCall("cgGLSetDebugMode", fp_cgGLSetDebugMode, params__);
+	}
+
+	/******************************************************************************
+	 *** Buffer Functions
+	 *****************************************************************************/
+
+	CGbuffer cgGLCreateBuffer(ParameterTupleOf!(fp_cgGLCreateBuffer) params__) {
+		return checkedCall("cgGLCreateBuffer", fp_cgGLCreateBuffer, params__);
+	}
+	GLuint cgGLGetBufferObject(ParameterTupleOf!(fp_cgGLGetBufferObject) params__) {
+		return checkedCall("cgGLGetBufferObject", fp_cgGLGetBufferObject, params__);
+	}
+} else {
+	alias fp_cgSetLockingPolicy cgSetLockingPolicy;
+	alias fp_cgGetLockingPolicy cgGetLockingPolicy;
+	alias fp_cgSetSemanticCasePolicy cgSetSemanticCasePolicy;
+	alias fp_cgGetSemanticCasePolicy cgGetSemanticCasePolicy;
+
+	/*** Context functions ***/
+
+	alias fp_cgCreateContext cgCreateContext;
+	alias fp_cgDestroyContext cgDestroyContext;
+	alias fp_cgIsContext cgIsContext;
+	alias fp_cgGetLastListing cgGetLastListing;
+	alias fp_cgSetLastListing cgSetLastListing;
+	alias fp_cgSetAutoCompile cgSetAutoCompile;
+	alias fp_cgGetAutoCompile cgGetAutoCompile;
+	alias fp_cgSetParameterSettingMode cgSetParameterSettingMode;
+	alias fp_cgGetParameterSettingMode cgGetParameterSettingMode;
+
+	/*** Program functions ***/
+
+	alias fp_cgCreateProgram cgCreateProgram;
+	alias fp_cgCreateProgramFromFile cgCreateProgramFromFile;
+	alias fp_cgCopyProgram cgCopyProgram;
+	alias fp_cgDestroyProgram cgDestroyProgram;
+
+	alias fp_cgGetFirstProgram cgGetFirstProgram;
+	alias fp_cgGetNextProgram cgGetNextProgram;
+	alias fp_cgGetProgramContext cgGetProgramContext;
+	alias fp_cgIsProgram cgIsProgram;
+
+	alias fp_cgCompileProgram cgCompileProgram;
+	alias fp_cgIsProgramCompiled cgIsProgramCompiled;
+	alias fp_cgGetProgramString cgGetProgramString;
+	alias fp_cgGetProgramProfile cgGetProgramProfile;
+	alias fp_cgGetProgramOptions cgGetProgramOptions;
+	alias fp_cgSetProgramProfile cgSetProgramProfile;
+	alias fp_cgGetProgramInput cgGetProgramInput;
+	alias fp_cgGetProgramOutput cgGetProgramOutput;
+	alias fp_cgSetPassProgramParameters cgSetPassProgramParameters;
+	alias fp_cgUpdateProgramParameters cgUpdateProgramParameters;
+
+	/*** Parameter functions ***/
+
+	alias fp_cgCreateParameter cgCreateParameter;
+	alias fp_cgCreateParameterArray cgCreateParameterArray;
+	alias fp_cgCreateParameterMultiDimArray cgCreateParameterMultiDimArray;
+	alias fp_cgDestroyParameter cgDestroyParameter;
+	alias fp_cgConnectParameter cgConnectParameter;
+	alias fp_cgDisconnectParameter cgDisconnectParameter;
+	alias fp_cgGetConnectedParameter cgGetConnectedParameter;
+
+	alias fp_cgGetNumConnectedToParameters cgGetNumConnectedToParameters;
+	alias fp_cgGetConnectedToParameter cgGetConnectedToParameter;
+
+	alias fp_cgGetNamedParameter cgGetNamedParameter;
+	alias fp_cgGetNamedProgramParameter cgGetNamedProgramParameter;
+
+	alias fp_cgGetFirstParameter cgGetFirstParameter;
+	alias fp_cgGetNextParameter cgGetNextParameter;
+	alias fp_cgGetFirstLeafParameter cgGetFirstLeafParameter;
+	alias fp_cgGetNextLeafParameter cgGetNextLeafParameter;
+
+	alias fp_cgGetFirstStructParameter cgGetFirstStructParameter;
+	alias fp_cgGetNamedStructParameter cgGetNamedStructParameter;
+
+	alias fp_cgGetFirstDependentParameter cgGetFirstDependentParameter;
+
+	alias fp_cgGetArrayParameter cgGetArrayParameter;
+	alias fp_cgGetArrayDimension cgGetArrayDimension;
+	alias fp_cgGetArrayType cgGetArrayType;
+	alias fp_cgGetArraySize cgGetArraySize;
+	alias fp_cgGetArrayTotalSize cgGetArrayTotalSize;
+	alias fp_cgSetArraySize cgSetArraySize;
+	alias fp_cgSetMultiDimArraySize cgSetMultiDimArraySize;
+
+	alias fp_cgGetParameterProgram cgGetParameterProgram;
+	alias fp_cgGetParameterContext cgGetParameterContext;
+	alias fp_cgIsParameter cgIsParameter;
+	alias fp_cgGetParameterName cgGetParameterName;
+	alias fp_cgGetParameterType cgGetParameterType;
+	alias fp_cgGetParameterBaseType cgGetParameterBaseType;
+	alias fp_cgGetParameterClass cgGetParameterClass;
+	alias fp_cgGetParameterClassString cgGetParameterClassString;
+
+	alias fp_cgGetParameterRows cgGetParameterRows;
+	alias fp_cgGetParameterColumns cgGetParameterColumns;
+	alias fp_cgGetParameterNamedType cgGetParameterNamedType;
+	alias fp_cgGetParameterSemantic cgGetParameterSemantic;
+	alias fp_cgGetParameterResource cgGetParameterResource;
+	alias fp_cgGetParameterBaseResource cgGetParameterBaseResource;
+	alias fp_cgGetParameterResourceIndex cgGetParameterResourceIndex;
+	alias fp_cgGetParameterVariability cgGetParameterVariability;
+	alias fp_cgGetParameterDirection cgGetParameterDirection;
+	alias fp_cgIsParameterReferenced cgIsParameterReferenced;
+	alias fp_cgIsParameterUsed cgIsParameterUsed;
+	alias fp_cgGetParameterValues cgGetParameterValues;
+	alias fp_cgSetParameterValuedr cgSetParameterValuedr;
+	alias fp_cgSetParameterValuedc cgSetParameterValuedc;
+	alias fp_cgSetParameterValuefr cgSetParameterValuefr;
+	alias fp_cgSetParameterValuefc cgSetParameterValuefc;
+	alias fp_cgSetParameterValueir cgSetParameterValueir;
+	alias fp_cgSetParameterValueic cgSetParameterValueic;
+	alias fp_cgGetParameterValuedr cgGetParameterValuedr;
+	alias fp_cgGetParameterValuedc cgGetParameterValuedc;
+	alias fp_cgGetParameterValuefr cgGetParameterValuefr;
+	alias fp_cgGetParameterValuefc cgGetParameterValuefc;
+	alias fp_cgGetParameterValueir cgGetParameterValueir;
+	alias fp_cgGetParameterValueic cgGetParameterValueic;
+	alias fp_cgGetStringParameterValue cgGetStringParameterValue;
+	alias fp_cgSetStringParameterValue cgSetStringParameterValue;
+
+	alias fp_cgGetParameterOrdinalNumber cgGetParameterOrdinalNumber;
+	alias fp_cgIsParameterGlobal cgIsParameterGlobal;
+	alias fp_cgGetParameterIndex cgGetParameterIndex;
+
+	alias fp_cgSetParameterVariability cgSetParameterVariability;
+	alias fp_cgSetParameterSemantic cgSetParameterSemantic;
+
+	alias fp_cgSetParameter1f cgSetParameter1f;
+	alias fp_cgSetParameter2f cgSetParameter2f;
+	alias fp_cgSetParameter3f cgSetParameter3f;
+	alias fp_cgSetParameter4f cgSetParameter4f;
+	alias fp_cgSetParameter1d cgSetParameter1d;
+	alias fp_cgSetParameter2d cgSetParameter2d;
+	alias fp_cgSetParameter3d cgSetParameter3d;
+	alias fp_cgSetParameter4d cgSetParameter4d;
+	alias fp_cgSetParameter1i cgSetParameter1i;
+	alias fp_cgSetParameter2i cgSetParameter2i;
+	alias fp_cgSetParameter3i cgSetParameter3i;
+	alias fp_cgSetParameter4i cgSetParameter4i;
+
+	alias fp_cgSetParameter1iv cgSetParameter1iv;
+	alias fp_cgSetParameter2iv cgSetParameter2iv;
+	alias fp_cgSetParameter3iv cgSetParameter3iv;
+	alias fp_cgSetParameter4iv cgSetParameter4iv;
+	alias fp_cgSetParameter1fv cgSetParameter1fv;
+	alias fp_cgSetParameter2fv cgSetParameter2fv;
+	alias fp_cgSetParameter3fv cgSetParameter3fv;
+	alias fp_cgSetParameter4fv cgSetParameter4fv;
+	alias fp_cgSetParameter1dv cgSetParameter1dv;
+	alias fp_cgSetParameter2dv cgSetParameter2dv;
+	alias fp_cgSetParameter3dv cgSetParameter3dv;
+	alias fp_cgSetParameter4dv cgSetParameter4dv;
+
+	alias fp_cgSetMatrixParameterir cgSetMatrixParameterir;
+	alias fp_cgSetMatrixParameterdr cgSetMatrixParameterdr;
+	alias fp_cgSetMatrixParameterfr cgSetMatrixParameterfr;
+	alias fp_cgSetMatrixParameteric cgSetMatrixParameteric;
+	alias fp_cgSetMatrixParameterdc cgSetMatrixParameterdc;
+	alias fp_cgSetMatrixParameterfc cgSetMatrixParameterfc;
+
+	alias fp_cgGetMatrixParameterir cgGetMatrixParameterir;
+	alias fp_cgGetMatrixParameterdr cgGetMatrixParameterdr;
+	alias fp_cgGetMatrixParameterfr cgGetMatrixParameterfr;
+	alias fp_cgGetMatrixParameteric cgGetMatrixParameteric;
+	alias fp_cgGetMatrixParameterdc cgGetMatrixParameterdc;
+	alias fp_cgGetMatrixParameterfc cgGetMatrixParameterfc;
+
+	alias fp_cgGetNamedSubParameter cgGetNamedSubParameter;
+
+	/*** Type Functions ***/
+
+	alias fp_cgGetTypeString cgGetTypeString;
+	alias fp_cgGetType cgGetType;
+
+	alias fp_cgGetNamedUserType cgGetNamedUserType;
+
+	alias fp_cgGetNumUserTypes cgGetNumUserTypes;
+	alias fp_cgGetUserType cgGetUserType;
+
+	alias fp_cgGetNumParentTypes cgGetNumParentTypes;
+	alias fp_cgGetParentType cgGetParentType;
+
+	alias fp_cgIsParentType cgIsParentType;
+	alias fp_cgIsInterfaceType cgIsInterfaceType;
+
+	/*** Resource Functions ***/
+
+	alias fp_cgGetResourceString cgGetResourceString;
+	alias fp_cgGetResource cgGetResource;
+
+	/*** Enum Functions ***/
+
+	alias fp_cgGetEnumString cgGetEnumString;
+	alias fp_cgGetEnum cgGetEnum;
+
+	/*** Profile Functions ***/
+
+	alias fp_cgGetProfileString cgGetProfileString;
+	alias fp_cgGetProfile cgGetProfile;
+
+	/*** Error Functions ***/
+
+	alias fp_cgGetError cgGetError;
+	alias fp_cgGetFirstError cgGetFirstError;
+	alias fp_cgGetErrorString cgGetErrorString;
+	alias fp_cgGetLastErrorString cgGetLastErrorString;
+	alias fp_cgSetErrorCallback cgSetErrorCallback;
+	alias fp_cgGetErrorCallback cgGetErrorCallback;
+	alias fp_cgSetErrorHandler cgSetErrorHandler;
+	alias fp_cgGetErrorHandler cgGetErrorHandler;
+
+	/*** Misc Functions ***/
+
+	alias fp_cgGetString cgGetString;
+
+
+	/*** CgFX Functions ***/
+
+	alias fp_cgCreateEffect cgCreateEffect;
+	alias fp_cgCreateEffectFromFile cgCreateEffectFromFile;
+	alias fp_cgCopyEffect cgCopyEffect;
+	alias fp_cgDestroyEffect cgDestroyEffect;
+	alias fp_cgGetEffectContext cgGetEffectContext;
+	alias fp_cgIsEffect cgIsEffect;
+
+	alias fp_cgGetFirstEffect cgGetFirstEffect;
+	alias fp_cgGetNextEffect cgGetNextEffect;
+
+	alias fp_cgCreateProgramFromEffect cgCreateProgramFromEffect;
+
+	alias fp_cgGetFirstTechnique cgGetFirstTechnique;
+	alias fp_cgGetNextTechnique cgGetNextTechnique;
+	alias fp_cgGetNamedTechnique cgGetNamedTechnique;
+	alias fp_cgGetTechniqueName cgGetTechniqueName;
+	alias fp_cgIsTechnique cgIsTechnique;
+	alias fp_cgValidateTechnique cgValidateTechnique;
+	alias fp_cgIsTechniqueValidated cgIsTechniqueValidated;
+	alias fp_cgGetTechniqueEffect cgGetTechniqueEffect;
+
+	alias fp_cgGetFirstPass cgGetFirstPass;
+	alias fp_cgGetNamedPass cgGetNamedPass;
+	alias fp_cgGetNextPass cgGetNextPass;
+	alias fp_cgIsPass cgIsPass;
+	alias fp_cgGetPassName cgGetPassName;
+	alias fp_cgGetPassTechnique cgGetPassTechnique;
+
+	alias fp_cgSetPassState cgSetPassState;
+	alias fp_cgResetPassState cgResetPassState;
+
+	alias fp_cgGetFirstStateAssignment cgGetFirstStateAssignment;
+	alias fp_cgGetNamedStateAssignment cgGetNamedStateAssignment;
+	alias fp_cgGetNextStateAssignment cgGetNextStateAssignment;
+	alias fp_cgIsStateAssignment cgIsStateAssignment;
+	alias fp_cgCallStateSetCallback cgCallStateSetCallback;
+	alias fp_cgCallStateValidateCallback cgCallStateValidateCallback;
+	alias fp_cgCallStateResetCallback cgCallStateResetCallback;
+	alias fp_cgGetStateAssignmentPass cgGetStateAssignmentPass;
+	alias fp_cgGetSamplerStateAssignmentParameter cgGetSamplerStateAssignmentParameter;
+
+	alias fp_cgGetFloatStateAssignmentValues cgGetFloatStateAssignmentValues;
+	alias fp_cgGetIntStateAssignmentValues cgGetIntStateAssignmentValues;
+	alias fp_cgGetBoolStateAssignmentValues cgGetBoolStateAssignmentValues;
+	alias fp_cgGetStringStateAssignmentValue cgGetStringStateAssignmentValue;
+	alias fp_cgGetProgramStateAssignmentValue cgGetProgramStateAssignmentValue;
+	alias fp_cgGetTextureStateAssignmentValue cgGetTextureStateAssignmentValue;
+	alias fp_cgGetSamplerStateAssignmentValue cgGetSamplerStateAssignmentValue;
+	alias fp_cgGetStateAssignmentIndex cgGetStateAssignmentIndex;
+
+	alias fp_cgGetNumDependentStateAssignmentParameters cgGetNumDependentStateAssignmentParameters;
+	alias fp_cgGetDependentStateAssignmentParameter cgGetDependentStateAssignmentParameter;
+
+	alias fp_cgGetConnectedStateAssignmentParameter cgGetConnectedStateAssignmentParameter;
+
+	alias fp_cgGetStateAssignmentState cgGetStateAssignmentState;
+	alias fp_cgGetSamplerStateAssignmentState cgGetSamplerStateAssignmentState;
+
+	alias fp_cgCreateState cgCreateState;
+	alias fp_cgCreateArrayState cgCreateArrayState;
+	alias fp_cgSetStateCallbacks cgSetStateCallbacks;
+	alias fp_cgGetStateSetCallback cgGetStateSetCallback;
+	alias fp_cgGetStateResetCallback cgGetStateResetCallback;
+	alias fp_cgGetStateValidateCallback cgGetStateValidateCallback;
+	alias fp_cgGetStateContext cgGetStateContext;
+	alias fp_cgGetStateType cgGetStateType;
+	alias fp_cgGetStateName cgGetStateName;
+	alias fp_cgGetNamedState cgGetNamedState;
+	alias fp_cgGetFirstState cgGetFirstState;
+	alias fp_cgGetNextState cgGetNextState;
+	alias fp_cgIsState cgIsState;
+	alias fp_cgAddStateEnumerant cgAddStateEnumerant;
+
+	alias fp_cgCreateSamplerState cgCreateSamplerState;
+	alias fp_cgCreateArraySamplerState cgCreateArraySamplerState;
+	alias fp_cgGetNamedSamplerState cgGetNamedSamplerState;
+	alias fp_cgGetFirstSamplerState cgGetFirstSamplerState;
+
+	alias fp_cgGetFirstSamplerStateAssignment cgGetFirstSamplerStateAssignment;
+	alias fp_cgGetNamedSamplerStateAssignment cgGetNamedSamplerStateAssignment;
+	alias fp_cgSetSamplerState cgSetSamplerState;
+
+	alias fp_cgGetNamedEffectParameter cgGetNamedEffectParameter;
+	alias fp_cgGetFirstLeafEffectParameter cgGetFirstLeafEffectParameter;
+	alias fp_cgGetFirstEffectParameter cgGetFirstEffectParameter;
+	alias fp_cgGetEffectParameterBySemantic cgGetEffectParameterBySemantic;
+
+	alias fp_cgGetFirstTechniqueAnnotation cgGetFirstTechniqueAnnotation;
+	alias fp_cgGetFirstPassAnnotation cgGetFirstPassAnnotation;
+	alias fp_cgGetFirstParameterAnnotation cgGetFirstParameterAnnotation;
+	alias fp_cgGetFirstProgramAnnotation cgGetFirstProgramAnnotation;
+	alias fp_cgGetFirstEffectAnnotation cgGetFirstEffectAnnotation;
+	alias fp_cgGetNextAnnotation cgGetNextAnnotation;
+
+	alias fp_cgGetNamedTechniqueAnnotation cgGetNamedTechniqueAnnotation;
+	alias fp_cgGetNamedPassAnnotation cgGetNamedPassAnnotation;
+	alias fp_cgGetNamedParameterAnnotation cgGetNamedParameterAnnotation;
+	alias fp_cgGetNamedProgramAnnotation cgGetNamedProgramAnnotation;
+	alias fp_cgGetNamedEffectAnnotation cgGetNamedEffectAnnotation;
+
+	alias fp_cgIsAnnotation cgIsAnnotation;
+
+	alias fp_cgGetAnnotationName cgGetAnnotationName;
+	alias fp_cgGetAnnotationType cgGetAnnotationType;
+
+	alias fp_cgGetFloatAnnotationValues cgGetFloatAnnotationValues;
+	alias fp_cgGetIntAnnotationValues cgGetIntAnnotationValues;
+	alias fp_cgGetStringAnnotationValue cgGetStringAnnotationValue;
+	alias fp_cgGetStringAnnotationValues cgGetStringAnnotationValues;
+	alias fp_cgGetBoolAnnotationValues cgGetBoolAnnotationValues;
+	alias fp_cgGetBooleanAnnotationValues cgGetBooleanAnnotationValues;
+
+	alias fp_cgGetNumDependentAnnotationParameters cgGetNumDependentAnnotationParameters;
+	alias fp_cgGetDependentAnnotationParameter cgGetDependentAnnotationParameter;
+
+	alias fp_cgEvaluateProgram cgEvaluateProgram;
+
+	/*** Cg 1.5 Additions ***/
+
+	alias fp_cgSetEffectName cgSetEffectName;
+	alias fp_cgGetEffectName cgGetEffectName;
+	alias fp_cgGetNamedEffect cgGetNamedEffect;
+	alias fp_cgCreateEffectParameter cgCreateEffectParameter;
+
+	alias fp_cgCreateTechnique cgCreateTechnique;
+
+	alias fp_cgCreateEffectParameterArray cgCreateEffectParameterArray;
+	alias fp_cgCreateEffectParameterMultiDimArray cgCreateEffectParameterMultiDimArray;
+
+	alias fp_cgCreatePass cgCreatePass;
+
+	alias fp_cgCreateStateAssignment cgCreateStateAssignment;
+	alias fp_cgCreateStateAssignmentIndex cgCreateStateAssignmentIndex;
+	alias fp_cgCreateSamplerStateAssignment cgCreateSamplerStateAssignment;
+
+	alias fp_cgSetFloatStateAssignment cgSetFloatStateAssignment;
+	alias fp_cgSetIntStateAssignment cgSetIntStateAssignment;
+	alias fp_cgSetBoolStateAssignment cgSetBoolStateAssignment;
+	alias fp_cgSetStringStateAssignment cgSetStringStateAssignment;
+	alias fp_cgSetProgramStateAssignment cgSetProgramStateAssignment;
+	alias fp_cgSetSamplerStateAssignment cgSetSamplerStateAssignment;
+	alias fp_cgSetTextureStateAssignment cgSetTextureStateAssignment;
+
+	alias fp_cgSetFloatArrayStateAssignment cgSetFloatArrayStateAssignment;
+	alias fp_cgSetIntArrayStateAssignment cgSetIntArrayStateAssignment;
+	alias fp_cgSetBoolArrayStateAssignment cgSetBoolArrayStateAssignment;
+
+	alias fp_cgCreateTechniqueAnnotation cgCreateTechniqueAnnotation;
+	alias fp_cgCreatePassAnnotation cgCreatePassAnnotation;
+	alias fp_cgCreateParameterAnnotation cgCreateParameterAnnotation;
+	alias fp_cgCreateProgramAnnotation cgCreateProgramAnnotation;
+	alias fp_cgCreateEffectAnnotation cgCreateEffectAnnotation;
+
+	alias fp_cgSetIntAnnotation cgSetIntAnnotation;
+	alias fp_cgSetFloatAnnotation cgSetFloatAnnotation;
+	alias fp_cgSetBoolAnnotation cgSetBoolAnnotation;
+	alias fp_cgSetStringAnnotation cgSetStringAnnotation;
+
+	alias fp_cgGetStateEnumerantName cgGetStateEnumerantName;
+	alias fp_cgGetStateEnumerantValue cgGetStateEnumerantValue;
+
+	alias fp_cgGetParameterEffect cgGetParameterEffect;
+
+	alias fp_cgGetTypeClass cgGetTypeClass;
+	alias fp_cgGetTypeBase cgGetTypeBase;
+	alias fp_cgGetTypeSizes cgGetTypeSizes;
+	alias fp_cgGetMatrixSize cgGetMatrixSize;
+
+	alias fp_cgGetNumProgramDomains cgGetNumProgramDomains;
+	alias fp_cgGetProgramDomainProgram cgGetProgramDomainProgram;
+	alias fp_cgGetProfileDomain cgGetProfileDomain;
+	alias fp_cgCombinePrograms cgCombinePrograms;
+	alias fp_cgCombinePrograms2 cgCombinePrograms2;
+	alias fp_cgCombinePrograms3 cgCombinePrograms3;
+	alias fp_cgGetProgramDomainProfile cgGetProgramDomainProfile;
+
+	/*** CGobj Functions ***/
+	alias fp_cgCreateObj cgCreateObj;
+	alias fp_cgCreateObjFromFile cgCreateObjFromFile;
+	alias fp_cgDestroyObj cgDestroyObj;
+
+	alias fp_cgGetParameterResourceSize cgGetParameterResourceSize;
+	alias fp_cgGetParameterResourceType cgGetParameterResourceType;
+	alias fp_cgGetParameterBufferIndex cgGetParameterBufferIndex;
+	alias fp_cgGetParameterBufferOffset cgGetParameterBufferOffset;
+
+	alias fp_cgCreateBuffer cgCreateBuffer;
+	alias fp_cgSetBufferData cgSetBufferData;
+	alias fp_cgSetBufferSubData cgSetBufferSubData;
+	alias fp_cgSetProgramBuffer cgSetProgramBuffer;
+
+	alias fp_cgMapBuffer cgMapBuffer;
+	alias fp_cgUnmapBuffer cgUnmapBuffer;
+	alias fp_cgDestroyBuffer cgDestroyBuffer;
+	alias fp_cgGetProgramBuffer cgGetProgramBuffer;
+	alias fp_cgGetBufferSize cgGetBufferSize;
+	alias fp_cgGetProgramBufferMaxSize cgGetProgramBufferMaxSize;
+	alias fp_cgGetProgramBufferMaxIndex cgGetProgramBufferMaxIndex;
+
+
+
+
+
+
+
+	/******************************************************************************
+	 *** Profile Functions 
+	 *****************************************************************************/
+
+	alias fp_cgGLIsProfileSupported cgGLIsProfileSupported;
+
+	alias fp_cgGLEnableProfile cgGLEnableProfile;
+	alias fp_cgGLDisableProfile cgGLDisableProfile;
+
+	alias fp_cgGLGetLatestProfile cgGLGetLatestProfile;
+	alias fp_cgGLSetOptimalOptions cgGLSetOptimalOptions;
+	alias fp_cgGLGetOptimalOptions cgGLGetOptimalOptions;
+
+	/******************************************************************************
+	 *** Program Managment Functions 
+	 *****************************************************************************/
+
+	alias fp_cgGLLoadProgram cgGLLoadProgram;
+	alias fp_cgGLIsProgramLoaded cgGLIsProgramLoaded;
+	alias fp_cgGLBindProgram cgGLBindProgram;
+	alias fp_cgGLUnbindProgram cgGLUnbindProgram;
+	alias fp_cgGLGetProgramID cgGLGetProgramID;
+
+	/******************************************************************************
+	 *** Parameter Managment Functions 
+	 *****************************************************************************/
+
+	alias fp_cgGLSetParameter1f cgGLSetParameter1f;
+
+	alias fp_cgGLSetParameter2f cgGLSetParameter2f;
+
+	alias fp_cgGLSetParameter3f cgGLSetParameter3f;
+
+	alias fp_cgGLSetParameter4f cgGLSetParameter4f;
+
+	alias fp_cgGLSetParameter1fv cgGLSetParameter1fv;
+
+	alias fp_cgGLSetParameter2fv cgGLSetParameter2fv;
+
+	alias fp_cgGLSetParameter3fv cgGLSetParameter3fv;
+
+	alias fp_cgGLSetParameter4fv cgGLSetParameter4fv;
+
+	alias fp_cgGLSetParameter1d cgGLSetParameter1d;
+
+	alias fp_cgGLSetParameter2d cgGLSetParameter2d;
+
+	alias fp_cgGLSetParameter3d cgGLSetParameter3d;
+
+	alias fp_cgGLSetParameter4d cgGLSetParameter4d;
+
+	alias fp_cgGLSetParameter1dv cgGLSetParameter1dv;
+
+	alias fp_cgGLSetParameter2dv cgGLSetParameter2dv;
+
+	alias fp_cgGLSetParameter3dv cgGLSetParameter3dv;
+
+	alias fp_cgGLSetParameter4dv cgGLSetParameter4dv;
+
+	alias fp_cgGLGetParameter1f cgGLGetParameter1f;
+
+	alias fp_cgGLGetParameter2f cgGLGetParameter2f;
+
+	alias fp_cgGLGetParameter3f cgGLGetParameter3f;
+
+	alias fp_cgGLGetParameter4f cgGLGetParameter4f;
+
+	alias fp_cgGLGetParameter1d cgGLGetParameter1d;
+
+	alias fp_cgGLGetParameter2d cgGLGetParameter2d;
+
+	alias fp_cgGLGetParameter3d cgGLGetParameter3d;
+
+	alias fp_cgGLGetParameter4d cgGLGetParameter4d;
+
+	alias fp_cgGLSetParameterArray1f cgGLSetParameterArray1f;
+
+	alias fp_cgGLSetParameterArray2f cgGLSetParameterArray2f;
+
+	alias fp_cgGLSetParameterArray3f cgGLSetParameterArray3f;
+
+	alias fp_cgGLSetParameterArray4f cgGLSetParameterArray4f;
+
+	alias fp_cgGLSetParameterArray1d cgGLSetParameterArray1d;
+
+	alias fp_cgGLSetParameterArray2d cgGLSetParameterArray2d;
+
+	alias fp_cgGLSetParameterArray3d cgGLSetParameterArray3d;
+
+	alias fp_cgGLSetParameterArray4d cgGLSetParameterArray4d;
+
+	alias fp_cgGLGetParameterArray1f cgGLGetParameterArray1f;
+
+	alias fp_cgGLGetParameterArray2f cgGLGetParameterArray2f;
+
+	alias fp_cgGLGetParameterArray3f cgGLGetParameterArray3f;
+
+	alias fp_cgGLGetParameterArray4f cgGLGetParameterArray4f;
+
+	alias fp_cgGLGetParameterArray1d cgGLGetParameterArray1d;
+
+	alias fp_cgGLGetParameterArray2d cgGLGetParameterArray2d;
+
+	alias fp_cgGLGetParameterArray3d cgGLGetParameterArray3d;
+
+	alias fp_cgGLGetParameterArray4d cgGLGetParameterArray4d;
+
+	alias fp_cgGLSetParameterPointer cgGLSetParameterPointer;
+
+	alias fp_cgGLEnableClientState cgGLEnableClientState;
+	alias fp_cgGLDisableClientState cgGLDisableClientState;
+
+	/******************************************************************************
+	 *** Matrix Parameter Managment Functions 
+	 *****************************************************************************/
+
+	alias fp_cgGLSetMatrixParameterdr cgGLSetMatrixParameterdr;
+	alias fp_cgGLSetMatrixParameterfr cgGLSetMatrixParameterfr;
+	alias fp_cgGLSetMatrixParameterdc cgGLSetMatrixParameterdc;
+	alias fp_cgGLSetMatrixParameterfc cgGLSetMatrixParameterfc;
+
+	alias fp_cgGLGetMatrixParameterdr cgGLGetMatrixParameterdr;
+	alias fp_cgGLGetMatrixParameterfr cgGLGetMatrixParameterfr;
+	alias fp_cgGLGetMatrixParameterdc cgGLGetMatrixParameterdc;
+	alias fp_cgGLGetMatrixParameterfc cgGLGetMatrixParameterfc;
+
+	alias fp_cgGLSetStateMatrixParameter cgGLSetStateMatrixParameter;
+
+	alias fp_cgGLSetMatrixParameterArrayfc cgGLSetMatrixParameterArrayfc;
+
+	alias fp_cgGLSetMatrixParameterArrayfr cgGLSetMatrixParameterArrayfr;
+
+	alias fp_cgGLSetMatrixParameterArraydc cgGLSetMatrixParameterArraydc;
+
+	alias fp_cgGLSetMatrixParameterArraydr cgGLSetMatrixParameterArraydr;
+
+	alias fp_cgGLGetMatrixParameterArrayfc cgGLGetMatrixParameterArrayfc;
+
+	alias fp_cgGLGetMatrixParameterArrayfr cgGLGetMatrixParameterArrayfr;
+
+	alias fp_cgGLGetMatrixParameterArraydc cgGLGetMatrixParameterArraydc;
+
+	alias fp_cgGLGetMatrixParameterArraydr cgGLGetMatrixParameterArraydr;
+
+	/******************************************************************************
+	 *** Texture Parameter Managment Functions
+	 *****************************************************************************/
+
+	alias fp_cgGLSetTextureParameter cgGLSetTextureParameter;
+	alias fp_cgGLGetTextureParameter cgGLGetTextureParameter;
+	alias fp_cgGLEnableTextureParameter cgGLEnableTextureParameter;
+	alias fp_cgGLDisableTextureParameter cgGLDisableTextureParameter;
+	alias fp_cgGLGetTextureEnum cgGLGetTextureEnum;
+
+	alias fp_cgGLSetManageTextureParameters cgGLSetManageTextureParameters;
+	alias fp_cgGLGetManageTextureParameters cgGLGetManageTextureParameters;
+
+	alias fp_cgGLSetupSampler cgGLSetupSampler;
+	alias fp_cgGLRegisterStates cgGLRegisterStates;
+
+	alias fp_cgGLEnableProgramProfiles cgGLEnableProgramProfiles;
+	alias fp_cgGLDisableProgramProfiles cgGLDisableProgramProfiles;
+
+	/******************************************************************************
+	 *** Misc Functions
+	 *****************************************************************************/
+
+	alias fp_cgGLSetDebugMode cgGLSetDebugMode;
+
+	/******************************************************************************
+	 *** Buffer Functions
+	 *****************************************************************************/
+
+	alias fp_cgGLCreateBuffer cgGLCreateBuffer;
+	alias fp_cgGLGetBufferObject cgGLGetBufferObject;
 }
 

@@ -60,7 +60,7 @@ private extern (Windows) int gl3_backend_native_Win32_windowProc(HWND hwnd, uint
 
 
 extern (Windows) {
-	HGLRC function(HDC hDC, HGLRC hShareContext, int *attribList) wglCreateContextAttribsARB;
+	HGLRC function(HDC hDC, HGLRC hShareContext, int *attribList) gl3_backend_native_Win32_wglCreateContextAttribsARB;
 }
 
 
@@ -160,8 +160,9 @@ class GLWindow : GLContext {
 	typeof(this) swapInterval(uint i) {
 		_swapInterval = i;
 		if (created) {
-			version (WINE) {}
-			else _gl.SwapIntervalEXT(_swapInterval);
+			if (getExtensionFuncPtr(fname_SwapIntervalEXT)) {
+				_gl.SwapIntervalEXT(_swapInterval);
+			}
 		}
 		return this;
 	}
@@ -666,16 +667,16 @@ class GLWindow : GLContext {
 			
 			xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, tmpRc);
 			
-			wglCreateContextAttribsARB = cast(typeof(wglCreateContextAttribsARB))
+			gl3_backend_native_Win32_wglCreateContextAttribsARB = cast(typeof(gl3_backend_native_Win32_wglCreateContextAttribsARB))
 				xf.gfx.api.gl3.platform.Win32.wglGetProcAddress("wglCreateContextAttribsARB");
 				
-			if (wglCreateContextAttribsARB is null) {
+			if (gl3_backend_native_Win32_wglCreateContextAttribsARB is null) {
 				throw new Exception("The WGL_ARB_create_context extension is missing. If your GPU has OpenGL 3.x support, your drivers are probably out of date.");
 			}
 			
 			xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
 			
-			assert (wglCreateContextAttribsARB !is null);
+			assert (gl3_backend_native_Win32_wglCreateContextAttribsARB !is null);
 			
 			int[] attribList;
 			attribList ~= WGL_CONTEXT_MAJOR_VERSION_ARB;
@@ -686,7 +687,7 @@ class GLWindow : GLContext {
 			/+attribList ~= WGL_CONTEXT_FLAGS_ARB;
 			attribList ~= xf.gfx.api.gl3.WGL.WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;+/
 			attribList ~= 0;
-			_hrc = wglCreateContextAttribsARB(_hdc, null, attribList.ptr);
+			_hrc = gl3_backend_native_Win32_wglCreateContextAttribsARB(_hdc, null, attribList.ptr);
 		}+/
 		{
 			_hrc = cast(typeof(_hrc))xf.gfx.api.gl3.platform.Win32.wglCreateContext(_hdc);
@@ -711,9 +712,8 @@ class GLWindow : GLContext {
 			preInitDone = true;
 			bool recreate = false;
 			//if (!(_gl.ext(WGL_ARB_pixel_format) in {
-			
-			version (WINE) {}
-			else {
+
+			if (getExtensionFuncPtr(fname_ChoosePixelFormatARB)) {
 				static float[] fAttributes = [ 0.f, 0.f ];
 				int[] formatAttribs; {
 					formatAttribs ~= WGL_DRAW_TO_WINDOW_ARB;
@@ -748,10 +748,9 @@ class GLWindow : GLContext {
 				} else {
 					recreate = true;
 				}
-			}
-			/+})) {
+			} else {
 				Stdout.formatln("[GLWindow] WARNING: WGL_ARB_pixel_format not supported");
-			}+/
+			}
 			
 			if (recreate) {
 				destroyWindowOnly();

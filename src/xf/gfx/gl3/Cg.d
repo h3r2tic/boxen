@@ -41,47 +41,6 @@ class CgCompiler {
 	}
 	
 	
-	/+CgProgram createProgram(EffectSource source, GPUDomain domain, cstring name) {
-		CgProgram result;
-		
-		switch (source._type) {
-			case EffectSource.Type.FilePath: {
-				result = CgProgram(
-					domain,
-					name,
-					cgCreateProgramFromFile(
-						_context,
-						CG_SOURCE,
-						source._pathStringz,
-						getProfileForDomain(domain),
-						toStringz(name),
-						null
-					)
-				);
-			} break;
-		}
-
-		auto err = cgGetError();
-		switch (err) {
-			case CG_COMPILER_ERROR: {
-				error(
-					"Compilation error\n{}",
-					fromStringz(cgGetLastListing(_context))
-				);
-			} break;
-			
-			case CG_NO_ERROR: {
-			} break;
-			
-			default: {
-				error("Unknown Cg error: {}", fromStringz(cgGetErrorString(err)));
-			}
-		}
-		
-		return result;
-	}+/
-	
-	
 	CgEffect createEffect(cstring name, EffectSource source, EffectCompilationOptions opts) {
 		CGeffect eh;
 		
@@ -124,19 +83,23 @@ class CgCompiler {
 		
 		assert (eh !is null);
 
-		return new CgEffect(name, eh, gl, opts);
+		return new CgEffect(_context, source, name, eh, gl, opts);
 	}
 
 
 	void disposeEffect(CgEffect effect) {
-		if (effect._vertexProgram) {
-			cgDestroyProgram(effect._vertexProgram);
-		}
-		if (effect._geometryProgram) {
-			cgDestroyProgram(effect._geometryProgram);
-		}
-		if (effect._fragmentProgram) {
-			cgDestroyProgram(effect._fragmentProgram);
+		if (effect._combinedProgram) {
+			cgDestroyProgram(effect._combinedProgram);
+		} else {
+			if (effect._vertexProgram) {
+				cgDestroyProgram(effect._vertexProgram);
+			}
+			if (effect._geometryProgram) {
+				cgDestroyProgram(effect._geometryProgram);
+			}
+			if (effect._fragmentProgram) {
+				cgDestroyProgram(effect._fragmentProgram);
+			}
 		}
 		cgDestroyEffect(effect._handle);
 

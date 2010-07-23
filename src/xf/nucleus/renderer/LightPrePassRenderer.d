@@ -800,10 +800,12 @@ float farPlaneDistance <
 		char[1] zero = '\0';
 		arrrr.write(zero[]);
 
-		File.set("shader.tmp.cgfx", arrrr.slice());
+		File.set("lshader.tmp.cgfx", arrrr.slice());
 
 		EffectCompilationOptions ecopts;
 		ecopts.useGeometryProgram = true;
+		ecopts.geomProgramInput = GeomProgramInput.Point;
+		ecopts.geomProgramOutput = GeomProgramOutput.Triangle;
 		final effect = effectInfo.effect = _backend.createEffect(
 			null,
 			EffectSource.stringz(cast(char*)arrrr.slice().ptr),
@@ -957,7 +959,7 @@ float farPlaneDistance <
 	) {
 		final fmt = ctx.sink;
 
-		fmt("if (all(intensity <= 0.0)) discard;").newline;
+		fmt("if (all(intensity <= float4(0.00001))) { discard; }").newline;
 
 		void surfParam(int i) {
 			fmt.format(

@@ -598,4 +598,3 @@ void function( CGbool debug_ )	fp_cgGLSetDebugMode;
 
 CGbuffer function(CGcontext context, int size, void *data, GLenum bufferUsage)	fp_cgGLCreateBuffer;
 GLuint function(CGbuffer buffer)	fp_cgGLGetBufferObject;
-
