@@ -124,6 +124,7 @@ TestShadowedLight = graph Light {
 			radius <type float> = 5,
 			influenceRadius <type float>,
 			depthSampler <type sampler2D + use depth>,
+			spotlightMask <type sampler2D + use color>,
 			light_worldToClip <type float4x4>
 		);
 	};
@@ -135,26 +136,41 @@ TestShadowedLight = graph Light {
 			lightPos <type float3 + use lightPos>,
 			lumIntens <type float4 + use lumIntens>,
 			depthSampler <type sampler2D + use depth>,
+			spotlightMask <type sampler2D + use color>,
 			light_worldToClip <type float4x4>
 		) {
-			toLight = lightPos - position;
-			float distToLight = length(toLight);
-			float atten = distToLight / influenceRadius;
-			intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
-			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
-			toLight = normalize(toLight);
-
 			float4 pointClip = mul(light_worldToClip, float4(position.xyz, 1.0));
-			float2 uv = (pointClip.xy / pointClip.w) * 0.5 + 0.5;
+			if (pointClip.z > 0) {
+				toLight = lightPos - position;
+				float distToLight = length(toLight);
+				float atten = distToLight / influenceRadius;
+				intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
+				toLight = normalize(toLight);
 
-			float2 shadowSample = tex2D(depthSampler, uv).xy;
+				float2 uv = (pointClip.xy / pointClip.w) * 0.5 + 0.5;
+				float2 shadowSample = tex2D(depthSampler, uv).xy;
 
-			float mean = shadowSample.x;
-			float variance = shadowSample.y - shadowSample.x * shadowSample.x;
-			float shadowed1 = atten <= mean;
-			float shadowed2 = variance / (variance + (atten - mean) * (atten - mean));
-			
-			intensity *= saturate(max(shadowed1, shadowed2));
+				float mean = shadowSample.x;
+				float variance = shadowSample.y - shadowSample.x * shadowSample.x;
+				float shadowed1 = atten <= mean;
+				float shadowed2 = variance / (variance + (atten - mean) * (atten - mean));
+				float shadowed = saturate(max(shadowed1, shadowed2));
+
+				const float shadowDarkening = 0.2;
+				shadowed = max(
+					0.0,
+					(1.0 / (1.0 - shadowDarkening)) * (shadowed - shadowDarkening)
+				);
+
+				float4 mask = tex2D(spotlightMask, uv);
+				
+				intensity *= shadowed * mask;
+			} else {
+				intensity = 0;
+				lightSize = 0;
+				toLight = float3(0, 1, 0);
+			}
 		};
 	};
 	n3 = node {

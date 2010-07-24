@@ -141,10 +141,12 @@ abstract class Renderer
 		}
 
 		Array!(MaterialData)	_materials;
-
-
-		Img.Loader	_imgLoader;
 	}	
+
+
+	public {
+		Img.Loader	_imgLoader;
+	}
 
 
 	// TODO: mem
