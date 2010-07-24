@@ -44,6 +44,7 @@ interface IGraphFlow {
 			bool delegate(cstring, cstring) pred = null
 	);
 	FlowFruct		iterDataFlow(GraphNodeId from, GraphNodeId to);
+	bool	hasFlowFrom(GraphNodeId nid, cstring param);
 	OutgoingConnectionFruct	iterOutgoingConnections(GraphNodeId id);
 	IncomingConnectionFruct	iterIncomingConnections(GraphNodeId id);
 	void			addAutoFlow(GraphNodeId from, GraphNodeId to);
@@ -347,6 +348,18 @@ final class Graph : IGraphFlow {
 	
 	FlowFruct		iterDataFlow(GraphNodeId from, GraphNodeId to) {
 		return FlowFruct(this, from, to);
+	}
+
+	bool	hasFlowFrom(GraphNodeId nid, cstring param) {
+		foreach (to; iterOutgoingConnections(nid)) {
+			foreach (fl; iterDataFlow(nid, to)) {
+				if (fl.from == param) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	// ----

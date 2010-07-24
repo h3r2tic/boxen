@@ -1157,8 +1157,6 @@ final class PostProcessor {
 				_backend.framebuffer = finalFB;
 			} else {
 				_backend.framebuffer = rs.fb;
-				_backend.state.viewport.width = rs.fb.size.x;
-				_backend.state.viewport.height = rs.fb.size.y;
 			}
 
 			_backend.render(renderList);

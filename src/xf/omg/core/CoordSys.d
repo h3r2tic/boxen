@@ -33,6 +33,18 @@ struct CoordSys {
 		return res;
 	}
 	
+
+	static CoordSys fromMatrix(T)(T matrix) {
+		return CoordSys(
+			vec3fi.from(matrix.getTranslation()),
+			quat(matrix.getRotation())
+		);
+	}
+
+	alias fromMatrix!(mat3)		opCall;
+	alias fromMatrix!(mat34)	opCall;
+	alias fromMatrix!(mat4)		opCall;
+	
 	
 	CoordSys opIn(CoordSys reference) {
 		CoordSys res = void;

@@ -227,7 +227,10 @@ void codegen(
 
 	final vinputs = stack.gatherArray((void delegate(lazy CgParam) sink) {
 		foreach (ref p; *vinputNodeParams) {
-			if (NT.Input == vinputNT || p.isInput) {
+			if (
+				(NT.Input == vinputNT && graph.flow.hasFlowFrom(vinputNodeId, p.name))
+			||	(NT.Input != vinputNT && p.isInput)
+			) {
 				sink(CgParam(
 					vinputNodeId,
 					&p,
@@ -605,7 +608,7 @@ void domainCodegen(
 
 	sink(") {").newline();
 
-	domainCodegenBody(ctx, graph, nodeDomains, nodesTopo, node2funcName, node2compName);
+	domainCodegenBody(ctx, graph, nodeDomains, nodesTopo, node2funcName, node2compName, true);
 
 	foreach (i, par; outputs) {
 		sink.format("\tbridge__{} = ", i);

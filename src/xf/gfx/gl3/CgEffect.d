@@ -879,6 +879,10 @@ class CgEffect : Effect {
 						continue;
 					}
 
+					if (!cgIsParameterUsed(p, cast(CGhandle)prog)) {
+						continue;
+					}
+
 					final connected = cgGetConnectedParameter(p);
 					
 					if (connected !is null) {

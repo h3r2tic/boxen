@@ -216,8 +216,11 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ proper light volumes
 	+ z-clamp for light volumes
 
++	shadows
+	+ variance shadow mapping
+	+ blurring the moments map
+
 -	editor
--	shadows
 -	recursive rendering
 -	thesis
 -	party hard

@@ -85,12 +85,14 @@ private {
 	// TMP
 	static import xf.utils.Memory;
 	import tango.io.device.File;
+	import tango.core.Variant;
 }
 
 
 
 class DepthRenderer : Renderer {
 	mixin MRenderer!("Depth");
+	cstring depthOutKernel = "DepthRendererOut";
 
 
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
@@ -101,9 +103,16 @@ class DepthRenderer : Renderer {
 	}
 
 
-	private {
-	override void registerSurface() {
-		// nothing
+	override void setParam(cstring name, Variant value) {
+		switch (name) {
+			case "outKernel": {
+				depthOutKernel = value.get!(cstring);
+			} break;
+
+			default: {
+				super.setParam(name, value);
+			} break;
+		}
 	}
 
 
@@ -122,23 +131,13 @@ class DepthRenderer : Renderer {
 		scope stack = new StackBuffer;
 
 		EffectInfo effectInfo;
-
-		SurfaceId surfaceId = renderables.surface[rid];
-		auto surface = &_surfaces[surfaceId];
-
-		MaterialId materialId = renderables.material[rid];
-		auto material = _materials[materialId];
-
-		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
-		final illumKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final structureKernel = _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 
 		alias KernelGraph.NodeType NT;
 
 		// ---- Build the Structure kernel graph
 
 		BuilderSubgraphInfo structureInfo;
-		BuilderSubgraphInfo pigmentInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -171,47 +170,6 @@ class DepthRenderer : Renderer {
 			convCtx
 		);
 
-		void buildPigmentGraph() {
-			GraphBuilder builder;
-			builder.sourceKernelType = SourceKernelType.Pigment;
-			builder.build(kg, pigmentKernel, &pigmentInfo, stack);
-
-			assert (pigmentInfo.input.valid);
-		}
-
-
-		buildPigmentGraph();
-
-		final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
-		findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
-
-		//File.set("graph.dot", toGraphviz(kg));
-
-		fuseGraph(
-			kg,
-			pigmentInfo.input,
-			convCtx,
-			pigmentNodesTopo,
-			
-			// _findSrcParam
-			delegate bool(
-				Param* dstParam,
-				GraphNodeId* srcNid,
-				Param** srcParam
-			) {
-				return getOutputParamIndirect(
-					kg,
-					structureInfo.output,
-					dstParam.name,
-					srcNid,
-					srcParam
-				);
-			},
-
-			OutputNodeConversion.Skip
-		);
-
-
 		bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
 			if (type == kg.getNode(id).type) {
 				kg.removeNode(id);
@@ -221,18 +179,9 @@ class DepthRenderer : Renderer {
 			}
 		}
 
-		final surfIdDataNid = kg.addNode(NT.Data);
-		final surfIdDataNode = kg.getNode(surfIdDataNid).data(); {
-			surfIdDataNode.sourceKernelType = SourceKernelType.Composite;
-			
-			final param = surfIdDataNode.params.add(ParamDirection.Out, "surfaceId");
-			param.hasPlainSemantic = true;
-			param.type = "float";
-		}
-
 		BuilderSubgraphInfo outInfo;
 		{
-			final kernel = _kdefRegistry.getKernel("LightPrePassGeomOut");
+			final kernel = _kdefRegistry.getKernel(depthOutKernel);
 			GraphBuilder builder;
 			builder.sourceKernelType = SourceKernelType.Undefined;
 			builder.build(kg, kernel, &outInfo, stack);
@@ -265,24 +214,6 @@ class DepthRenderer : Renderer {
 							srcParam
 						);
 					}
-
-					case "normal": {
-						return getOutputParamIndirect(
-							kg,
-							pigmentInfo.output,
-							"out_normal",
-							srcNid,
-							srcParam
-						);
-					}
-
-					case "surfaceId": {
-						*srcNid = surfIdDataNid;
-						*srcParam = surfIdDataNode.params
-							.getOutput("surfaceId");
-						return true;
-					}
-
 					default: return false;
 				}
 			},
@@ -292,7 +223,7 @@ class DepthRenderer : Renderer {
 
 		kg.flow.removeAllAutoFlow();
 
-		File.set("graph.dot", toGraphviz(kg));
+		File.set("dgraph.dot", toGraphviz(kg));
 
 		verifyDataFlowNames(kg);
 
@@ -337,8 +268,6 @@ float farPlaneDistance <
 
 		// HACK
 		allocateDefaultUniformStorage(effect);
-
-		//assureNotCyclic(kg);
 
 		void** uniforms = effect.getUniformPtrsDataPtr();
 
@@ -458,35 +387,6 @@ float farPlaneDistance <
 				 */
 				setEffectInstanceUniformDefaults(&effectInfo, efInst);
 
-
-				{
-					SurfaceId surfaceId = renderables.surface[rid];
-					// 0-255 -> 0-1
-					float si = (cast(float)surfaceId + 0.5f) / 255.0f;
-					
-					if (void** ptr = efInst.getUniformPtrPtr("surfaceId")) {
-						**cast(float**)ptr = si;
-					} else {
-						error("surfaceId not found in the structure kernel.");
-					}
-				}
-
-
-				// ----
-
-				auto material = _materials[renderables.material[rid]];
-				foreach (ref info; material.info) {
-					char[256] fqn;
-					sprintf(fqn.ptr, "pigment__%.*s", info.name);
-					auto name = fromStringz(fqn.ptr);
-					void** ptr = getInstUniformPtrPtr(name);
-					if (ptr) {
-						*ptr = material.data + info.offset;
-					}
-				}
-
-				// ----
-
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
 					
@@ -539,6 +439,7 @@ float farPlaneDistance <
 
 	override void onRenderableCreated(RenderableId id) {
 		super.onRenderableCreated(id);
+		xf.utils.Memory.realloc(_structureRenderableIndexData, id+1);
 		xf.utils.Memory.realloc(_structureRenderableEI, id+1);
 	}
 
@@ -552,152 +453,20 @@ float farPlaneDistance <
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
 		this.farPlaneDistance = vs.farPlaneDistance;
 
-		if (_fbSize != _backend.framebuffer.size) {
-			_fbSize = _backend.framebuffer.size;
-
-			if (_depthTex.valid) {
-				_depthTex.dispose();
-				_packed1Tex.dispose();
-				_attribFB.dispose();
-				_diffuseIllumTex.dispose();
-				_specularIllumTex.dispose();
-				_lightFB.dispose();
-			}
-
-			{
-				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
-				treq.minFilter = TextureMinFilter.Nearest;
-				treq.magFilter = TextureMagFilter.Nearest;
-				treq.wrapS = TextureWrap.ClampToEdge;
-				treq.wrapT = TextureWrap.ClampToEdge;
-				
-				_packed1Tex = _backend.createTexture(
-					_fbSize,
-					treq
-				);
-				assert (_packed1Tex.valid);
-			}
-
-			{
-				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.DEPTH_COMPONENT32F;
-				treq.minFilter = TextureMinFilter.Nearest;
-				treq.magFilter = TextureMagFilter.Nearest;
-				treq.wrapS = TextureWrap.ClampToEdge;
-				treq.wrapT = TextureWrap.ClampToEdge;
-				
-				_depthTex = _backend.createTexture(
-					_fbSize,
-					treq
-				);
-				assert (_depthTex.valid);
-			}
-
-			{
-				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.RGBA_FLOAT16;
-				treq.minFilter = TextureMinFilter.Nearest;
-				treq.magFilter = TextureMagFilter.Nearest;
-				treq.wrapS = TextureWrap.ClampToEdge;
-				treq.wrapT = TextureWrap.ClampToEdge;
-				
-				_diffuseIllumTex = _backend.createTexture(
-					_fbSize,
-					treq
-				);
-				assert (_diffuseIllumTex.valid);
-				_specularIllumTex = _backend.createTexture(
-					_fbSize,
-					treq
-				);
-				assert (_specularIllumTex.valid);
-			}
-
-			{
-				final cfg = FramebufferConfig();
-				cfg.size = _fbSize;
-				cfg.location = FramebufferLocation.Offscreen;
-				cfg.color[0] = _packed1Tex;
-				cfg.depth = _depthTex;
-				_attribFB = _backend.createFramebuffer(cfg);
-				assert (_attribFB.valid);
-			}
-
-			{
-				final cfg = FramebufferConfig();
-				cfg.size = _fbSize;
-				cfg.location = FramebufferLocation.Offscreen;
-				cfg.color[0] = _diffuseIllumTex;
-				cfg.color[1] = _specularIllumTex;
-				//cfg.depth = TODO
-				_lightFB = _backend.createFramebuffer(cfg);
-				assert (_lightFB.valid);
-			}
-		}
-
 		final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileStructureEffectsForRenderables(rids);
-		compileFinalEffectsForRenderables(rids);
 
-		final outputFB = _backend.framebuffer;
 		final origState = *_backend.state();
 		
-		if (outputFB.acquire()) {
-			scope (exit) {
-				_backend.framebuffer = outputFB;
-				outputFB.dispose();
-				*_backend.state() = origState;
-			}
-			
-			_backend.framebuffer = _attribFB;
-			_backend.clearBuffers();
-
-			final blist = _backend.createRenderList();
-			scope (exit) _backend.disposeRenderList(blist);
-
-			foreach (idx, rid; rids) {
-				final ei = _structureRenderableEI[rid];
-				final bin = blist.getBin(ei.getEffect);
-				final item = bin.add(ei);
-				
-				item.coordSys		= rlist.list.coordSys[idx];
-				item.scale			= vec3.one;
-				item.indexData		= *_structureRenderableIndexData[rid];
-				item.numInstances	= 1;
-			}
-
-			_backend.state.sRGB = false;
-			_backend.state.depth.enabled = true;
-			_backend.state.blend.enabled = false;
-			_backend.render(blist);
-
-			_backend.state.depthClamp = true;
-			with (_backend.state.cullFace) {
-				enabled = true;
-				front = true;
-				back = false;
-			}
-
-			// HACK
-			_backend.state.depth.enabled = false;
-			_backend.framebuffer = _lightFB;
-			_backend.clearBuffers();
-
-			with (_backend.state.blend) {
-				enabled = true;
-				src = Factor.One;
-				dst = Factor.One;
-			}
-
-			renderLights(.lights);
+		scope (exit) {
+			*_backend.state() = origState;
 		}
-
+			
 		final blist = _backend.createRenderList();
 		scope (exit) _backend.disposeRenderList(blist);
 
 		foreach (idx, rid; rids) {
-			final ei = _finalRenderableEI[rid];
+			final ei = _structureRenderableEI[rid];
 			final bin = blist.getBin(ei.getEffect);
 			final item = bin.add(ei);
 			
@@ -706,24 +475,20 @@ float farPlaneDistance <
 			item.indexData		= *_structureRenderableIndexData[rid];
 			item.numInstances	= 1;
 		}
+
+		_backend.state.sRGB = false;
+		_backend.state.depth.enabled = true;
+		_backend.state.blend.enabled = false;
+		_backend.state.depthClamp = false;
 		_backend.render(blist);
 	}
 
 
 	private {
 		EffectInstance[]	_structureRenderableEI;
+		IndexData*[]		_structureRenderableIndexData;
 
 		IKDefRegistry		_kdefRegistry;
-
-		vec2i		_fbSize = vec2i.zero;
-		Texture		_depthTex;
-		Framebuffer	_attribFB;
-
-		Texture		_surfaceParamTex;
-
-		Texture		_diffuseIllumTex;
-		Texture		_specularIllumTex;
-		Framebuffer	_lightFB;
 
 		mat4	worldToView;
 		mat4	worldToClip;

@@ -137,8 +137,8 @@ LightPrePassLightIn = graph {
 			in depth_ <type float4>,
 			out out_position <type float3 + use position + basis view>
 		) {
-			float depth = depth_.x *= farPlaneDistance;
-			float fragW = -(depth - viewToClip._m23) / viewToClip._m22;
+			float depth = depth_.x * farPlaneDistance;
+			float fragW = -depth / viewToClip._m22;
 			float4 unProj = mul(clipToView, position * (fragW / position.w));
 			out_position = unProj.xyz;
 		};

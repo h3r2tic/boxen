@@ -37,6 +37,7 @@ private {
 		MemUtils = xf.utils.Memory;
 		
 	import xf.omg.util.ViewSettings;
+	import tango.core.Variant;
 }
 
 
@@ -51,6 +52,12 @@ abstract class Renderer
 		_backend = backend;
 		_renderLists.initialize();
 		_imgLoader = new Img.CachedLoader(new Img.FreeImageLoader);
+	}
+
+
+	// temp HACK until something like OldCfg is revived proper.
+	void setParam(cstring name, Variant value) {
+		error("The {} does not support a param named '{}'.", this.classinfo.name, name);
 	}
 
 	
@@ -111,7 +118,7 @@ abstract class Renderer
 
 
 	// TODO: updateSurface
-	abstract void registerSurface(SurfaceDef def);
+	void registerSurface(SurfaceDef def) {}
 	
 	// TODO: updateMaterial
 	//abstract void registerMaterial(MaterialDef def);

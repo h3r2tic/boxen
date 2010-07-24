@@ -40,6 +40,8 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 
+	import tango.core.Variant;
+
 	static import xf.utils.Memory;
 
 	import tango.io.vfs.FileFolder;
@@ -47,6 +49,7 @@ private {
 	import tango.io.Stdout;
 	
 	import tango.math.random.Kiss;
+	import tango.stdc.math : fmodf;
 	import xf.omg.color.HSV;
 }
 
@@ -137,26 +140,156 @@ class TestLight : Light {
 		kpi.bindUniform("radius", &radius);
 		kpi.bindUniform("influenceRadius", &influenceRadius);
 	}
-	
-	override void determineInfluenced(
-		void delegate(
-			bool delegate(
-				ref CoordSys	cs,
-				ref vec3		localHalfSize
-			)
-		) objectIter
-	) {
-		objectIter((
-				ref CoordSys	cs,
-				ref vec3		localHalfSize
-			) {
-				return true;
-			}
-		);
-	}
 
 	float	radius;
 }
+
+
+void createDepthTex() {
+}
+
+
+class TestShadowedLight : TestLight {
+	override cstring kernelName() {
+		return "TestShadowedLight";
+	}
+
+	override void prepareRenderData() {
+		calcInfluenceRadius();
+
+		if (!depthFb.valid) {
+			final cfg = FramebufferConfig();
+			cfg.size = shadowMapSize;
+			cfg.location = FramebufferLocation.Offscreen;
+
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.RG32F;
+				treq.minFilter = TextureMinFilter.Linear;
+				treq.magFilter = TextureMagFilter.Linear;
+				treq.wrapS = TextureWrap.ClampToBorder;
+				treq.wrapT = TextureWrap.ClampToBorder;
+				cfg.color[0] = depthTex = rendererBackend.createTexture(
+					shadowMapSize,
+					treq
+				);
+				assert (depthTex.valid);
+			}
+				
+			depthFb = rendererBackend.createFramebuffer(cfg);
+			assert (depthFb.valid);
+		}
+
+		if (!sharedDepthFb.valid) {
+			final cfg = FramebufferConfig();
+			cfg.size = shadowMapSize;
+			cfg.location = FramebufferLocation.Offscreen;
+
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.RG32F;
+				treq.minFilter = TextureMinFilter.Linear;
+				treq.magFilter = TextureMagFilter.Linear;
+				treq.wrapS = TextureWrap.ClampToBorder;
+				treq.wrapT = TextureWrap.ClampToBorder;
+				cfg.color[0] = sharedDepthTex = rendererBackend.createTexture(
+					shadowMapSize,
+					treq
+				);
+				assert (sharedDepthTex.valid);
+			}
+				
+			cfg.depth = RenderBuffer(
+				shadowMapSize,
+				TextureInternalFormat.DEPTH_COMPONENT32F
+			);
+
+			sharedDepthFb = rendererBackend.createFramebuffer(cfg);
+			assert (sharedDepthFb.valid);
+		}
+		
+		vec3 target = vec3.zero;		// HACK
+		this.worldToView = mat4.lookAt(this.position, target);
+		assert (this.worldToView.ok);
+		
+		this.viewToClip = mat4.perspective(
+			60.0f,		// fov
+			1.0,		// aspect
+			0.1f,		// near plane
+			influenceRadius		// far plane
+		);
+		assert (this.viewToClip.ok);
+		
+		this.worldToClip = viewToClip * worldToView;
+		assert (this.worldToClip.ok);
+
+		final nr = depthRenderer;
+		final rlist = nr.createRenderList();
+		final origFb = rendererBackend.framebuffer;
+		
+		scope (exit) {
+			rendererBackend.framebuffer = origFb;
+			nr.disposeRenderList(rlist);
+		}
+
+		rendererBackend.framebuffer = sharedDepthFb;
+		rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.zero;
+		rendererBackend.clearBuffers();
+
+		auto viewCs = CoordSys(worldToView).inverse;
+		final viewSettings = ViewSettings(
+			viewCs,
+			60.0f,		// fov
+			1.0,		// aspect
+			0.1f,		// near plane
+			influenceRadius		// far plane
+		);
+
+		vsd.findVisible(viewSettings, (VisibleObject[] olist) {
+			foreach (o; olist) {
+				final bin = rlist.add();
+				static assert (RenderableId.sizeof == typeof(o.id).sizeof);
+				rlist.list.renderableId[bin] = cast(RenderableId)o.id;
+				rlist.list.coordSys[bin] = renderables.transform[o.id];
+			}
+		});
+
+		with (rendererBackend.state.cullFace) {
+			enabled = true;
+			front = false;
+			back = true;
+		}
+
+		nr.render(viewSettings, rlist);
+
+		rendererBackend.framebuffer = depthFb;
+		depthPost.render(sharedDepthTex);
+	}
+
+	vec2i shadowMapSize = { x: 256, y: 256 };
+	
+	mat4 worldToView;
+	mat4 viewToClip;
+	mat4 worldToClip;
+
+	Framebuffer depthFb;
+	Texture		depthTex;
+	
+	Framebuffer sharedDepthFb;
+	Texture		sharedDepthTex;
+
+	override void setKernelData(KernelParamInterface kpi) {
+		super.setKernelData(kpi);
+		kpi.bindUniform("depthSampler", &depthTex);
+		kpi.bindUniform("light_worldToClip", &worldToClip);
+	}
+}
+
+
+Renderer		depthRenderer;
+IRenderer		rendererBackend;
+VSDRoot			vsd;
+PostProcessor	depthPost;
 
 
 
@@ -181,7 +314,8 @@ import tango.core.Memory;
 class TestApp : GfxApp {
 	alias renderer rendererBackend;
 	Renderer		nr;
-	VSDRoot			vsd;
+	Renderer		nr2;
+	//VSDRoot			vsd;
 	SimpleCamera	camera;
 	
 
@@ -204,6 +338,8 @@ class TestApp : GfxApp {
 
 	override void initialize() {
 		GC.disable();
+
+		.rendererBackend = rendererBackend;
 		
 		final vfs = new FileFolder(".");
 
@@ -222,18 +358,29 @@ class TestApp : GfxApp {
 		MaterialId[cstring]	materials;
 		MaterialId			nextMaterialId;
 
+		depthRenderer = Nucleus.createRenderer("Depth", rendererBackend, kdefRegistry);
+		depthRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
+
 		nr = Nucleus.createRenderer("LightPrePass", rendererBackend, kdefRegistry);
-		//nr = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+		nr2 = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+		
+		kdefRegistry.registerObserver(depthRenderer);
 		kdefRegistry.registerObserver(nr);
+		kdefRegistry.registerObserver(nr2);
 		registerLightObserver(nr);
+		registerLightObserver(nr2);
 
 		post = new PostProcessor(rendererBackend, kdefRegistry);
 		post.setKernel("TestPost");
+
+		depthPost = new PostProcessor(rendererBackend, kdefRegistry);
+		depthPost.setKernel("TestDepthPost");
 
 		foreach (surfName, surf; &kdefRegistry.surfaces) {
 			surf.id = nextSurfaceId++;
 			surf.illumKernel = kdefRegistry.getKernel(surf.illumKernelName);
 			nr.registerSurface(surf);
+			nr2.registerSurface(surf);
 			surfaces[surfName.dup] = surf.id;
 		}
 
@@ -241,6 +388,7 @@ class TestApp : GfxApp {
 			mat.id = nextMaterialId++;
 			mat.pigmentKernel = kdefRegistry.getKernel(mat.pigmentKernelName);
 			nr.registerMaterial(mat);
+			nr2.registerMaterial(mat);
 			materials[matName.dup] = mat.id;
 		}
 
@@ -268,9 +416,9 @@ class TestApp : GfxApp {
 
 		// ----
 
-		const numLights = 30;
+		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestLight)[$-1]);
+			createLight((lights ~= new TestShadowedLight)[$-1]);
 			lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
 			lightAngles ~= Kiss.instance.fraction() * 360.0f;
 			lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
@@ -339,7 +487,7 @@ class TestApp : GfxApp {
 				"TestSurface3", "TestMaterial"
 			);
 		} else {
-			/+cstring model = `../../media/mesh/soldier.hsf`;
+			/+/+cstring model = `../../media/mesh/soldier.hsf`;
 			float scale = 1.0f;+/
 			cstring model = `../../media/mesh/masha.hsf`;
 			float scale = 0.02f;
@@ -357,20 +505,20 @@ class TestApp : GfxApp {
 			loadScene(
 				model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
 				"TestSurface3", "TestMaterial"
-			);
+			);+/
 
 			/+loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 				"TestSurface4", "TestMaterial"
 			);+/
 
-			/+cstring model = `../../media/mesh/lightTest.hsf`;
+			cstring model = `../../media/mesh/lightTest.hsf`;
 			float scale = 0.01f;
 
 			loadScene(
-				model, scale, CoordSys(vec3fi[0, 1, 0]),
+				model, scale, CoordSys(vec3fi[0, 0, 0]),
 				"TestSurface3", "TestMaterial"
-			);+/
+			);
 		}
 
 		{
@@ -406,8 +554,18 @@ class TestApp : GfxApp {
 
 
 	override void render() {
+		if (keyboard.keyDown(KeySym.e)) {
+			for (int li = 0; li < lights.length; ++li) {
+				lightAngles[li] += lightSpeeds[li] * -0.01;
+			}
+		} else {
+			for (int li = 0; li < lights.length; ++li) {
+				lightAngles[li] += lightSpeeds[li];
+			}
+		}
+
 		for (int li = 0; li < lights.length; ++li) {
-			lightAngles[li] += lightSpeeds[li];
+			lightAngles[li] = fmodf(lightAngles[li], 360.0);
 		}
 
 		static float lightDist = 0.8f;
@@ -418,7 +576,8 @@ class TestApp : GfxApp {
 			lightDist /= 0.995f;
 		}
 		
-		static float lightScale = 0.15f;
+		static float lightScale = 0.0f;
+		if (0 == lightScale) lightScale = 4.5f / lights.length;
 		if (keyboard.keyDown(KeySym.Down)) {
 			lightScale *= 0.99f;
 		}
@@ -477,6 +636,23 @@ class TestApp : GfxApp {
 		
 		vsd.update();
 
+		static bool wantDeferred = true; {
+			static bool prevKeyDown = false;
+			bool keyDown = keyboard.keyDown(KeySym.Return);
+			if (keyDown && !prevKeyDown) {
+				wantDeferred ^= true;
+				if (wantDeferred) {
+					Stdout.formatln("Using the light pre-pass renderer.");
+				} else {
+					Stdout.formatln("Using the forward renderer.");
+				}
+			}
+			prevKeyDown = keyDown;
+		}
+		
+
+		final nr = wantDeferred ? this.nr : this.nr2;
+
 		final rlist = nr.createRenderList();
 		scope (exit) nr.disposeRenderList(rlist);
 
@@ -497,14 +673,18 @@ class TestApp : GfxApp {
 			}
 		});
 
-		static bool wantPost = true;
-
-		static bool prevKeyDown = false;
-		bool keyDown = keyboard.keyDown(KeySym.space);
-		if (keyDown && !prevKeyDown) {
-			wantPost ^= true;
+		static bool wantPost = true; {
+			static bool prevKeyDown = false;
+			bool keyDown = keyboard.keyDown(KeySym.space);
+			if (keyDown && !prevKeyDown) {
+				wantPost ^= true;
+				Stdout.formatln(
+					"Post-processing {}.",
+					wantPost ? "enabled" : "disabled"
+				);
+			}
+			prevKeyDown = keyDown;
 		}
-		prevKeyDown = keyDown;
 
 		with (rendererBackend.state.cullFace) {
 			enabled = true;
@@ -551,6 +731,7 @@ void main(cstring[] args) {
 	} catch (Exception e) {
 		e.writeOut((cstring s) { Stdout(s); });
 		Stdout.newline();
+		Stdout.formatln("Hit me with like an Enter.");
 		getchar();
 	}
 }

@@ -1038,6 +1038,17 @@ struct Matrix(flt_, int rows_, int cols_) {
 			return res;
 		}
 	}
+
+
+	static if (3 == cols && 3 == rows) {
+		Matrix!(flt, 3, 3) getRotation() {
+			return *this;
+		}
+
+		Vector!(flt, 3) getTranslation() {
+			return Vector!(flt, 3).zero;
+		}
+	}
 	
 	
 	static if (4 == cols) {
@@ -1109,6 +1120,11 @@ struct Matrix(flt_, int rows_, int cols_) {
 			}
 
 
+			/**
+			 * The up vector will be rotated to be in the same plane as the
+			 * right and front vectors, which are first computed with the help
+			 * of the initially specified up vector, the eye and target positions.
+			 */
 			static Matrix lookAt(Vector!(flt, 3) eye, Vector!(flt, 3) target, Vector!(flt, 3) up = Vector!(flt, 3).unitY) {
 				alias Vector!(flt, 3) vec3;
 
@@ -1239,7 +1255,7 @@ struct Quaternion(flt_) {
 	
 	static Quaternion opCall(Matrix!(flt, 3, 3) m) {
 		real trace = cast(real)(m.cgetRC!(0, 0) + m.cgetRC!(1, 1) + m.cgetRC!(2, 2)) + 1;
-		if (trace > 0.00000001) {
+		if (trace > 0.001) {
 			real S = sqrt(trace) * 2;
 			return Quaternion(
 				scalar!(flt)(cast(real)(m.cgetRC!(2, 1) - m.cgetRC!(1, 2)) / S),
