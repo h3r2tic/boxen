@@ -17,7 +17,7 @@ Reflectance = kernel(
 	out specular <type vec4 + use specular>
 );
 
-Pigment = kernel(
+Material = kernel(
 	in position <type vec3 + basis model + use position>,
 	in normal <type vec3 + basis model + use normal>,
 	in diffuse <type vec4 + use diffuse>,
@@ -105,7 +105,7 @@ BlinnPhong = kernel Reflectance {
 };
 
 
-TestPigment = kernel Pigment {
+TestMaterial = kernel Material {
 	radiance = diffuse + specular;
 };
 

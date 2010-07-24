@@ -916,15 +916,15 @@ class KDefParser:KDefParserBase{
 
 	/*
 	MaterialDefValue
-		= MaterialDefValue createMaterialDefValue(string pigmentKernel,VarDef[] vars)
-		::= "material" Identifier:pigmentKernel "{" VarDef:~vars* "}";
+		= MaterialDefValue createMaterialDefValue(string materialKernel,VarDef[] vars)
+		::= "material" Identifier:materialKernel "{" VarDef:~vars* "}";
 
 	*/
 	MaterialDefValue value_MaterialDefValue;
 	bool parse_MaterialDefValue(){
 		debug Stdout("parse_MaterialDefValue").newline;
-		string var_pigmentKernel;
 		VarDef[] var_vars;
+		string var_materialKernel;
 
 		// AndGroup
 			auto position3 = pos;
@@ -937,7 +937,7 @@ class KDefParser:KDefParserBase{
 				if(!parse_Identifier()){
 					goto fail4;
 				}
-				smartAssign(var_pigmentKernel,value_Identifier);
+				smartAssign(var_materialKernel,value_Identifier);
 			term6:
 				// Terminal
 				if(!match("{")){
@@ -966,7 +966,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_MaterialDefValue = createMaterialDefValue(var_pigmentKernel,var_vars);
+			value_MaterialDefValue = createMaterialDefValue(var_materialKernel,var_vars);
 			debug Stdout.format("\tparse_MaterialDefValue passed: {0}",value_MaterialDefValue).newline;
 			return true;
 		fail1:

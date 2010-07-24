@@ -313,7 +313,7 @@ class KDefProcessor {
 				}
 
 				foreach (ref mat; mod.materials) {
-					getKernel(mat.pigmentKernelName)
+					getKernel(mat.materialKernelName)
 						.dependentOnThis.add(mat.dependentOnThis);
 				}
 			}

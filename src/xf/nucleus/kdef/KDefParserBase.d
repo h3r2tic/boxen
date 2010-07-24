@@ -222,9 +222,9 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
-		MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars) {
+		MaterialDefValue createMaterialDefValue(string materialKernel, VarDef[] vars) {
 			auto res = mem._new!(MaterialDefValue)();
-			auto mat = res.material = mem._new!(MaterialDef)(mem.dupString(pigmentKernel), mem._allocator);
+			auto mat = res.material = mem._new!(MaterialDef)(mem.dupString(materialKernel), mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					mat.params.add(ParamDirection.Out, var.name),

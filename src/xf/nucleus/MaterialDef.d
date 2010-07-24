@@ -26,7 +26,7 @@ final class MaterialDef {
 	bool opEquals(MaterialDef other) {
 		return
 			name == other.name
-		&&	pigmentKernelName == other.pigmentKernelName
+		&&	materialKernelName == other.materialKernelName
 		&&	params == other.params;
 	}
 
@@ -40,17 +40,17 @@ final class MaterialDef {
 	}
 
 
-	this(cstring pigment, Allocator alloc) {
+	this(cstring kernel, Allocator alloc) {
 		_allocator = alloc;
-		this.pigmentKernelName = pigment;
+		this.materialKernelName = kernel;
 		_dependentOnThis = DepTracker(alloc);
 	}
 
 	// TODO: make these props
 	cstring		name;
-	cstring		pigmentKernelName;
+	cstring		materialKernelName;
 
-	KernelImpl	pigmentKernel;
+	KernelImpl	materialKernel;
 
 	MaterialId	id;
 }

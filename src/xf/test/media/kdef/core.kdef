@@ -21,7 +21,7 @@ Reflectance = kernel(
 	out specular <type float4 + use specular>
 );
 
-Pigment = kernel(
+Material = kernel(
 	in position <type float3 + basis world + use position>,
 	in normal <type float3 + basis world + use normal>,
 	in texCoord <type float2 + use uv>,
