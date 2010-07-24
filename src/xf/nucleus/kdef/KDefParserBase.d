@@ -209,9 +209,9 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
-		SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars) {
+		SurfaceDefValue createSurfaceDefValue(string reflKernel, VarDef[] vars) {
 			auto res = mem._new!(SurfaceDefValue)();
-			auto surf = res.surface = mem._new!(SurfaceDef)(mem.dupString(illumKernel), mem._allocator);
+			auto surf = res.surface = mem._new!(SurfaceDef)(mem.dupString(reflKernel), mem._allocator);
 			foreach (var; vars) {
 				setParamValue(
 					surf.params.add(ParamDirection.Out, var.name),

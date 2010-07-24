@@ -9,7 +9,7 @@ Light = kernel(
 	out toLight <type vec3 + basis world + use toLight>
 );
 
-Illumination = kernel(
+Reflectance = kernel(
 	in normal <type vec3 + use normal + basis world>,
 	in intensity <type vec4 + use color>,
 	in toLight <type vec3 + basis world + use toLight>,
@@ -94,7 +94,7 @@ TestLight = kernel Light {
 	toLight = normalize(toLight);
 };
 
-BlinnPhong = kernel Illumination {
+BlinnPhong = kernel Reflectance {
 	float NdotL = dot(normal, toLight).x;
 	diffuse = intensity * saturate(NdotL);
 	specular = 0;

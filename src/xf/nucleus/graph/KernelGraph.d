@@ -24,7 +24,7 @@ public {
 enum SourceKernelType {
 	Undefined,
 	Structure,
-	Illumination,
+	Reflectance,
 	Pigment,
 	Light,
 	Composite

@@ -26,7 +26,7 @@ final class SurfaceDef {
 	bool opEquals(SurfaceDef other) {
 		return
 			name == other.name
-		&&	illumKernelName == other.illumKernelName
+		&&	reflKernelName == other.reflKernelName
 		&&	params == other.params;
 	}
 
@@ -40,17 +40,17 @@ final class SurfaceDef {
 	}
 
 
-	this(cstring illum, Allocator alloc) {
+	this(cstring refl, Allocator alloc) {
 		_allocator = alloc;
-		this.illumKernelName = illum;
+		this.reflKernelName = refl;
 		_dependentOnThis = DepTracker(alloc);
 	}
 
 	// TODO: make these props
 	cstring		name;
-	cstring		illumKernelName;
+	cstring		reflKernelName;
 
-	KernelImpl	illumKernel;
+	KernelImpl	reflKernel;
 
 	SurfaceId	id;
 }

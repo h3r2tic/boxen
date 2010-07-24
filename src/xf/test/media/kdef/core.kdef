@@ -11,7 +11,7 @@ Light = kernel(
 	out lightSize <type float>
 );
 
-Illumination = kernel(
+Reflectance = kernel(
 	in normal <type float3 + use normal + basis world + unit true>,
 	in intensity <type float4 + use color>,
 	in lightSize <type float>,

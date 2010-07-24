@@ -27,8 +27,8 @@ void renameDataNodeParam(
 			codeSink("pigment__");
 		} break;
 
-		case SourceKernelType.Illumination: {
-			codeSink("illumination__");
+		case SourceKernelType.Reflectance: {
+			codeSink("reflectance__");
 		} break;
 
 		case SourceKernelType.Light: {

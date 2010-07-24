@@ -155,11 +155,11 @@ class LightPrePassRenderer : Renderer {
 			Info[]		info;
 			void*		data;
 			cstring		kernelName;
-			ubyte		illumIdx;
-			//KernelImpl	illumKernel;
+			ubyte		reflIdx;
+			//KernelImpl	reflKernel;
 		}
 
-		struct IllumData {
+		struct ReflData {
 			cstring			kernelName;
 			KernelGraph		graph;
 			GraphNodeId[]	topological;		// allocated off the KernelGraph's allocator
@@ -206,11 +206,11 @@ class LightPrePassRenderer : Renderer {
 		}
 
 		SurfaceData[256]	_surfaces;
-		IllumData[256]		_illumDataBuf;
-		uint				_numIllumData;
+		ReflData[256]		_reflDataBuf;
+		uint				_numReflData;
 
-		IllumData[] _illumData() {
-			return _illumDataBuf[0.._numIllumData];
+		ReflData[] _reflData() {
+			return _reflDataBuf[0.._numReflData];
 		}
 	}
 
@@ -220,8 +220,8 @@ class LightPrePassRenderer : Renderer {
 		auto surf = &_surfaces[def.id];
 		surf.info.length = def.params.length;
 
-		//assert (def.illumKernel !is null);
-		surf.kernelName = def.illumKernel.name.dup;
+		//assert (def.reflKernel !is null);
+		surf.kernelName = def.reflKernel.name.dup;
 
 		uword sizeReq = 0;
 		
@@ -241,66 +241,66 @@ class LightPrePassRenderer : Renderer {
 			memcpy(dst, p.value, p.valueSize);
 		}
 
-		bool illumFound = false;
-		foreach (ubyte i, ref illum; _illumData) {
-			if (illum.kernelName == surf.kernelName) {
-				surf.illumIdx = i;
-				illumFound = true;
+		bool reflFound = false;
+		foreach (ubyte i, ref refl; _reflData) {
+			if (refl.kernelName == surf.kernelName) {
+				surf.reflIdx = i;
+				reflFound = true;
 				break;
 			}
 		}
 
-		if (!illumFound) {
+		if (!reflFound) {
 			{
-				uint idx = _numIllumData++;
+				uint idx = _numReflData++;
 				assert (idx < 256);
-				surf.illumIdx = cast(ubyte)idx;
+				surf.reflIdx = cast(ubyte)idx;
 			}
-			auto illum = &_illumData[surf.illumIdx];
+			auto refl = &_reflData[surf.reflIdx];
 
-			illum.kernelName = surf.kernelName;
+			refl.kernelName = surf.kernelName;
 
-			illum.graph = createKernelGraph();
+			refl.graph = createKernelGraph();
 			GraphBuilder builder;
 			builder.sourceKernelType = SourceKernelType.Composite;
 
 			BuilderSubgraphInfo info;
-			builder.build(illum.graph, def.illumKernel, &info, null);
+			builder.build(refl.graph, def.reflKernel, &info, null);
 
 			ConvCtx convCtx;
 			convCtx.semanticConverters = &_kdefRegistry.converters;
 			convCtx.getKernel = &_kdefRegistry.getKernel;
 
 			convertGraphDataFlow(
-				illum.graph,
+				refl.graph,
 				convCtx
 			);
 
-			removeUnreachableBackwards(illum.graph.backend_readOnly, info.output);
-			simplifyKernelGraph(illum.graph);
+			removeUnreachableBackwards(refl.graph.backend_readOnly, info.output);
+			simplifyKernelGraph(refl.graph);
 
-			illum.input = info.input;
-			illum.output = info.output;
+			refl.input = info.input;
+			refl.output = info.output;
 
-			illum.topological = DgScratchAllocator(&illum.graph._mem.pushBack)
-				.allocArrayNoInit!(GraphNodeId)(illum.graph.numNodes);
+			refl.topological = DgScratchAllocator(&refl.graph._mem.pushBack)
+				.allocArrayNoInit!(GraphNodeId)(refl.graph.numNodes);
 
-			findTopologicalOrder(illum.graph.backend_readOnly, illum.topological);
+			findTopologicalOrder(refl.graph.backend_readOnly, refl.topological);
 
 			bool dataNodeFound = false;
-			foreach (n; illum.graph.iterNodes(KernelGraph.NodeType.Data)) {
+			foreach (n; refl.graph.iterNodes(KernelGraph.NodeType.Data)) {
 				assert (
 					!dataNodeFound,
-					"Only one Data node currently allowed for Illum kernels. Lazy."
+					"Only one Data node currently allowed for refl kernels. Lazy."
 				);
-				illum.dataNodeParams = illum.graph.getNode(n).getParamList();
+				refl.dataNodeParams = refl.graph.getNode(n).getParamList();
 				dataNodeFound = true;
 			}
 		}
 
 		vec4 texel;
 
-		texel = vec4[cast(float)surf.illumIdx / (maxSurfaces-1), 0, 0, 0];
+		texel = vec4[cast(float)surf.reflIdx / (maxSurfaces-1), 0, 0, 0];
 		_backend.updateTexture(
 			_surfaceParamTex,
 			vec2i(0, def.id),
@@ -372,7 +372,7 @@ class LightPrePassRenderer : Renderer {
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
-		final illumKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
 
@@ -867,22 +867,22 @@ float farPlaneDistance <
 	void dumpBRDFs(CodegenContext* ctx, SubgraphData[][] graphs) {
 		auto fmt = ctx.sink;
 		
-		foreach (illumIdx, illum; _illumData) {
-			fmt("struct BRDF__")(illumIdx)(" {");
-			fmt("\t// ")(illum.kernelName);
+		foreach (reflIdx, refl; _reflData) {
+			fmt("struct BRDF__")(reflIdx)(" {");
+			fmt("\t// ")(refl.kernelName);
 			fmt.newline;
 
-			final inputNode = illum.graph.getNode(illum.input);
-			final outputNode = illum.graph.getNode(illum.output);
+			final inputNode = refl.graph.getNode(refl.input);
+			final outputNode = refl.graph.getNode(refl.output);
 
-			dumpUniforms(ctx, illum.graph, fmt);
+			dumpUniforms(ctx, refl.graph, fmt);
 
 			// ---- func body ----
 			{
 				fmt.formatln("void main(");
 
 				uint parIdx = 0;
-				foreach (i, par; &illum.inputs) {
+				foreach (i, par; &refl.inputs) {
 					assert (par.hasTypeConstraint);
 
 					if (parIdx++ != 0) {
@@ -893,10 +893,10 @@ float farPlaneDistance <
 					fmt("in ");
 					fmt(par.type);
 					fmt(" ");
-					emitSourceParamName(ctx, illum.graph, null, illum.input, par.name);
+					emitSourceParamName(ctx, refl.graph, null, refl.input, par.name);
 				}
 				
-				foreach (i, par; &illum.outputs) {
+				foreach (i, par; &refl.outputs) {
 					assert (par.hasTypeConstraint);
 
 					if (parIdx++ != 0) {
@@ -914,33 +914,33 @@ float farPlaneDistance <
 
 				domainCodegenBody(
 					ctx,
-					illum.graph,
+					refl.graph,
 					null,
-					illum.topological,
-					graphs[illumIdx][0].node2funcName,
-					graphs[illumIdx][0].node2compName
+					refl.topological,
+					graphs[reflIdx][0].node2funcName,
+					graphs[reflIdx][0].node2compName
 				);
 
-				foreach (i, par; &illum.outputs) {
+				foreach (i, par; &refl.outputs) {
 					GraphNodeId	srcNid;
 					Param*		srcParam;
 
 					if (!getOutputParamIndirect(
-						illum.graph,
-						illum.output,
+						refl.graph,
+						refl.output,
 						par.name,
 						&srcNid,
 						&srcParam
 					)) {
 						error(
 							"No flow to {}.{}. Should have been caught earlier.",
-							illum.output,
+							refl.output,
 							par.name
 						);
 					}
 
 					fmt.format("\tbridge__{} = ", i);
-					emitSourceParamName(ctx, illum.graph, null, srcNid, srcParam.name);
+					emitSourceParamName(ctx, refl.graph, null, srcNid, srcParam.name);
 					fmt(';').newline();
 				}
 
@@ -968,7 +968,7 @@ float farPlaneDistance <
 			);
 		}
 
-		void illumIdxBranch(int i, void delegate() dg) {
+		void reflIdxBranch(int i, void delegate() dg) {
 			if (i > 0) {
 				fmt("else ");
 			}
@@ -987,10 +987,10 @@ float farPlaneDistance <
 		surfParam(-1);
 		fmt(".x;").newline;
 
-		foreach (illumIdx, illum; _illumData) {
-			illumIdxBranch(illumIdx, {
-				fmt("BRDF__")(illumIdx)(" brdf__inst;");
-				if (illum.dataNodeParams) foreach (i, param; *illum.dataNodeParams) {
+		foreach (reflIdx, refl; _reflData) {
+			reflIdxBranch(reflIdx, {
+				fmt("BRDF__")(reflIdx)(" brdf__inst;");
+				if (refl.dataNodeParams) foreach (i, param; *refl.dataNodeParams) {
 					fmt.format("brdf__inst.{} = ", param.name);
 					surfParam(i);
 					switch (param.type) {
@@ -1032,16 +1032,16 @@ float farPlaneDistance <
 		KernelGraph kg,
 		CodegenContext* ctx
 	) {
-		final graphs = stack.allocArray!(SubgraphData[])(_illumData.length);
+		final graphs = stack.allocArray!(SubgraphData[])(_reflData.length);
 
 		ctx.domain = GPUDomain.Fragment;
 		ctx.getInterface = &_getInterface;
 
-		foreach (illumIdx, illum; _illumData) {
-			graphs[illumIdx] = emitCompositesAndFuncs(
+		foreach (reflIdx, refl; _reflData) {
+			graphs[reflIdx] = emitCompositesAndFuncs(
 				stack,
 				ctx,
-				illum.graph
+				refl.graph
 			);
 		}
 
@@ -1069,7 +1069,7 @@ float farPlaneDistance <
 		ctx.sink = fmt1;
 
 		final func = stack._new!(Function)("BRDF__eval"[], cast(cstring[])null, code, &stack.allocRaw);
-		func.params.copyFrom(_kdefRegistry.getKernel("Illumination").kernel.func.params);
+		func.params.copyFrom(_kdefRegistry.getKernel("Reflectance").kernel.func.params);
 		{
 			auto p = func.params.add(ParamDirection.In, "getSurfaceParam");
 			p.hasPlainSemantic = true;
@@ -1093,7 +1093,7 @@ float farPlaneDistance <
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
-		final illumKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
 
@@ -1385,7 +1385,7 @@ float farPlaneDistance <
 
 				// HACK
 				// all structure params should come from the asset
-				// all illumination params - from the surface
+				// all reflectance params - from the surface
 				// all light params - from light
 				// all pigmeht params - from materials
 				// hence there should be no need for 'default' storage
@@ -1413,7 +1413,7 @@ float farPlaneDistance <
 				 * them all. In such a case there doesn't seem to be a location
 				 * for these parameters which materials/surfaces don't set.
 				 *
-				 * The proper solution will be to inspect all illum and pigment
+				 * The proper solution will be to inspect all refl and pigment
 				 * kernels, match them to mats/surfs and create the default param
 				 * values directly inside mats/surfs. This could also be done on
 				 * the level of Nucled, so that mats/surfs always define all values,
@@ -1544,7 +1544,7 @@ float farPlaneDistance <
 
 				// HACK
 				// all structure params should come from the asset
-				// all illumination params - from the surface
+				// all reflectance params - from the surface
 				// all light params - from light
 				// all pigmeht params - from materials
 				// hence there should be no need for 'default' storage
@@ -1572,7 +1572,7 @@ float farPlaneDistance <
 				 * them all. In such a case there doesn't seem to be a location
 				 * for these parameters which materials/surfaces don't set.
 				 *
-				 * The proper solution will be to inspect all illum and pigment
+				 * The proper solution will be to inspect all refl and pigment
 				 * kernels, match them to mats/surfs and create the default param
 				 * values directly inside mats/surfs. This could also be done on
 				 * the level of Nucled, so that mats/surfs always define all values,
