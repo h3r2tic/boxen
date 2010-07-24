@@ -27,14 +27,28 @@ abstract class Light {
 
 	abstract cstring kernelName();
 	abstract void setKernelData(KernelParamInterface);
-	abstract void determineInfluenced(
+
+	// Called by renderer prior to using the light. Can e.g. calc shadow maps
+	// TODO: replace it with a version which runs on all instances of a given
+	// light class as to allow clustering and reduce call overhead
+	void prepareRenderData() {}
+
+	void determineInfluenced(
 		void delegate(
 			bool delegate(
 				ref CoordSys	cs,
 				ref vec3		localHalfSize
 			)
 		) objectIter
-	);
+	) {
+		objectIter((
+				ref CoordSys	cs,
+				ref vec3		localHalfSize
+			) {
+				return true;
+			}
+		);
+	}
 }
 
 

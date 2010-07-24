@@ -665,10 +665,10 @@ class ForwardRenderer : Renderer {
 			auto mulSpecularNid = kg.addFuncNode(mulFunc);
 			auto sumTotalLight = kg.addFuncNode(addFunc);
 
-			kg.flow.addDataFlow(specularSumNid, "c", mulSpecularNid, "a");
+			kg.flow.addDataFlow(specularSumNid, specularSumPName, mulSpecularNid, "a");
 			kg.flow.addDataFlow(mulDiffuseNid, "c", sumTotalLight, "a");
 
-			kg.flow.addDataFlow(diffuseSumNid, "c", mulDiffuseNid, "a");
+			kg.flow.addDataFlow(diffuseSumNid, diffuseSumPName, mulDiffuseNid, "a");
 			{
 				GraphNodeId nid;
 				Param* par;
@@ -1030,6 +1030,11 @@ float3 eyePosition <
 
 	
 	override void render(ViewSettings vs, RenderList* rlist) {
+		// HACK
+		foreach (l; .lights) {
+			l.prepareRenderData();
+		}
+
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.worldToView = vs.computeViewMatrix();
 		this.eyePosition = vec3.from(vs.eyeCS.origin);

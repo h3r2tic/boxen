@@ -1783,6 +1783,11 @@ float farPlaneDistance <
 
 	
 	override void render(ViewSettings vs, RenderList* rlist) {
+		// HACK
+		foreach (l; .lights) {
+			l.prepareRenderData();
+		}
+
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.clipToView = this.viewToClip.inverse();
 		this.worldToView = vs.computeViewMatrix();

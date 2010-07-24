@@ -1226,6 +1226,9 @@ class Renderer : IRenderer {
 			}
 			
 			_currentFramebuffer = fb;
+
+			state.viewport.width = fb.size.x;
+			state.viewport.height = fb.size.y;
 		}
 	}
 	

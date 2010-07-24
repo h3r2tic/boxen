@@ -20,7 +20,8 @@ void domainCodegenBody(
 	GPUDomain[] nodeDomains,
 	GraphNodeId[] nodesTopo,
 	cstring[] node2funcName,
-	cstring[] node2compName
+	cstring[] node2compName,
+	bool followInputs = false
 ) {
 	return domainCodegenBody(
 		ctx,
@@ -30,7 +31,8 @@ void domainCodegenBody(
 			foreach (n; nodesTopo) sink(n);
 		},
 		node2funcName,
-		node2compName
+		node2compName,
+		followInputs
 	);
 }
 
@@ -41,7 +43,8 @@ void domainCodegenBody(
 	GPUDomain[] nodeDomains,
 	void delegate(void delegate(GraphNodeId)) nodesTopo,
 	cstring[] node2funcName,
-	cstring[] node2compName
+	cstring[] node2compName,
+	bool followInputs = false
 ) {
 	alias KernelGraph.NodeType NT;
 
@@ -148,7 +151,7 @@ void domainCodegenBody(
 			foreach (i, par; *params) {
 				ctx.indent()('\t');
 
-				if (nodeIdx > 0 && par.isInput) {
+				if ((followInputs || nodeIdx > 0) && par.isInput) {
 					GraphNodeId	srcNid;
 					Param*		srcParam;
 
