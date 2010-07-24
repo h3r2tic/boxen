@@ -153,7 +153,7 @@ class ForwardRenderer : Renderer {
 			Info[]		info;
 			void*		data;
 			cstring		kernelName;
-			//KernelImpl	illumKernel;
+			//KernelImpl	reflKernel;
 		}
 		
 		SurfaceData[256]		_surfaces;
@@ -166,8 +166,8 @@ class ForwardRenderer : Renderer {
 		auto surf = &_surfaces[def.id];
 		surf.info.length = def.params.length;
 
-		//assert (def.illumKernel !is null);
-		surf.kernelName = def.illumKernel.name.dup;
+		//assert (def.reflKernel !is null);
+		surf.kernelName = def.reflKernel.name.dup;
 
 		uword sizeReq = 0;
 		
@@ -204,7 +204,7 @@ class ForwardRenderer : Renderer {
 				if (
 						!_kdefRegistry.getKernel(eck.pigmentKernel).isValid
 					||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
-					||	!_kdefRegistry.getKernel(eck.illumKernel).isValid
+					||	!_kdefRegistry.getKernel(eck.reflKernel).isValid
 				) {
 					toDispose.pushBack(einfo.effect, &stack.allocRaw);
 					einfo.dispose();
@@ -239,7 +239,7 @@ class ForwardRenderer : Renderer {
 	// TODO: mem, indices instead of names (?)
 	struct EffectCacheKey {
 		cstring		pigmentKernel;
-		cstring		illumKernel;
+		cstring		reflKernel;
 		cstring		structureKernel;
 		cstring[]	lightKernels;
 		hash_t		hash;
@@ -251,7 +251,7 @@ class ForwardRenderer : Renderer {
 		bool opEquals(ref EffectCacheKey other) {
 			return
 					pigmentKernel == other.pigmentKernel
-				&&	illumKernel == other.illumKernel
+				&&	reflKernel == other.reflKernel
 				&&	structureKernel == other.structureKernel
 				&&	lightKernels == other.lightKernels;
 		}
@@ -272,7 +272,7 @@ class ForwardRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		key.pigmentKernel = material.kernelName;
-		key.illumKernel = surface.kernelName;
+		key.reflKernel = surface.kernelName;
 		key.structureKernel = renderables.structureKernel[rid];
 
 		key.lightKernels.length = affectingLights.length;
@@ -286,7 +286,7 @@ class ForwardRenderer : Renderer {
 		hash_t hash = 0;
 		hash += typeid(cstring).getHash(&key.pigmentKernel);
 		hash *= 7;
-		hash += typeid(cstring).getHash(&key.illumKernel);
+		hash += typeid(cstring).getHash(&key.reflKernel);
 		hash *= 7;
 		hash += typeid(cstring).getHash(&key.structureKernel);
 
@@ -314,7 +314,7 @@ class ForwardRenderer : Renderer {
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
-		final illumKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
 
@@ -405,14 +405,14 @@ class ForwardRenderer : Renderer {
 		}
 
 		if (affectingLights.length > 0) {
-			// ---- Build the graphs for lights and illumination
+			// ---- Build the graphs for lights and reflectance
 
 			auto lightGraphs = stack.allocArray!(SubgraphInfo)(affectingLights.length);
-			auto illumGraphs = stack.allocArray!(SubgraphInfo)(affectingLights.length);
+			auto reflGraphs = stack.allocArray!(SubgraphInfo)(affectingLights.length);
 
 			foreach (lightI, light; affectingLights) {
 				final lightGraph = &lightGraphs[lightI];
-				final illumGraph = &illumGraphs[lightI];
+				final reflGraph = &reflGraphs[lightI];
 
 				// Build light kernel graphs
 
@@ -425,14 +425,14 @@ class ForwardRenderer : Renderer {
 					builder.build(kg, lightKernel, lightGraph, stack);
 				}
 
-				// Build illumination kernel graphs
+				// Build reflectance kernel graphs
 
 				{
 					GraphBuilder builder;
-					builder.sourceKernelType = SourceKernelType.Illumination;
+					builder.sourceKernelType = SourceKernelType.Reflectance;
 					builder.spawnDataNodes = 0 == lightI;
-					builder.dataNodeSource = illumGraphs[0].nodes;
-					builder.build(kg, illumKernel, illumGraph, stack);
+					builder.dataNodeSource = reflGraphs[0].nodes;
+					builder.build(kg, reflKernel, reflGraph, stack);
 				}
 			}
 			
@@ -478,45 +478,45 @@ class ForwardRenderer : Renderer {
 				);
 			}
 
-			// Connect the illumination graph to light and structure output
+			// Connect the reflectance graph to light and structure output
 
-			uword numIllumDataNodes = 0;
-			foreach (n; illumGraphs[0].nodes) {
+			uword numReflDataNodes = 0;
+			foreach (n; reflGraphs[0].nodes) {
 				if (NT.Data == kg.getNode(n).type) {
-					++numIllumDataNodes;
+					++numReflDataNodes;
 				}
 			}
 
-			foreach (lightI, ref illumGraph; illumGraphs) {
+			foreach (lightI, ref reflGraph; reflGraphs) {
 				scope stack2 = new StackBuffer;
 
 				/*
 				 * We collect only the non-data nodes here for fusion, as
-				 * Data nodes are shared between illumination kernel nodes.
+				 * Data nodes are shared between reflectance kernel nodes.
 				 * Having them in the list would make findTopologicalOrder
 				 * traverse outward from them and find the connected non-shared
-				 * nodes of other illum graph instances. The Data nodes are not
+				 * nodes of other refl graph instances. The Data nodes are not
 				 * used in fusion anyway - it's mostly concerned about Input
 				 * and Output nodes, plus whatever might be connected to them.
 				 */
-				uword numIllumNoData = illumGraph.nodes.length - numIllumDataNodes;
-				auto illumNoData = stack2.allocArray!(GraphNodeId)(numIllumNoData); {
+				uword numReflNoData = reflGraph.nodes.length - numReflDataNodes;
+				auto reflNoData = stack2.allocArray!(GraphNodeId)(numReflNoData); {
 					uword i = 0;
-					foreach (n; illumGraph.nodes) {
+					foreach (n; reflGraph.nodes) {
 						if (NT.Data != kg.getNode(n).type) {
-							illumNoData[i++] = n;
+							reflNoData[i++] = n;
 						}
 					}
 				}
 				
-				auto illumNodesTopo = stack2.allocArray!(GraphNodeId)(numIllumNoData);
-				findTopologicalOrder(kg.backend_readOnly, illumNoData, illumNodesTopo);
+				auto reflNodesTopo = stack2.allocArray!(GraphNodeId)(numReflNoData);
+				findTopologicalOrder(kg.backend_readOnly, reflNoData, reflNodesTopo);
 
 				fuseGraph(
 					kg,
-					illumGraph.input,
+					reflGraph.input,
 					convCtx,
-					illumNodesTopo,
+					reflNodesTopo,
 					
 					// _findSrcParam
 					delegate bool(
@@ -561,7 +561,7 @@ class ForwardRenderer : Renderer {
 			}
 
 
-			// ---- Sum the diffuse and specular illumination
+			// ---- Sum the diffuse and specular reflectance
 			Function addFunc; {
 				final addKernel = _kdefRegistry.getKernel("Add");
 				assert (KernelImpl.Type.Kernel == addKernel.type);
@@ -575,7 +575,7 @@ class ForwardRenderer : Renderer {
 			reduceGraphData(
 				kg,
 				(void delegate(GraphNodeId	nid, cstring pname) sink) {
-					foreach (ref ig; illumGraphs) {
+					foreach (ref ig; reflGraphs) {
 						GraphNodeId srcNid;
 						Param* srcParam;
 						
@@ -588,7 +588,7 @@ class ForwardRenderer : Renderer {
 						)) {
 							error(
 								"Could not find input to the 'diffuse' output"
-								" of an illum kernel. Should have been found earlier."
+								" of an refl kernel. Should have been found earlier."
 							);
 						}
 
@@ -606,7 +606,7 @@ class ForwardRenderer : Renderer {
 			reduceGraphData(
 				kg,
 				(void delegate(GraphNodeId	nid, cstring pname) sink) {
-					foreach (ref ig; illumGraphs) {
+					foreach (ref ig; reflGraphs) {
 						GraphNodeId srcNid;
 						Param* srcParam;
 						
@@ -619,7 +619,7 @@ class ForwardRenderer : Renderer {
 						)) {
 							error(
 								"Could not find input to the 'specular' output"
-								" of an illum kernel. Should have been found earlier."
+								" of an refl kernel. Should have been found earlier."
 							);
 						}
 
@@ -635,7 +635,7 @@ class ForwardRenderer : Renderer {
 
 			// Not needed anymore, the flow has been reduced and the source params
 			// have been located.
-			foreach (ref ig; illumGraphs) {
+			foreach (ref ig; reflGraphs) {
 				removeNodeIfTypeMatches(ig.output, NT.Output);
 			}
 
@@ -885,7 +885,7 @@ float3 eyePosition <
 
 				// HACK
 				// all structure params should come from the asset
-				// all illumination params - from the surface
+				// all reflectance params - from the surface
 				// all light params - from light
 				// all pigmeht params - from materials
 				// hence there should be no need for 'default' storage
@@ -913,7 +913,7 @@ float3 eyePosition <
 				 * them all. In such a case there doesn't seem to be a location
 				 * for these parameters which materials/surfaces don't set.
 				 *
-				 * The proper solution will be to inspect all illum and pigment
+				 * The proper solution will be to inspect all refl and pigment
 				 * kernels, match them to mats/surfs and create the default param
 				 * values directly inside mats/surfs. This could also be done on
 				 * the level of Nucled, so that mats/surfs always define all values,
@@ -926,7 +926,7 @@ float3 eyePosition <
 				auto surface = &_surfaces[renderables.surface[rid]];
 				foreach (ref info; surface.info) {
 					char[256] fqn;
-					sprintf(fqn.ptr, "illumination__%.*s", info.name);
+					sprintf(fqn.ptr, "reflectance__%.*s", info.name);
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {

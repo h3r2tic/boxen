@@ -99,8 +99,8 @@ TraitDefValue
 	[ "=" ?!("default value identifier exptected") Identifier:defaultValue ];
 
 SurfaceDefValue
-	= SurfaceDefValue createSurfaceDefValue(string illumKernel, VarDef[] vars)
-	::= "surface" Identifier:illumKernel
+	= SurfaceDefValue createSurfaceDefValue(string reflKernel, VarDef[] vars)
+	::= "surface" Identifier:reflKernel
 	"{"
 		VarDef:~vars*
 	"}";

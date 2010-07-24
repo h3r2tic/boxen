@@ -394,7 +394,7 @@ class TestApp : GfxApp {
 
 		foreach (surfName, surf; &kdefRegistry.surfaces) {
 			surf.id = nextSurfaceId++;
-			surf.illumKernel = kdefRegistry.getKernel(surf.illumKernelName);
+			surf.reflKernel = kdefRegistry.getKernel(surf.reflKernelName);
 			nr.registerSurface(surf);
 			nr2.registerSurface(surf);
 			surfaces[surfName.dup] = surf.id;

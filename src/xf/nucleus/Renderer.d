@@ -160,7 +160,7 @@ abstract class Renderer
 		
 		MemUtils.alloc(mat.info, def.params.length);
 
-		//assert (def.illumKernel !is null);
+		//assert (def.reflKernel !is null);
 		mat.kernelName = def.pigmentKernel.name.dup;
 
 		uword sizeReq = 0;

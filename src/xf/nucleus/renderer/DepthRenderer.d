@@ -351,9 +351,6 @@ float farPlaneDistance <
 
 				// HACK
 				// all structure params should come from the asset
-				// all illumination params - from the surface
-				// all light params - from light
-				// all pigmeht params - from materials
 				// hence there should be no need for 'default' storage
 				allocateDefaultUniformStorage(efInst);
 
@@ -372,18 +369,7 @@ float farPlaneDistance <
 				// ----
 
 				/*
-				 * HACK: Bah, now this is kind of tricky. On on hand, kernel graphs
-				 * may come with defaults for Data node parameters, which need to be
-				 * set for new effects. On the other hand, parameters are supposed
-				 * to be owned by materials/surfaces but they don't need to specify
-				 * them all. In such a case there doesn't seem to be a location
-				 * for these parameters which materials/surfaces don't set.
-				 *
-				 * The proper solution will be to inspect all illum and pigment
-				 * kernels, match them to mats/surfs and create the default param
-				 * values directly inside mats/surfs. This could also be done on
-				 * the level of Nucled, so that mats/surfs always define all values,
-				 * even if they're not set in the GUI
+				 * HACK: bla bla, same story as in the forward and lpp renderers
 				 */
 				setEffectInstanceUniformDefaults(&effectInfo, efInst);
 

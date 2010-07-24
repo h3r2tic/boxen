@@ -308,7 +308,7 @@ class KDefProcessor {
 
 			foreach (name, mod; modules) {
 				foreach (ref surf; mod.surfaces) {
-					getKernel(surf.illumKernelName)
+					getKernel(surf.reflKernelName)
 						.dependentOnThis.add(surf.dependentOnThis);
 				}
 

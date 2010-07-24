@@ -855,14 +855,14 @@ class KDefParser:KDefParserBase{
 
 	/*
 	SurfaceDefValue
-		= SurfaceDefValue createSurfaceDefValue(string illumKernel,VarDef[] vars)
-		::= "surface" Identifier:illumKernel "{" VarDef:~vars* "}";
+		= SurfaceDefValue createSurfaceDefValue(string reflKernel,VarDef[] vars)
+		::= "surface" Identifier:reflKernel "{" VarDef:~vars* "}";
 
 	*/
 	SurfaceDefValue value_SurfaceDefValue;
 	bool parse_SurfaceDefValue(){
 		debug Stdout("parse_SurfaceDefValue").newline;
-		string var_illumKernel;
+		string var_reflKernel;
 		VarDef[] var_vars;
 
 		// AndGroup
@@ -876,7 +876,7 @@ class KDefParser:KDefParserBase{
 				if(!parse_Identifier()){
 					goto fail4;
 				}
-				smartAssign(var_illumKernel,value_Identifier);
+				smartAssign(var_reflKernel,value_Identifier);
 			term6:
 				// Terminal
 				if(!match("{")){
@@ -905,7 +905,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_SurfaceDefValue = createSurfaceDefValue(var_illumKernel,var_vars);
+			value_SurfaceDefValue = createSurfaceDefValue(var_reflKernel,var_vars);
 			debug Stdout.format("\tparse_SurfaceDefValue passed: {0}",value_SurfaceDefValue).newline;
 			return true;
 		fail1:
