@@ -402,7 +402,7 @@ class TestApp : GfxApp {
 
 		foreach (matName, mat; &kdefRegistry.materials) {
 			mat.id = nextMaterialId++;
-			mat.pigmentKernel = kdefRegistry.getKernel(mat.pigmentKernelName);
+			mat.materialKernel = kdefRegistry.getKernel(mat.materialKernelName);
 			nr.registerMaterial(mat);
 			nr2.registerMaterial(mat);
 			materials[matName.dup] = mat.id;
@@ -492,7 +492,7 @@ class TestApp : GfxApp {
 			});
 		}
 
-		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
+		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestMaterialImpl");
 
 		version (Sibenik) {
 			cstring model = `../../media/mesh/sibenik.hsf`;
@@ -500,7 +500,7 @@ class TestApp : GfxApp {
 
 			loadScene(
 				model, scale, CoordSys(vec3fi[0, -3, 0]),
-				"TestSurface3", "TestMaterial"
+				"TestSurface3", "TestMaterialImpl"
 			);
 		} else {
 			/+/+cstring model = `../../media/mesh/soldier.hsf`;
@@ -510,22 +510,22 @@ class TestApp : GfxApp {
 
 			/+loadScene(
 				model, scale, CoordSys(vec3fi[-2, 0, 0]),
-				"TestSurface1", "TestMaterial"
+				"TestSurface1", "TestMaterialImpl"
 			);+/
 			
 			loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
-				"TestSurface2", "TestMaterial"
+				"TestSurface2", "TestMaterialImpl"
 			);
 
 			loadScene(
 				model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
-				"TestSurface3", "TestMaterial"
+				"TestSurface3", "TestMaterialImpl"
 			);+/
 
 			/+loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
-				"TestSurface4", "TestMaterial"
+				"TestSurface4", "TestMaterialImpl"
 			);+/
 
 			cstring model = `../../media/mesh/lightTest.hsf`;
@@ -533,7 +533,7 @@ class TestApp : GfxApp {
 
 			loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, 0]),
-				"TestSurface3", "TestMaterial"
+				"TestSurface3", "TestMaterialImpl"
 			);
 		}
 

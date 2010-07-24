@@ -202,7 +202,7 @@ class ForwardRenderer : Renderer {
 		} else {
 			foreach (eck, ref einfo; _effectCache) {
 				if (
-						!_kdefRegistry.getKernel(eck.pigmentKernel).isValid
+						!_kdefRegistry.getKernel(eck.materialKernel).isValid
 					||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
 					||	!_kdefRegistry.getKernel(eck.reflKernel).isValid
 				) {
@@ -238,7 +238,7 @@ class ForwardRenderer : Renderer {
 
 	// TODO: mem, indices instead of names (?)
 	struct EffectCacheKey {
-		cstring		pigmentKernel;
+		cstring		materialKernel;
 		cstring		reflKernel;
 		cstring		structureKernel;
 		cstring[]	lightKernels;
@@ -250,7 +250,7 @@ class ForwardRenderer : Renderer {
 
 		bool opEquals(ref EffectCacheKey other) {
 			return
-					pigmentKernel == other.pigmentKernel
+					materialKernel == other.materialKernel
 				&&	reflKernel == other.reflKernel
 				&&	structureKernel == other.structureKernel
 				&&	lightKernels == other.lightKernels;
@@ -271,7 +271,7 @@ class ForwardRenderer : Renderer {
 		MaterialId materialId = renderables.material[rid];
 		auto material = _materials[materialId];
 
-		key.pigmentKernel = material.kernelName;
+		key.materialKernel = material.kernelName;
 		key.reflKernel = surface.kernelName;
 		key.structureKernel = renderables.structureKernel[rid];
 
@@ -284,7 +284,7 @@ class ForwardRenderer : Renderer {
 		key.lightKernels.sort;
 
 		hash_t hash = 0;
-		hash += typeid(cstring).getHash(&key.pigmentKernel);
+		hash += typeid(cstring).getHash(&key.materialKernel);
 		hash *= 7;
 		hash += typeid(cstring).getHash(&key.reflKernel);
 		hash *= 7;
@@ -313,7 +313,7 @@ class ForwardRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel		= _kdefRegistry.getKernel(material.kernelName);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
@@ -321,7 +321,7 @@ class ForwardRenderer : Renderer {
 		// ---- Build the Structure kernel graph
 
 		SubgraphInfo structureInfo;
-		SubgraphInfo pigmentInfo;
+		SubgraphInfo materialInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -354,27 +354,27 @@ class ForwardRenderer : Renderer {
 			convCtx
 		);
 
-		void buildPigmentGraph() {
+		void buildMaterialGraph() {
 			GraphBuilder builder;
-			builder.sourceKernelType = SourceKernelType.Pigment;
-			builder.build(kg, pigmentKernel, &pigmentInfo, stack);
+			builder.sourceKernelType = SourceKernelType.Material;
+			builder.build(kg, materialKernel, &materialInfo, stack);
 
-			assert (pigmentInfo.input.valid);
+			assert (materialInfo.input.valid);
 		}
 
 
-		buildPigmentGraph();
+		buildMaterialGraph();
 
-		final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
-		findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
+		final materialNodesTopo = stack.allocArray!(GraphNodeId)(materialInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, materialInfo.nodes, materialNodesTopo);
 
 		//File.set("graph.dot", toGraphviz(kg));
 
 		fuseGraph(
 			kg,
-			pigmentInfo.input,
+			materialInfo.input,
 			convCtx,
-			pigmentNodesTopo,
+			materialNodesTopo,
 			
 			// _findSrcParam
 			delegate bool(
@@ -537,7 +537,7 @@ class ForwardRenderer : Renderer {
 							case "normal":
 								return getOutputParamIndirect(
 									kg,
-									pigmentInfo.output,
+									materialInfo.output,
 									"out_normal",
 									srcNid,
 									srcParam
@@ -674,14 +674,14 @@ class ForwardRenderer : Renderer {
 				Param* par;
 				if (getOutputParamIndirect(
 					kg,
-					pigmentInfo.output,
+					materialInfo.output,
 					"out_albedo",
 					&nid,
 					&par
 				)) {
 					kg.flow.addDataFlow(nid, par.name, mulDiffuseNid, "b");
 				} else {
-					error("Incoming flow to 'out_albedo' of the Pigment kernel not found.");
+					error("Incoming flow to 'out_albedo' of the Material kernel not found.");
 				}
 			}
 
@@ -691,14 +691,14 @@ class ForwardRenderer : Renderer {
 				Param* par;
 				if (getOutputParamIndirect(
 					kg,
-					pigmentInfo.output,
+					materialInfo.output,
 					"out_specular",
 					&nid,
 					&par
 				)) {
 					kg.flow.addDataFlow(nid, par.name, mulSpecularNid, "b");
 				} else {
-					error("Incoming flow to 'out_specular' of the Pigment kernel not found.");
+					error("Incoming flow to 'out_specular' of the Material kernel not found.");
 				}
 			}
 
@@ -715,7 +715,7 @@ class ForwardRenderer : Renderer {
 				kg,
 				convCtx,
 				(int delegate(ref GraphNodeId) sink) {
-					if (int r = sink(pigmentInfo.output)) return r;
+					if (int r = sink(materialInfo.output)) return r;
 					if (int r = sink(mulDiffuseNid)) return r;
 					if (int r = sink(mulSpecularNid)) return r;
 					if (int r = sink(sumTotalLight)) return r;
@@ -724,10 +724,10 @@ class ForwardRenderer : Renderer {
 				}
 			);
 
-			removeNodeIfTypeMatches(pigmentInfo.output, NT.Output);
+			removeNodeIfTypeMatches(materialInfo.output, NT.Output);
 
 			// For codegen below
-			pigmentInfo.output = outRadianceNid;
+			materialInfo.output = outRadianceNid;
 		} else {
 			assert (false); 	// TODO
 			
@@ -735,7 +735,7 @@ class ForwardRenderer : Renderer {
 			// TODO: zero the diffuse and specular contribs
 			// ... or don't draw the object
 
-			/+buildPigmentGraph();
+			/+buildMaterialGraph();
 
 			verifyDataFlowNames(kg);
 
@@ -753,7 +753,7 @@ class ForwardRenderer : Renderer {
 					return 0;
 				},
 
-				pigmentInfo.input,
+				materialInfo.input,
 				convCtx,
 				OutputNodeConversion.Perform
 			);+/
@@ -769,7 +769,7 @@ class ForwardRenderer : Renderer {
 
 		CodegenSetup cgSetup;
 		cgSetup.inputNode = structureInfo.input;
-		cgSetup.outputNode = pigmentInfo.output;
+		cgSetup.outputNode = materialInfo.output;
 
 		final ctx = CodegenContext(&stack.allocRaw);
 
@@ -913,7 +913,7 @@ float3 eyePosition <
 				 * them all. In such a case there doesn't seem to be a location
 				 * for these parameters which materials/surfaces don't set.
 				 *
-				 * The proper solution will be to inspect all refl and pigment
+				 * The proper solution will be to inspect all refl and material
 				 * kernels, match them to mats/surfs and create the default param
 				 * values directly inside mats/surfs. This could also be done on
 				 * the level of Nucled, so that mats/surfs always define all values,
@@ -937,7 +937,7 @@ float3 eyePosition <
 				auto material = _materials[renderables.material[rid]];
 				foreach (ref info; material.info) {
 					char[256] fqn;
-					sprintf(fqn.ptr, "pigment__%.*s", info.name);
+					sprintf(fqn.ptr, "material__%.*s", info.name);
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {

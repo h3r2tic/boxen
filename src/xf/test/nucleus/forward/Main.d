@@ -229,7 +229,7 @@ class TestApp : GfxApp {
 
 		foreach (matName, mat; &kdefRegistry.materials) {
 			mat.id = nextMaterialId++;
-			mat.pigmentKernel = kdefRegistry.getKernel(mat.pigmentKernelName);
+			mat.materialKernel = kdefRegistry.getKernel(mat.materialKernelName);
 			nr.registerMaterial(mat);
 			materials[matName.dup] = mat.id;
 		}
@@ -306,7 +306,7 @@ class TestApp : GfxApp {
 			});
 		}
 
-		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestPigment");
+		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestMaterialImpl");
 
 		/+
 		cstring model = `../../media/mesh/soldier.hsf`;

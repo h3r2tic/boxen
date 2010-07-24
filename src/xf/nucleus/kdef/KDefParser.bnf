@@ -106,8 +106,8 @@ SurfaceDefValue
 	"}";
 
 MaterialDefValue
-	= MaterialDefValue createMaterialDefValue(string pigmentKernel, VarDef[] vars)
-	::= "material" Identifier:pigmentKernel
+	= MaterialDefValue createMaterialDefValue(string materialKernel, VarDef[] vars)
+	::= "material" Identifier:materialKernel
 	"{"
 		VarDef:~vars*
 	"}";

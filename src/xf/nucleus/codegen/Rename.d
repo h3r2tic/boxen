@@ -23,8 +23,8 @@ void renameDataNodeParam(
 			codeSink("structure__");
 		} break;
 
-		case SourceKernelType.Pigment: {
-			codeSink("pigment__");
+		case SourceKernelType.Material: {
+			codeSink("material__");
 		} break;
 
 		case SourceKernelType.Reflectance: {

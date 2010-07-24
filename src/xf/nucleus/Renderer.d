@@ -137,7 +137,7 @@ abstract class Renderer
 			Info[]		info;
 			void*		data;
 			cstring		kernelName;
-			//KernelImpl	pigmentKernel;
+			//KernelImpl	materialKernel;
 		}
 
 		Array!(MaterialData)	_materials;
@@ -161,7 +161,7 @@ abstract class Renderer
 		MemUtils.alloc(mat.info, def.params.length);
 
 		//assert (def.reflKernel !is null);
-		mat.kernelName = def.pigmentKernel.name.dup;
+		mat.kernelName = def.materialKernel.name.dup;
 
 		uword sizeReq = 0;
 		

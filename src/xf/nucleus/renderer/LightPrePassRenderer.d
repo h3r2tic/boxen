@@ -330,13 +330,13 @@ class LightPrePassRenderer : Renderer {
 
 	private {
 		struct FinalEffectCacheKey {
-			cstring		pigmentKernel;
+			cstring		materialKernel;
 			cstring		structureKernel;
 			hash_t		hash;
 
 			void computeHash() {
 				hash = 0;
-				hash += typeid(cstring).getHash(&pigmentKernel);
+				hash += typeid(cstring).getHash(&materialKernel);
 				hash += typeid(cstring).getHash(&structureKernel);
 			}
 
@@ -346,7 +346,7 @@ class LightPrePassRenderer : Renderer {
 
 			bool opEquals(ref FinalEffectCacheKey other) {
 				return
-						pigmentKernel == other.pigmentKernel
+						materialKernel == other.materialKernel
 					&&	structureKernel == other.structureKernel;
 			}
 		}
@@ -371,7 +371,7 @@ class LightPrePassRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel		= _kdefRegistry.getKernel(material.kernelName);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
@@ -379,7 +379,7 @@ class LightPrePassRenderer : Renderer {
 		// ---- Build the Structure kernel graph
 
 		BuilderSubgraphInfo structureInfo;
-		BuilderSubgraphInfo pigmentInfo;
+		BuilderSubgraphInfo materialInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -412,27 +412,27 @@ class LightPrePassRenderer : Renderer {
 			convCtx
 		);
 
-		void buildPigmentGraph() {
+		void buildMaterialGraph() {
 			GraphBuilder builder;
-			builder.sourceKernelType = SourceKernelType.Pigment;
-			builder.build(kg, pigmentKernel, &pigmentInfo, stack);
+			builder.sourceKernelType = SourceKernelType.Material;
+			builder.build(kg, materialKernel, &materialInfo, stack);
 
-			assert (pigmentInfo.input.valid);
+			assert (materialInfo.input.valid);
 		}
 
 
-		buildPigmentGraph();
+		buildMaterialGraph();
 
-		final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
-		findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
+		final materialNodesTopo = stack.allocArray!(GraphNodeId)(materialInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, materialInfo.nodes, materialNodesTopo);
 
 		//File.set("graph.dot", toGraphviz(kg));
 
 		fuseGraph(
 			kg,
-			pigmentInfo.input,
+			materialInfo.input,
 			convCtx,
-			pigmentNodesTopo,
+			materialNodesTopo,
 			
 			// _findSrcParam
 			delegate bool(
@@ -510,7 +510,7 @@ class LightPrePassRenderer : Renderer {
 					case "normal": {
 						return getOutputParamIndirect(
 							kg,
-							pigmentInfo.output,
+							materialInfo.output,
 							"out_normal",
 							srcNid,
 							srcParam
@@ -1092,7 +1092,7 @@ float farPlaneDistance <
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final pigmentKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel		= _kdefRegistry.getKernel(material.kernelName);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
@@ -1100,7 +1100,7 @@ float farPlaneDistance <
 		// ---- Build the Structure kernel graph
 
 		BuilderSubgraphInfo structureInfo;
-		BuilderSubgraphInfo pigmentInfo;
+		BuilderSubgraphInfo materialInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -1132,27 +1132,27 @@ float farPlaneDistance <
 			convCtx
 		);
 
-		void buildPigmentGraph() {
+		void buildMaterialGraph() {
 			GraphBuilder builder;
-			builder.sourceKernelType = SourceKernelType.Pigment;
-			builder.build(kg, pigmentKernel, &pigmentInfo, stack);
+			builder.sourceKernelType = SourceKernelType.Material;
+			builder.build(kg, materialKernel, &materialInfo, stack);
 
-			assert (pigmentInfo.input.valid);
+			assert (materialInfo.input.valid);
 		}
 
 
-		buildPigmentGraph();
+		buildMaterialGraph();
 
-		final pigmentNodesTopo = stack.allocArray!(GraphNodeId)(pigmentInfo.nodes.length);
-		findTopologicalOrder(kg.backend_readOnly, pigmentInfo.nodes, pigmentNodesTopo);
+		final materialNodesTopo = stack.allocArray!(GraphNodeId)(materialInfo.nodes.length);
+		findTopologicalOrder(kg.backend_readOnly, materialInfo.nodes, materialNodesTopo);
 
 		//File.set("graph.dot", toGraphviz(kg));
 
 		fuseGraph(
 			kg,
-			pigmentInfo.input,
+			materialInfo.input,
 			convCtx,
-			pigmentNodesTopo,
+			materialNodesTopo,
 			
 			// _findSrcParam
 			delegate bool(
@@ -1195,7 +1195,7 @@ float farPlaneDistance <
 		{
 			final kernel = _kdefRegistry.getKernel("LightPrePassFinalOut");
 			GraphBuilder builder;
-			builder.sourceKernelType = SourceKernelType.Pigment;
+			builder.sourceKernelType = SourceKernelType.Material;
 			builder.build(kg, kernel, &outInfo, stack);
 			assert (outInfo.input.valid);
 			assert (outInfo.output.valid);
@@ -1230,7 +1230,7 @@ float farPlaneDistance <
 					case "albedo": {
 						return getOutputParamIndirect(
 							kg,
-							pigmentInfo.output,
+							materialInfo.output,
 							"out_albedo",
 							srcNid,
 							srcParam
@@ -1240,7 +1240,7 @@ float farPlaneDistance <
 					case "specular": {
 						return getOutputParamIndirect(
 							kg,
-							pigmentInfo.output,
+							materialInfo.output,
 							"out_specular",
 							srcNid,
 							srcParam
@@ -1413,7 +1413,7 @@ float farPlaneDistance <
 				 * them all. In such a case there doesn't seem to be a location
 				 * for these parameters which materials/surfaces don't set.
 				 *
-				 * The proper solution will be to inspect all refl and pigment
+				 * The proper solution will be to inspect all refl and material
 				 * kernels, match them to mats/surfs and create the default param
 				 * values directly inside mats/surfs. This could also be done on
 				 * the level of Nucled, so that mats/surfs always define all values,
@@ -1440,7 +1440,7 @@ float farPlaneDistance <
 				auto material = _materials[renderables.material[rid]];
 				foreach (ref info; material.info) {
 					char[256] fqn;
-					sprintf(fqn.ptr, "pigment__%.*s", info.name);
+					sprintf(fqn.ptr, "material__%.*s", info.name);
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {
@@ -1572,7 +1572,7 @@ float farPlaneDistance <
 				 * them all. In such a case there doesn't seem to be a location
 				 * for these parameters which materials/surfaces don't set.
 				 *
-				 * The proper solution will be to inspect all refl and pigment
+				 * The proper solution will be to inspect all refl and material
 				 * kernels, match them to mats/surfs and create the default param
 				 * values directly inside mats/surfs. This could also be done on
 				 * the level of Nucled, so that mats/surfs always define all values,
@@ -1581,13 +1581,13 @@ float farPlaneDistance <
 				setEffectInstanceUniformDefaults(&effectInfo, efInst);
 
 
-				if (void** ptr = efInst.getUniformPtrPtr("pigment__diffuseIlluminationSampler")) {
+				if (void** ptr = efInst.getUniformPtrPtr("material__diffuseIlluminationSampler")) {
 					*cast(Texture**)ptr = &_diffuseIllumTex;
 				} else {
 					error("diffuseIlluminationSampler not found in the structure kernel.");
 				}
 
-				if (void** ptr = efInst.getUniformPtrPtr("pigment__specularIlluminationSampler")) {
+				if (void** ptr = efInst.getUniformPtrPtr("material__specularIlluminationSampler")) {
 					*cast(Texture**)ptr = &_specularIllumTex;
 				} else {
 					error("specularIlluminationSampler not found in the structure kernel.");
@@ -1599,7 +1599,7 @@ float farPlaneDistance <
 				auto material = _materials[renderables.material[rid]];
 				foreach (ref info; material.info) {
 					char[256] fqn;
-					sprintf(fqn.ptr, "pigment__%.*s", info.name);
+					sprintf(fqn.ptr, "material__%.*s", info.name);
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {

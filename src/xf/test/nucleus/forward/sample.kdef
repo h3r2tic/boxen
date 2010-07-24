@@ -60,7 +60,7 @@ TestSurface4 = surface ABg_h {
 };+/
 
 
-TestMaterial = material TestPigment {
+TestMaterialImpl = material TestMaterial {
 	albedoTint = 1 1 1 1;
 	albedoTex = sampler {
 		texture = "../../media/img/testgrid.png";
@@ -106,7 +106,7 @@ TestLight = graph Light {
 };
 
 
-TestPigment = graph Pigment {
+TestMaterial = graph Material {
 	n0 = node {
 		type = input;
 	};
@@ -137,7 +137,7 @@ TestPigment = graph Pigment {
 	};
 	n2 = node {
 		type = kernel;
-		kernel = kernel Pigment(
+		kernel = kernel Material(
 			albedoTint <type float4 + use color>,
 			someImg <type Image>
 		) {
@@ -183,7 +183,7 @@ TestPigment = graph Pigment {
 };
 
 
-SpecularOnly = kernel Pigment {
+SpecularOnly = kernel Material {
 	out_specular = float4(1);
 	out_diffuse = float4(0);
 	out_normal = normal;

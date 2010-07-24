@@ -25,7 +25,7 @@ enum SourceKernelType {
 	Undefined,
 	Structure,
 	Reflectance,
-	Pigment,
+	Material,
 	Light,
 	Composite
 }
