@@ -1,0 +1,19 @@
+DepthRendererOut = kernel(
+	in position <type float3 + use position + basis view>,
+	out out_depth <type float + bindingSemantic DEPTH>
+) {
+	out_depth = saturate(length(position) / farPlaneDistance);
+};
+
+
+VarianceDepthRendererOut = kernel(
+	in position <type float3 + use position + basis view>,
+	out out_depth <type float4>
+) {
+	float depth = saturate(length(position) / farPlaneDistance);
+
+	float dx = ddx(depth);
+	float dy = ddy(depth);
+	
+	out_depth = float4(depth, depth*depth + 0.25*(dx*dx + dy*dy), 0, 0);
+};
