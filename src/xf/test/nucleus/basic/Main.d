@@ -157,6 +157,19 @@ class TestShadowedLight : TestLight {
 	override void prepareRenderData() {
 		calcInfluenceRadius();
 
+		if (!spotlightMask.valid) {
+			cstring filePath = `../../media/img/spotlight.dds`;
+			Img.Image img = depthRenderer._imgLoader.load(filePath);
+			if (!img.valid) {
+				Stdout.formatln("Could not load texture: '{}'", filePath);
+				assert (false);
+			}
+
+			spotlightMask = rendererBackend.createTexture(
+				img
+			);
+		}
+
 		if (!depthFb.valid) {
 			final cfg = FramebufferConfig();
 			cfg.size = shadowMapSize;
@@ -266,7 +279,7 @@ class TestShadowedLight : TestLight {
 		depthPost.render(sharedDepthTex);
 	}
 
-	vec2i shadowMapSize = { x: 256, y: 256 };
+	vec2i shadowMapSize = { x: 512, y: 512 };
 	
 	mat4 worldToView;
 	mat4 viewToClip;
@@ -275,12 +288,15 @@ class TestShadowedLight : TestLight {
 	Framebuffer depthFb;
 	Texture		depthTex;
 	
-	Framebuffer sharedDepthFb;
-	Texture		sharedDepthTex;
+	static Framebuffer	sharedDepthFb;
+	static Texture		sharedDepthTex;
+
+	static Texture	spotlightMask;
 
 	override void setKernelData(KernelParamInterface kpi) {
 		super.setKernelData(kpi);
 		kpi.bindUniform("depthSampler", &depthTex);
+		kpi.bindUniform("spotlightMask", &spotlightMask);
 		kpi.bindUniform("light_worldToClip", &worldToClip);
 	}
 }
@@ -425,7 +441,7 @@ class TestApp : GfxApp {
 			lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
 
 			float h = cast(float)i / numLights;//Kiss.instance.fraction();
-			float s = 0.9f;
+			float s = 0.6f;
 			float v = 1.0f;
 
 			vec4 rgba = vec4.zero;
@@ -483,7 +499,7 @@ class TestApp : GfxApp {
 			float scale = 1f;
 
 			loadScene(
-				model, scale, CoordSys(vec3fi[0, 1, 0]),
+				model, scale, CoordSys(vec3fi[0, -3, 0]),
 				"TestSurface3", "TestMaterial"
 			);
 		} else {
@@ -691,6 +707,8 @@ class TestApp : GfxApp {
 			front = false;
 			back = true;
 		}
+
+		rendererBackend.state.sRGB = true;
 
 		if (wantPost) {
 			rendererBackend.framebuffer = texFb;
