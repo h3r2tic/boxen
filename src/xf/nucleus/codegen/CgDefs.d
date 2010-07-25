@@ -20,7 +20,7 @@ package struct BindingSemantic {
 
 	static BindingSemantic parse(cstring str) {
 		int i = void;
-		for (i = str.length-1; i > 0 && str[i] >= '0' && str[i] <= '9'; ++i) {
+		for (i = str.length-1; i > 0 && str[i] >= '0' && str[i] <= '9'; --i) {
 			// nothing
 		}
 

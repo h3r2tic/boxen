@@ -5,8 +5,23 @@ module xf.gfx.RenderState;
 // TODO: more!
 struct RenderState {
 	struct Depth {
+		enum Func {
+			Less,
+			Lequal,
+			Greater,
+			Gequal,
+			Equal
+		}
+
+		Func	func		= Func.Less;
 		bool	enabled		= true;
 		bool	writeMask	= true;
+	}
+
+	struct DepthBounds {
+		bool	enabled = false;
+		float	minz = 0;
+		float	maxz = 0;
 	}
 	
 	struct Blend {
@@ -59,6 +74,7 @@ struct RenderState {
 	
 	
 	Depth		depth;
+	DepthBounds	depthBounds;
 	Blend		blend;
 	CullFace	cullFace;
 	Viewport	viewport;

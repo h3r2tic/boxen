@@ -17,8 +17,11 @@ ABg_h = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_g <type float>
 		) {
+			/+diffuse = intensity;
+			specular = 0;
+			return;+/
+		
 			BRDF_g *= pow(lightSize, 0.25);
-
 
 			/+//BRDF_A *= pow(lightSize, 0.5);
 			//BRDF_B *= pow(lightSize, 0.5);

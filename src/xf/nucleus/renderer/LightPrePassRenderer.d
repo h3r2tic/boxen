@@ -63,6 +63,7 @@ private {
 		xf.gfx.IndexData,
 		xf.omg.core.LinearAlgebra,
 		xf.omg.core.CoordSys,
+		xf.omg.core.Misc,
 		xf.omg.util.ViewSettings,
 		xf.mem.StackBuffer,
 		xf.mem.MainHeap,
@@ -85,6 +86,7 @@ private {
 	static import xf.utils.Memory;
 	import tango.io.device.File;
 }
+
 
 
 
@@ -1424,8 +1426,7 @@ float farPlaneDistance <
 
 				{
 					SurfaceId surfaceId = renderables.surface[rid];
-					// 0-255 -> 0-1
-					float si = (cast(float)surfaceId + 0.5f) / 255.0f;
+					float si = (cast(float)surfaceId + 0.5f) / maxSurfaces;
 					
 					if (void** ptr = efInst.getUniformPtrPtr("surfaceId")) {
 						**cast(float**)ptr = si;
@@ -1584,13 +1585,13 @@ float farPlaneDistance <
 				if (void** ptr = efInst.getUniformPtrPtr("material__diffuseIlluminationSampler")) {
 					*cast(Texture**)ptr = &_diffuseIllumTex;
 				} else {
-					error("diffuseIlluminationSampler not found in the structure kernel.");
+					//error("diffuseIlluminationSampler not found in the structure kernel.");
 				}
 
 				if (void** ptr = efInst.getUniformPtrPtr("material__specularIlluminationSampler")) {
 					*cast(Texture**)ptr = &_specularIllumTex;
 				} else {
-					error("specularIlluminationSampler not found in the structure kernel.");
+					//error("specularIlluminationSampler not found in the structure kernel.");
 				}
 
 
@@ -1766,6 +1767,35 @@ float farPlaneDistance <
 			
 			_vb.setSubData(vec4.sizeof * light._id, cast(void[])((&posRadius)[0..1]));
 
+
+			/*
+			 * This discards framebuffer fragments outside of the min-max range
+			 * computed from the light's minimal and maximal z value in view space.
+			 *
+			 * TODO: clip the light volume to the view frustum and compute
+			 * a tighter bound.
+			 */
+			with (_backend.state.depthBounds) {
+				enabled = true;
+
+				vec4 hpos = vec4(light.position.tuple, 1);
+				vec4 vpos = worldToView * hpos;
+
+				vec4 vposMin = vpos;
+				vposMin.z += light.influenceRadius;
+				vposMin.z = min(vposMin.z, -nearPlaneDistance);
+				
+				vec4 vposMax = vpos;
+				vposMax.z -= light.influenceRadius;
+				vposMax.z = min(vposMax.z, -nearPlaneDistance);
+
+				vec4 cposMin = viewToClip * vposMin;
+				vec4 cposMax = viewToClip * vposMax;
+
+				minz = 0.5 * cposMin.z / cposMin.w + 0.5;
+				maxz = 0.5 * cposMax.z / cposMax.w + 0.5;
+			}
+
 			final bin = renderList.getBin(lightEffectInfo.effect);
 			final rdata = bin.add(efInst);
 			rdata.coordSys = CoordSys.identity;
@@ -1794,6 +1824,7 @@ float farPlaneDistance <
 		this.viewToWorld = this.worldToView.inverse();
 		this.eyePosition = vec3.from(vs.eyeCS.origin);
 		this.farPlaneDistance = vs.farPlaneDistance;
+		this.nearPlaneDistance = vs.nearPlaneDistance;
 
 		if (_fbSize != _backend.framebuffer.size) {
 			_fbSize = _backend.framebuffer.size;
@@ -1824,7 +1855,7 @@ float farPlaneDistance <
 
 			{
 				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.DEPTH_COMPONENT32F;
+				treq.internalFormat = TextureInternalFormat.INTENSITY_FLOAT32;
 				treq.minFilter = TextureMinFilter.Nearest;
 				treq.magFilter = TextureMagFilter.Nearest;
 				treq.wrapS = TextureWrap.ClampToEdge;
@@ -1835,6 +1866,21 @@ float farPlaneDistance <
 					treq
 				);
 				assert (_depthTex.valid);
+			}
+
+			{
+				TextureRequest treq;
+				treq.internalFormat = TextureInternalFormat.DEPTH_COMPONENT24;
+				treq.minFilter = TextureMinFilter.Nearest;
+				treq.magFilter = TextureMagFilter.Nearest;
+				treq.wrapS = TextureWrap.ClampToEdge;
+				treq.wrapT = TextureWrap.ClampToEdge;
+				
+				_sharedDepthTex = _backend.createTexture(
+					_fbSize,
+					treq
+				);
+				assert (_sharedDepthTex.valid);
 			}
 
 			{
@@ -1862,7 +1908,8 @@ float farPlaneDistance <
 				cfg.size = _fbSize;
 				cfg.location = FramebufferLocation.Offscreen;
 				cfg.color[0] = _packed1Tex;
-				cfg.depth = _depthTex;
+				cfg.color[1] = _depthTex;
+				cfg.depth = _sharedDepthTex;
 				_attribFB = _backend.createFramebuffer(cfg);
 				assert (_attribFB.valid);
 			}
@@ -1873,7 +1920,7 @@ float farPlaneDistance <
 				cfg.location = FramebufferLocation.Offscreen;
 				cfg.color[0] = _diffuseIllumTex;
 				cfg.color[1] = _specularIllumTex;
-				//cfg.depth = TODO
+				cfg.depth = _sharedDepthTex;
 				_lightFB = _backend.createFramebuffer(cfg);
 				assert (_lightFB.valid);
 			}
@@ -1911,6 +1958,7 @@ float farPlaneDistance <
 			_backend.state.sRGB = false;
 			_backend.state.depth.enabled = true;
 			_backend.state.blend.enabled = false;
+			_lightFB.settings.clearDepthEnabled = true;
 			_backend.render(blist);
 
 			_backend.state.depthClamp = true;
@@ -1920,9 +1968,14 @@ float farPlaneDistance <
 				back = false;
 			}
 
-			// HACK
-			_backend.state.depth.enabled = false;
+			with (_backend.state.depth) {
+				enabled = true;
+				writeMask = false;
+				func = func.Greater;
+			}
+			
 			_backend.framebuffer = _lightFB;
+			_lightFB.settings.clearDepthEnabled = false;
 			_backend.clearBuffers();
 
 			with (_backend.state.blend) {
@@ -1958,6 +2011,7 @@ float farPlaneDistance <
 
 		vec2i		_fbSize = vec2i.zero;
 		Texture		_depthTex;
+		Texture		_sharedDepthTex;
 		Texture		_packed1Tex;
 		Framebuffer	_attribFB;
 
@@ -1974,5 +2028,6 @@ float farPlaneDistance <
 		mat4	clipToView;
 		vec3	eyePosition;
 		float	farPlaneDistance;
+		float	nearPlaneDistance;
 	}
 }
