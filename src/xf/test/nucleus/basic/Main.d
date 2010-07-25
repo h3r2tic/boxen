@@ -165,8 +165,19 @@ class TestShadowedLight : TestLight {
 				assert (false);
 			}
 
+			TextureRequest treq;
+			treq.internalFormat = TextureInternalFormat.SRGB8_ALPHA8;
+
+			// Texture derivatives are borked in deferred rendering,
+			// so let's just be cheap bastards and don't use mips :P
+			treq.minFilter = TextureMinFilter.Linear;
+			treq.magFilter = TextureMagFilter.Linear;
+			treq.wrapS = TextureWrap.ClampToEdge;
+			treq.wrapT = TextureWrap.ClampToEdge;
+			
 			spotlightMask = rendererBackend.createTexture(
-				img
+				img,
+				treq
 			);
 		}
 
@@ -316,6 +327,7 @@ cstring defaultStructureKernel(cstring structureTypeName) {
 	}
 }
 
+version = LightTest;
 
 
 import xf.mem.MainHeap;
@@ -440,7 +452,7 @@ class TestApp : GfxApp {
 
 		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestShadowedLight)[$-1]);
+			createLight((lights ~= new TestLight)[$-1]);
 			lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
 			lightAngles ~= Kiss.instance.fraction() * 360.0f;
 			lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
@@ -513,7 +525,7 @@ class TestApp : GfxApp {
 			float scale = 0.01f;
 
 			loadScene(
-				model, scale, CoordSys(vec3fi[0, 0, 0]),
+				model, scale, CoordSys(vec3fi[0, 1, 0]),
 				"TestSurface3", "TestMaterialImpl"
 			);
 		} else {
@@ -523,7 +535,7 @@ class TestApp : GfxApp {
 			//cstring model = `../../media/mesh/foo.hsf`;
 			float scale = 0.02f;+/
 
-			/+loadScene(
+			loadScene(
 				model, scale, CoordSys(vec3fi[-2, 0, 0]),
 				"TestSurface1", "TestMaterialImpl"
 			);
@@ -541,12 +553,12 @@ class TestApp : GfxApp {
 			loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 				"TestSurface4", "TestMaterialImpl"
-			);+/
+			);
 
-			loadScene(
+			/+loadScene(
 				model, scale, CoordSys(vec3fi[0, -2, 0]),
 				"TestSurface3", "TestMaterialImpl"
-			);
+			);+/
 		}
 
 		/+kdefRegistry.dumpInfo();

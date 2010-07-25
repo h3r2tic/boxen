@@ -3,8 +3,8 @@ LightPrePassGeomOut = kernel(
 	in normal <type float3 + use normal + unit true + basis view>,
 	in surfaceId <type float>,
 	
-	out out_depth <type float + bindingSemantic DEPTH>,
-	out out_packed1 <type float4>
+	out out_packed1 <type float4 + bindingSemantic COLOR0>,
+	out out_depth <type float + bindingSemantic COLOR1>,
 ) {
 	out_depth = -position.z / farPlaneDistance;
 

@@ -30,6 +30,7 @@ DefaultMeshStructure = graph Structure {
 
 TestSurface1 = surface CookTorrance {
 	roughness = 0.2;
+	fresnelR0 = 0.2;
 };
 
 TestSurface4 = surface HalfLambert {
@@ -93,9 +94,10 @@ TestLight = graph Light {
 		) {
 			toLight = lightPos - position;
 			float atten = length(toLight) / influenceRadius;
+			intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+//			intensity = lumIntens / (0.5 + dot(toLight, toLight).xxxx);
 //			intensity = lumIntens * max(0.0, (4.0 * exp(-6* atten) - 0.01));
 //			intensity = lumIntens / dot(toLight, toLight).xxxx;
-			intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
 			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 			toLight = normalize(toLight);
 		};
@@ -143,6 +145,8 @@ TestShadowedLight = graph Light {
 			float2 pointClipDiv = pointClip.xy / pointClip.w;
 			float3 cullVals = float3(1.0 - pointClip.z, abs(pointClipDiv));
 
+			float3 pointViewPos = mul(worldToView, float4(position, 1)).xyz;
+
 			if (all(cullVals < 1)) {
 				toLight = lightPos - position;
 				float distToLight = length(toLight);
@@ -168,9 +172,11 @@ TestShadowedLight = graph Light {
 					1.0
 				);
 
-				float4 mask = tex2D(spotlightMask, uv);
+				float4 mask = tex2Dlod(spotlightMask, float4(uv, 0, 0));
 				
 				intensity *= shadowed2 * mask;
+				//intensity = float4(uv, 0, 0);
+				//intensity = mask;
 			} else {
 				intensity = 0;
 				lightSize = 0;

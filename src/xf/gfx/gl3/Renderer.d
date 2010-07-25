@@ -32,7 +32,8 @@ private {
 		xf.gfx.api.gl3.ext.ARB_half_float_pixel,
 		xf.gfx.api.gl3.ext.ARB_framebuffer_object,
 		xf.gfx.api.gl3.ext.EXT_framebuffer_object,
-		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB;
+		xf.gfx.api.gl3.ext.EXT_framebuffer_sRGB,
+		xf.gfx.api.gl3.ext.EXT_depth_bounds_test;
 	import
 		ARB_blend_func_extended = xf.gfx.api.gl3.ext.ARB_blend_func_extended;
 	import
@@ -1490,8 +1491,30 @@ class Renderer : IRenderer {
 		if (s.depth.enabled) {
 			gl.Enable(DEPTH_TEST);
 			gl.DepthMask(s.depth.writeMask);
+
+			GLenum func;
+			switch (s.depth.func) {
+				alias RenderState.Depth.Func DF;
+				case DF.Less: func = LESS; break;
+				case DF.Lequal: func = LEQUAL; break;
+				case DF.Greater: func = GREATER; break;
+				case DF.Gequal: func = GEQUAL; break;
+				case DF.Equal: func = EQUAL; break;
+				default: assert (false);
+			}
+
+			gl.DepthFunc(func);
 		} else {
 			gl.Disable(DEPTH_TEST);
+		}
+
+		if (_caps.isNV) {
+			if (s.depthBounds.enabled) {
+				gl.DepthBoundsEXT(s.depthBounds.minz, s.depthBounds.maxz);
+				gl.Enable(DEPTH_BOUNDS_TEST_EXT);
+			} else {
+				gl.Disable(DEPTH_BOUNDS_TEST_EXT);
+			}
 		}
 		
 		//log.trace("render at {}", __LINE__);
