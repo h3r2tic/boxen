@@ -25,7 +25,7 @@ struct RenderableData {
 		NoIndices
 	}
 
-	CoordSys		coordSys;
+	CoordSys		coordSys;		// invalid by default to force the user to set it
 	vec3			scale = vec3.one;
 	IndexData		indexData;
 	uword			numInstances = 1;
@@ -91,7 +91,9 @@ struct RenderBin {
 	RenderableData* add(EffectInstance e) {
 		final idx = objects.growBy(1);
 		objects.eiRenderOrdinal[idx] = e.renderOrdinal;
-		return &objects.renderable[idx];
+		final res = &objects.renderable[idx];
+		*res = RenderableData.init;
+		return res;
 	}
 	
 	void clear() {

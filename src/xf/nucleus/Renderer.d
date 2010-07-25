@@ -34,6 +34,8 @@ private {
 		xf.mem.MainHeap,
 		xf.mem.FreeList,
 		xf.mem.Array,
+		/+xf.mem.ChunkQueue,
+		xf.mem.ScratchAllocator,+/
 		MemUtils = xf.utils.Memory;
 		
 	import xf.omg.util.ViewSettings;
@@ -52,6 +54,7 @@ abstract class Renderer
 		_backend = backend;
 		_renderLists.initialize();
 		_imgLoader = new Img.CachedLoader(new Img.FreeImageLoader);
+		//_materialMem.initialize();
 	}
 
 
@@ -141,7 +144,8 @@ abstract class Renderer
 		}
 
 		Array!(MaterialData)	_materials;
-	}	
+		//ScratchFIFO				_materialMem;
+	}
 
 
 	public {
@@ -161,7 +165,8 @@ abstract class Renderer
 		MemUtils.alloc(mat.info, def.params.length);
 
 		//assert (def.reflKernel !is null);
-		mat.kernelName = def.materialKernel.name.dup;
+		mat.kernelName = /+DgScratchAllocator(&_materialMem.pushBack)
+			.dupString(+/def.materialKernel.name;//);
 
 		uword sizeReq = 0;
 		

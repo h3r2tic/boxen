@@ -221,12 +221,12 @@ class LightPrePassRenderer : Renderer {
 		surf.info.length = def.params.length;
 
 		//assert (def.reflKernel !is null);
-		surf.kernelName = def.reflKernel.name.dup;
+		surf.kernelName = def.reflKernel.name;//.dup;
 
 		uword sizeReq = 0;
 		
 		foreach (i, p; def.params) {
-			surf.info[i].name = (cast(cstring)p.name).dup;
+			surf.info[i].name = (cast(cstring)p.name);//.dup;
 			surf.info[i].offset = sizeReq;
 			sizeReq += p.valueSize;
 			sizeReq += 3;
@@ -371,7 +371,7 @@ class LightPrePassRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final materialKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel	= _kdefRegistry.getKernel(material.kernelName);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
@@ -1768,7 +1768,6 @@ float farPlaneDistance <
 
 			final bin = renderList.getBin(lightEffectInfo.effect);
 			final rdata = bin.add(efInst);
-			*rdata = typeof(*rdata).init;
 			rdata.coordSys = CoordSys.identity;
 			final id = &rdata.indexData;
 			id.indexBuffer	= _ib;
@@ -1904,11 +1903,9 @@ float farPlaneDistance <
 				final ei = _structureRenderableEI[rid];
 				final bin = blist.getBin(ei.getEffect);
 				final item = bin.add(ei);
-				
+
 				item.coordSys		= rlist.list.coordSys[idx];
-				item.scale			= vec3.one;
 				item.indexData		= *_structureRenderableIndexData[rid];
-				item.numInstances	= 1;
 			}
 
 			_backend.state.sRGB = false;
@@ -1946,9 +1943,7 @@ float farPlaneDistance <
 			final item = bin.add(ei);
 			
 			item.coordSys		= rlist.list.coordSys[idx];
-			item.scale			= vec3.one;
 			item.indexData		= *_structureRenderableIndexData[rid];
-			item.numInstances	= 1;
 		}
 		_backend.render(blist);
 	}

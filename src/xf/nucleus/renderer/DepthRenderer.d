@@ -457,9 +457,7 @@ float farPlaneDistance <
 			final item = bin.add(ei);
 			
 			item.coordSys		= rlist.list.coordSys[idx];
-			item.scale			= vec3.one;
 			item.indexData		= *_structureRenderableIndexData[rid];
-			item.numInstances	= 1;
 		}
 
 		_backend.state.sRGB = false;

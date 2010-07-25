@@ -14,6 +14,10 @@ VarianceDepthRendererOut = kernel(
 
 	float dx = ddx(depth);
 	float dy = ddy(depth);
-	
-	out_depth = float4(depth, depth*depth + 0.25*(dx*dx + dy*dy), 0, 0);
+
+	// Bah, the biasing produces artifacts of its own, and these look more
+	// annoying to me than what it's trying to eliminate
+	float bias = 0.0;//0.25*(dx*dx + dy*dy);
+
+	out_depth = float4(depth * 2 - 1, (depth*depth + bias) * 2 - 1, 0, 0);
 };

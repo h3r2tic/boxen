@@ -167,12 +167,12 @@ class ForwardRenderer : Renderer {
 		surf.info.length = def.params.length;
 
 		//assert (def.reflKernel !is null);
-		surf.kernelName = def.reflKernel.name.dup;
+		surf.kernelName = def.reflKernel.name;
 
 		uword sizeReq = 0;
 		
 		foreach (i, p; def.params) {
-			surf.info[i].name = (cast(cstring)p.name).dup;
+			surf.info[i].name = cast(cstring)p.name;
 			surf.info[i].offset = sizeReq;
 			sizeReq += p.valueSize;
 			sizeReq += 3;
@@ -1055,9 +1055,7 @@ float3 eyePosition <
 			final item = bin.add(ei);
 			
 			item.coordSys		= rlist.list.coordSys[idx];
-			item.scale			= vec3.one;
 			item.indexData		= *_renderableIndexData[rid];
-			item.numInstances	= 1;
 		}
 
 		_backend.render(blist);

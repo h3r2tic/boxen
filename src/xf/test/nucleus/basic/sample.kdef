@@ -140,7 +140,10 @@ TestShadowedLight = graph Light {
 			light_worldToClip <type float4x4>
 		) {
 			float4 pointClip = mul(light_worldToClip, float4(position.xyz, 1.0));
-			if (pointClip.z > 0) {
+			float2 pointClipDiv = pointClip.xy / pointClip.w;
+			float3 cullVals = float3(1.0 - pointClip.z, abs(pointClipDiv));
+
+			if (all(cullVals < 1)) {
 				toLight = lightPos - position;
 				float distToLight = length(toLight);
 				float atten = distToLight / influenceRadius;
@@ -148,24 +151,26 @@ TestShadowedLight = graph Light {
 				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 				toLight = normalize(toLight);
 
-				float2 uv = (pointClip.xy / pointClip.w) * 0.5 + 0.5;
-				float2 shadowSample = tex2D(depthSampler, uv).xy;
+				float2 uv = (pointClipDiv) * 0.5 + 0.5;
+				float2 shadowSample = tex2D(depthSampler, uv).xy * 0.5 + 0.5;
 
 				float mean = shadowSample.x;
-				float variance = shadowSample.y - shadowSample.x * shadowSample.x;
+				float variance = max(0.00000001, shadowSample.y - shadowSample.x * shadowSample.x);
 				float shadowed1 = atten <= mean;
-				float shadowed2 = variance / (variance + (atten - mean) * (atten - mean));
+				float meh = (atten - mean) * (atten - mean);
+				float shadowed2 = variance / (variance + meh);
 				float shadowed = saturate(max(shadowed1, shadowed2));
 
-				const float shadowDarkening = 0.2;
-				shadowed = max(
+				const float shadowDarkening = 0.3;
+				shadowed = clamp(
+					(shadowed - shadowDarkening) / (1.0 - shadowDarkening),
 					0.0,
-					(1.0 / (1.0 - shadowDarkening)) * (shadowed - shadowDarkening)
+					1.0
 				);
 
 				float4 mask = tex2D(spotlightMask, uv);
 				
-				intensity *= shadowed * mask;
+				intensity *= shadowed2 * mask;
 			} else {
 				intensity = 0;
 				lightSize = 0;
