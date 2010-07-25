@@ -352,9 +352,17 @@ class TestApp : GfxApp {
 	IKDefRegistry	kdefRegistry;
 	FileFolder		vfs;
 
-	override void initialize() {
-		GC.disable();
+	SurfaceId[cstring]	surfaces;
+	cstring[]			surfaceNames;
+	SurfaceId			nextSurfaceId;
 
+	MaterialId[cstring]	materials;
+	cstring[]			materialNames;
+	MaterialId			nextMaterialId;
+
+	
+
+	override void initialize() {
 		.rendererBackend = rendererBackend;
 		
 		final vfs = new FileFolder(".");
@@ -367,12 +375,6 @@ class TestApp : GfxApp {
 		kdefRegistry.dumpInfo();
 
 		// ----
-
-		SurfaceId[cstring]	surfaces;
-		SurfaceId			nextSurfaceId;
-
-		MaterialId[cstring]	materials;
-		MaterialId			nextMaterialId;
 
 		depthRenderer = Nucleus.createRenderer("Depth", rendererBackend, kdefRegistry);
 		depthRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
@@ -398,6 +400,8 @@ class TestApp : GfxApp {
 			nr.registerSurface(surf);
 			nr2.registerSurface(surf);
 			surfaces[surfName.dup] = surf.id;
+			assert (surf.id == surfaceNames.length);
+			surfaceNames ~= surfName;
 		}
 
 		foreach (matName, mat; &kdefRegistry.materials) {
@@ -406,6 +410,8 @@ class TestApp : GfxApp {
 			nr.registerMaterial(mat);
 			nr2.registerMaterial(mat);
 			materials[matName.dup] = mat.id;
+			assert (mat.id == materialNames.length);
+			materialNames ~= matName;
 		}
 
 		// TODO: configure the VSD spatial subdivision
@@ -502,16 +508,25 @@ class TestApp : GfxApp {
 				model, scale, CoordSys(vec3fi[0, -3, 0]),
 				"TestSurface3", "TestMaterialImpl"
 			);
+		} else version (LightTest) {
+			cstring model = `../../media/mesh/lightTest.hsf`;
+			float scale = 0.01f;
+
+			loadScene(
+				model, scale, CoordSys(vec3fi[0, 0, 0]),
+				"TestSurface3", "TestMaterialImpl"
+			);
 		} else {
-			/+/+cstring model = `../../media/mesh/soldier.hsf`;
-			float scale = 1.0f;+/
-			cstring model = `../../media/mesh/masha.hsf`;
-			float scale = 0.02f;
+			cstring model = `../../media/mesh/soldier.hsf`;
+			float scale = 1.0f;
+			/+cstring model = `../../media/mesh/masha.hsf`;
+			//cstring model = `../../media/mesh/foo.hsf`;
+			float scale = 0.02f;+/
 
 			/+loadScene(
 				model, scale, CoordSys(vec3fi[-2, 0, 0]),
 				"TestSurface1", "TestMaterialImpl"
-			);+/
+			);
 			
 			loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
@@ -521,22 +536,29 @@ class TestApp : GfxApp {
 			loadScene(
 				model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
 				"TestSurface3", "TestMaterialImpl"
-			);+/
+			);
 
-			/+loadScene(
+			loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 				"TestSurface4", "TestMaterialImpl"
 			);+/
 
-			cstring model = `../../media/mesh/lightTest.hsf`;
-			float scale = 0.01f;
-
 			loadScene(
-				model, scale, CoordSys(vec3fi[0, 0, 0]),
+				model, scale, CoordSys(vec3fi[0, -2, 0]),
 				"TestSurface3", "TestMaterialImpl"
 			);
 		}
 
+		/+kdefRegistry.dumpInfo();
+		for (uword rid = 0; rid < .renderables.length; ++rid) {
+			Stdout.formatln("rid{}: stct:{} matl:{} surf:{}",
+				rid,
+				renderables.structureKernel[rid],
+				materialNames[renderables.material[rid]],
+				surfaceNames[renderables.surface[rid]]
+			);
+		}+/
+		
 		{
 			mainFb = rendererBackend.framebuffer;
 			
@@ -742,8 +764,11 @@ class TestApp : GfxApp {
 
 
 import tango.stdc.stdio : getchar;
+import tango.stdc.stdlib : exit;
 
 void main(cstring[] args) {
+	//GC.disable();
+	
 	try {
 		(new TestApp).run;
 	} catch (Exception e) {
@@ -751,5 +776,6 @@ void main(cstring[] args) {
 		Stdout.newline();
 		Stdout.formatln("Hit me with like an Enter.");
 		getchar();
+		exit(1);
 	}
 }
