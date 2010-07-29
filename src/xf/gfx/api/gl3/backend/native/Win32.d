@@ -659,10 +659,15 @@ class GLWindow : GLContext {
 		}
 
 		
-		/+{
+		{
 			auto tmpRc = cast(typeof(_hrc))xf.gfx.api.gl3.platform.Win32.wglCreateContext(_hdc);
 			if (tmpRc is null) {
 				throw new Exception("wglCreateContext failed");
+			}
+
+			scope (exit) {
+				xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
+				xf.gfx.api.gl3.platform.Win32.wglDeleteContext(tmpRc);
 			}
 			
 			xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, tmpRc);
@@ -670,28 +675,34 @@ class GLWindow : GLContext {
 			gl3_backend_native_Win32_wglCreateContextAttribsARB = cast(typeof(gl3_backend_native_Win32_wglCreateContextAttribsARB))
 				xf.gfx.api.gl3.platform.Win32.wglGetProcAddress("wglCreateContextAttribsARB");
 				
-			if (gl3_backend_native_Win32_wglCreateContextAttribsARB is null) {
-				throw new Exception("The WGL_ARB_create_context extension is missing. If your GPU has OpenGL 3.x support, your drivers are probably out of date.");
+			if (gl3_backend_native_Win32_wglCreateContextAttribsARB !is null) {
+				xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
+				
+				assert (gl3_backend_native_Win32_wglCreateContextAttribsARB !is null);
+				
+				int[] attribList;
+				attribList ~= WGL_CONTEXT_MAJOR_VERSION_ARB;
+				attribList ~= 3;
+				attribList ~= WGL_CONTEXT_MINOR_VERSION_ARB;
+				attribList ~= 1;
+				// Cg doesn't like it :F
+				attribList ~= WGL_CONTEXT_FLAGS_ARB;
+				attribList ~= WGL_CONTEXT_DEBUG_BIT_ARB;
+				/+attribList ~= WGL_CONTEXT_FLAGS_ARB;
+				attribList ~= xf.gfx.api.gl3.WGL.WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;+/
+				attribList ~= 0;
+				_hrc = gl3_backend_native_Win32_wglCreateContextAttribsARB(_hdc, null, attribList.ptr);
+
+				if (_hrc is null) {
+					printWinError();
+					throw new Exception("wglCreateContextAttribsARB failed. You probably don't have OpenGL 3.x support");
+				}
 			}
-			
-			xf.gfx.api.gl3.platform.Win32.wglMakeCurrent(_hdc, null);
-			
-			assert (gl3_backend_native_Win32_wglCreateContextAttribsARB !is null);
-			
-			int[] attribList;
-			attribList ~= WGL_CONTEXT_MAJOR_VERSION_ARB;
-			attribList ~= 3;
-			attribList ~= WGL_CONTEXT_MINOR_VERSION_ARB;
-			attribList ~= 1;
-			// Cg doesn't like it :F
-			/+attribList ~= WGL_CONTEXT_FLAGS_ARB;
-			attribList ~= xf.gfx.api.gl3.WGL.WGL_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB;+/
-			attribList ~= 0;
-			_hrc = gl3_backend_native_Win32_wglCreateContextAttribsARB(_hdc, null, attribList.ptr);
-		}+/
-		{
+		}
+		if (_hrc is null) {
 			_hrc = cast(typeof(_hrc))xf.gfx.api.gl3.platform.Win32.wglCreateContext(_hdc);
 		}
+		
 		if (_hrc is null) {
 			printWinError();
 			throw new Exception("wglCreateContextAttribsARB failed. You probably don't have OpenGL 3.x support");

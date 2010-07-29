@@ -25,19 +25,25 @@ public {
 }
 
 
-version (Windows) {
-	public import xf.gfx.api.gl3.WGL;
-	private import xf.gfx.api.gl3.platform.Win32;	// HACK
+interface Platform {
+	version (Windows) {
+		public import xf.gfx.api.gl3.WGL;
+		private import xf.gfx.api.gl3.platform.Win32;	// HACK
+	}
+	else {
+		static assert (false);		// TODO
+	}
 }
-else {
-	static assert (false);		// TODO
+
+public {
+	alias Platform.getExtensionFuncPtr getExtensionFuncPtr;
 }
 
 
 
 private {
 	void loadGLFunctionsFromLib_(void* function(char*) loadFuncFromLib) {
-		loadPlatformFunctions_(loadFuncFromLib);
+		Platform.loadPlatformFunctions_(loadFuncFromLib);
 		//loadCoreFunctions_(loadFuncFromLib);
 	}
 
