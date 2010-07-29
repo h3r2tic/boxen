@@ -327,7 +327,7 @@ cstring defaultStructureKernel(cstring structureTypeName) {
 	}
 }
 
-version = LightTest;
+//version = LightTest;
 
 
 import xf.mem.MainHeap;
@@ -452,11 +452,18 @@ class TestApp : GfxApp {
 
 		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestLight)[$-1]);
-			lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
-			lightAngles ~= Kiss.instance.fraction() * 360.0f;
-			lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
-			lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+			createLight((lights ~= new TestShadowedLight)[$-1]);
+			version (Sponza) {
+				lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 10.0, 0);
+				lightAngles ~= Kiss.instance.fraction() * 360.0f;
+				lightDists ~= Kiss.instance.fraction() * 5;
+				lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+			} else {
+				lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
+				lightAngles ~= Kiss.instance.fraction() * 360.0f;
+				lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
+				lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+			}
 
 			float h = cast(float)i / numLights;//Kiss.instance.fraction();
 			float s = 0.6f;
@@ -512,7 +519,15 @@ class TestApp : GfxApp {
 
 		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestMaterialImpl");
 
-		version (Sibenik) {
+		version (Sponza) {
+			cstring model = `../../media/mesh/sponza.hsf`;
+			float scale = 1f;
+
+			loadScene(
+				model, scale, CoordSys(vec3fi[0, -3, 0]),
+				"TestSurface3", "TestMaterialImpl"
+			);
+		} else version (Sibenik) {
 			cstring model = `../../media/mesh/sibenik.hsf`;
 			float scale = 1f;
 
@@ -529,13 +544,13 @@ class TestApp : GfxApp {
 				"TestSurface3", "TestMaterialImpl"
 			);
 		} else {
-			cstring model = `../../media/mesh/soldier.hsf`;
-			float scale = 1.0f;
-			/+cstring model = `../../media/mesh/masha.hsf`;
+			/+cstring model = `../../media/mesh/soldier.hsf`;
+			float scale = 1.0f;+/
+			cstring model = `../../media/mesh/masha.hsf`;
 			//cstring model = `../../media/mesh/foo.hsf`;
-			float scale = 0.02f;+/
+			float scale = 0.02f;
 
-			loadScene(
+			/+loadScene(
 				model, scale, CoordSys(vec3fi[-2, 0, 0]),
 				"TestSurface1", "TestMaterialImpl"
 			);
@@ -553,12 +568,12 @@ class TestApp : GfxApp {
 			loadScene(
 				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
 				"TestSurface4", "TestMaterialImpl"
-			);
+			);+/
 
-			/+loadScene(
+			loadScene(
 				model, scale, CoordSys(vec3fi[0, -2, 0]),
 				"TestSurface3", "TestMaterialImpl"
-			);+/
+			);
 		}
 
 		/+kdefRegistry.dumpInfo();

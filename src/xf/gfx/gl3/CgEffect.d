@@ -264,12 +264,14 @@ class CgEffect : Effect {
 						}
 					}
 					defaultHandleCgError();
-					
-					cgGLLoadProgram(prog);
-					defaultHandleCgError();
 				} else {
 					log.trace("Good, Cg program already compiled.");
 				}
+
+				defaultHandleCgError();
+				cgGLEnableProfile(cgGetProgramProfile(prog));
+				cgGLLoadProgram(prog);
+				defaultHandleCgError();
 			}
 		} else {
 			CGprogram combined;
@@ -445,7 +447,7 @@ class CgEffect : Effect {
 	}
 	
 	package {
-		CGprogram compileGLSLProgram(char* name, CGprofile profile) {
+		CGprogram compileGLSLProgram(char* name, GPUDomain domain, CGprofile profile) {
 			cstring srcFile = "CgEffect.glsl.src";
 			cstring tmpFile = "CgEffect.glsl";
 
@@ -549,14 +551,25 @@ class CgEffect : Effect {
 				printf("opt: %s\n", *it);
 			}
 
-			return cgCreateProgramFromFile(
-				_context,
-				CG_OBJECT,
-				tmpFile.ptr,
-				profile,
-				"main",
-				options
-			);
+			if (_isGLSL) {
+				return cgCreateProgram(
+					_context,
+					CG_OBJECT,
+					cast(char*)File.get(tmpFile).ptr,
+					profile,
+					"main",
+					options
+				);
+			} else {
+				return cgCreateProgram(
+					_context,
+					CG_OBJECT,
+					cast(char*)File.get(tmpFile).ptr,
+					profile,
+					"main",
+					options
+				);
+			}
 		}
 		
 		
@@ -573,30 +586,39 @@ class CgEffect : Effect {
 
 			CGprogram prog;
 
-			switch (_source._type) {
-				case EffectSource.Type.String: {
-					prog = cgCreateProgram(
-						_context,
-						CG_SOURCE,
-						_source.dataStringz,
-						profile,
-						name,
-						cgGLGetOptimalOptions(profile)
-					);
-					break;
+			if (_isGLSL) {
+				switch (_source._type) {
+					case EffectSource.Type.String: {
+						prog = cgCreateProgram(
+							_context,
+							CG_SOURCE,
+							_source.dataStringz,
+							profile,
+							name,
+							cgGLGetOptimalOptions(profile)
+						);
+						break;
+					}
+					case EffectSource.Type.FilePath: {
+						prog = cgCreateProgramFromFile(
+							_context,
+							CG_SOURCE,
+							_source.dataStringz,
+							profile,
+							name,
+							cgGLGetOptimalOptions(profile)
+						);
+						break;
+					}
+					default: assert (false);
 				}
-				case EffectSource.Type.FilePath: {
-					prog = cgCreateProgramFromFile(
-						_context,
-						CG_SOURCE,
-						_source.dataStringz,
-						profile,
-						name,
-						cgGLGetOptimalOptions(profile)
-					);
-					break;
-				}
-				default: assert (false);
+			} else {
+				prog = cgCreateProgramFromEffect(
+					_handle,
+					profile,
+					name,
+					cgGLGetOptimalOptions(profile)
+				);
 			}
 
 			// cgCombinePrograms does not work with programs loaded via CG_OBJECT
@@ -612,6 +634,14 @@ class CgEffect : Effect {
 					name,
 					cgGLGetOptimalOptions(profile)
 				);+/
+
+			//final prog = compileGLSLProgram(name, domain, profile);
+
+			if (!cgIsProgram(prog)) {
+				error("Failed to create program {}.", name);
+			}
+
+			defaultHandleCgError();
 
 			auto err = cgGetError();
 			switch (err) {
@@ -797,8 +827,8 @@ class CgEffect : Effect {
 
 				CGparameter target = p;
 				assert (target !is null);
-				
-				foreach (domain, prog; &iterCgPrograms) {
+
+				paramLoop: foreach (domain, prog; &iterCgPrograms) {
 					if (auto p2 = cgGetNamedProgramParameter(
 						prog,
 						CG_GLOBAL,
@@ -829,7 +859,11 @@ class CgEffect : Effect {
 							break;
 						}
 
+						assert (cgIsParameter(target));
+						assert (cgIsParameter(p2));
+
 						cgConnectParameter(target, p2);
+						
 						auto err = cgGetError();
 						switch (err) {
 							case CG_PARAMETERS_DO_NOT_MATCH_ERROR: {
@@ -857,6 +891,8 @@ class CgEffect : Effect {
 				
 				if (usedAnywhere) {
 					builder.registerFoundParam(target, true, GPUDomain.init);
+				} else {
+					log.trace("\t-> not used anywhere, ignoring.");
 				}
 			}
 		}

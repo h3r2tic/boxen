@@ -8,6 +8,7 @@ private {
 		xf.gfx.gl3.CgEffect,
 		xf.gfx.gl3.Cg,
 		xf.gfx.gl3.TextureInternalFormat,
+		xf.gfx.gl3.Debug,
 	
 		xf.gfx.Resource,
 		xf.gfx.Buffer,
@@ -159,6 +160,8 @@ class Renderer : IRenderer {
 		use (_window) in (GL gl) {
 			_cgCompiler = new CgCompiler(gl);
 			this.gl[] = gl;
+			
+			initializeOpenGLDebug(gl);
 
 			_caps = RendererCaps(gl);
 
