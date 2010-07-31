@@ -70,11 +70,29 @@ struct RendererCaps {
 		RendererCaps caps;
 		caps.depthClamp = Search.find("GL_ARB_depth_clamp").within(ext);
 		caps.isNV = 0 == strcmp("NVIDIA Corporation", gl.GetString(VENDOR));
+
+		gl.GetIntegerv(
+			MAX_DRAW_BUFFERS,
+			&caps.maxDrawBuffers
+		);
+
+		gl.GetIntegerv(
+			ARB_blend_func_extended.MAX_DUAL_SOURCE_DRAW_BUFFERS,
+			&caps.maxDualSourceDrawBuffers
+		);
 		return caps;
+	}
+
+	void dump() {
+		log.info("Caps[depthClamp] = {}", depthClamp);
+		log.info("Caps[maxDrawBuffers] = {}", maxDrawBuffers);
+		log.info("Caps[maxDualSourceDrawBuffers] = {}", maxDualSourceDrawBuffers);
 	}
 	
 	bool	isNV;
 	bool	depthClamp;
+	int		maxDrawBuffers;
+	int		maxDualSourceDrawBuffers;
 }
 
 

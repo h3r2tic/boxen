@@ -2,6 +2,7 @@ module xf.hybrid.WidgetFactory;
 
 private {
 	import xf.hybrid.model.Core;
+	import xf.hybrid.Log;
 }
 
 
@@ -19,8 +20,11 @@ void registerWidget(T)(char[] name = T.stringof) {
 
 ///
 IWidget createWidget(char[] name) {
-	printf(`Creating widget: %.*s`\n, name);
-	return _widgetFactories[name]();
+	if (auto fact = name in _widgetFactories) {
+		return (*fact)();
+	} else {
+		hybridError("createWidget: unknown widget type '{}'.", name);
+	}
 }
 
 
