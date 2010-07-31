@@ -1,0 +1,9 @@
+-version=StackTracing
+-version=ValidateFuncCalls
+-version=DogCgNoErrorChecking
+-d
+../utils/impl/
+../gfx/gl3/
++x=tango
+-g
+-I../..
