@@ -159,6 +159,10 @@ struct Semantic {
 		}
 	}
 
+	void	clearTraits() {
+		_traits.resize(0);
+	}
+
 	private struct TraitFruct {
 		Semantic*	sem;
 
@@ -400,6 +404,10 @@ struct SemanticExp {
 		_traits[i].name = _allocString(name);
 		_traits[i].value = _allocString(value);
 		_traits[i].op = op;
+	}
+
+	void	clearTraits() {
+		_traits.resize(0);
 	}
 
 	private struct TraitFruct {

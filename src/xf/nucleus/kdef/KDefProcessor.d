@@ -145,6 +145,17 @@ class KDefProcessor {
 	}
 
 
+	int kernelImpls(int delegate(ref KernelImpl) dg) {
+		foreach (n, k; this.kernels) {
+			if (int r = dg(k.impl)) {
+				return r;
+			}
+		}
+
+		return 0;
+	}
+
+
 	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
 		foreach (name, mod; modules) {
 			foreach (name, ref surf; mod.surfaces) {

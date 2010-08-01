@@ -115,7 +115,7 @@ class Label : Widget {
 			default: break;
 		}
 
-		font.print(vec2i.from(off), text, &_fpCache);
+		font.print(off, text, &_fpCache);
 	}
 	
 	

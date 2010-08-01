@@ -24,6 +24,7 @@ IWidget createWidget(char[] name) {
 		return (*fact)();
 	} else {
 		hybridError("createWidget: unknown widget type '{}'.", name);
+		assert (false);
 	}
 }
 

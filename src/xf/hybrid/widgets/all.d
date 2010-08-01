@@ -34,4 +34,5 @@ public {
 	import xf.hybrid.widgets.SceneView : SceneView, SceneProxy;
 	import xf.hybrid.widgets.TreeView : TreeView, TreeContext;
 	import xf.hybrid.widgets.ColorWheel : ColorWheel;
+	import xf.hybrid.widgets.CustomDraw : CustomDraw;
 }

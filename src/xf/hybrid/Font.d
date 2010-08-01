@@ -142,7 +142,7 @@ struct FontPrintCache {
 		struct Data {
 			dchar	chr;
 			uint	ftIndex;
-			ushort	delta;
+			int		delta;
 		}
 		
 		Array!(Data)	data;
@@ -229,7 +229,10 @@ final class Font {
 	/**
 		Prints a string at a given position and color, using the current font renderer
 	*/
-	vec2i print(stringT)(vec2i location, stringT str, FontPrintCache* fcache = null) {
+	vec2 print(stringT)(vec2 location, stringT str, FontPrintCache* fcache = null) {
+		// HACK: this will need fixing when adding support for landscape screen orientation
+		location.y = rndint(location.y);
+		
 		print_(location, str, fcache);
 		return location;
 	}
@@ -332,7 +335,7 @@ final class Font {
 
 					foreach (i, dchar chr; text) {
 						uint glyphIndex = FT_Get_Char_Index(fontFace, chr);
-						auto c = fcache.data[i];
+						FontPrintCache.Data* c = fcache.data[i];
 						c.ftIndex = glyphIndex;
 						c.chr = chr;
 						
@@ -340,7 +343,7 @@ final class Font {
 							// adjust the pen for kerning
 							FT_Vector delta;
 							FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
-							c.delta = cast(ushort)delta.x;
+							c.delta = delta.x;
 							penX += cast(float)delta.x / 64.0f;
 						} else {
 							fcache.data[i].delta = 0;
@@ -405,7 +408,7 @@ final class Font {
 	
 	
 		// not the 'real' printing function, but we're close already
-		PrintResult print_(stringT)(ref vec2i location, stringT str, FontPrintCache* fcache) {
+		PrintResult print_(stringT)(ref vec2 location, stringT str, FontPrintCache* fcache) {
 			scope(success) location.y += this.lineSkip;
 			// early-out tests
 			
@@ -448,7 +451,7 @@ final class Font {
 		
 		
 		// this function does the dirty job of submitting quads to the font renderer
-		PrintResult printWorker(stringT)(vec2i location, stringT str, FontPrintCache* fcache) {
+		PrintResult printWorker(stringT)(vec2 location, stringT str, FontPrintCache* fcache) {
 			if (0 == str.length) return PrintResult.Ok;
 			location.y += this.height;
 			
