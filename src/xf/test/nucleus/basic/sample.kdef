@@ -48,6 +48,12 @@ TestSurface3 = surface ABg_h {
 	BRDF_g = 1.3;
 };
 
+/+TestSurface3 = surface ABC {
+	BRDF_A = 1;
+	BRDF_B = 33333;
+	BRDF_C = 0.37;
+};+/
+
 /+TestSurface1 = surface ABg_h {
 	BRDF_A = 0.0025;
 	BRDF_B = 0.0001;

@@ -252,9 +252,28 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 		return br;
 	}
+
+
+	override void	triangles(vec2[] pts, vec4[] colors) {
+		assert (0 == pts.length % 3);
+		disableTexturing();
+
+		auto b = prepareBatch(Batch.Type.Triangles, pts.length);
+		size_t vn = b.numVerts;
+
+		foreach (i, ref p; pts) {
+			b.verts[vn].position = p + _offset;
+			b.verts[vn].color = colors[i];
+			b.verts[vn].texCoord = _texCoord;
+			b.verts[vn].subpixelSamplingVector = _subpixelSamplingVector;
+			++vn;
+		}
+
+		b.numVerts = vn;
+	}
 	
 	
-	override void	lines(vec2 pts[], float width = 1.f) {
+	override void	lines(vec2[] pts, float width = 1.f) {
 		assert (0 == pts.length % 2);
 
 		version (StubHybridRenderer) return;
@@ -271,8 +290,8 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		final tc1 = brush.tc1;
 
 		for (int i = 0; i < pts.length; i += 2) {
-			vec2 from = pts[i];
-			vec2 to = pts[i+1];
+			vec2 from = pts[i] + _offset;
+			vec2 to = pts[i+1] + _offset;
 
 			vec2 fwd = (to - from).normalized;
 			vec2 sideUnit = fwd.rotatedHalfPi;
@@ -325,6 +344,119 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		b.numVerts = vn;
 	}
 	
+
+	override void	line(vec2 pts[], float width = 1.f) {
+		assert (pts.length >= 2);
+
+		version (StubHybridRenderer) return;
+		_weight = width;
+
+		int lwidth = max(0, rndint(width));
+		final brush = _getLineBrush(lwidth);
+		enableTexturing(brush.tex);
+
+		auto b = prepareBatch(Batch.Type.Triangles, (pts.length-1) * 6);	// 2 tris per segment
+		size_t vn = b.numVerts;
+
+		final tc0 = brush.tc0;
+		final tc1 = brush.tc1;
+
+		for (int i = 0; i+1 < pts.length; ++i) {
+			vec2 from = pts[i] + _offset;
+			vec2 to = pts[i+1] + _offset;
+
+			vec2 p0 = from;
+			vec2 p1 = to;
+			vec2 p2 = to;
+			vec2 p3 = from;
+
+			vec2 side = (to - from).normalized.rotatedHalfPi * (lwidth * 0.5f + 0.5f);
+
+			vec2 fwd0, fwd1, fwd2;
+			
+			if (i > 0) {
+				fwd0 = (pts[i] - pts[i-1]).normalized;
+			}
+			
+			fwd1 = (pts[i+1] - pts[i]).normalized;
+			
+			if (i+2 < pts.length) {
+				fwd2 = (pts[i+2] - pts[i+1]).normalized;
+			}
+
+			vec2 side1, side2;
+
+			if (i > 0) {
+				vec2 side1Unit = (fwd0+fwd1).normalized.rotatedHalfPi;
+				side1 = side1Unit * (lwidth * 0.5f + 0.5f);
+			} else {
+				side1 = side;
+			}
+
+			if (i+2 < pts.length) {
+				vec2 side2Unit = (fwd1+fwd2).normalized.rotatedHalfPi;
+				side2 = side2Unit * (lwidth * 0.5f + 0.5f);
+			} else {
+				side2 = side;
+			}
+
+			p0 -= side1;
+			p3 += side1;
+
+			p1 -= side2;
+			p2 += side2;
+
+			// Our lines are different than the ones in OpenGL.
+			// The ones in GL have their endpoints in the top-left corners of pixels,
+			// which causes odd-width lines to look blurry. We'd like to have sharp
+			// 1-width lines, thus we reverse this behavior and have blurry even-width lines.
+			// Additionally, our lines are expanded by a pixel in each end to be endpoint-inclusive.
+			{
+				p0.x += 0.5f;
+				p0.y += 0.5f;
+				p1.x += 0.5f;
+				p1.y += 0.5f;
+				p2.x += 0.5f;
+				p2.y += 0.5f;
+				p3.x += 0.5f;
+				p3.y += 0.5f;
+
+				if (i+2 >= pts.length) {
+					vec2 fwd = (to - from).normalized;
+					vec2 fwdNudge = fwd * .5f;
+					
+					p1 += fwdNudge;
+					p2 += fwdNudge;
+				}
+				if (0 == i) {
+					vec2 fwd = (to - from).normalized;
+					vec2 fwdNudge = fwd * .5f;
+
+					p0 -= fwdNudge;
+					p3 -= fwdNudge;
+				}
+			}
+
+			void add(vec2 p, vec2 t) {
+				b.verts[vn].position = p;
+				b.verts[vn].color = _color;
+				b.verts[vn].texCoord = t;
+				b.verts[vn].subpixelSamplingVector = vec2(side.x * brush.texelSize * (-1.0f / 3.0f), 0);
+				++vn;
+			}
+
+			add(p0, tc1);
+			add(p1, tc1);
+			add(p2, tc0);
+
+			add(p0, tc1);
+			add(p2, tc0);
+			add(p3, tc0);
+		}
+
+		b.numVerts = vn;
+	}
+
 	
 	override void	rect(Rect r) {
 		version (StubHybridRenderer) return;
@@ -476,10 +608,10 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		
 		if (_style.border.available) {
 			vec2[4] bp = void;
-			bp[0] = vec2(r.min.x, r.min.y) + _offset;
-			bp[1] = vec2(r.min.x, r.max.y-1) + _offset;
-			bp[2] = vec2(r.max.x-1, r.max.y-1) + _offset;
-			bp[3] = vec2(r.max.x-1, r.min.y) + _offset;
+			bp[0] = vec2(r.min.x, r.min.y);
+			bp[1] = vec2(r.min.x, r.max.y-1);
+			bp[2] = vec2(r.max.x-1, r.max.y-1);
+			bp[3] = vec2(r.max.x-1, r.min.y);
 
 			auto border = _style.border.value();
 			
@@ -538,12 +670,11 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	
 	
 	override void direct(void delegate(BaseRenderer) dg, Rect rect) {
-		assert (false, "TODO");
-		/+version (StubHybridRenderer) return;
+		version (StubHybridRenderer) return;
 		assert (dg !is null);
 		auto b = prepareBatch(Batch.Type.Direct, 0);
 		b.directRenderingHandler = dg;
-		b.originalRect = rect;+/
+		b.originalRect = rect;
 	}
 
 
@@ -633,7 +764,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	
 	
 	private void handleDirectRendering(Batch b) {
-		/+version (StubHybridRenderer) return;
+		version (StubHybridRenderer) return;
 		if (!setupClipping(b.clipRect)) {
 			return;
 		}
@@ -642,11 +773,11 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		int w = cast(int)(r.max.x - r.min.x);
 		int h = cast(int)(r.max.y - r.min.y);
 
-		gl.Viewport(cast(int)r.min.x, cast(int)(_viewportSize.y - r.min.y - h), w, h);
+		//gl.Viewport(cast(int)r.min.x, cast(int)(_viewportSize.y - r.min.y - h), w, h);
 		
 		assert (Batch.Type.Direct == b.type);
 		assert (b.directRenderingHandler !is null);
-		b.directRenderingHandler(this);+/
+		b.directRenderingHandler(this);
 	}
 
 
@@ -931,14 +1062,16 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 		// Data could have been re-assigned
 		foreach (b; _batches[0.._numBatches]) {
-			final texIdx = b.efInst.getUniformParamGroup().getUniformIndex(
-				"FragmentProgram.tex"
-			);
+			if (b.type != Batch.Type.Direct) {
+				final texIdx = b.efInst.getUniformParamGroup().getUniformIndex(
+					"FragmentProgram.tex"
+				);
 
-			assert (texIdx != -1);
-			b.efInst.getUniformPtrsDataPtr()[texIdx] = &b.tex.tex;
+				assert (texIdx != -1);
+				b.efInst.getUniformPtrsDataPtr()[texIdx] = &b.tex.tex;
 
-			b.vb = b._vcache.vb;
+				b.vb = b._vcache.vb;
+			}
 		}
 	}
 

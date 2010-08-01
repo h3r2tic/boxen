@@ -31,8 +31,8 @@ class TestApp : GfxApp {
 	
 	override void configureWindow(Window wnd) {
 		super.configureWindow(wnd);
-		wnd.width = 800;
-		wnd.height = 500;
+		wnd.width = 870;
+		wnd.height = 570;
 		/+wnd.width = 1050;
 		wnd.height = 1680;
 		wnd.fullscreen = true;+/

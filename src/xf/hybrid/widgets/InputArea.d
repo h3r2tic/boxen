@@ -208,7 +208,7 @@ class InputArea : Widget {
 				r.color(vec4.one);
 			}
 			
-			font.print(vec2i.from(globalOffset), _text[_visibleFrom .. _visibleTo]);
+			font.print(globalOffset, _text[_visibleFrom .. _visibleTo]);
 		}
 		
 		if (shouldDrawCaret) {

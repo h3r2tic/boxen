@@ -608,7 +608,7 @@ class HybridSurface : DeeSurface {
 
 		r.flushStyleSettings();
 		r.color(toColor(fore));
-		font.print(vec2i.from(pos), text);
+		font.print(pos, text);
 		//font.flush();
 	}
 	
@@ -631,7 +631,7 @@ class HybridSurface : DeeSurface {
 		r.flushStyleSettings();
 		drawClipped({
 			r.color(toColor(fore));
-			font.print(vec2i.from(pos), text);
+			font.print(pos, text);
 		});
 		//font.flush();
 		

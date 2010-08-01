@@ -4,16 +4,22 @@ version (StackTracing) import tango.core.tools.TraceExceptions;
 
 import
 	xf.Common,
+	xf.core.Registry,
 	xf.utils.GfxApp,
 	xf.test.gfx.Common,
 
 	xf.nucled.ParametersRollout,
+	xf.nucled.GraphEditor,
+	xf.nucled.Graph,
 
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
 	
 	tango.io.Stdout,
 	tango.text.convert.Format;
+
+import xf.nucleus.kdef.model.IKDefRegistry;
+import tango.io.vfs.FileFolder;
 
 import xf.hybrid.Hybrid;
 import xf.hybrid.WidgetConfig : HybridConfig = Config;
@@ -26,12 +32,46 @@ void main() {
 }
 
 
+
+struct TabDesc {
+	enum Role {
+		GraphEditor,
+		KernelImplSelector,
+		KernelImplNameSelector,
+		SceneView
+	}
+
+	char[]						label;
+	Role							role;
+	GraphEditor				graphEditor;
+	//KernelSelectorPopup	kernelSelector;
+
+	//KernelDef					kernelDef;
+	//char[]						kernelFuncName;
+	
+	private char[]			_compositeName;
+
+
+	char[] compositeName() {
+		return _compositeName is null ? "default" : _compositeName;
+	}
+	
+	void compositeName(char[] n) {
+		_compositeName = n;
+	}
+}
+
+
 class TestApp : GfxApp {
 	HybridRenderer	guiRenderer;
 	HybridConfig	guiConfig;
 
+	IKDefRegistry	kdefRegistry;
+	FileFolder		vfs;
 
 	ParametersRollout	paramsRollout;
+	TabDesc[int]		tabs;
+	int					activeTab = 0;
 
 	
 	override void configureWindow(Window wnd) {
@@ -54,6 +94,23 @@ class TestApp : GfxApp {
 		guiConfig = loadHybridConfig(`./GUI.cfg`);
 
 		paramsRollout = new ParametersRollout();
+
+		vfs = new FileFolder(".");
+
+		kdefRegistry = create!(IKDefRegistry)();
+		kdefRegistry.setVFS(vfs);
+		kdefRegistry.registerFolder("../test/media/kdef");
+		kdefRegistry.registerFolder(".");
+		kdefRegistry.reload();
+		kdefRegistry.dumpInfo();
+
+		tabs[0] = TabDesc(
+			"Top-level pipeline",
+			TabDesc.Role.GraphEditor,
+			new GraphEditor(`RenderViewport`, kdefRegistry, new GraphMngr),
+			null/+,
+			core.kregistry[`RenderViewport`]+/
+		);
 	}
 
 
@@ -104,10 +161,7 @@ class TestApp : GfxApp {
 		paramsRollout.doGUI();
 
 		gui.push(`main`);
-			final graphEdTabView = TabView(`graphEd`);
-			graphEdTabView.layoutAttribs = "hfill vfill hexpand vexpand";
-
-			graphEdTabView.label[0] = "onoz";
+			doTabsGUI();
 		gui.pop();
 
 		Group(`.outputPanel`) [{
@@ -136,5 +190,113 @@ class TestApp : GfxApp {
 		
 		gui.end();
 		gui.render(guiRenderer);
+	}
+
+	void doTabsGUI() {
+		final graphEdTabView = TabView(`graphEd`);
+		graphEdTabView.layoutAttribs = "hfill vfill hexpand vexpand";
+
+		foreach (ti, td; tabs) {
+			graphEdTabView.label[ti] = td.label;
+		}
+
+		gui.open;
+		activeTab = graphEdTabView.activeTab;
+		auto layers = Group(activeTab) [{
+			if (auto tabDesc = activeTab in tabs) {
+				switch (tabDesc.role) {
+					case TabDesc.Role.SceneView: {
+						/+if (viewportTab is null) {
+							viewportTab = new ViewportTab(core, world);
+						}
+						viewportTab.doGUI();+/
+					} break;
+					
+					case TabDesc.Role.GraphEditor: {
+						tabDesc.graphEditor.doGUI();
+					} break;
+						
+					/+case TabDesc.Role.KernelImplSelector:
+						KernelDef	kernel;
+						char[]		funcName;
+						if (tabDesc.kernelSelector.doGUI(
+							(KernelDef kernel, char[] funcName) {
+								return true;
+							},
+							kernel,
+							funcName
+						)) {
+							tabDesc.label = "new Impl!( " ~ kernel.name ~ " )";
+							tabDesc.role = TabDesc.Role.KernelImplNameSelector;
+							tabDesc.kernelDef = kernel;
+							tabDesc.kernelFuncName = funcName;
+						}
+						break;
+						
+					case TabDesc.Role.KernelImplNameSelector:
+						VBox().cfg(`layout = { spacing = 5; }`) [{
+							char[256] buf;
+							Label().text(buf[0..sprintf(buf.ptr, "Select a composite to edit for kernel %.*s", "TODO")]);
+							
+							{
+								int i = 0;
+								auto picker = Picker(); picker [{
+									foreach (kernel, graph; &core.iterCompositeKernels) {
+										assert (kernel !is null, "kernel is null");
+										assert (graph !is null, "graph is null");
+										if (tabDesc.kernelDef.name == kernel.name) {
+											Label(i++).text = trim(graph.label).length > 0 ? trim(graph.label) : "no name o_O";
+										}
+									}
+								}];
+								if (picker.anythingPicked) {
+									int j = 0;
+									foreach (kernel, graph; &core.iterCompositeKernels) {
+										if (tabDesc.kernelDef.name == kernel.name) {
+											if (j++ == picker.pickedIdx) {
+												tabDesc.compositeName = trim(graph.label).dup;
+												tabDesc.label = tabDesc.kernelDef.name ~ "( " ~ tabDesc.compositeName ~ " )";
+												tabDesc.graphEditor = new GraphEditor(tabDesc.kernelDef.name, core, new GraphMngr(core));
+
+												auto path = getCompositeKernelPath(tabDesc.kernelDef.name, tabDesc.compositeName, false);
+												KDefGraph graphDef = loadKDefGraph(path);
+												tabDesc.graphEditor.loadKernelGraph(graphDef);
+
+												tabDesc.role = TabDesc.Role.GraphEditor;
+												break;
+											}
+										}
+									}
+								}
+								
+								if (0 == i) {
+									Label().text("No composite kernels defined");
+								}
+							}
+							
+							HBox() [{
+								char[] name = trim(Input().cfg(`size = 100 0;`).text);
+								if (Button().text("New").clicked && name.length > 0) {
+									tabDesc.compositeName = name.dup;
+									tabDesc.label = tabDesc.kernelDef.name ~ "( " ~ tabDesc.compositeName ~ " )";
+									tabDesc.graphEditor = new GraphEditor(tabDesc.kernelDef.name, core, new GraphMngr(core)),
+									createKernelImplIONodes(tabDesc.kernelDef, tabDesc.kernelFuncName, tabDesc.graphEditor);
+									tabDesc.role = TabDesc.Role.GraphEditor;
+								}
+							}];
+						}];
+						break;+/
+
+					default: assert (false);
+				}
+			} else {
+				// blah
+			}
+		}];
+		if (!layers.initialized) {
+			layers.cfg(`layout = Layered;`);
+			layers.layoutAttribs = "hfill vfill hexpand vexpand";
+		}
+		gui.close;
 	}
 }

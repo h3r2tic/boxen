@@ -127,10 +127,15 @@ abstract class GuiRenderer {
 
 	/+/// Renders a point with the given size
 	abstract void	point(vec2, float size = 1.f);+/
+
+	abstract void	triangles(vec2[] pts, vec4[] colors);
 	
-	/// Renders a line with the given thickness / width
+	/// Renders a set of lines with the given thickness / width
 	abstract void	lines(vec2[], float width = 1.f);
 	
+	/// Renders a line with the given thickness / width
+	abstract void	line(vec2[], float width = 1.f);
+
 	/// Renders a rectangle
 	abstract void	rect(Rect);
 	

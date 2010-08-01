@@ -101,6 +101,10 @@ class KDefRegistry : IKDefRegistry {
 	bool getKernel(string name, KernelImpl* res) {
 		return kdefProcessor.getKernel(name, res);
 	}
+
+	int kernelImpls(int delegate(ref KernelImpl) dg) {
+		return kdefProcessor.kernelImpls(dg);
+	}
 	
 	IKDefFileParser kdefFileParser() {
 		return _fileParser;

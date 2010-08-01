@@ -377,7 +377,7 @@ class TestApp : GfxApp {
 	override void initialize() {
 		.rendererBackend = rendererBackend;
 		
-		final vfs = new FileFolder(".");
+		vfs = new FileFolder(".");
 
 		kdefRegistry = create!(IKDefRegistry)();
 		kdefRegistry.setVFS(vfs);

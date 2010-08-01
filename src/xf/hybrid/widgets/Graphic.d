@@ -23,6 +23,8 @@ private {
 class Graphic : Group {
 	override void render(GuiRenderer r) {
 		r.flushStyleSettings();
+		final offBefore = r.getOffset;
+		scope (exit) r.setOffset(offBefore);
 		r.offset(this.renderOffset);
 		r.shape(this.shape, this.size + this.renderOversize);
 	}
