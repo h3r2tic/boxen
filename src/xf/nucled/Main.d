@@ -23,6 +23,7 @@ import tango.io.vfs.FileFolder;
 
 import xf.hybrid.Hybrid;
 import xf.hybrid.WidgetConfig : HybridConfig = Config;
+import xf.hybrid.widgets.SceneView;
 import xf.hybrid.backend.Gfx : HybridRenderer = Renderer, TopLevelWidget = TopLevel;
 	
 
@@ -72,6 +73,8 @@ class TestApp : GfxApp {
 	ParametersRollout	paramsRollout;
 	TabDesc[int]		tabs;
 	int					activeTab = 0;
+
+	SceneView	fwdSV;
 
 	
 	override void configureWindow(Window wnd) {
@@ -125,33 +128,24 @@ class TestApp : GfxApp {
 		Group(`menu`) [{
 			horizontalMenu(
 				menuGroup("File",
-					menuGroup("New",
-						menuLeaf("File", Stdout.formatln("file.new.file")),
-						menuLeaf("Project", Stdout.formatln("file.new.project")),
-						menuLeaf("Workspace", Stdout.formatln("file.new.workspace"))
-					),
-					menuGroup("Import",
-						menuLeaf("File", Stdout.formatln("file.import.file")),
-						menuLeaf("Net", Stdout.formatln("file.import.net"))
-					),
-					menuLeaf("Open", Stdout.formatln("file.open")),
-					menuLeaf("Close", Stdout.formatln("file.close")),
-					menuLeaf("Save", Stdout.formatln("file.save")),
+					/+menuLeaf("Save", onSave() ),
+					menuLeaf("Load", onLoad() ),+/
 					menuLeaf("Exit", exitApp())
 				),
-				menuGroup("Edit",
-					menuLeaf("Undo", Stdout.formatln("edit.undo")),
-					menuLeaf("Redo", Stdout.formatln("edit.redo")),
-					menuLeaf("Cut", Stdout.formatln("edit.cut")),
-					menuLeaf("Copy", Stdout.formatln("edit.copy")),
-					menuLeaf("Paste", Stdout.formatln("edit.paste"))
-				),
-				menuGroup("View",
-					menuLeaf("Refresh", Stdout.formatln("view.refresh")),
-					menuLeaf("Fullscreen", Stdout.formatln("view.fullscreen")),
-					menuLeaf("Cascade", Stdout.formatln("view.cascade")),
-					menuLeaf("Tile", Stdout.formatln("view.tile"))
-				),
+				/+menuGroup("Implement",
+					menuLeaf("Kernel", {
+						auto ksel = new KernelSelectorPopup;
+						ksel.kernels = &core.kregistry.kernels;
+						int newTab = graphEdTabView.numTabs;
+						graphEdTabView.activeTab = newTab;
+						tabs[newTab] = TabDesc(
+							"New kernel ...",
+							TabDesc.Role.KernelImplSelector,
+							null,
+							ksel
+						);
+					}())
+				),+/
 				menuGroup("Help",
 					menuLeaf("About", Stdout.formatln("help.about"))
 				)
@@ -167,8 +161,21 @@ class TestApp : GfxApp {
 		Group(`.outputPanel`) [{
 			auto defCheck = Check();
 			
+			SceneView initSv(SceneView sv) {
+				if (!sv.initialized) {
+					sv.userSize = vec2(480, 300);
+					with (sv) {
+						shiftView(vec3(0, 1, 2));
+						rotatePitch(30);
+						displayMode = DisplayMode.Solid;
+						viewType = ViewType.Perspective;
+					}
+				}
+				return sv;
+			}
+
 			if (defCheck.text("deferred: ").checked) {
-				//sv = initSv(SceneView());
+				fwdSV = initSv(SceneView());
 				Dummy().userSize = vec2(20, 0);
 			}
 			

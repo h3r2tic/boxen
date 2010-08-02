@@ -142,7 +142,7 @@ struct FontPrintCache {
 		struct Data {
 			dchar	chr;
 			uint	ftIndex;
-			int		delta;
+			float	delta;
 		}
 		
 		Array!(Data)	data;
@@ -308,7 +308,7 @@ final class Font {
 					foreach (i, c; fcache.data) {
 						dchar chr = c.chr;
 						uint glyphIndex = c.ftIndex;
-						penX += cast(float)c.delta / 64.0;
+						penX += c.delta;
 						
 						uint index = getGlyph(chr, glyphIndex);	// TODO: cache this?
 						
@@ -342,9 +342,9 @@ final class Font {
 						if (useKerning && previous && glyphIndex) {
 							// adjust the pen for kerning
 							FT_Vector delta;
-							FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
-							c.delta = delta.x;
-							penX += cast(float)delta.x / 64.0f;
+							FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_UNFITTED, &delta);
+							c.delta = cast(float)delta.x / 64.0f;
+							penX += c.delta;
 						} else {
 							fcache.data[i].delta = 0;
 						}
@@ -373,7 +373,7 @@ final class Font {
 					if (useKerning && previous && glyphIndex) {
 						// adjust the pen for kerning
 						FT_Vector delta;
-						FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_DEFAULT, &delta);
+						FT_Get_Kerning(fontFace, previous, glyphIndex, FT_Kerning_Mode.FT_KERNING_UNFITTED, &delta);
 						penX += cast(float)delta.x / 64.0f;
 					}
 					
@@ -548,9 +548,8 @@ final class Font {
 			vec2i size;
 			buffer[] = 0;
 			
-			// convert from FreeType's fixed point to int
-			glyph.advance.x = cast(float)fontFace.glyph.advance.x / 64.0f;
-			glyph.advance.y = cast(float)fontFace.glyph.advance.y / 64.0f;
+			glyph.advance.x = cast(float)slot.linearHoriAdvance / 65536.0f;
+			glyph.advance.y = cast(float)slot.linearVertAdvance / 65536.0f;
 			
 			if (0 == FT_Render_Glyph(slot, renderMode)) {		// this gives us a bitmap
 				auto bitmap = slot.bitmap;

@@ -334,7 +334,6 @@ private struct BuilderSubgraphInfo {
 }
 
 
-pragma (msg, "Move GraphBuilder out to its own module. Take the one from LPP.");
 struct GraphBuilder {
 	SourceKernelType	sourceKernelType;
 	uword				sourceLightIndex;

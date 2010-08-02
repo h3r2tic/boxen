@@ -26,6 +26,8 @@ private {
 		xf.nucleus.graph.KernelGraphOps,
 		xf.nucleus.graph.GraphMisc,
 		xf.nucleus.util.EffectInfo;
+
+	import xf.vsd.VSD;
 		
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
 
@@ -63,7 +65,7 @@ private {
 
 
 
-private struct SubgraphInfo {
+/+private struct SubgraphInfo {
 	GraphNodeId[]	nodes;
 	GraphNodeId		input;
 	GraphNodeId		output;
@@ -130,7 +132,7 @@ struct GraphBuilder {
 			);
 		}
 	}
-}
+}+/
 
 
 class ForwardRenderer : Renderer {
@@ -320,8 +322,8 @@ class ForwardRenderer : Renderer {
 
 		// ---- Build the Structure kernel graph
 
-		SubgraphInfo structureInfo;
-		SubgraphInfo materialInfo;
+		BuilderSubgraphInfo structureInfo;
+		BuilderSubgraphInfo materialInfo;
 		
 		auto kg = createKernelGraph();
 		scope (exit) {
@@ -407,8 +409,8 @@ class ForwardRenderer : Renderer {
 		if (affectingLights.length > 0) {
 			// ---- Build the graphs for lights and reflectance
 
-			auto lightGraphs = stack.allocArray!(SubgraphInfo)(affectingLights.length);
-			auto reflGraphs = stack.allocArray!(SubgraphInfo)(affectingLights.length);
+			auto lightGraphs = stack.allocArray!(BuilderSubgraphInfo)(affectingLights.length);
+			auto reflGraphs = stack.allocArray!(BuilderSubgraphInfo)(affectingLights.length);
 
 			foreach (lightI, light; affectingLights) {
 				final lightGraph = &lightGraphs[lightI];
@@ -1029,10 +1031,10 @@ float3 eyePosition <
 	}
 
 	
-	override void render(ViewSettings vs, RenderList* rlist) {
+	override void render(ViewSettings vs, VSDRoot* vsd, RenderList* rlist) {
 		// HACK
 		foreach (l; .lights) {
-			l.prepareRenderData();
+			l.prepareRenderData(vsd);
 		}
 
 		this.viewToClip = vs.computeProjectionMatrix();

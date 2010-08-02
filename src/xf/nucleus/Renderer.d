@@ -15,6 +15,8 @@ private {
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.model.KDefInvalidation;
 
+	import xf.vsd.VSD;
+
 	// TODO: refactor into a shared texture loader
 	interface Img {
 	import
@@ -64,7 +66,7 @@ abstract class Renderer
 	}
 
 	
-	abstract void render(ViewSettings, RenderList*);
+	abstract void render(ViewSettings, VSDRoot* vsd, RenderList*);
 
 
 	// RenderList ----

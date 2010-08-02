@@ -576,7 +576,7 @@ class GraphEditor {
 			if (e.down) {
 				rightMouseButtonDownPos = e.pos + workspaceOffset;
 			} else if ((rightMouseButtonDownPos - (e.pos + workspaceOffset)).length < 4) {
-				if (auto selected = _graphMngr.selected) {
+				/+if (auto selected = _graphMngr.selected) {
 
 					gui().popup!(VBox)(selected) = (GraphNode sel) {
 						return contextMenu(
@@ -587,11 +587,11 @@ class GraphEditor {
 						).isOpen;
 					};
 
-				} else {
+				} else {+/
 					mode = Mode.NodeSelection;
 					spawnPosition = e.pos;
 					spawnPosWindow = gui.mousePos;
-				}
+				//}
 
 				return EventHandling.Stop;
 			}

@@ -7,7 +7,7 @@ private {
 	import xf.omg.core.LinearAlgebra;
 	import tango.time.StopWatch;
 
-	import tango.io.Stdout;
+	//import tango.io.Stdout;
 }
 
 
@@ -36,7 +36,7 @@ class DraggableView : ClipView {
 		if (MouseButton.Right == e.button && e.down && e.bubbling && !e.handled) {
 			this._dragging = true;
 			
-			Stdout.formatln("DraggableView: drag start");
+			//Stdout.formatln("DraggableView: drag start");
 			gui.addGlobalHandler(&this.globalHandleMouseButton);
 			
 			if (e.bubbling) {
@@ -51,7 +51,7 @@ class DraggableView : ClipView {
 	protected bool globalHandleMouseButton(MouseButtonEvent e) {
 		if (MouseButton.Right == e.button && !e.down) {
 			this._dragging = false;
-			Stdout.formatln("DraggableView: drag end");
+			//Stdout.formatln("DraggableView: drag end");
 			return true;
 		}
 		
@@ -63,7 +63,7 @@ class DraggableView : ClipView {
 		if (!_dragging) {
 			return EventHandling.Continue;
 		}
-		Stdout.formatln("DraggableView: mouse move: {}", e.delta);
+		//Stdout.formatln("DraggableView: mouse move: {}", e.delta);
 		
 		this.offset = this.offset + e.delta;
 		
