@@ -4,6 +4,8 @@ private {
 	import xf.Common;
 	import xf.nucleus.Defs;
 	import xf.nucleus.KernelParamInterface;
+	import xf.nucleus.Renderable;
+	import xf.vsd.VSD;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.mem.MultiArray;
@@ -31,7 +33,7 @@ abstract class Light {
 	// Called by renderer prior to using the light. Can e.g. calc shadow maps
 	// TODO: replace it with a version which runs on all instances of a given
 	// light class as to allow clustering and reduce call overhead
-	void prepareRenderData() {}
+	void prepareRenderData(VSDRoot*) {}
 
 	void determineInfluenced(
 		void delegate(

@@ -2,24 +2,109 @@ module xf.nucleus.Nucleus;
 
 private {
 	import xf.Common;
+	import xf.core.Registry;
+
+	import xf.nucleus.Defs;
 	import xf.nucleus.Renderer;
+	import xf.nucleus.Light;
 	import xf.nucleus.kdef.model.IKDefRegistry;
+
+	/+import xf.nucleus.SurfaceDef;
+	import xf.nucleus.MaterialDef;+/
+
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
+
+	import tango.io.vfs.FileFolder;
+	import tango.core.Variant;
 }
 
 
+public {
+	RendererBackend	rendererBackend;
+	Renderer		vsmRenderer;
+	IKDefRegistry	kdefRegistry;
+}
 
-Renderer createRenderer(cstring name, RendererBackend back, IKDefRegistry reg) {
-	return _rendererFactories[name](back, reg);
+private {
+	FileFolder			vfs;
+
+	SurfaceId[cstring]	surfaces;
+	cstring[]			surfaceNames;
+	SurfaceId			nextSurfaceId;
+
+	MaterialId[cstring]	materials;
+	cstring[]			materialNames;
+	MaterialId			nextMaterialId;
+}
+
+
+MaterialId getMaterialIdByName(cstring name) {
+	return materials[name];
+}
+
+
+SurfaceId getSurfaceIdByName(cstring name) {
+	return surfaces[name];
+}
+
+
+void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
+	rendererBackend = bk;
+
+	vfs = new FileFolder(".");
+
+	kdefRegistry = create!(IKDefRegistry)();
+	kdefRegistry.setVFS(vfs);
+	foreach (p; kdefPaths) {
+		kdefRegistry.registerFolder(p);
+	}
+	kdefRegistry.reload();
+	kdefRegistry.dumpInfo();
+
+	// ----
+
+	foreach (surfName, surf; &kdefRegistry.surfaces) {
+		surf.id = nextSurfaceId++;
+		surf.reflKernel = kdefRegistry.getKernel(surf.reflKernelName);
+		surfaces[surfName.dup] = surf.id;
+		assert (surf.id == surfaceNames.length);
+		surfaceNames ~= surfName;
+	}
+
+	foreach (matName, mat; &kdefRegistry.materials) {
+		mat.id = nextMaterialId++;
+		mat.materialKernel = kdefRegistry.getKernel(mat.materialKernelName);
+		materials[matName.dup] = mat.id;
+		assert (mat.id == materialNames.length);
+		materialNames ~= matName;
+	}
+
+	// ----
+
+	vsmRenderer = createRenderer("Depth");
+	vsmRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
+}
+
+
+Renderer createRenderer(cstring name) {
+	final res = _rendererFactories[name]();
+	kdefRegistry.registerObserver(res);
+	registerLightObserver(res);
+
+	foreach (surfName, surf; &kdefRegistry.surfaces) {
+		res.registerSurface(surf);
+	}
+
+	foreach (matName, mat; &kdefRegistry.materials) {
+		res.registerMaterial(mat);
+	}
+	return res;
 }
 
 
 void registerRenderer(T)(cstring name) {
-	_rendererFactories[name] = function Renderer(
-			RendererBackend backend,
-			IKDefRegistry registry
-	) {
-		return new T(backend, registry);
+	_rendererFactories[name] = function Renderer() {
+		return new T(.rendererBackend, kdefRegistry);
 	};
 }
 
@@ -27,5 +112,5 @@ void registerRenderer(T)(cstring name) {
 
 
 private {
-	Renderer function(RendererBackend, IKDefRegistry)[cstring]	_rendererFactories;
+	Renderer function()[cstring]	_rendererFactories;
 }

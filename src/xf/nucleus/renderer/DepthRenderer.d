@@ -35,6 +35,8 @@ private {
 		xf.nucleus.graph.GraphMisc,
 		xf.nucleus.graph.Simplify,
 		xf.nucleus.util.EffectInfo;
+
+	import xf.vsd.VSD;
 		
 	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
 
@@ -430,7 +432,7 @@ float farPlaneDistance <
 	}
 
 
-	override void render(ViewSettings vs, RenderList* rlist) {
+	override void render(ViewSettings vs, VSDRoot* vsd, RenderList* rlist) {
 		this.viewToClip = vs.computeProjectionMatrix();
 		this.clipToView = this.viewToClip.inverse();
 		this.worldToView = vs.computeViewMatrix();

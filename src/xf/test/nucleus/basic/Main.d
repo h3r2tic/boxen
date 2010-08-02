@@ -6,7 +6,6 @@ private {
 	}
 	
 	import xf.Common;
-	import xf.core.Registry;
 	import xf.utils.GfxApp;
 	import xf.utils.SimpleCamera;
 	
@@ -15,21 +14,15 @@ private {
 	import xf.nucleus.Renderer;
 	import xf.nucleus.Renderable;
 	import xf.nucleus.Light;
-	import xf.nucleus.IStructureData;
 	import xf.nucleus.CompiledMeshAsset;
-	import xf.nucleus.KernelParamInterface;
-	import xf.nucleus.SurfaceDef;
-	import xf.nucleus.MaterialDef;
 	import xf.nucleus.post.PostProcessor;
 
-	import xf.nucleus.kdef.model.IKDefRegistry;
+	import xf.nucleus.Nucleus;
+	import xf.nucleus.light.TestLight;
+	import xf.nucleus.structure.MeshStructure;
+	import xf.nucleus.structure.KernelMapping;
 
-	import xf.gfx.IRenderer : IRenderer;
-	import xf.gfx.Buffer;
-	import xf.gfx.VertexBuffer;
-	import xf.gfx.IndexBuffer;
-	import xf.gfx.IndexData;
-	import xf.gfx.Log;
+	import xf.nucleus.kdef.model.IKDefRegistry;
 
 	import xf.vsd.VSD;
 
@@ -40,11 +33,8 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 
-	import tango.core.Variant;
-
 	static import xf.utils.Memory;
 
-	import tango.io.vfs.FileFolder;
 	import Path = tango.io.Path;
 	import tango.io.Stdout;
 	
@@ -53,279 +43,6 @@ private {
 	import xf.omg.color.HSV;
 }
 
-
-
-// TODO: better mem
-class MeshStructure : IStructureData {
-	this (CompiledMeshAsset ma, IRenderer renderer) {
-		vertexBuffer = renderer.createVertexBuffer(
-			BufferUsage.StaticDraw,
-			ma.vertexData
-		);
-
-		xf.utils.Memory.alloc(vertexAttribs, ma.vertexAttribs.length);
-		xf.utils.Memory.alloc(vertexAttribNames, ma.vertexAttribs.length);
-
-		foreach (i, ref va; vertexAttribs) {
-			va = ma.vertexAttribs[i].attrib;
-		}
-
-		size_t totalNameLen = 0;
-		foreach (a; ma.vertexAttribs) {
-			totalNameLen += a.name.length;
-		}
-
-		char[] nameBuf;
-		xf.utils.Memory.alloc(nameBuf, totalNameLen);
-
-		foreach (i, a; ma.vertexAttribs) {
-			vertexAttribNames[i] = nameBuf[0..a.name.length];
-			vertexAttribNames[i][] = a.name;
-			nameBuf = nameBuf[a.name.length..$];
-		}
-		
-		assert (0 == nameBuf.length);
-
-		indexData.indexBuffer = renderer.createIndexBuffer(
-			BufferUsage.StaticDraw,
-			ma.indices
-		);
-		indexData.numIndices	= ma.numIndices;
-		indexData.indexOffset	= ma.indexOffset;
-		indexData.minIndex		= ma.minIndex;
-		indexData.maxIndex		= ma.maxIndex;
-	}
-
-	cstring structureTypeName() {
-		return "Mesh";
-	}
-
-	void setKernelObjectData(KernelParamInterface kpi) {
-		kpi.setIndexData(&indexData);
-		
-		foreach (i, ref attr; vertexAttribs) {
-			final name = vertexAttribNames[i];
-			final param = kpi.getVaryingParam(name);
-			if (param !is null) {
-				param.buffer = &vertexBuffer;
-				param.attrib = &attr;
-			} else {
-				gfxLog.warn("No param named '{}' in the kernel.", name);
-			}
-		}
-	}
-
-	// TODO: hardcode the available data and expose meta-info
-
-	private {
-		VertexBuffer	vertexBuffer;
-
-		// allocated with xf.utils.Memory
-		VertexAttrib[]	vertexAttribs;
-		cstring[]		vertexAttribNames;
-
-		IndexData		indexData;
-	}
-}
-
-
-class TestLight : Light {
-	override cstring kernelName() {
-		return "TestLight";
-	}
-	
-	override void setKernelData(KernelParamInterface kpi) {
-		kpi.bindUniform("lightPos", &position);
-		kpi.bindUniform("lumIntens", &lumIntens);
-		kpi.bindUniform("radius", &radius);
-		kpi.bindUniform("influenceRadius", &influenceRadius);
-	}
-
-	float	radius;
-}
-
-
-void createDepthTex() {
-}
-
-
-class TestShadowedLight : TestLight {
-	override cstring kernelName() {
-		return "TestShadowedLight";
-	}
-
-	override void prepareRenderData() {
-		calcInfluenceRadius();
-
-		if (!spotlightMask.valid) {
-			cstring filePath = `../../media/img/spotlight.dds`;
-			Img.Image img = depthRenderer._imgLoader.load(filePath);
-			if (!img.valid) {
-				Stdout.formatln("Could not load texture: '{}'", filePath);
-				assert (false);
-			}
-
-			TextureRequest treq;
-			treq.internalFormat = TextureInternalFormat.SRGB8_ALPHA8;
-
-			// Texture derivatives are borked in deferred rendering,
-			// so let's just be cheap bastards and don't use mips :P
-			treq.minFilter = TextureMinFilter.Linear;
-			treq.magFilter = TextureMagFilter.Linear;
-			treq.wrapS = TextureWrap.ClampToEdge;
-			treq.wrapT = TextureWrap.ClampToEdge;
-			
-			spotlightMask = rendererBackend.createTexture(
-				img,
-				treq
-			);
-		}
-
-		if (!depthFb.valid) {
-			final cfg = FramebufferConfig();
-			cfg.size = shadowMapSize;
-			cfg.location = FramebufferLocation.Offscreen;
-
-			{
-				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.RG32F;
-				treq.minFilter = TextureMinFilter.Linear;
-				treq.magFilter = TextureMagFilter.Linear;
-				treq.wrapS = TextureWrap.ClampToBorder;
-				treq.wrapT = TextureWrap.ClampToBorder;
-				cfg.color[0] = depthTex = rendererBackend.createTexture(
-					shadowMapSize,
-					treq
-				);
-				assert (depthTex.valid);
-			}
-				
-			depthFb = rendererBackend.createFramebuffer(cfg);
-			assert (depthFb.valid);
-		}
-
-		if (!sharedDepthFb.valid) {
-			final cfg = FramebufferConfig();
-			cfg.size = shadowMapSize;
-			cfg.location = FramebufferLocation.Offscreen;
-
-			{
-				TextureRequest treq;
-				treq.internalFormat = TextureInternalFormat.RG32F;
-				treq.minFilter = TextureMinFilter.Linear;
-				treq.magFilter = TextureMagFilter.Linear;
-				treq.wrapS = TextureWrap.ClampToBorder;
-				treq.wrapT = TextureWrap.ClampToBorder;
-				cfg.color[0] = sharedDepthTex = rendererBackend.createTexture(
-					shadowMapSize,
-					treq
-				);
-				assert (sharedDepthTex.valid);
-			}
-				
-			cfg.depth = RenderBuffer(
-				shadowMapSize,
-				TextureInternalFormat.DEPTH_COMPONENT32F
-			);
-
-			sharedDepthFb = rendererBackend.createFramebuffer(cfg);
-			assert (sharedDepthFb.valid);
-		}
-		
-		vec3 target = vec3.zero;		// HACK
-		this.worldToView = mat4.lookAt(this.position, target);
-		assert (this.worldToView.ok);
-		
-		this.viewToClip = mat4.perspective(
-			60.0f,		// fov
-			1.0,		// aspect
-			0.1f,		// near plane
-			influenceRadius		// far plane
-		);
-		assert (this.viewToClip.ok);
-		
-		this.worldToClip = viewToClip * worldToView;
-		assert (this.worldToClip.ok);
-
-		final nr = depthRenderer;
-		final rlist = nr.createRenderList();
-		final origFb = rendererBackend.framebuffer;
-		
-		scope (exit) {
-			rendererBackend.framebuffer = origFb;
-			nr.disposeRenderList(rlist);
-		}
-
-		rendererBackend.framebuffer = sharedDepthFb;
-		rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.zero;
-		rendererBackend.clearBuffers();
-
-		auto viewCs = CoordSys(worldToView).inverse;
-		final viewSettings = ViewSettings(
-			viewCs,
-			60.0f,		// fov
-			1.0,		// aspect
-			0.1f,		// near plane
-			influenceRadius		// far plane
-		);
-
-		vsd.findVisible(viewSettings, (VisibleObject[] olist) {
-			foreach (o; olist) {
-				final bin = rlist.add();
-				static assert (RenderableId.sizeof == typeof(o.id).sizeof);
-				rlist.list.renderableId[bin] = cast(RenderableId)o.id;
-				rlist.list.coordSys[bin] = renderables.transform[o.id];
-			}
-		});
-
-		with (rendererBackend.state.cullFace) {
-			enabled = true;
-			front = false;
-			back = true;
-		}
-
-		nr.render(viewSettings, rlist);
-
-		rendererBackend.framebuffer = depthFb;
-		depthPost.render(sharedDepthTex);
-	}
-
-	vec2i shadowMapSize = { x: 512, y: 512 };
-	
-	mat4 worldToView;
-	mat4 viewToClip;
-	mat4 worldToClip;
-
-	Framebuffer depthFb;
-	Texture		depthTex;
-	
-	static Framebuffer	sharedDepthFb;
-	static Texture		sharedDepthTex;
-
-	static Texture	spotlightMask;
-
-	override void setKernelData(KernelParamInterface kpi) {
-		super.setKernelData(kpi);
-		kpi.bindUniform("depthSampler", &depthTex);
-		kpi.bindUniform("spotlightMask", &spotlightMask);
-		kpi.bindUniform("light_worldToClip", &worldToClip);
-	}
-}
-
-
-Renderer		depthRenderer;
-IRenderer		rendererBackend;
-VSDRoot			vsd;
-PostProcessor	depthPost;
-
-
-
-cstring defaultStructureKernel(cstring structureTypeName) {
-	switch (structureTypeName) {
-		case "Mesh": return "DefaultMeshStructure";
-		default: assert (false, structureTypeName);
-	}
-}
 
 //version = LightTest;
 
@@ -343,7 +60,7 @@ class TestApp : GfxApp {
 	alias renderer rendererBackend;
 	Renderer		nr;
 	Renderer		nr2;
-	//VSDRoot			vsd;
+	VSDRoot			vsd;
 	SimpleCamera	camera;
 	
 
@@ -360,71 +77,16 @@ class TestApp : GfxApp {
 	float[]			lightSpeeds;
 	float[]			lightAngles;
 	vec4[]			lightIllums;
-
-	IKDefRegistry	kdefRegistry;
-	FileFolder		vfs;
-
-	SurfaceId[cstring]	surfaces;
-	cstring[]			surfaceNames;
-	SurfaceId			nextSurfaceId;
-
-	MaterialId[cstring]	materials;
-	cstring[]			materialNames;
-	MaterialId			nextMaterialId;
-
 	
 
 	override void initialize() {
-		.rendererBackend = rendererBackend;
+		initializeNucleus(this.rendererBackend, "../../media/kdef", ".");
 		
-		vfs = new FileFolder(".");
-
-		kdefRegistry = create!(IKDefRegistry)();
-		kdefRegistry.setVFS(vfs);
-		kdefRegistry.registerFolder("../../media/kdef");
-		kdefRegistry.registerFolder(".");
-		kdefRegistry.reload();
-		kdefRegistry.dumpInfo();
-
-		// ----
-
-		depthRenderer = Nucleus.createRenderer("Depth", rendererBackend, kdefRegistry);
-		depthRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
-
-		nr = Nucleus.createRenderer("LightPrePass", rendererBackend, kdefRegistry);
-		nr2 = Nucleus.createRenderer("Forward", rendererBackend, kdefRegistry);
+		nr = Nucleus.createRenderer("LightPrePass");
+		nr2 = Nucleus.createRenderer("Forward");
 		
-		kdefRegistry.registerObserver(depthRenderer);
-		kdefRegistry.registerObserver(nr);
-		kdefRegistry.registerObserver(nr2);
-		registerLightObserver(nr);
-		registerLightObserver(nr2);
-
 		post = new PostProcessor(rendererBackend, kdefRegistry);
 		post.setKernel("TestPost");
-
-		depthPost = new PostProcessor(rendererBackend, kdefRegistry);
-		depthPost.setKernel("TestDepthPost");
-
-		foreach (surfName, surf; &kdefRegistry.surfaces) {
-			surf.id = nextSurfaceId++;
-			surf.reflKernel = kdefRegistry.getKernel(surf.reflKernelName);
-			nr.registerSurface(surf);
-			nr2.registerSurface(surf);
-			surfaces[surfName.dup] = surf.id;
-			assert (surf.id == surfaceNames.length);
-			surfaceNames ~= surfName;
-		}
-
-		foreach (matName, mat; &kdefRegistry.materials) {
-			mat.id = nextMaterialId++;
-			mat.materialKernel = kdefRegistry.getKernel(mat.materialKernelName);
-			nr.registerMaterial(mat);
-			nr2.registerMaterial(mat);
-			materials[matName.dup] = mat.id;
-			assert (mat.id == materialNames.length);
-			materialNames ~= matName;
-		}
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
@@ -509,9 +171,9 @@ class TestApp : GfxApp {
 				final rid = createRenderable();	
 				renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 				renderables.structureData[rid] = ms;
-				assert (material in materials, material);
-				renderables.material[rid] = materials[material];
-				renderables.surface[rid] = surfaces[surface];
+
+				renderables.material[rid] = getMaterialIdByName(material);
+				renderables.surface[rid] = getSurfaceIdByName(surface);
 				renderables.transform[rid] = cs;
 				renderables.localHalfSize[rid] = compiledMesh.halfSize;
 			});
@@ -766,7 +428,7 @@ class TestApp : GfxApp {
 			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * bgColor;
 			rendererBackend.clearBuffers();
 
-			nr.render(viewSettings, rlist);
+			nr.render(viewSettings, &vsd, rlist);
 
 			rendererBackend.framebuffer = mainFb;
 			rendererBackend.clearBuffers();
@@ -779,7 +441,7 @@ class TestApp : GfxApp {
 			rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * bgColor;
 			rendererBackend.clearBuffers();
 
-			nr.render(viewSettings, rlist);
+			nr.render(viewSettings, &vsd, rlist);
 		}
 
 

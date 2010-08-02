@@ -422,7 +422,6 @@ class GraphNode {
 			
 			if (this.isKernelBased) {
 				p.formatln(\t`kernelName = "{}";`, this.kernelName);
-				p.formatln(\t`funcName = "{}";`, this.funcName);
 			} else {
 				p(\t`params = (`\n);
 				int i = 0;
@@ -1141,12 +1140,7 @@ class GraphNode {
 	char[] kernelName() {
 		return _kernelName;
 	}
-	
-	
-	char[] funcName() {
-		return _funcName;
-	}
-	
+
 	
 	class DataCommons {
 		ParamList params;
@@ -1180,44 +1174,33 @@ class GraphNode {
 
 
 	public {
-		bool					showContents = true;
-		bool					showDataNames = true;
+		bool			showContents = true;
+		bool			showDataNames = true;
 		NodeContents	contents;
-		DataCommons	data;
+		DataCommons		data;
 		
-		bool					isTemplate = false;
-		bool					isTemplateInstance = false;
-		
-		Connection[]		incoming;
-		Connection[]		outgoing;
+		Connection[]	incoming;
+		Connection[]	outgoing;
 		
 		ConnectorInfo[]	inputs;
 		ConnectorInfo[]	outputs;
 		
-		vec2					spawnPosition = vec2.zero;
-		vec2					currentCenter = vec2.zero;
-		vec2					currentSize = vec2.zero;
+		vec2			spawnPosition = vec2.zero;
+		vec2			currentCenter = vec2.zero;
+		vec2			currentSize = vec2.zero;
 		
-		//PrimLevel			primLevel = PrimLevel.Vertex;
-		Type				type;
-		
-		//QuarkRef			quark;
-		
-		int					queryMin	= 0;
-		int					queryMax	= 4;
-		
-		char[]				label;
+		Type			type;
+		char[]			label;
 	}
 	
 	private {
-		uint					_id;
-		char[]				_kernelName;
-		char[]				_funcName;
-		bool					_editingProps;
+		uint			_id;
+		char[]			_kernelName;
+		bool			_editingProps;
 		GraphMngr		_mngr;
 		GraphNodeBox	_widget;
 
-		static uint			g_nextId = 0;
+		static uint		g_nextId = 0;
 	}
 }
 

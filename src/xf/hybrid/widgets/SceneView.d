@@ -3,10 +3,9 @@ module xf.hybrid.widgets.SceneView;
 private {
 	import xf.hybrid.Common;
 	import xf.hybrid.CustomWidget;
-	//import xf.hybrid.backend.gl.Widgets : GLViewport;
-	//import xf.dog.Dog;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.util.ViewSettings;
 	import xf.omg.rt.Common;
 	import xf.input.Input : isWheelInput;
 	import xf.input.KeySym : KeySym;
@@ -50,9 +49,7 @@ struct SceneProxy {
 	CoordSys		delegate(SceneObject)						getTransform;		// local transform
 	void			delegate(SceneObject, CoordSys, CoordSys)	setTransform;		// local transform, world transform
 	void			delegate(Ray, void delegate(SceneObject))	intersect;
-
-	// TODO
-	//void				delegate(vec2i, GL, DisplayMode)					draw;
+	void			delegate(vec2i, ViewSettings, DisplayMode)	draw;
 	
 	bool isValid() {
 		return
@@ -60,13 +57,13 @@ struct SceneProxy {
 			iterChildren !is null &&
 			getTransform !is null &&
 			setTransform !is null &&
-			intersect !is null/+ &&
-			draw !is null+/;
+			intersect !is null &&
+			draw !is null;
 	}
 }
 
 
-class SceneView : CustomWidget {
+class SceneView : Widget {
 	alias xf.hybrid.widgets.SceneView.DisplayMode DisplayMode;
 	
 	enum ViewType {
@@ -84,19 +81,19 @@ class SceneView : CustomWidget {
 	//vec4				clearColor = {r: 0.08, g: 0.08, b: 0.08, a: 0};
 	
 	CameraMode	camMode;
-	ViewType		viewType;
-	CoordSys		coordSys = CoordSys.identity;		// read only
-	float				fov = 90;
-	float				scale = 1;
-	vec2				windowSize = vec2.zero;
+	ViewType	viewType;
+	CoordSys	coordSys = CoordSys.identity;		// read only
+	float		fov = 90;
+	float		scale = 1;
+	vec2		windowSize = vec2.zero;
 	SceneProxy*	scene;
 	DisplayMode	displayMode;
-	Selection		selection;
-	float				nearPlane = 0.1f;
-	float				farPlane = 1000.f;
-	mat4				viewMatrix;
-	float				yaw = 0, pitch = 0, roll = 0;
-	vec3				viewOffset = vec3.zero;
+	Selection	selection;
+	float		nearPlane = 0.1f;
+	float		farPlane = 1000.f;
+	mat4		viewMatrix;
+	float		yaw = 0, pitch = 0, roll = 0;
+	vec3		viewOffset = vec3.zero;
 	
 	// vec3 offset, float yaw, float pitch, float roll, bool ortho, bool wireframe
 	
@@ -155,8 +152,8 @@ class SceneView : CustomWidget {
 		XAxis	= 0b1,
 		YAxis	= 0b10,
 		ZAxis	= 0b100,
-		Shift		= 0b1000,
-		Ctrl		= 0b10000,
+		Shift	= 0b1000,
+		Ctrl	= 0b10000,
 		Alt		= 0b100000,
 		
 		RestrictAxis	= XAxis | YAxis | ZAxis
@@ -174,12 +171,6 @@ class SceneView : CustomWidget {
 
 	
 	this() {
-		// TODO
-		/+this.glview = cast(GLViewport)getSub("glview");
-		assert (this.glview !is null);
-		
-		glview.renderingHandler = &this.draw;+/
-		
 		addHandler(&this.mouseHandler);
 		addHandler(&this.keyboardHandler);
 		gui.addGlobalHandler(&this.globalKeyboardHandler);
@@ -519,9 +510,43 @@ class SceneView : CustomWidget {
 		}
 	}
 
+
+	override EventHandling handleRender(RenderEvent e) {
+		if (!widgetVisible) {
+			return EventHandling.Stop;
+		}
+		
+		if (e.sinking && scene && scene.isValid) {
+			if (auto r = e.renderer) {
+				r.pushClipRect();
+				vec2 offBefore = r.getOffset();
+				scope (exit) {
+					r.setOffset(offBefore);
+					r.popClipRect();
+				}
+
+				r.clip(Rect(this.globalOffset, this.globalOffset + this.size));
+				r.setOffset(this.globalOffset);
+				draw(vec2i.from(this.size));
+				//r.direct(&this.handleRender_, Rect(this.globalOffset, this.globalOffset + this.size));
+			}
+		}
+
+		return EventHandling.Continue;
+	}
+
 	
-	/+void draw(vec2i size, GL gl) {
-		this.windowSize = vec2.from(size);
+	void draw(vec2i size) {
+		ViewSettings vs;
+		vs.eyeCS = this.coordSys;
+		vs.verticalFOV = this.fov;		// in Degrees; _not_ half of the FOV
+		vs.aspectRatio = cast(float)size.x / size.y;
+		vs.nearPlaneDistance = this.nearPlane;
+		vs.farPlaneDistance = this.farPlane;
+
+		scene.draw(size, vs, this.displayMode);
+
+		/+this.windowSize = vec2.from(size);
 		
 		gl.MatrixMode(GL_PROJECTION);
 		gl.LoadIdentity();
@@ -549,13 +574,8 @@ class SceneView : CustomWidget {
 		
 		if (scene && scene.isValid) {
 			scene.draw(size, gl, this.displayMode);
-		}
+		}+/
 	}
-	
-	
-	private {
-		GLViewport glview;
-	}+/
 	
 	
 	mixin MWidget;
