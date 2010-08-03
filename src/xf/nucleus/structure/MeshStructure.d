@@ -3,7 +3,7 @@ module xf.nucleus.structure.MeshStructure;
 private {
 	import xf.Common;
 
-	import xf.nucleus.CompiledMeshAsset;
+	import xf.nucleus.asset.CompiledMeshAsset;
 	import xf.nucleus.IStructureData;
 	import xf.nucleus.KernelParamInterface;
 

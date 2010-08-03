@@ -4,9 +4,6 @@ private {
 	import xf.Common;
 	import xf.core.Registry;
 
-	import xf.nucleus.Defs;
-	import xf.nucleus.Renderer;
-	import xf.nucleus.Light;
 	import xf.nucleus.kdef.model.IKDefRegistry;
 
 	/+import xf.nucleus.SurfaceDef;
@@ -20,6 +17,11 @@ private {
 
 
 public {
+	import xf.nucleus.Defs;
+	import xf.nucleus.Renderer;
+	import xf.nucleus.Renderable;
+	import xf.nucleus.Light;
+
 	RendererBackend	rendererBackend;
 	Renderer		vsmRenderer;
 	IKDefRegistry	kdefRegistry;

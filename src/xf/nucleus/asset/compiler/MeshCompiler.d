@@ -1,49 +1,23 @@
-module xf.nucleus.CompiledMeshAsset;
+module xf.nucleus.asset.compiler.MeshCompiler;
 
 private {
 	import xf.Common;
-	import xf.gfx.VertexBuffer;
+	import xf.nucleus.asset.CompiledMeshAsset;
+	import xf.gfx.VertexBuffer : VertexAttrib;
 	import xf.loader.scene.model.Mesh : LoaderMesh = Mesh;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.omg.core.Misc;
-	static import xf.utils.Memory;
-}
-
-
-
-struct CompiledMeshVertexAttrib {
-	cstring			name;
-	VertexAttrib	attrib;
-}
-
-
-class CompiledMeshAsset {
-	// allocated using xf.utils.Memory
-	void[]						vertexData;
-	CompiledMeshVertexAttrib[]	vertexAttribs;
-	u32[]						indices;
-	// ----
-	
-	uword	numIndices	= 0;
-	word	indexOffset	= 0;
-	uword	minIndex	= 0;
-	uword	maxIndex	= uword.max;
-
-	vec3	halfSize	= vec3.zero;
-}
-
-
-struct MeshAssetCompilationOptions {
-	float	scale = 1.0;
+	import xf.mem.ScratchAllocator;
 }
 
 
 // TODO: rename LoaderMesh to MeshAsset (?)
 // TODO: put this in the asset conditioning pipeline
 CompiledMeshAsset compileMeshAsset(
-		LoaderMesh assetMesh,
-		MeshAssetCompilationOptions opts = MeshAssetCompilationOptions.init
+	LoaderMesh assetMesh,
+	DgScratchAllocator allocator,
+	MeshAssetCompilationOptions opts = MeshAssetCompilationOptions.init
 ) {
 	struct Vertex {
 		vec3 pos;
@@ -53,11 +27,13 @@ CompiledMeshAsset compileMeshAsset(
 		vec2 tc;
 	}
 
-	final cmesh = new CompiledMeshAsset;
+	final cmesh = allocator._new!(CompiledMeshAsset)();
 
-	Vertex[] vertices;
-	xf.utils.Memory.alloc(vertices, assetMesh.positions.length);
-	xf.utils.Memory.alloc(cmesh.vertexAttribs, Vertex.tupleof.length);
+	final vertices = allocator.allocArrayNoInit
+		!(Vertex)(assetMesh.positions.length);
+	
+	cmesh.vertexAttribs = allocator.allocArrayNoInit
+		!(CompiledMeshVertexAttrib)(Vertex.tupleof.length);
 
 	with (cmesh.vertexAttribs[0]) {
 		name = "position";
@@ -105,12 +81,9 @@ CompiledMeshAsset compileMeshAsset(
 	}
 
 	final node = assetMesh.node;
-	auto cs = node.localCS;
 	
 	foreach (i, ref v; vertices) {
 		v.pos	= assetMesh.positions[i];
-		v.pos	= cs.rotation.xform(v.pos);
-		v.pos	+= vec3.from(cs.origin);
 		v.pos	*= opts.scale;
 		assert (v.pos.ok);
 
@@ -119,7 +92,6 @@ CompiledMeshAsset compileMeshAsset(
 		cmesh.halfSize.z = max(cmesh.halfSize.z, abs(v.pos.z));
 		
 		v.norm	= assetMesh.normals[i];
-		v.norm	= cs.rotation.xform(v.norm);
 		
 		if (assetMesh.tangents.length) {
 			final tangent = assetMesh.tangents[i];
@@ -168,7 +140,7 @@ CompiledMeshAsset compileMeshAsset(
 	cmesh.minIndex = minIdx;
 	cmesh.maxIndex = maxIdx;
 
-	xf.utils.Memory.alloc(cmesh.indices, assetMesh.indices.length);
+	cmesh.indices = allocator.allocArrayNoInit!(u32)(assetMesh.indices.length);
 	cmesh.indices[] = assetMesh.indices;
 
 	return cmesh;
