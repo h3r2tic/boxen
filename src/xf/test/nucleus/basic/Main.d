@@ -9,20 +9,13 @@ private {
 	import xf.utils.GfxApp;
 	import xf.utils.SimpleCamera;
 	
-	import Nucleus = xf.nucleus.Nucleus;
-	import xf.nucleus.Defs;
-	import xf.nucleus.Renderer;
-	import xf.nucleus.Renderable;
-	import xf.nucleus.Light;
-	import xf.nucleus.CompiledMeshAsset;
+	import xf.nucleus.asset.compiler.SceneCompiler;
+	import xf.nucleus.asset.CompiledSceneAsset;
 	import xf.nucleus.post.PostProcessor;
 
 	import xf.nucleus.Nucleus;
+	import xf.nucleus.Scene;
 	import xf.nucleus.light.TestLight;
-	import xf.nucleus.structure.MeshStructure;
-	import xf.nucleus.structure.KernelMapping;
-
-	import xf.nucleus.kdef.model.IKDefRegistry;
 
 	import xf.vsd.VSD;
 
@@ -33,9 +26,9 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 
-	static import xf.utils.Memory;
+	import xf.mem.ScratchAllocator;
+	import xf.mem.MainHeap;
 
-	import Path = tango.io.Path;
 	import tango.io.Stdout;
 	
 	import tango.math.random.Kiss;
@@ -47,17 +40,7 @@ private {
 //version = LightTest;
 
 
-import xf.mem.MainHeap;
-T mallocObject(T)() {
-	void[] data = mainHeap.allocRaw(T.classinfo.init.length)[0..T.classinfo.init.length];
-	data[] = T.classinfo.init;
-	return cast(T)cast(void*)data.ptr;
-}
-
-import tango.core.Memory;
-
 class TestApp : GfxApp {
-	alias renderer rendererBackend;
 	Renderer		nr;
 	Renderer		nr2;
 	VSDRoot			vsd;
@@ -80,10 +63,10 @@ class TestApp : GfxApp {
 	
 
 	override void initialize() {
-		initializeNucleus(this.rendererBackend, "../../media/kdef", ".");
+		initializeNucleus(this.renderer, "../../media/kdef", ".");
 		
-		nr = Nucleus.createRenderer("LightPrePass");
-		nr2 = Nucleus.createRenderer("Forward");
+		nr = createRenderer("LightPrePass");
+		nr2 = createRenderer("Forward");
 		
 		post = new PostProcessor(rendererBackend, kdefRegistry);
 		post.setKernel("TestPost");
@@ -138,49 +121,6 @@ class TestApp : GfxApp {
 
 		// ----
 
-		void loadScene(cstring path, float scale, CoordSys cs, cstring surface, cstring material) {
-			path = Path.normalize(path);
-			
-			scope loader = new HsfLoader;
-			loader.load(path);
-			
-			final scene = loader.scene;
-			assert (scene !is null);
-			assert (loader.meshes.length > 0);
-			
-			assert (1 == scene.nodes.length);
-			final root = scene.nodes[0];
-
-			void iterAssetMeshes(void delegate(int, ref LoaderMesh) dg) {
-				foreach (i, ref m; loader.meshes) {
-					dg(i, m);
-				}
-			}
-			
-			iterAssetMeshes((int, ref LoaderMesh m) {
-				// This should be a part of the content pipeline
-
-				MeshAssetCompilationOptions opts;
-				opts.scale = scale;
-
-				final compiledMesh = compileMeshAsset(m, opts);
-				
-				final ms = mallocObject!(MeshStructure);
-				ms._ctor(compiledMesh, rendererBackend);
-
-				final rid = createRenderable();	
-				renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
-				renderables.structureData[rid] = ms;
-
-				renderables.material[rid] = getMaterialIdByName(material);
-				renderables.surface[rid] = getSurfaceIdByName(surface);
-				renderables.transform[rid] = cs;
-				renderables.localHalfSize[rid] = compiledMesh.halfSize;
-			});
-		}
-
-		//loadScene(, 0.02f, CoordSys.identity, "CookTorrance", "TestMaterialImpl");
-
 		version (Sponza) {
 			cstring model = `../../media/mesh/sponza.hsf`;
 			float scale = 1f;
@@ -212,6 +152,18 @@ class TestApp : GfxApp {
 			//cstring model = `../../media/mesh/foo.hsf`;
 			float scale = 0.02f;
 
+			SceneAssetCompilationOptions opts;
+			opts.scale = scale;
+
+			final compiledScene = compileHSFSceneAsset(
+				model,
+				DgScratchAllocator(&mainHeap.allocRaw),
+				opts
+			);
+
+			loadScene(compiledScene, CoordSys(vec3fi[1, -2, 0]));
+			loadScene(compiledScene, CoordSys(vec3fi[-1, -2, 0]));
+
 			/+loadScene(
 				model, scale, CoordSys(vec3fi[-2, 0, 0]),
 				"TestSurface1", "TestMaterialImpl"
@@ -232,10 +184,10 @@ class TestApp : GfxApp {
 				"TestSurface4", "TestMaterialImpl"
 			);+/
 
-			loadScene(
+			/+loadScene(
 				model, scale, CoordSys(vec3fi[0, -2, 0]),
 				"TestSurface3", "TestMaterialImpl"
-			);
+			);+/
 		}
 
 		/+kdefRegistry.dumpInfo();
