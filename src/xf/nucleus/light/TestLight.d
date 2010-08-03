@@ -151,11 +151,15 @@ class TestShadowedLight : TestLight {
 		final nr = vsmRenderer;
 		final rlist = nr.createRenderList();
 		final origFb = rendererBackend.framebuffer;
+		final origState = *rendererBackend.state();
 		
 		scope (exit) {
 			rendererBackend.framebuffer = origFb;
+			*rendererBackend.state() = origState;
 			nr.disposeRenderList(rlist);
 		}
+
+		rendererBackend.resetState();
 
 		rendererBackend.framebuffer = sharedDepthFb;
 		rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.zero;

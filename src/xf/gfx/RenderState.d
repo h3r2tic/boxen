@@ -1,5 +1,9 @@
 module xf.gfx.RenderState;
 
+private {
+	import xf.omg.core.LinearAlgebra;
+}
+
 
 
 // TODO: more!
@@ -56,6 +60,10 @@ struct RenderState {
 	struct Viewport {
 		int		x, y;
 		uint	width, height;
+
+		vec2i	size() {
+			return vec2i(width, height);
+		}
 	}
 
 	struct Scissor {

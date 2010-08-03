@@ -1819,8 +1819,8 @@ float farPlaneDistance <
 		this.farPlaneDistance = vs.farPlaneDistance;
 		this.nearPlaneDistance = vs.nearPlaneDistance;
 
-		if (_fbSize != _backend.framebuffer.size) {
-			_fbSize = _backend.framebuffer.size;
+		if (_fbSize != _backend.state.viewport.size) {
+			_fbSize = _backend.state.viewport.size;
 
 			if (_depthTex.valid) {
 				_depthTex.dispose();
@@ -1933,6 +1933,8 @@ float farPlaneDistance <
 				*_backend.state() = origState;
 			}
 			
+			_backend.resetState();
+
 			_backend.framebuffer = _attribFB;
 			_backend.clearBuffers();
 

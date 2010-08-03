@@ -89,6 +89,10 @@ class TestApp : GfxApp {
 	SceneView	fwdSV;
 	Renderer	fwdRenderer;
 
+	Viewport	defViewport;
+	SceneView	defSV;
+	Renderer	defRenderer;
+
 	VSDRoot		vsd;
 
 	TestLight[]		lights;
@@ -102,11 +106,12 @@ class TestApp : GfxApp {
 	override void configureWindow(Window wnd) {
 		super.configureWindow(wnd);
 		wnd.width = 1040;
-		wnd.height = 650;
+		//wnd.height = 650;
+		wnd.height = 1040;
 		/+wnd.width = 1050;
 		wnd.height = 1680;
 		wnd.fullscreen = true;+/
-		wnd.title = "Hybrid hello world";
+		wnd.title = "Nucled";
 	}
 	
 	
@@ -133,11 +138,12 @@ class TestApp : GfxApp {
 
 		vsd = VSDRoot();
 		fwdRenderer = createRenderer("Forward");
+		defRenderer = createRenderer("LightPrePass");
 
 		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestLight)[$-1]);
-			lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 2.0, 0);
+			createLight((lights ~= new TestShadowedLight)[$-1]);
+			lightOffsets ~= vec3(0, 2 + Kiss.instance.fraction(), 0);
 			lightAngles ~= Kiss.instance.fraction() * 360.0f;
 			lightDists ~= 2;// + Kiss.instance.fraction();
 			lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
@@ -151,7 +157,7 @@ class TestApp : GfxApp {
 			lightIllums ~= rgba;
 		}
 
-		cstring model = `mesh/masha.hsf`;
+		cstring model = `mesh/lightTest.hsf`;
 		float scale = 0.02f;
 
 		SceneAssetCompilationOptions opts;
@@ -163,16 +169,16 @@ class TestApp : GfxApp {
 			opts
 		);
 
-		loadScene(compiledScene, &vsd, CoordSys(vec3fi[1, -2, 0]));
-		loadScene(compiledScene, &vsd, CoordSys(vec3fi[-1, -2, 0]));
+		loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 0, 0]));
 
 		fwdViewport = new Viewport(fwdRenderer, &vsd);
+		defViewport = new Viewport(defRenderer, &vsd);
 	}
 
 
 	void updateLights() {
 		for (int li = 0; li < lights.length; ++li) {
-			lightAngles[li] += lightSpeeds[li];
+			lightAngles[li] += lightSpeeds[li] * 0.2;
 		}
 
 		for (int li = 0; li < lights.length; ++li) {
@@ -181,7 +187,7 @@ class TestApp : GfxApp {
 
 		static float lightDist = 0.8f;
 		static float lightScale = 0.0f;
-		if (0 == lightScale) lightScale = 10f / lights.length;
+		if (0 == lightScale) lightScale = 40f / lights.length;
 
 		static float lightRad = 1.0f;
 
@@ -237,14 +243,13 @@ class TestApp : GfxApp {
 		gui.pop();
 
 		Group(`.outputPanel`) [{
-			auto defCheck = Check();
-			
 			SceneView initSv(SceneView sv) {
 				if (!sv.initialized) {
-					sv.userSize = vec2(480, 300);
+					//sv.userSize = vec2(480, 300);
+					sv.userSize = vec2(384, 300);
 					with (sv) {
-						shiftView(vec3(0, 1, 2));
-						rotatePitch(30);
+						shiftView(vec3(0, -0.3, 2));
+						rotatePitch(-30);
 						displayMode = DisplayMode.Solid;
 						viewType = ViewType.Perspective;
 					}
@@ -252,25 +257,30 @@ class TestApp : GfxApp {
 				return sv;
 			}
 
-			if (defCheck.text("forward: ").checked) {
-				fwdSV = initSv(SceneView());
-				Dummy().userSize = vec2(20, 0);
-			}
-			
-			if (Check().text("deferred: ").checked) {
-				/+fsv = initSv(SceneView());
-				
-				if (sv) {
-					fsv.yaw = sv.yaw;
-					fsv.pitch = sv.pitch;
-					fsv.roll = sv.roll;
-					fsv.viewOffset = sv.viewOffset;
-					fsv.coordSys = sv.coordSys;
-				}+/
-			}
+			VBox() [{
+				if (Check().text("forward: ").checked) {
+					fwdSV = initSv(SceneView());
+				}
+			}];
+
+			Dummy().userSize = vec2(8, 0);
+
+			VBox() [{
+				if (Check().text("deferred: ").checked) {
+					defSV = initSv(SceneView());
+					
+					if (defSV) {
+						defSV.yaw = fwdSV.yaw;
+						defSV.pitch = fwdSV.pitch;
+						defSV.roll = fwdSV.roll;
+						defSV.viewOffset = fwdSV.viewOffset;
+						defSV.coordSys = fwdSV.coordSys;
+					}
+				}
+			}];
 
 			if (fwdSV) fwdViewport.doGUI(fwdSV);
-			//if (fsv) fviewport.doGUI(fsv);
+			if (defSV) defViewport.doGUI(defSV);
 		}];
 		
 		gui.end();
