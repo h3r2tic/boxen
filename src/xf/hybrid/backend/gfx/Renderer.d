@@ -765,12 +765,15 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	
 	private void handleDirectRendering(Batch b) {
 		version (StubHybridRenderer) return;
-		if (!setupClipping(b.clipRect)) {
-			return;
-		}
 
 		final origState = *_r.state();
 		scope (exit) *_r.state() = origState;
+
+		_r.resetState();
+
+		if (!setupClipping(b.clipRect)) {
+			return;
+		}
 		
 		auto r = b.originalRect;
 		int w = cast(int)(r.max.x - r.min.x);
