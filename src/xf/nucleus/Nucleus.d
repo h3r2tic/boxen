@@ -5,9 +5,7 @@ private {
 	import xf.core.Registry;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
-
-	/+import xf.nucleus.SurfaceDef;
-	import xf.nucleus.MaterialDef;+/
+	import xf.nucleus.Log;
 
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 
@@ -89,6 +87,10 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 
 
 Renderer createRenderer(cstring name) {
+	if (!(name in _rendererFactories)) {
+		nucleusError("Unknown renderer: '{}'.", name);
+	}
+	
 	final res = _rendererFactories[name]();
 	kdefRegistry.registerObserver(res);
 	registerLightObserver(res);

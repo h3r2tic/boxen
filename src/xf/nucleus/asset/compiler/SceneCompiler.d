@@ -10,6 +10,7 @@ private {
 
 	import xf.loader.scene.model.Mesh : LoaderMesh = Mesh;
 	import xf.loader.scene.hsf.Hsf;
+	import xf.loader.Common;
 
 	import xf.omg.core.CoordSys;
 
@@ -25,7 +26,7 @@ CompiledSceneAsset compileHSFSceneAsset(
 	DgScratchAllocator allocator,
 	SceneAssetCompilationOptions opts = SceneAssetCompilationOptions.init
 ) {
-	path = Path.normalize(path);
+	path = getResourcePath(path);
 	
 	scope loader = new HsfLoader;
 	loader.load(path);

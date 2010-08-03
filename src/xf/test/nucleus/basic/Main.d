@@ -21,6 +21,7 @@ private {
 
 	import xf.loader.scene.model.Mesh : LoaderMesh = Mesh;
 	import xf.loader.scene.hsf.Hsf;
+	import xf.loader.Common;
 
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
@@ -46,7 +47,6 @@ class TestApp : GfxApp {
 	VSDRoot			vsd;
 	SimpleCamera	camera;
 	
-
 	Texture			fbTex;
 	Framebuffer		mainFb;
 	Framebuffer		texFb;
@@ -63,6 +63,7 @@ class TestApp : GfxApp {
 	
 
 	override void initialize() {
+		setMediaDir(`../../media`);
 		initializeNucleus(this.renderer, "../../media/kdef", ".");
 		
 		nr = createRenderer("LightPrePass");
@@ -77,21 +78,6 @@ class TestApp : GfxApp {
 		camera = new SimpleCamera(vec3(0, 0, 10), 0, 0, inputHub.mainChannel);
 		window.interceptCursor = true;
 		window.showCursor = false;
-
-		// Connect renderable creation to VSD object creation
-		registerRenderableObserver(new class IRenderableObserver {
-			void onRenderableCreated(RenderableId id) {
-				vsd.createObject(id);
-			}
-			
-			void onRenderableDisposed(RenderableId id) {
-				vsd.disposeObject(id);
-			}
-			
-			void onRenderableInvalidated(RenderableId id) {
-				vsd.invalidateObject(id);
-			}
-		});
 
 		// ----
 
@@ -122,7 +108,7 @@ class TestApp : GfxApp {
 		// ----
 
 		version (Sponza) {
-			cstring model = `../../media/mesh/sponza.hsf`;
+			cstring model = `mesh/sponza.hsf`;
 			float scale = 1f;
 
 			loadScene(
@@ -130,7 +116,7 @@ class TestApp : GfxApp {
 				"TestSurface3", "TestMaterialImpl"
 			);
 		} else version (Sibenik) {
-			cstring model = `../../media/mesh/sibenik.hsf`;
+			cstring model = `mesh/sibenik.hsf`;
 			float scale = 1f;
 
 			loadScene(
@@ -138,7 +124,7 @@ class TestApp : GfxApp {
 				"TestSurface3", "TestMaterialImpl"
 			);
 		} else version (LightTest) {
-			cstring model = `../../media/mesh/lightTest.hsf`;
+			cstring model = `mesh/lightTest.hsf`;
 			float scale = 0.01f;
 
 			loadScene(
@@ -146,10 +132,10 @@ class TestApp : GfxApp {
 				"TestSurface3", "TestMaterialImpl"
 			);
 		} else {
-			/+cstring model = `../../media/mesh/soldier.hsf`;
+			/+cstring model = `mesh/soldier.hsf`;
 			float scale = 1.0f;+/
-			cstring model = `../../media/mesh/masha.hsf`;
-			//cstring model = `../../media/mesh/foo.hsf`;
+			cstring model = `mesh/masha.hsf`;
+			//cstring model = `mesh/foo.hsf`;
 			float scale = 0.02f;
 
 			SceneAssetCompilationOptions opts;
@@ -161,8 +147,8 @@ class TestApp : GfxApp {
 				opts
 			);
 
-			loadScene(compiledScene, CoordSys(vec3fi[1, -2, 0]));
-			loadScene(compiledScene, CoordSys(vec3fi[-1, -2, 0]));
+			loadScene(compiledScene, &vsd, CoordSys(vec3fi[1, -2, 0]));
+			loadScene(compiledScene, &vsd, CoordSys(vec3fi[-1, -2, 0]));
 
 			/+loadScene(
 				model, scale, CoordSys(vec3fi[-2, 0, 0]),
@@ -343,14 +329,7 @@ class TestApp : GfxApp {
 			1000.0f		// far plane
 		);
 
-		vsd.findVisible(viewSettings, (VisibleObject[] olist) {
-			foreach (o; olist) {
-				final bin = rlist.add();
-				static assert (RenderableId.sizeof == typeof(o.id).sizeof);
-				rlist.list.renderableId[bin] = cast(RenderableId)o.id;
-				rlist.list.coordSys[bin] = renderables.transform[o.id];
-			}
-		});
+		buildRenderList(&vsd, viewSettings, rlist);
 
 		static bool wantPost = true; {
 			static bool prevKeyDown = false;

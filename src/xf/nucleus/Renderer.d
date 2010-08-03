@@ -16,16 +16,9 @@ private {
 		xf.nucleus.kdef.model.KDefInvalidation;
 
 	import xf.vsd.VSD;
+	import xf.loader.Common;
+	import xf.loader.img.ImgLoader;
 
-	// TODO: refactor into a shared texture loader
-	interface Img {
-	import
-		xf.img.Image,
-		xf.img.FreeImageLoader,
-		xf.img.CachedLoader,
-		xf.img.Loader;
-	}
-		
 	import
 		xf.gfx.Texture,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
@@ -55,7 +48,6 @@ abstract class Renderer
 		registerRenderableObserver(this);
 		_backend = backend;
 		_renderLists.initialize();
-		_imgLoader = new Img.CachedLoader(new Img.FreeImageLoader);
 		//_materialMem.initialize();
 	}
 
@@ -147,11 +139,6 @@ abstract class Renderer
 
 		Array!(MaterialData)	_materials;
 		//ScratchFIFO				_materialMem;
-	}
-
-
-	public {
-		Img.Loader	_imgLoader;
 	}
 
 
@@ -261,7 +248,7 @@ abstract class Renderer
 			cstring filePath;
 			val.getValue(&filePath);
 
-			Img.Image img = _imgLoader.load(filePath);
+			final img = imgLoader.load(getResourcePath(filePath));
 			if (!img.valid) {
 				// TODO: fallback
 				error("Could not load texture: '{}'", filePath);

@@ -70,7 +70,7 @@ TestSurface4 = surface ABg_h {
 TestMaterialImpl = material TestMaterial {
 	albedoTint = 1 1 1 1;
 	albedoTex = sampler {
-		texture = "../../media/img/testgrid.png";
+		texture = "img/testgrid.png";
 		minFilter = mipmapLinear;
 		magFilter = linear;
 	};

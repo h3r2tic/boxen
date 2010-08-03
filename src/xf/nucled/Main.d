@@ -12,14 +12,16 @@ import
 	xf.nucled.GraphEditor,
 	xf.nucled.Graph,
 
+	xf.loader.Common,
+
+	xf.nucleus.Nucleus,
+	xf.nucleus.Scene,
+
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
 	
 	tango.io.Stdout,
 	tango.text.convert.Format;
-
-import xf.nucleus.kdef.model.IKDefRegistry;
-import tango.io.vfs.FileFolder;
 
 import xf.hybrid.Hybrid;
 import xf.hybrid.WidgetConfig : HybridConfig = Config;
@@ -67,9 +69,6 @@ class TestApp : GfxApp {
 	HybridRenderer	guiRenderer;
 	HybridConfig	guiConfig;
 
-	IKDefRegistry	kdefRegistry;
-	FileFolder		vfs;
-
 	ParametersRollout	paramsRollout;
 	TabDesc[int]		tabs;
 	int					activeTab = 0;
@@ -89,6 +88,9 @@ class TestApp : GfxApp {
 	
 	
 	override void initialize() {
+		setMediaDir(`../test/media`);
+		initializeNucleus(this.renderer, "../test/media/kdef", ".");
+
 		guiRenderer = new HybridRenderer(renderer);
 
 		gui.overrideInputChannel(inputHub.mainChannel);
@@ -97,15 +99,6 @@ class TestApp : GfxApp {
 		guiConfig = loadHybridConfig(`./GUI.cfg`);
 
 		paramsRollout = new ParametersRollout();
-
-		vfs = new FileFolder(".");
-
-		kdefRegistry = create!(IKDefRegistry)();
-		kdefRegistry.setVFS(vfs);
-		kdefRegistry.registerFolder("../test/media/kdef");
-		kdefRegistry.registerFolder(".");
-		kdefRegistry.reload();
-		kdefRegistry.dumpInfo();
 
 		tabs[0] = TabDesc(
 			"Top-level pipeline",
