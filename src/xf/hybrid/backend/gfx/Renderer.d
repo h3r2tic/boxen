@@ -768,6 +768,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		if (!setupClipping(b.clipRect)) {
 			return;
 		}
+
+		final origState = *_r.state();
+		scope (exit) *_r.state() = origState;
 		
 		auto r = b.originalRect;
 		int w = cast(int)(r.max.x - r.min.x);

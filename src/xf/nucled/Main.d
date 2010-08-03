@@ -11,17 +11,29 @@ import
 	xf.nucled.ParametersRollout,
 	xf.nucled.GraphEditor,
 	xf.nucled.Graph,
+	xf.nucled.Viewport,
+
+	xf.vsd.VSD,
 
 	xf.loader.Common,
 
 	xf.nucleus.Nucleus,
 	xf.nucleus.Scene,
+	xf.nucleus.light.TestLight,
+	xf.nucleus.asset.CompiledSceneAsset,
+	xf.nucleus.asset.compiler.SceneCompiler,
 
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
+	xf.omg.core.Misc,
+	xf.omg.color.HSV,
+
+	xf.mem.ScratchAllocator,
+	xf.mem.MainHeap,
 	
 	tango.io.Stdout,
-	tango.text.convert.Format;
+	tango.text.convert.Format,
+	tango.math.random.Kiss;
 
 import xf.hybrid.Hybrid;
 import xf.hybrid.WidgetConfig : HybridConfig = Config;
@@ -73,7 +85,18 @@ class TestApp : GfxApp {
 	TabDesc[int]		tabs;
 	int					activeTab = 0;
 
+	Viewport	fwdViewport;
 	SceneView	fwdSV;
+	Renderer	fwdRenderer;
+
+	VSDRoot		vsd;
+
+	TestLight[]		lights;
+	vec3[]			lightOffsets;
+	float[]			lightDists;
+	float[]			lightSpeeds;
+	float[]			lightAngles;
+	vec4[]			lightIllums;
 
 	
 	override void configureWindow(Window wnd) {
@@ -107,10 +130,72 @@ class TestApp : GfxApp {
 			null/+,
 			core.kregistry[`RenderViewport`]+/
 		);
+
+		vsd = VSDRoot();
+		fwdRenderer = createRenderer("Forward");
+
+		const numLights = 3;
+		for (int i = 0; i < numLights; ++i) {
+			createLight((lights ~= new TestLight)[$-1]);
+			lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 2.0, 0);
+			lightAngles ~= Kiss.instance.fraction() * 360.0f;
+			lightDists ~= 2;// + Kiss.instance.fraction();
+			lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+
+			float h = cast(float)i / numLights;//Kiss.instance.fraction();
+			float s = 0.6f;
+			float v = 1.0f;
+
+			vec4 rgba = vec4.zero;
+			hsv2rgb(h, s, v, &rgba.r, &rgba.g, &rgba.b);
+			lightIllums ~= rgba;
+		}
+
+		cstring model = `mesh/masha.hsf`;
+		float scale = 0.02f;
+
+		SceneAssetCompilationOptions opts;
+		opts.scale = scale;
+
+		final compiledScene = compileHSFSceneAsset(
+			model,
+			DgScratchAllocator(&mainHeap.allocRaw),
+			opts
+		);
+
+		loadScene(compiledScene, &vsd, CoordSys(vec3fi[1, -2, 0]));
+		loadScene(compiledScene, &vsd, CoordSys(vec3fi[-1, -2, 0]));
+
+		fwdViewport = new Viewport(fwdRenderer, &vsd);
+	}
+
+
+	void updateLights() {
+		for (int li = 0; li < lights.length; ++li) {
+			lightAngles[li] += lightSpeeds[li];
+		}
+
+		for (int li = 0; li < lights.length; ++li) {
+			lightAngles[li] = fmodf(lightAngles[li], 360.0);
+		}
+
+		static float lightDist = 0.8f;
+		static float lightScale = 0.0f;
+		if (0 == lightScale) lightScale = 10f / lights.length;
+
+		static float lightRad = 1.0f;
+
+		foreach (li, l; lights) {
+			l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
+			l.lumIntens = lightIllums[li] * lightScale;
+			l.radius = lightRad;
+		}
 	}
 
 
 	override void render() {
+		updateLights();
+		
 		renderer.resetState();
 		renderer.clearBuffers();
 
@@ -167,12 +252,12 @@ class TestApp : GfxApp {
 				return sv;
 			}
 
-			if (defCheck.text("deferred: ").checked) {
+			if (defCheck.text("forward: ").checked) {
 				fwdSV = initSv(SceneView());
 				Dummy().userSize = vec2(20, 0);
 			}
 			
-			if (Check().text("forward: ").checked) {
+			if (Check().text("deferred: ").checked) {
 				/+fsv = initSv(SceneView());
 				
 				if (sv) {
@@ -184,8 +269,8 @@ class TestApp : GfxApp {
 				}+/
 			}
 
-			/+if (sv) viewport.doGUI(sv);
-			if (fsv) fviewport.doGUI(fsv);+/
+			if (fwdSV) fwdViewport.doGUI(fwdSV);
+			//if (fsv) fviewport.doGUI(fsv);
 		}];
 		
 		gui.end();
