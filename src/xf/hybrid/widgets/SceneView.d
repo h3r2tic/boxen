@@ -83,7 +83,7 @@ class SceneView : Widget {
 	CameraMode	camMode;
 	ViewType	viewType;
 	CoordSys	coordSys = CoordSys.identity;		// read only
-	float		fov = 90;
+	float		fov = 65;
 	float		scale = 1;
 	vec2		windowSize = vec2.zero;
 	SceneProxy*	scene;
@@ -519,20 +519,18 @@ class SceneView : Widget {
 		if (e.sinking && scene && scene.isValid) {
 			if (auto r = e.renderer) {
 				r.pushClipRect();
-				vec2 offBefore = r.getOffset();
-				scope (exit) {
-					r.setOffset(offBefore);
-					r.popClipRect();
-				}
-
 				r.clip(Rect(this.globalOffset, this.globalOffset + this.size));
-				r.setOffset(this.globalOffset);
-				draw(vec2i.from(this.size));
-				//r.direct(&this.handleRender_, Rect(this.globalOffset, this.globalOffset + this.size));
+				r.direct(&this._handleRender, Rect(this.globalOffset, this.globalOffset + this.size));
+				r.popClipRect();
 			}
 		}
 
 		return EventHandling.Continue;
+	}
+
+
+	void _handleRender(GuiRenderer r) {
+		draw(vec2i.from(this.size));
 	}
 
 	
@@ -543,6 +541,9 @@ class SceneView : Widget {
 		vs.aspectRatio = cast(float)size.x / size.y;
 		vs.nearPlaneDistance = this.nearPlane;
 		vs.farPlaneDistance = this.farPlane;
+
+		this.viewMatrix = vs.computeViewMatrix;
+		this.windowSize = vec2.from(size);
 
 		scene.draw(size, vs, this.displayMode);
 

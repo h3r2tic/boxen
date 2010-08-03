@@ -219,6 +219,7 @@ class Renderer : IRenderer {
 	// implements IRenderer
 	void clearBuffers() {
 		bindCurrentFramebuffer();
+		setupRenderStates(_nextState);
 		final resData = _framebuffers.find(_currentFramebuffer._resHandle);
 		assert (resData !is null);
 		final fb = resData.res;

@@ -3,6 +3,8 @@ module xf.omg.core.Misc;
 public {
 	import tango.math.Math :    min, max, floor, ceil, sin, cos, tan, atan, atan2,
                                 rndint, pow, abs, exp, sqrt, cbrt;
+
+    import tango.stdc.math : fmodf;
 }
 
 
