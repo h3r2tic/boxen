@@ -4,6 +4,7 @@
 -d
 ../utils/impl/
 ../nucleus/kdef/
+../nucleus/renderer/
 ../gfx/gl3/
 +x=tango
 -g

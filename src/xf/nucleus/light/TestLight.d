@@ -10,6 +10,10 @@ private {
 	import xf.nucleus.post.PostProcessor;
 
 	import xf.gfx.Framebuffer;
+	
+	import xf.loader.Common;
+	import xf.loader.img.ImgLoader;	
+	
 	import xf.gfx.Texture;
 
 	import xf.vsd.VSD;
@@ -56,8 +60,8 @@ class TestShadowedLight : TestLight {
 		}
 
 		if (!spotlightMask.valid) {
-			cstring filePath = `../../media/img/spotlight.dds`;
-			final img = vsmRenderer._imgLoader.load(filePath);
+			cstring filePath = `img/spotlight.dds`;
+			final img = imgLoader.load(getResourcePath(filePath));
 			if (!img.valid) {
 				nucleusError("Could not load texture: '{}'", filePath);
 			}

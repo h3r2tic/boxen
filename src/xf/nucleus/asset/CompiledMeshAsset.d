@@ -15,7 +15,7 @@ struct CompiledMeshVertexAttrib {
 
 
 class CompiledMeshAsset {
-	// allocated using xf.utils.Memory
+	// allocated using the allocator passed to MeshCompiler
 	void[]						vertexData;
 	CompiledMeshVertexAttrib[]	vertexAttribs;
 	u32[]						indices;

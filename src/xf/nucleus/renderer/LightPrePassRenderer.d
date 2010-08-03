@@ -41,15 +41,6 @@ private {
 
 	static import xf.nucleus.codegen.Rename;
 
-	// TODO: refactor into a shared texture loader
-	interface Img {
-	import
-		xf.img.Image,
-		xf.img.FreeImageLoader,
-		xf.img.CachedLoader,
-		xf.img.Loader;
-	}
-
 	import xf.gfx.EffectHelper;		// TODO: get rid of this
 	
 	import Nucleus = xf.nucleus.Nucleus;
