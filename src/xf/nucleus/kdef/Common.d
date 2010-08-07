@@ -568,7 +568,6 @@ class ParamListValue : Value {
 	ParamDef[] value;
 	
 	this (ParamDef[] params) {
-		assert (params.length > 0);
 		this.value = params;
 	}
 

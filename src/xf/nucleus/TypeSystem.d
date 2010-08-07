@@ -224,7 +224,7 @@ struct Semantic {
 			sink(k);
 
 			if (v.length > 0) {
-				sink(":");
+				sink(" ");
 				sink(v);
 			}
 		}

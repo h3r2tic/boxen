@@ -14,6 +14,8 @@ private {
 	import xf.nucleus.Param;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.kdef.model.IKDefUtilParser;
+	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
+	import xf.nucleus.Value;
 	
 	import xf.hybrid.Hybrid;
 	import xf.hybrid.Common;
@@ -24,9 +26,13 @@ private {
 	import xf.nucled.Settings;
 	import xf.nucled.DynamicGridInput;
 	import xf.utils.Array : arrayRemove = remove;
+
+	import xf.mem.ChunkQueue;
+	
 	//import xf.utils.OldCfg : Config = Array;
 	import xf.core.Registry;
 	import tango.text.convert.Format;
+	import TextUtil = tango.text.Util;
 	import tango.io.stream.Format;
 	import tango.io.vfs.model.Vfs : VfsFolder, VfsFile;
 	import tango.io.device.File : FileConduit = File;
@@ -108,15 +114,15 @@ class Graph {
 	}
 	
 	
-	/+void load(KDefGraph source) {
+	void load(KDefGraph source) {
 		Stdout.formatln("Graph.load() called");
 		
 		GraphNode[KDefGraphNode]	def2node;
 		
-		foreach (kdefNode; source.nodes) {
+		foreach (nname, kdefNode; source.nodes) {
 			auto node = new GraphNode(kdefNode);
 			def2node[kdefNode] = node;
-			node.label = kdefNode.label;
+			node.label = nname;
 			addNode(node);
 			Stdout.formatln("loading a graph node");
 		}
@@ -140,7 +146,7 @@ class Graph {
 		foreach (lo; loadObservers) {
 			lo(this);
 		}
-	}+/
+	}
 
 	
 	protected {
@@ -242,11 +248,13 @@ class GraphNode {
 		Input,
 		Output
 	}
-	
+
 	
 	this(Type t) {
+		_mem.initialize();
 		this._id = g_nextId++;
 		this.data = new DataCommons;
+		this.data.params._allocator = &_mem.pushBack;
 		this.type = t;
 		
 		if (type != Type.Input && type != Type.Data) {
@@ -265,29 +273,26 @@ class GraphNode {
 	}
 	
 	
-	/+this (KDefGraphNode cfg) {
-		char[] stringVal(char[] name) {
-			return cfg.vars[name].as!(StringValue).value;
+	this (KDefGraphNode cfg) {
+		_mem.initialize();
+
+		char[] identVal(char[] name) {
+			return cfg.getVar(name).as!(IdentifierValue).value;
 		}
 
-		this(typeFromString(stringVal("type")));
+		this(typeFromString(identVal("type")));
 		
-		if (auto sp = "center" in cfg.vars) {
-			this.spawnPosition = vec2.from((*sp).as!(Vector2Value).value);
+		if (auto sp = cfg.getVar("center")) {
+			this.spawnPosition = vec2.from(sp.as!(Vector2Value).value);
 		}
 		
 		// there's also the size, but we'll ignore it for now
 		
-		this.setPrimLevel(stringVal("primLevel"));
-		
 		if (this.isKernelBased) {
-			this._kernelName = stringVal("kernelName");
-			this._funcName = stringVal("funcName");
+			this._kernelName = identVal("kernel");
 		} else {
-			auto params = cfg.vars["params"].as!(ParamListValue).value;
-			foreach (param; params) {
-				param = param.dup;
-				this.data.addParam(param);
+			foreach (param; cfg.params) {
+				this.data.params.add(param);
 				char[] name = param.name;
 				
 				if (Type.Output == this.type) {
@@ -297,42 +302,8 @@ class GraphNode {
 				}
 			}
 		}
-	}+/
-	
-	
-	/+this(Config cfg) {
-		this();
-		this.type = typeFromString(cfg.string_(`type`));
-		this._kernelName = cfg.string_(`kernelName`).dup;
-		if (this.isKernelBased) {
-			this._funcName = cfg.string_(`funcName`).dup;
-		} else {
-			auto par = cfg.child(`params`);
-			int num = par.count;
-			for (int i = 0; i < num; ++i) {
-				char[] name;
-				
-				assert (false, "TODO");
-				/+this.data.addParam(
-						Param.dirFromString(par.string_(i, 0)),
-						par.string_(i, 1).dup,
-						name = par.string_(i, 2).dup,
-						Semantic.fromString(par.string_(i, 3).dup)
-				);+/
-				Stdout.formatln("Adding a data param: '{}'", name);
-
-				if (Type.Output == this.type) {
-					inputs ~= new ConnectorInfo(name, this);
-				} else {
-					outputs ~= new ConnectorInfo(name, this);
-				}
-			}
-		}
-		this.spawnPosition = cfg.vec2_(`center`);
-		this.setPrimLevel(cfg.string_(`primLevel`));
-		// there's also the size, but we'll ignore it for now
-	}+/
-	
+	}
+		
 	
 	uint id() {
 		return this._id;
@@ -418,23 +389,25 @@ class GraphNode {
 	
 	void dump(FormatOutput!(char) p) {
 		p.formatln(`node_{} = node {{`, id);
-			p.formatln(\t`type = "{}";`, this.typeName);
+			p.formatln(\t`type = {};`, this.typeName);
 			
 			if (this.isKernelBased) {
-				p.formatln(\t`kernelName = "{}";`, this.kernelName);
+				p.formatln(\t`kernel = {};`, this.kernelName);
 			} else {
-				p(\t`params = (`\n);
-				int i = 0;
-				foreach (ref param; data.params) {
-					p.format(\t\t`{}`, param.toString);
+				if (data.params.length > 0) {
+					p(\t`params = (`\n);
+					int i = 0;
+					foreach (ref param; data.params) {
+						p.format(\t\t`{}`, param.toString);
 
-					if (++i != data.params.length) {
-						p(",\n");
-					} else {
-						p("\n");
+						if (++i != data.params.length) {
+							p(",\n");
+						} else {
+							p("\n");
+						}
 					}
+					p(\t`);`\n);
 				}
-				p(\t`);`\n);
 			}
 			
 			if (this.spawnPosition.ok) {
@@ -452,13 +425,10 @@ class GraphNode {
 	
 	char[] typeName() {
 		switch (this.type) {
-			case Type.Calc:				return "calc";
-			case Type.Data:			return "data";
-			case Type.GPUWrap:		return "gpuWrap";
-			case Type.Input:			return "input";
-			case Type.Output:			return "output";
-			case Type.Demux:			return "demux";
-			case Type.Query:			return "query";
+			case Type.Calc:		return "kernel";
+			case Type.Data:		return "data";
+			case Type.Input:	return "input";
+			case Type.Output:	return "output";
 			default: assert (false);
 		}
 	}
@@ -466,13 +436,10 @@ class GraphNode {
 	
 	static Type typeFromString(char[] type) {
 		switch (type) {
-			case "calc":			return Type.Calc;
-			case "data":			return Type.Data;
-			case "gpuWrap" :	return Type.GPUWrap;
-			case "input":			return Type.Input;
+			case "kernel":		return Type.Calc;
+			case "data":		return Type.Data;
+			case "input":		return Type.Input;
 			case "output":		return Type.Output;
-			case "demux":		return Type.Demux;
-			case "query":		return Type.Query;
 			default: assert (false, type);
 		}
 	}
@@ -945,48 +912,37 @@ class GraphNode {
 			
 			switch (column) {
 				case 0:
-					p.type = val.dup;
-					semanticChanged = true;
-					break;
-				case 1:
 					char[] newName = safeName(p.name, val.dup);
 					onRenameParam(p.name, newName);
 					p.name = newName;
 					break;
-				case 2:
-					auto str = userData.semanticsEdited[row] = val.dup;
+				case 1:
+					auto str = val.dup;
+					userData.semanticsEdited[row] = str;
+					str = TextUtil.trim(str);
 
-					if (str.length > 0 && str[$-1] == ';') {
-						char[] type = p.type.dup;
-						p.semantic.clearTraits();
-						p.type = type;
-
+					if (str.length > 0) {
 						auto parser = create!(IKDefUtilParser)();
-
-						assert (false, "TODO");
-						/+auto paramSemantic = parser.parse_ParamSemantic(str);
-						
-						if (paramSemantic !is null) {
-							foreach (traitName, traitValue; paramSemantic.traits) {
-								p.semantic.addTrait(Trait(traitName, traitValue.toVariant));
-							}
+						parser.parse_ParamSemantic(str, (Semantic res) {
+							p.semantic.clearTraits();
 							
-							/+foreach (ann; paramSemantic.annotations) {
-								p.annotations[ann.name] = ann.value;
-							}+/
-						}+/
+							// HACK: this is ugly. manage allocators
+							// in some other way
+							*p.semantic() = res.dup(&_mem.pushBack);
+						});
+						delete parser;
+					} else {
+						p.semantic.clearTraits();
 					}
 					
 					semanticChanged = true;
-					//p.semantic = Semantic.fromString(val.dup);
 					break;
 				default: assert (false);
 			}
 			
 			if (semanticChanged) switch (column) {
-				case 0:
-				case 2:
-					grid.popupCol = 2;
+				case 1:
+					grid.popupCol = 1;
 					grid.popupRow = row;
 					grid.popupMsg = p.semantic.toString.dup;
 				default:
@@ -997,17 +953,15 @@ class GraphNode {
 			return data.params.length;
 		};
 		model.getNumColumns = {
-			return 3;
+			return 2;
 		};
 		model.getCellValue = (int row, int column) {
 			if (row < data.params.length) {
 				Param* p = data.params[row];
 				switch (column) {
 					case 0:
-						return "removeme"[];
-					case 1:
 						return p.name;
-					case 2:
+					case 1:
 						if (auto s = row in userData.semanticsEdited) {
 							return *s;
 						} else {
@@ -1199,6 +1153,8 @@ class GraphNode {
 		bool			_editingProps;
 		GraphMngr		_mngr;
 		GraphNodeBox	_widget;
+
+		ScratchFIFO		_mem;
 
 		static uint		g_nextId = 0;
 	}

@@ -19,6 +19,7 @@ import
 
 	xf.nucleus.Nucleus,
 	xf.nucleus.Scene,
+	xf.nucleus.KernelImpl,
 	xf.nucleus.light.TestLight,
 	xf.nucleus.asset.CompiledSceneAsset,
 	xf.nucleus.asset.compiler.SceneCompiler,
@@ -32,6 +33,7 @@ import
 	xf.mem.MainHeap,
 	
 	tango.io.Stdout,
+	tango.io.device.File,
 	tango.text.convert.Format,
 	tango.math.random.Kiss;
 
@@ -56,13 +58,13 @@ struct TabDesc {
 		SceneView
 	}
 
-	char[]						label;
-	Role							role;
+	char[]					label;
+	Role					role;
 	GraphEditor				graphEditor;
 	//KernelSelectorPopup	kernelSelector;
 
-	//KernelDef					kernelDef;
-	//char[]						kernelFuncName;
+	//KernelDef				kernelDef;
+	//char[]				kernelFuncName;
 	
 	private char[]			_compositeName;
 
@@ -108,9 +110,6 @@ class TestApp : GfxApp {
 		wnd.width = 1040;
 		//wnd.height = 650;
 		wnd.height = 1040;
-		/+wnd.width = 1050;
-		wnd.height = 1680;
-		wnd.fullscreen = true;+/
 		wnd.title = "Nucled";
 	}
 	
@@ -199,6 +198,47 @@ class TestApp : GfxApp {
 	}
 
 
+	void onSave() {
+		if (auto tabDesc = activeTab in tabs) {
+			if (TabDesc.Role.GraphEditor == tabDesc.role) {
+				scope f = new File("saved.kdef", File.WriteCreate);
+				tabDesc.graphEditor.saveKernelGraph("tmp", f);
+			}
+		}
+	}
+
+
+	KDefGraph loadKDefGraph(cstring path) {
+		if (auto kdefModule = kdefRegistry.getModuleForPath(path)) {
+			foreach (kname, kernel; kdefModule.kernels) {
+				if (KernelImpl.Type.Graph == kernel.type) {
+					return KDefGraph(kernel.graph);
+				}
+			}
+			
+			throw new Exception("could not find a graph in the module: " ~ path);
+		} else {
+			throw new Exception("could not load a kdef module from: " ~ path);
+		}
+	}
+
+
+	void onLoad() {
+		if (auto tabDesc = activeTab in tabs) {
+			if (TabDesc.Role.GraphEditor == tabDesc.role) {
+				
+				/+auto vfsFile = getCompositeKernelFile(tabs[activeTab].kernelDef.name, tabs[activeTab].label, false);
+				auto instream = vfsFile.input();
+				scope (exit) instream.close;
+				curEditor.loadKernelGraph(instream);+/
+				//auto path = getCompositeKernelPath(tabs[activeTab].kernelDef.name, tabs[activeTab].compositeName, false);
+				KDefGraph graphDef = loadKDefGraph("saved.kdef");
+				tabDesc.graphEditor.loadKernelGraph(graphDef);
+			}
+		}
+	}
+
+
 	override void render() {
 		updateLights();
 		
@@ -212,24 +252,14 @@ class TestApp : GfxApp {
 		Group(`menu`) [{
 			horizontalMenu(
 				menuGroup("File",
-					/+menuLeaf("Save", onSave() ),
-					menuLeaf("Load", onLoad() ),+/
+					menuLeaf("Save", onSave() ),
+					menuLeaf("Load", onLoad() ),
 					menuLeaf("Exit", exitApp())
 				),
-				/+menuGroup("Implement",
-					menuLeaf("Kernel", {
-						auto ksel = new KernelSelectorPopup;
-						ksel.kernels = &core.kregistry.kernels;
-						int newTab = graphEdTabView.numTabs;
-						graphEdTabView.activeTab = newTab;
-						tabs[newTab] = TabDesc(
-							"New kernel ...",
-							TabDesc.Role.KernelImplSelector,
-							null,
-							ksel
-						);
-					}())
-				),+/
+				menuGroup("Implement",
+					menuLeaf("Material", {}),
+					menuLeaf("Surface", {})
+				),
 				menuGroup("Help",
 					menuLeaf("About", Stdout.formatln("help.about"))
 				)

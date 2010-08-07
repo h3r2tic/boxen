@@ -218,9 +218,50 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 
 +	shadows
 	+ variance shadow mapping
-	+ blurring the moments map
+	+ blurring the moment map
 
--	editor
+~	editor
+	+ basic functionality
+	+ data node editing
+	- automatic creation of input and output parameters for new kernel impls
+	- implementation of new materials
+	- saving of kernels to files
+		* keep track of what's being edited
+		* ability to select and change the name
+	- graceful handling of kdef parsing and processing errors
+	- editing of nodes
+		- code
+		- graph
+	- create kdef objects without saving to files (?)
+	- apply changes within Nucleus (fix kdef change notification handling)
+	- material preview
+		- display anything in the preview
+		- fix the PreviewRenderer so it properly instantiates preview effects
+		- render the preview-specific effects
+		- ability to disable lighting
+		- SceneView in previews for object manipulation
+			* have a reset button
+	- loading new scene objects
+	- deleting scene objects
+	- light creation
+	- gizmos (needed for light manipulation)
+	- object/light parameter editing
+	- application of materials to objects
+	- material data editing
+		- colors (color wheel)
+		- floats (spinner / slider)
+		- textures (just a load/preview for now)
+	- management of material instances
+		* 'default' created immediately, forked upon by the user
+		* 'FooMat.BarInst' could be used for naming
+		* think: the /Appearance/ option in WinXP theme selection
+	- fancy material browser
+	- terrain support
+	- post-processing pipeline editing and preview
+		* the preview is easy here, just capture the intermediate textures
+		  via inspection in the PostProcessor
+	- uh, animation of some sorts so it looks real-time :P
+
 -	recursive rendering
 -	thesis
 -	party hard

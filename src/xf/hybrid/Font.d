@@ -12,6 +12,7 @@ private {
 	
 	import xf.hybrid.Math;
 	import xf.omg.core.LinearAlgebra : vec4ub;
+	import xf.omg.color.RGB;
 	
 	import derelict.freetype.ft;
 	import derelict.util.loader;
@@ -568,7 +569,7 @@ final class Font {
 					default: assert (false);
 				}
 
-				const int borderWidth = 1;
+				const int borderWidth = 2;
 				
 				// we need to expand the bitmap horizontally to do our own filtering
 				glyphWidth += borderWidth * 2;
@@ -790,13 +791,18 @@ final class Font {
 }
 
 
-private void gammaCorrect(ubyte[] rgb, float factor) {
+/+private void gammaCorrect(ubyte[] rgb, float factor) {
 	ubyte meh(ubyte x) {
 		float r = cast(float)x / 255.f;
+
+		//r = pow(r, 2.0);
+		/+r = pow(r, 0.7);
+		r -= 0.4;
+		r /= 1 - 0.4;+/
 		
-		r *= r;
-		r *= r;
-		r *= 5f;
+		/+r = 3 * r*r - 2 * r*r*r;
+		r -= 0.15;
+		r /= 1 - 0.15;+/
 		
 		if (r > 1.0f) r = 1.0f;
 		if (r < 0.0f) r = 0.0f;
@@ -808,6 +814,40 @@ private void gammaCorrect(ubyte[] rgb, float factor) {
 	rgb[0] = meh(rgb[0]);
 	rgb[1] = meh(rgb[1]);
 	rgb[2] = meh(rgb[2]);
+}+/
+
+
+private void gammaCorrect(ubyte[] rgb, float factor) {
+	float[3] frgb = void;
+	foreach (i, x; rgb) {
+		frgb[i] = cast(float)x / 255.f;
+	}
+
+	/+float avg = (frgb[0] + frgb[1] + frgb[2]) / 3;
+	float t = 0.5;+/
+	
+	foreach (ref x; frgb) {
+		//x = (1.0 - t) * x + avg * t;
+		// smoothstep ftw!
+		x = x * x * (3.0f - 2.0f * x);
+		x = x * x * (3.0f - 2.0f * x);
+
+		/+const float cutoff = 0.1;
+		x = max(0, x - cutoff);
+		x /= 1 - cutoff;+/
+
+		// WTF. Seems like there's no ->sRGB conversion in glTexSubImage2D.
+		// The data is interpreted as linear, so doing gamma correction here
+		// would actually bork things.
+		//x = Gamma.sRGB.fromLinear(x);
+	}
+
+	foreach (i, x; frgb) {
+		if (x > 1.0f) x = 1.0f;
+		if (x < 0.0f) x = 0.0f;
+		x *= 255.f;
+		rgb[i] = cast(ubyte)rndint(x);
+	}
 }
 
 

@@ -5,10 +5,18 @@ private {
 	
 	import xf.nucleus.Code;
 	import xf.nucleus.Value;
+	import xf.nucleus.Log;
+	import xf.nucleus.TypeSystem;
+	import xf.nucleus.kdef.ParamUtils;
 	import xf.nucleus.kdef.Common;
 	import xf.nucleus.kdef.KDefLexer;
 	import xf.nucleus.kdef.KDefParser;
 	import xf.nucleus.kdef.model.IKDefUtilParser;
+
+	import enkilib.d.ParserException;
+	
+	import xf.mem.ChunkQueue;
+	import xf.mem.ScratchAllocator;
 
 	alias char[] string;
 }
@@ -29,21 +37,63 @@ class KDefUtilParser : IKDefUtilParser {
 		}+/
 		assert (false);
 	}
+
+
+	bool parse_ParamSemantic(string source, void delegate(Semantic) sink) {
+		assert (sink !is null);
+		
+		ScratchFIFO mem;
+		mem.initialize();
+		scope (exit) mem.dispose();
+
+		final alloc = DgScratchAllocator(&mem.pushBack);
+
+		KDefParser parser;
+		scope (exit) delete parser;
+
+		try {
+			parser = lexAndParse(source, alloc);
+		} catch (CParserException) {
+			return false;
+		}
+
+		if (parser is null) {
+			return false;
+		} else if (!parser.parse_ParamSemantic()) {
+			return false;
+		} else {
+			assert (parser.value_ParamSemantic !is null, source);
+
+			final res = Semantic(&mem.pushBack);
+
+			try {
+				buildPlainSemantic(parser.value_ParamSemantic, &res);
+			} catch (NucleusException) {
+				return false;
+			}
+
+			sink(res);
+			
+			return true;
+		}
+	}
 	
 	
 	private {
-		KDefParser lex(string source) {
+		KDefParser lexAndParse(string source, DgScratchAllocator mem) {
 			auto lexer = new KDefLexer;
 			auto parser = new KDefParser;
+			parser.mem = mem;
 
 			lexer.initialize(source, "(memory)");
 			
 			if (!lexer.parse_Syntax()) {
-				throw new Exception("lexer fail");
+				return null;
 			}
 			
 			assert (lexer.value_Syntax.length > 0);
 			parser.initialize(lexer.value_Syntax);
+			delete lexer;
 			return parser;
 		}
 	}

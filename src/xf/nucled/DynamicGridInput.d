@@ -46,14 +46,14 @@ class DynamicGridInput : Group {
 	
 	State		prevState;
 	vec2i		focused;
-	bool			keyHandlerInstalled = false;
+	bool		keyHandlerInstalled = false;
 	Input[][]	cells;
 	void*		userData;
 	char[]		popupMsg;
 	int			popupCol;
 	int			popupRow;
 	
-	const vec2	cellSize			= {x: 100, y: 0};
+	const vec2	cellSize[2]	= [{x: 100, y: 0}, {x: 300, y: 0}];
 	const vec2	cellSpacing	= {x: 2, y: 2};
 	
 	
@@ -221,9 +221,8 @@ class DynamicGridInput : Group {
 			int emptyRow = -1;
 			
 			HBox().spacing(cellSpacing.x) [{
-				Label().text(`type`).userSize = cellSize;
-				Label().text(`name`).userSize = cellSize;
-				Label().text(`semantic`).userSize = cellSize;
+				Label().text(`name`).userSize = cellSize[0];
+				Label().text(`semantic`).userSize = cellSize[1];
 			}];
 			
 			for (int y = 0; y < rows+1; ++y) {
@@ -238,7 +237,7 @@ class DynamicGridInput : Group {
 						}
 						
 						cells[y][x] = input;
-						input.userSize = cellSize;
+						input.userSize = cellSize[x];
 						
 						if (recreate) {
 							input.text = model.getCellValue(y, x);

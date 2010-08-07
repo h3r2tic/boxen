@@ -429,14 +429,13 @@ class GraphEditor {
 		return _kernelName ~ ".kgraph";
 	}+/
 	
-	void saveKernelGraph(char[] label, int score, OutputStream cond) {
+	void saveKernelGraph(cstring label, OutputStream cond) {
 		scope layout = new TextLayout!(char);
 		scope print = new FormatOutput!(char)(layout, cond, "\n");
 		
-		print.formatln(`implement {}({})`, _kernelName, score);
-		print.formatln(`graph {} {{`, label);
+		print.formatln(`{} = graph {{`, label);
 		_graph.dump(print);
-		print.formatln(`}`);
+		print.formatln(`};`);
 		print.flush;
 		cond.flush;
 	}
@@ -496,7 +495,7 @@ class GraphEditor {
 	}
 	
 	
-	/+void loadKernelGraph(KDefGraph source) {
+	void loadKernelGraph(KDefGraph source) {
 		assert (source !is null);
 		
 		_graph.clearNodes();
@@ -504,20 +503,19 @@ class GraphEditor {
 
 		foreach (n; _graph.nodes) {
 			if (n.isKernelBased) {
-				auto kernel = _core.kregistry[stripKernelTemplateArgs(n.kernelName)];
-				if (kernel is null) {
+				auto kernel = _registry.getKernel(n.kernelName);
+				if (!kernel.isValid) {
 					throw new Exception("loadKernelGraph(): could not find a kernel named '" ~ n.kernelName ~ "' in the registry");
 				} else {
 					createKernelNodeInputs(n, kernel);
 				}
 			}
-			
-			if (!n.CPU) {
-				n.contents = new GPUShaderPreview(_kernelName, _core, n.label);
-			}
+
+			// TODO
+			//n.contents = new GPUShaderPreview(_kernelName, _core, n.label);
 		}
-	}+/
-	
+	}
+
 
 	void createKernelNodeInputs(GraphNode node, KernelImpl impl) {
 		if (KernelImpl.Type.Kernel == impl.type) {
