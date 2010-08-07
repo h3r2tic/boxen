@@ -223,8 +223,8 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 ~	editor
 	+ basic functionality
 	+ data node editing
-	- automatic creation of input and output parameters for new kernel impls
-	- implementation of new materials
+	+ automatic creation of input and output parameters for new kernel impls
+		* only Material for now
 	- saving of kernels to files
 		* keep track of what's being edited
 		* ability to select and change the name

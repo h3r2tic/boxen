@@ -59,8 +59,10 @@ abstract class GfxApp {
 		renderer.initialize();
 		
 		jobHub.addRepeatableJob({
-			if (keyboard.keyDown(KeySym.Escape)) {
-				exitApp();
+			if (exitOnEscape) {
+				if (keyboard.keyDown(KeySym.Escape)) {
+					exitApp();
+				}
 			}
 			
 			if (window.created) {
@@ -121,4 +123,5 @@ abstract class GfxApp {
 	Window					window;
 	SimpleKeyboardReader	keyboard;
 	int						inputUpdateFrequency = 200;
+	bool					exitOnEscape = true;
 }
