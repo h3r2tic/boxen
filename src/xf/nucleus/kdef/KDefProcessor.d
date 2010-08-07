@@ -770,64 +770,7 @@ class KDefProcessor {
 							default: break;
 						}
 
-						if (auto params_ = node.getVar("params")) {
-							ParamDirection pdir;
-							switch (node.type) {
-								case "input": 
-								case "data": pdir = ParamDirection.Out; break;
-								case "output": pdir = ParamDirection.In; break;
-								default: {
-									error("Only input, output and data nodes may have params.");
-								}
-							}
-							
-							if (!cast(ParamListValue)params_) {
-								// TODO: loc
-								error("The 'params' field of a graph node must be a ParamListValue.");
-							}
-
-							auto params = (cast(ParamListValue)params_).value;
-							if (0 == params.length) {
-								error("ParamListValue @ {:x} has no params :<", cast(void*)cast(ParamListValue)params_);
-							}
-
-							foreach (d; params) {
-								auto p = node.params.add(
-									pdir,
-									d.name
-								);
-
-								setParamValue(p, d.defaultValue);
-
-								p.hasPlainSemantic = true;
-								final psem = p.semantic();
-
-								if (d.type.length > 0) {
-									p.type = d.type;
-								}
-
-								void buildSemantic(ParamSemanticExp sem) {
-									if (sem is null) {
-										return;
-									}
-									
-									if (sem) {
-										if (ParamSemanticExp.Type.Sum == sem.type) {
-											buildSemantic(sem.exp1);
-											buildSemantic(sem.exp2);
-										} else if (ParamSemanticExp.Type.Trait == sem.type) {
-											psem.addTrait(sem.name, sem.value);
-											// TODO: check the type?
-										} else {
-											// TODO: err
-											assert (false, "Subtractive trait used in a node param.");
-										}
-									}
-								}
-								
-								buildSemantic(d.paramSemantic);
-							}
-						}
+						buildConcreteParams(node, &node.params);
 					}
 
 					if (auto traitValue = cast(TraitDefValue)stmt.value) {

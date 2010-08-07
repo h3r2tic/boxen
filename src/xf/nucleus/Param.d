@@ -353,13 +353,15 @@ struct Param {
 
 	private {
 		cstring _allocString(cstring s) {
-			assert (s.length > 0);
-			
-			char* p = cast(char*)_allocator(s.length);
-			if (p is null) {
-				error("Type._allocator returned null :(");
+			if (s.length > 0) {
+				char* p = cast(char*)_allocator(s.length);
+				if (p is null) {
+					error("Type._allocator returned null :(");
+				}
+				return p[0..s.length] = s;
+			} else {
+				return null;
 			}
-			return p[0..s.length] = s;
 		}
 	}
 }

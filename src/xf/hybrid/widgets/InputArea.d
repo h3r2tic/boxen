@@ -174,6 +174,16 @@ class InputArea : Widget {
 		
 		Style style = this.style;
 		
+		if (_visibleFrom != _visibleTo) {
+			if (style.color.available) {
+				r.color(*style.color.value);
+			} else {
+				r.color(vec4.one);
+			}
+			
+			font.print(globalOffset, _text[_visibleFrom .. _visibleTo]);
+		}
+
 		if (anythingSelected) {
 			auto selRange = selectionRange();
 			if (selRange.from < _visibleTo && selRange.to > _visibleFrom) {
@@ -199,16 +209,6 @@ class InputArea : Widget {
 
 				r.rect(Rect(vec2(selMinX, 0), vec2(selMaxX, this.size.y)));
 			}
-		}
-		
-		if (_visibleFrom != _visibleTo) {
-			if (style.color.available) {
-				r.color(*style.color.value);
-			} else {
-				r.color(vec4.one);
-			}
-			
-			font.print(globalOffset, _text[_visibleFrom .. _visibleTo]);
 		}
 		
 		if (shouldDrawCaret) {

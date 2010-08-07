@@ -196,6 +196,9 @@ struct ScratchFIFO {
 	}
 
 
+	alias clear dispose;
+
+
 	bool isEmpty() {
 		if (_head !is null) {
 			assert (_head.used > 0);

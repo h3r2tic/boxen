@@ -6,6 +6,8 @@ private {
 	
 	import tango.core.Variant;
 	import Float = tango.text.convert.Float;
+
+	import xf.nucleus.Log;
 }
 
 
@@ -24,7 +26,8 @@ abstract class Value {
 		if (ret) {
 			return ret;
 		} else {
-			throw new Exception(Format("This value is not a {}, it's a {} = {}", T.stringof, this.classinfo.name, this.toString));
+			nucleusError("This value is not a {}, it's a {} = {}", T.stringof, this.classinfo.name, this.toString);
+			assert (false);	// shtupid dmd
 		}
 	}
 }
