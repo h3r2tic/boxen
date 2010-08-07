@@ -303,7 +303,25 @@ class GraphNode {
 			}
 		}
 	}
+
+
+	// TODO: mem
+	void addInput(Param p) {
+		inputs ~= new ConnectorInfo(p.name, this);
+		if (!this.isKernelBased) {
+			this.data.params.add(p).dir = ParamDirection.In;
+		}
+	}
 		
+
+	// TODO: mem
+	void addOutput(Param p) {
+		outputs ~= new ConnectorInfo(p.name, this);
+		if (!this.isKernelBased) {
+			this.data.params.add(p).dir = ParamDirection.Out;
+		}
+	}
+
 	
 	uint id() {
 		return this._id;

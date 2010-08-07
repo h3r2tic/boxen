@@ -95,6 +95,8 @@ class TestApp : GfxApp {
 	SceneView	defSV;
 	Renderer	defRenderer;
 
+	TabView		graphEdTabView;
+
 	VSDRoot		vsd;
 
 	TestLight[]		lights;
@@ -111,9 +113,10 @@ class TestApp : GfxApp {
 		//wnd.height = 650;
 		wnd.height = 1040;
 		wnd.title = "Nucled";
+		this.exitOnEscape = false;
 	}
-	
-	
+
+
 	override void initialize() {
 		setMediaDir(`../test/media`);
 		initializeNucleus(this.renderer, "../test/media/kdef", ".");
@@ -198,6 +201,20 @@ class TestApp : GfxApp {
 	}
 
 
+
+	int addTab() {
+		// HACK
+		for (int i = 0; i < 100000; ++i) {
+			if (!(i in tabs)) {
+				tabs[i] = TabDesc.init;
+				return i;
+			}
+		}
+
+		assert (false);
+	}
+
+
 	void onSave() {
 		if (auto tabDesc = activeTab in tabs) {
 			if (TabDesc.Role.GraphEditor == tabDesc.role) {
@@ -205,6 +222,23 @@ class TestApp : GfxApp {
 				tabDesc.graphEditor.saveKernelGraph("tmp", f);
 			}
 		}
+	}
+
+
+	void onImplementMaterial() {
+		final editor = new GraphEditor(`NewMaterial`, kdefRegistry, new GraphMngr);
+		editor.workspaceSize = graphEdTabView.size;
+		final tab = addTab();
+		graphEdTabView.activeTab = activeTab = tab;
+		
+		tabs[tab] = TabDesc(
+			"New Material",
+			TabDesc.Role.GraphEditor,
+			editor,
+			null
+		);
+
+		editor.createIONodes(kdefRegistry.getKernel("Material").kernel.func.params);
 	}
 
 
@@ -257,7 +291,7 @@ class TestApp : GfxApp {
 					menuLeaf("Exit", exitApp())
 				),
 				menuGroup("Implement",
-					menuLeaf("Material", {}),
+					menuLeaf("Material", onImplementMaterial()),
 					menuLeaf("Surface", {})
 				),
 				menuGroup("Help",
@@ -318,7 +352,7 @@ class TestApp : GfxApp {
 	}
 
 	void doTabsGUI() {
-		final graphEdTabView = TabView(`graphEd`);
+		graphEdTabView = TabView(`graphEd`);
 		graphEdTabView.layoutAttribs = "hfill vfill hexpand vexpand";
 
 		foreach (ti, td; tabs) {

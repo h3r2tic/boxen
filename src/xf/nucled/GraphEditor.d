@@ -28,6 +28,7 @@ private {
 	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.KernelImpl;
+	import xf.nucleus.Param;
 	
 	/+import xf.nucleus.CommonDef;
 	//import xf.nucleus.KernelCore;
@@ -517,6 +518,28 @@ class GraphEditor {
 	}
 
 
+	void createIONodes(ParamList params) {
+		final inode = new GraphNode(GraphNode.Type.Input);
+		final onode = new GraphNode(GraphNode.Type.Output);
+
+		_graph.addNode(inode);
+		_graph.addNode(onode);
+
+		inode.spawnPosition = vec2(100, this.workspaceSize.y / 2);
+		onode.spawnPosition = vec2(this.workspaceSize.x - 200, this.workspaceSize.y / 2);
+
+		foreach (param; params) {
+			assert (param.hasPlainSemantic, "TODO: impl of kernels with sem exprs");
+			if (param.isInput) {
+				inode.addOutput(param);
+			}
+			if (param.isOutput) {
+				onode.addInput(param);
+			}
+		}
+	}
+
+
 	void createKernelNodeInputs(GraphNode node, KernelImpl impl) {
 		if (KernelImpl.Type.Kernel == impl.type) {
 			final kernel = impl.kernel;
@@ -607,6 +630,8 @@ class GraphEditor {
 			wb.layoutAttribs = "hfill vfill";
 		}
 		_background.viewGlobalOffset = wb.globalOffset;
+
+		this.workspaceSize = wb.size;
 
 		auto dragView = DraggableView() [{
 			auto wk = Workspace(); wk [{
@@ -723,23 +748,27 @@ class GraphEditor {
 		Mode mode = Mode.Default;
 
 
-		vec2							spawnPosition = vec2.zero;
-		vec2							spawnPosWindow = vec2.zero;
+		vec2				spawnPosition = vec2.zero;
+		vec2				spawnPosWindow = vec2.zero;
 		GraphNode.Type		spawningType;
 
-		bool							kernelGraphReady = false;
-		bool							tryRecompile = false;
+		bool				kernelGraphReady = false;
+		bool				tryRecompile = false;
 
-		char[]						_kernelName;
-		IKDefRegistry				_registry;
-		//INucleus					_core;
-		Graph						_graph;
-		Background				_background;
+		char[]				_kernelName;
+		IKDefRegistry		_registry;
+		//INucleus			_core;
+		Graph				_graph;
+		Background			_background;
 		KernelSelectorPopup	_ksel;
 		
-		GraphMngr				_graphMngr;
+		GraphMngr			_graphMngr;
 		
 		//IRenderable				_renderableForPreview;
+	}
+
+	public {
+		vec2				workspaceSize = vec2.zero;
 	}
 }
 
