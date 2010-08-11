@@ -78,6 +78,13 @@ class KernelGraph {
 			ParamList	params;
 			Allocator	_allocator;
 		}
+
+		enum Type {
+			Input,
+			Output
+		}
+
+		Type	type;
 	}
 
 

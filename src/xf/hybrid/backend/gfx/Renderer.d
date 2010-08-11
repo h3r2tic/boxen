@@ -715,7 +715,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 				continue;
 			}
 
-			if (!setupClipping(b.clipRect)) {
+			if (!setupClipping(b.clipRect, b.clipRect)) {
 				continue;
 			}
 
@@ -771,13 +771,13 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 		_r.resetState();
 
-		if (!setupClipping(b.clipRect)) {
+		if (!setupClipping(b.clipRect, b.originalRect)) {
 			return;
 		}
 		
-		auto r = b.originalRect;
+		/+auto r = b.originalRect;
 		int w = cast(int)(r.max.x - r.min.x);
-		int h = cast(int)(r.max.y - r.min.y);
+		int h = cast(int)(r.max.y - r.min.y);+/
 
 		//gl.Viewport(cast(int)r.min.x, cast(int)(_viewportSize.y - r.min.y - h), w, h);
 		
@@ -946,7 +946,7 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 	// ----------------------------------------------------------------------------------------------------
 
 
-	private bool setupClipping(Rect r, bool setupProjection = true) {
+	private bool setupClipping(Rect r, Rect origR, bool setupProjection = true) {
 		if (_glClipRect == r) {
 			return _clipRectOk;
 		} else {
@@ -986,10 +986,10 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 		}
 
 		with (state.viewport) {
-			x = cast(int)c.min.x;
-			y = cast(int)(_viewportSize.y - c.min.y - h);
-			width = w;
-			height = h;
+			x = cast(int)origR.min.x;
+			y = cast(int)(_viewportSize.y - origR.max.y);
+			width = cast(int)(origR.max.x - origR.min.x);
+			height = cast(int)(origR.max.y - origR.min.y);
 		}
 
 		if (setupProjection) {

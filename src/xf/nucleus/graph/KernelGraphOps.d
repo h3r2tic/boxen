@@ -95,8 +95,10 @@ bool getOutputParamIndirect(
 	Param** srcParam
 ) {
 	final node = kg.getNode(dstNid);
-	
-	if (KernelGraph.NodeType.Output == node.type) {
+
+	/+if (KernelGraph.NodeType.Bridge == node.type && ) {
+		if (
+	} else +/if (KernelGraph.NodeType.Output == node.type) {
 		return findSrcParam(kg, dstNid, dstParam, srcNid, srcParam);
 	} else {
 		if ((*srcParam = node.getOutputParam(dstParam)) !is null) {

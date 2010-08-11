@@ -1,7 +1,16 @@
 module xf.nucled.GPUShaderPreview;
 
 private {
+	import xf.Common;
 	import xf.nucled.Graph : NodeContents;
+	import xf.nucled.PreviewRenderer;
+
+	import xf.nucleus.kdef.model.IKDefRegistry;
+	import xf.nucleus.IStructureData;
+	import xf.gfx.IRenderer : RendererBackend = IRenderer;
+
+	import xf.hybrid.Common;
+
 	/+import xf.nucleus.model.INucleus;
 	import xf.nucleus.Renderable;
 	import xf.nucleus.Effector;
@@ -20,6 +29,7 @@ private {
 	//import xf.hybrid.backend.GL;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
+	import xf.omg.util.ViewSettings;
 	//import xf.dog.Dog;
 	
 	//import tango.io.Stdout;
@@ -28,15 +38,41 @@ private {
 }
 
 
+class CustomDrawWidget : Widget {
+	override EventHandling handleRender(RenderEvent e) {
+		if (!widgetVisible) {
+			return EventHandling.Stop;
+		}
+		
+		if (e.sinking && renderingHandler) {
+			if (auto r = e.renderer) {
+				r.pushClipRect();
+				r.clip(Rect(this.globalOffset, this.globalOffset + this.size));
+				r.direct(&this._handleRender, Rect(this.globalOffset, this.globalOffset + this.size));
+				r.popClipRect();
+			}
+		}
+
+		return EventHandling.Continue;
+	}
+
+	void _handleRender(GuiRenderer r) {
+		renderingHandler(vec2i.from(this.size));
+	}
+
+	void delegate(vec2i) renderingHandler;
+
+	mixin MWidget;
+}
+
+
 
 class GPUShaderPreview : NodeContents {
 	override void doGUI() {
-		/+if (viewport is null || viewport.enabled) {
-			auto glViewport = GLViewport();
-			glViewport.layoutAttribs = "hexpand hfill";
-			glViewport.renderingHandler = &this.draw;
-			glViewport.userSize(vec2(128, 80));
-		}+/
+		auto w = CustomDrawWidget();
+		w.layoutAttribs = "hexpand hfill";
+		w.renderingHandler = &this.draw;
+		w.userSize(vec2(140, 100));
 	}
 	
 	
@@ -51,64 +87,70 @@ class GPUShaderPreview : NodeContents {
 	}
 	
 	
-	/+void draw(vec2i size, GL gl) {
-		//gl.lookAt(vec3(-0.3, 0, 1), vec3.zero);
-		// BUG: shouldn't these be in the reverse order? lookAt upsets it. probably Viewport has it all backwards
-		gl.LoadIdentity();
-		gl.Translatef(0, 0, -0.7);
-		gl.Rotatef(30, 1, 0, 0);
-		//gl.Rotatef(20, 0, 1, 0);
-		
-		gl.Clear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	void draw(vec2i size) {
+		_backend.framebuffer.settings.clearColorValue[0] = vec4.zero;
+		_backend.framebuffer.settings.clearColorEnabled[0] = true;
+		_backend.clearBuffers();
 
-		gl.Enable(GL_DEPTH_TEST);
-		gl.Disable(GL_BLEND);
-		
-		if (world is null) {
-			world = new NucleusWorld(nucleus, gl);
-			INucleusWorld.ImportParams importParams;
-			importParams.defaultKernel = kernelName;
-			world.importHme(`data/scenes/teapot/scene.hme`, vec3fi[0, -.3f, 0], quat.identity, 1, importParams);
-			
-			foreach (leaf; &world.iterRgLeaves) {
-				auto renderable = leaf.renderable;
-				renderable.kernel = kernelName;
-				renderable.overrideKernel(graphProcessor);
-			}
-			
-			auto light = new PointLight(nucleus);
-			with (light) {
-				position = vec3(2, 1.5, 1);
-				color = vec4.one * 15;
-			}
-			world.addEffector(light);
-			
-			viewport = new Viewport(world, `RenderPreview`);
-		}
-		
-		//renderScene(scene, viewRenderable, nucleus, size, gl);
-		viewport.draw(size, gl);
-		if (viewport.drawingException !is null) {
-			auto e = viewport.drawingException;
-			e.writeOut((char[] msg) { Stdout(msg); });
-			Stdout.newline;
-			viewport.enabled = false;
-		}
+		ViewSettings vs;
+		vs.eyeCS = CoordSys(vec3fi[0.14, 1.7, 1.9], quat.xRotation(-30.f));
+		vs.verticalFOV = 62.f;		// in Degrees; _not_ half of the FOV
+		vs.aspectRatio = cast(float)size.x / size.y;
+		vs.nearPlaneDistance = 0.1f;
+		vs.farPlaneDistance = 100.0f;
+		_renderer.render(vs);
+	}
+
+
+	void setObjects(IStructureData[] obj) {
+		_renderer.setObjects(obj);
+	}
+
+
+	void compileEffects() {
+		_renderer.compileEffects();
 	}
 	
 	
-	this (char[] kernelName, INucleus nucleus, char[] nodeLabel) {
-		this.kernelName = kernelName;
+	this (
+		RendererBackend backend,
+		IKDefRegistry reg,
+		cstring nodeLabel,
+		cstring nodeOutput
+	) {
+		this._backend = backend;
+		//this.kernelName = kernelName;
 		this.nodeLabel = nodeLabel;
-		this.nucleus = nucleus;
-		this.graphProcessor = new PreviewGraphProcessor(null, nucleus, nodeLabel);
+		//this.nucleus = nucleus;
+		//this.graphProcessor = new PreviewGraphProcessor(null, nucleus, nodeLabel);
+		_renderer = new MaterialPreviewRenderer(
+			backend,
+			reg,
+			nodeLabel, nodeOutput
+		);
+
+		// HACK
+
+		foreach (mname, mat; &reg.materials) {
+			if ("tmpMat" == mname){
+				_renderer.materialToUse = mat;
+			}
+		}
+
+		assert (_renderer.materialToUse !is null);
+
+		_renderer.structureToUse = reg.getKernel("DefaultMeshStructure");
+		
+		
 		/+this.viewRenderable = nucleus.createRenderable();
 		this.viewRenderable.kernel = "RenderViewport";+/
 	}
 	
-	
-	char[]			kernelName;
-	char[]			nodeLabel;
+
+	RendererBackend			_backend;
+	MaterialPreviewRenderer _renderer;
+	cstring					nodeLabel;
+	/+char[]			kernelName;
 	//IRenderable	viewRenderable;
 	INucleus		nucleus;
 	NucleusWorld	world;

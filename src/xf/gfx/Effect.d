@@ -668,7 +668,7 @@ struct EffectInstance {
 	// ----
 	
 	Effect getEffect() {
-		assert (_resHandle !is Handle.init);
+		assert (_resHandle !is Handle.init, "Invalid EffectInstance");
 		assert (_resMngr !is null);
 		return (cast(IEffectMngr)_resMngr).getEffect(_resHandle);
 	}

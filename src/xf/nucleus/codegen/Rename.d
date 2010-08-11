@@ -57,8 +57,21 @@ void emitSourceParamName(
 
 
 	final node = graph.getNode(nid);
-	
-	if (NT.Input == node.type) {
+
+	if (	NT.Bridge == node.type &&
+			node.bridge.type == node.bridge.Type.Input &&
+			nodeDomains[nid.id] == ctx.domain &&
+			({
+				// return true if no incoming connections
+				foreach (c; graph.flow.iterIncomingConnections(nid)) return false;
+				return true;
+			})()
+	) {
+		// Also allow bridge nodes as inputs
+		assert (GPUDomain.Vertex == ctx.domain);
+		ctx.sink("structure__");
+		ctx.sink(pname);
+	} else if (NT.Input == node.type) {
 		if (nodeDomains is null) {
 			ctx.sink(pname);
 		} else if (nodeDomains[nid.id] == ctx.domain) {

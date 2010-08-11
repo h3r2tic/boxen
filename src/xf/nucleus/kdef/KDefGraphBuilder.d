@@ -91,6 +91,11 @@ private void buildKernelSubGraph(
 				foreach (ref p; nodeData.params) {
 					p.dir = ParamDirection.InOut;
 				}
+				if ("input" == nodeDef.type) {
+					nodeData.type = nodeData.type.Input;
+				} else {
+					nodeData.type = nodeData.type.Output;
+				}
 			}
 
 			auto createData = &createParamData;
@@ -102,8 +107,9 @@ private void buildKernelSubGraph(
 					case "data": type = NT.Data; break;
 
 					case "input": {
+						rememberId = inputBridgeId;
+						
 						if (genBridge) {
-							rememberId = inputBridgeId;
 							createData = &createBridgeData;
 							type = NT.Bridge;
 						} else {
@@ -112,8 +118,9 @@ private void buildKernelSubGraph(
 					} break;
 					
 					case "output": {
+						rememberId = outputBridgeId;
+
 						if (genBridge) {
-							rememberId = outputBridgeId;
 							createData = &createBridgeData;
 							type = NT.Bridge;
 						} else {
@@ -289,7 +296,10 @@ void buildKernelGraph(
 			cstring			nodeName,
 			GraphDefNode	nodeDef,
 			GraphNodeId delegate() defaultBuilder
-		) nodeBuilder = null
+		) nodeBuilder = null,
+		bool genBridge = false,
+		GraphNodeId* inputBridgeId = null,
+		GraphNodeId* outputBridgeId = null
 ) {
 	uword nodeI = 0;
 	GraphDef def = GraphDef(def_);
@@ -310,9 +320,9 @@ void buildKernelGraph(
 		&nodeI,
 		0,
 		nodeBuilder,
-		false,
-		null,
-		null,
+		genBridge,
+		inputBridgeId,
+		outputBridgeId,
 		nodeIds,
 		nodeInputIds,
 		nodeOutputIds,
@@ -346,7 +356,8 @@ struct GraphBuilder {
 			KernelImpl kernel,
 			BuilderSubgraphInfo* info,
 			StackBufferUnsafe stack,
-			void delegate(cstring, GraphNodeId) nodeWatcher = null
+			void delegate(cstring, GraphNodeId) nodeWatcher = null,
+			bool genBridge = false
 	) {
 		assert (info !is null);
 		
@@ -395,18 +406,21 @@ struct GraphBuilder {
 							info.nodes[nidx] = nid;
 						}
 
-						if (KernelGraph.NodeType.Input == n.type) {
+						/+if (KernelGraph.NodeType.Input == n.type) {
 							info.input = nid;
 						} else if (KernelGraph.NodeType.Output == n.type) {
 							info.output = nid;
-						} else if (KernelGraph.NodeType.Data == n.type) {
+						} else +/if (KernelGraph.NodeType.Data == n.type) {
 							n.data.sourceKernelType = sourceKernelType;
 							n.data.sourceLightIndex = sourceLightIndex;
 						}
 						
 						return nid;
 					}
-				}
+				},
+				genBridge,
+				&info.input,
+				&info.output
 			);
 		}
 	}

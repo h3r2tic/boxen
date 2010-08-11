@@ -464,6 +464,22 @@ struct ParamList {
 		return 0;
 	}
 
+	int iterInputs(int delegate(ref Param) dg) {
+		return opApply((ref Param p) {
+			return p.isInput
+				? dg(p)
+				: 0;
+		});
+	}
+
+	int iterOutputs(int delegate(ref Param) dg) {
+		return opApply((ref Param p) {
+			return p.isOutput
+				? dg(p)
+				: 0;
+		});
+	}
+
 	bool getInput(cstring name, Param** res) {
 		foreach (ref p; _params) {
 			if (p.isInput && p.name == name) {

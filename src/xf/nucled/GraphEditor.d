@@ -29,6 +29,10 @@ private {
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.Param;
+	import xf.nucleus.IStructureData;
+	import xf.nucleus.Log;
+
+	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 	
 	/+import xf.nucleus.CommonDef;
 	//import xf.nucleus.KernelCore;
@@ -380,7 +384,12 @@ class FlowInspectorNode : IFlowInspectorNode {
 
 
 class GraphEditor {
-	this (char[] kernelName, IKDefRegistry registry, GraphMngr graphMngr) {
+	this (
+		cstring kernelName,
+		IKDefRegistry registry,
+		RendererBackend backend,
+		GraphMngr graphMngr
+	) {
 		_kernelName = kernelName;
 		_graph = new Graph(graphMngr);
 		_graph.loadObservers ~= &this.onGraphLoad;
@@ -391,6 +400,7 @@ class GraphEditor {
 		_ksel.kernels = &registry.kernelImpls;
 		_graphMngr = graphMngr;
 		_registry = registry;
+		_backend = backend;
 	}
 
 
@@ -399,9 +409,9 @@ class GraphEditor {
 	}
 	
 	
-	/+void setRenderableForPreview(IRenderable r) {
-		_renderableForPreview = r;
-	}+/
+	void setObjectsForPreview(IStructureData[] obj) {
+		_objectsForPreview = obj;
+	}
 	
 	
 	protected void onGraphLoad(Graph g) {
@@ -512,8 +522,31 @@ class GraphEditor {
 				}
 			}
 
-			// TODO
-			//n.contents = new GPUShaderPreview(_kernelName, _core, n.label);
+			foreach (i, con; &n.iterOutputs) {
+				if (con.name == depOutputConnectorName) {
+					continue;
+				}
+				
+				//try {
+					final sp = new GPUShaderPreview(
+						_backend,
+						_registry,
+						n.label, con.name
+					);
+					n.contents = sp;
+
+					sp.setObjects(_objectsForPreview);
+					sp.compileEffects();
+
+					break;
+				/+} catch (NucleusException e) {
+					e.writeOut((cstring s) {
+						Stdout(e);
+						Stdout.newline;
+					});
+					n.contents = null;
+				}+/
+			}
 		}
 	}
 
@@ -755,15 +788,18 @@ class GraphEditor {
 		bool				kernelGraphReady = false;
 		bool				tryRecompile = false;
 
+		IStructureData[]	_objectsForPreview;
+
 		char[]				_kernelName;
 		IKDefRegistry		_registry;
+		RendererBackend		_backend;
 		//INucleus			_core;
 		Graph				_graph;
 		Background			_background;
 		KernelSelectorPopup	_ksel;
 		
 		GraphMngr			_graphMngr;
-		
+
 		//IRenderable				_renderableForPreview;
 	}
 
