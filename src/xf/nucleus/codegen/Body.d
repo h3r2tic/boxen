@@ -58,7 +58,7 @@ void domainCodegenBody(
 
 		// TODO: remove Bridge nodes and redirect their flow after auto conversion
 		// have been carried out, so that this step doen't have to be done
-		if (NT.Bridge == node.type) {
+		if (NT.Bridge == node.type && nodeIdx > 0) {
 			auto params = &node.bridge().params;
 			
 			foreach (par; *params) {

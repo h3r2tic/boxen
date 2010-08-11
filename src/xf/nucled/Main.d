@@ -20,9 +20,11 @@ import
 	xf.nucleus.Nucleus,
 	xf.nucleus.Scene,
 	xf.nucleus.KernelImpl,
+	xf.nucleus.IStructureData,
 	xf.nucleus.light.TestLight,
 	xf.nucleus.asset.CompiledSceneAsset,
 	xf.nucleus.asset.compiler.SceneCompiler,
+	xf.nucleus.structure.MeshStructure,
 
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
@@ -106,6 +108,8 @@ class TestApp : GfxApp {
 	float[]			lightAngles;
 	vec4[]			lightIllums;
 
+	IStructureData[]	previewObjects;
+
 	
 	override void configureWindow(Window wnd) {
 		super.configureWindow(wnd);
@@ -117,9 +121,40 @@ class TestApp : GfxApp {
 	}
 
 
+	private GraphEditor createGraphEditor(cstring name) {
+		final ge = new GraphEditor(name, kdefRegistry, rendererBackend, new GraphMngr);
+		ge.setObjectsForPreview(previewObjects);
+		return ge;
+	}
+
+
 	override void initialize() {
 		setMediaDir(`../test/media`);
 		initializeNucleus(this.renderer, "../test/media/kdef", ".");
+
+		{
+			cstring previewModel = `mesh/teapot.hsf`;
+			
+			float scale = 1f;
+
+			SceneAssetCompilationOptions opts;
+			opts.scale = scale;
+
+			final compiledScene = compileHSFSceneAsset(
+				previewModel,
+				DgScratchAllocator(&mainHeap.allocRaw),
+				opts
+			);
+			assert (compiledScene.meshes.length > 0);
+
+			final allocator = DgScratchAllocator(&mainHeap.allocRaw);
+
+			previewObjects.length = compiledScene.meshes.length;
+			foreach (i, m; compiledScene.meshes) {
+				previewObjects[i] =
+					allocator._new!(MeshStructure)(m, rendererBackend);
+			}
+		}
 
 		guiRenderer = new HybridRenderer(renderer);
 
@@ -133,7 +168,7 @@ class TestApp : GfxApp {
 		tabs[0] = TabDesc(
 			"Top-level pipeline",
 			TabDesc.Role.GraphEditor,
-			new GraphEditor(`RenderViewport`, kdefRegistry, new GraphMngr),
+			createGraphEditor(`RenderViewport`),
 			null/+,
 			core.kregistry[`RenderViewport`]+/
 		);
@@ -159,19 +194,21 @@ class TestApp : GfxApp {
 			lightIllums ~= rgba;
 		}
 
-		cstring model = `mesh/lightTest.hsf`;
-		float scale = 0.02f;
+		{
+			cstring model = `mesh/lightTest.hsf`;
+			float scale = 0.02f;
 
-		SceneAssetCompilationOptions opts;
-		opts.scale = scale;
+			SceneAssetCompilationOptions opts;
+			opts.scale = scale;
 
-		final compiledScene = compileHSFSceneAsset(
-			model,
-			DgScratchAllocator(&mainHeap.allocRaw),
-			opts
-		);
+			final compiledScene = compileHSFSceneAsset(
+				model,
+				DgScratchAllocator(&mainHeap.allocRaw),
+				opts
+			);
 
-		loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 0, 0]));
+			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 0, 0]));
+		}
 
 		fwdViewport = new Viewport(fwdRenderer, &vsd);
 		defViewport = new Viewport(defRenderer, &vsd);
@@ -226,7 +263,7 @@ class TestApp : GfxApp {
 
 
 	void onImplementMaterial() {
-		final editor = new GraphEditor(`NewMaterial`, kdefRegistry, new GraphMngr);
+		final editor = createGraphEditor(`NewMaterial`);
 		editor.workspaceSize = graphEdTabView.size;
 		final tab = addTab();
 		graphEdTabView.activeTab = activeTab = tab;

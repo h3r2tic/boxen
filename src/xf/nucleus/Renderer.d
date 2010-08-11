@@ -7,6 +7,7 @@ private {
 		xf.nucleus.Defs,
 		xf.nucleus.Param,
 		xf.nucleus.Renderable,
+		xf.nucleus.RendererMaterialData,
 		xf.nucleus.Light,
 		xf.nucleus.RenderList,
 		xf.nucleus.SurfaceDef,
@@ -125,18 +126,6 @@ abstract class Renderer
 
 
 	protected {
-		struct MaterialData {
-			struct Info {
-				cstring	name;		// not owned here
-				word	offset;
-			}
-			
-			Info[]		info;
-			void*		data;
-			cstring		kernelName;
-			//KernelImpl	materialKernel;
-		}
-
 		Array!(MaterialData)	_materials;
 		//ScratchFIFO				_materialMem;
 	}
@@ -218,7 +207,7 @@ abstract class Renderer
 						loadMaterialSamplerParam(sampler, tex);
 					} else {
 						error(
-							"Forward renderer: Don't know what to do with"
+							"Renderer: Don't know what to do with"
 							" a {} material param ('{}').",
 							objVal.classinfo.name,
 							p.name
@@ -229,7 +218,7 @@ abstract class Renderer
 				case ParamValueType.String:
 				case ParamValueType.Ident: {
 					error(
-						"Forward renderer: Don't know what to do with"
+						"Renderer: Don't know what to do with"
 						" string/ident material params ('{}').",
 						p.name
 					);
