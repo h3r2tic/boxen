@@ -17,4 +17,3 @@
 ../omg/core/omgCore.lib
 StandardDataProviders.d
 gdi32.lib
-+rmo

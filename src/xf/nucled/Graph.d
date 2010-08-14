@@ -101,25 +101,6 @@ class Graph {
 	}
 	
 	
-	void dump(FormatOutput!(char) p) {
-		foreach (n; nodes) {
-			n.dump(p);
-		}
-	
-		foreach (n; nodes) {
-			foreach (con; n.outgoing) {
-				foreach (flow; con.flow) {
-					if (depOutputConnectorName == flow.from) {
-						p.formatln(`connect node_{} node_{};`\n, con.from.id, con.to.id);
-					} else {
-						p.formatln(`connect node_{}.{} node_{}.{};`\n, con.from.id, flow.from, con.to.id, flow.to);
-					}
-				}
-			}
-		}
-	}
-
-
 	void dump(KDefGraph kdef, IKDefRegistry reg) {
 		kdef._name = null;	// TODO
 		kdef._nodes = kdef.mem.allocArrayNoInit!(KDefGraphNode)(this.nodes.length);
@@ -492,42 +473,6 @@ class GraphNode {
 	}+/
 	
 	
-	void dump(FormatOutput!(char) p) {
-		p.formatln(`node_{} = node {{`, id);
-			p.formatln(\t`type = {};`, this.typeName);
-			
-			if (this.isKernelBased) {
-				p.formatln(\t`kernel = {};`, this.kernelName);
-			} else {
-				if (data.params.length > 0) {
-					p(\t`params = (`\n);
-					int i = 0;
-					foreach (ref param; data.params) {
-						p.format(\t\t`{}`, param.toString);
-
-						if (++i != data.params.length) {
-							p(",\n");
-						} else {
-							p("\n");
-						}
-					}
-					p(\t`);`\n);
-				}
-			}
-			
-			if (this.spawnPosition.ok) {
-				p.formatln(\t`center = {} {};`, this.spawnPosition.x, this.spawnPosition.y);
-			}
-			
-			if (this.currentSize.ok) {
-				p.formatln(\t`size = {} {};`, this.currentSize.x, this.currentSize.y);
-			}
-			
-			//p.formatln(\t`primLevel = "{}";`, this.primLevelStr);
-		p(`};`\n);
-	}
-
-
 	void dump(KDefGraphNode kdef, IKDefRegistry reg) {
 		if (this.isKernelBased) {
 			kdef.kernelImpl = reg.getKernel(_kernelName);

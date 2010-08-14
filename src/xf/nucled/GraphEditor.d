@@ -56,12 +56,12 @@ private {
 	import xf.mem.ChunkQueue;
 	import xf.mem.ScratchAllocator;
 
-	import tango.text.Util;
+/+	import tango.text.Util;
 	import tango.io.stream.Format;
 	import tango.text.convert.Layout : TextLayout = Layout;
 	import tango.io.device.File : FileConduit = File;
 	import tango.io.model.IConduit : InputStream, OutputStream;
-	import tango.sys.Process;
+	import tango.sys.Process;+/
 	
 	import tango.stdc.stdio : sscanf;
 	import tango.stdc.stringz;
@@ -442,17 +442,6 @@ class GraphEditor {
 		return _kernelName ~ ".kgraph";
 	}+/
 	
-	void saveKernelGraph(cstring label, OutputStream cond) {
-		scope layout = new TextLayout!(char);
-		scope print = new FormatOutput!(char)(layout, cond, "\n");
-		
-		print.formatln(`{} = graph {{`, label);
-		_graph.dump(print);
-		print.formatln(`};`);
-		print.flush;
-		cond.flush;
-	}
-	
 
 	/+void generateKernelGraph() {
 		if (!tryRecompile) {
@@ -647,7 +636,7 @@ class GraphEditor {
 	
 	
 	EventHandling workspaceClickHandler(ClickEvent e) {
-		if (e.bubbling && !e.handled) {
+		if (e.bubbling && !e.handled && MouseButton.Left == e.button) {
 			_graphMngr.onNodeSelected(null);
 		}
 
