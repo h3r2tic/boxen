@@ -124,14 +124,16 @@ class KDefParserBase : Parser!(KDefToken) {
 			string type,
 			ParamSemanticExp semantic,
 			string name,
-			Value defaultValue
+			Value defaultValue,
+			Annotation[] annotations,
 		) {
 			return mem._new!(ParamDef)(
 				mem.dupString(dir),
 				mem.dupString(type),
 				semantic,
 				mem.dupString(name),
-				defaultValue
+				defaultValue,
+				mem.dupArray(annotations)
 			);
 		}
 		
@@ -305,6 +307,14 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 
 
+		Annotation createAnnotation(string name, VarDef[] vars) {
+			Annotation res;
+			res.name = mem.dupString(name);
+			res.vars = mem.dupArray(vars);
+			return res;
+		}
+
+
 		void _createFunctionParams(
 				ParamDef[] defs,
 				AbstractFunction func
@@ -318,6 +328,10 @@ class KDefParserBase : Parser!(KDefToken) {
 				);
 
 				setParamValue(p, d.defaultValue);
+
+				if (d.annotations.length > 0) {
+					p.annotation = &d.annotations;
+				}
 
 				bool hasPlainSemantic = true;
 				void checkPlainSemantic(ParamSemanticExp sem) {

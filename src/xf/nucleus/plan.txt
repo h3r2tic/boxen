@@ -228,7 +228,11 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- editing of nodes
 		- code
 		- graph
-	- create kdef objects without saving to files (?)
+	+ create kdef objects without saving to files
+	~ material data editing
+		+ colors (color wheel)
+		+ floats (spinner / slider)
+		- textures (just a load/preview for now)
 	- apply changes within Nucleus (fix kdef change notification handling)
 	~ material preview
 		+ display anything in the preview
@@ -249,10 +253,6 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- gizmos (needed for light manipulation)
 	- object/light parameter editing
 	- application of materials to objects
-	- material data editing
-		- colors (color wheel)
-		- floats (spinner / slider)
-		- textures (just a load/preview for now)
 	- management of material instances
 		* 'default' created immediately, forked upon by the user
 		* 'FooMat.BarInst' could be used for naming

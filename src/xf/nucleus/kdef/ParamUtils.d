@@ -90,6 +90,10 @@ void buildConcreteParams(ParamDirection pdir, ParamDef[] params, ParamList* plis
 
 		setParamValue(p, d.defaultValue);
 
+		if (d.annotations.length > 0) {
+			p.annotation = &d.annotations;
+		}
+
 		p.hasPlainSemantic = true;
 		final psem = p.semantic();
 

@@ -1,144 +1,244 @@
 module xf.nucled.ParametersRollout;
 
 private {
+	import
+		xf.Common;
+	import
+		xf.nucleus.Param,
+		xf.nucleus.Value,
+		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.kdef.Common;
+	import
+		xf.nucled.DataProvider,
+		xf.nucled.Graph : GraphNode;
+	import
+		xf.hybrid.Hybrid;
 	/+import xf.nucleus.model.INucleus;
 	import xf.nucleus.model.KernelProvider : KernelRef;
 	import xf.nucleus.DataProvider;
 	import xf.nucleus.Types;
 	import xf.nucleus.CommonDef;
-	import xf.nucled.Graph : GraphNode;+/
-	import xf.hybrid.Hybrid;
+	import +/
 }
 
 
 
 class ParametersRollout {
-	/+this (INucleus nucleus) {
-		_nucleus = nucleus;
+	this (IKDefRegistry reg) {
+		_reg = reg;
 	}
 	
 	
 	void setNode(GraphNode node) {
+		if (_node !is node) {
+			paramInfo.length = 0;
+		}
 		_node = node;
-	}+/
+	}
+
+
+	bool changed() {
+		return _changed;
+	}
+
+
+	private {
+		struct ParamInfo {
+			Param*			param;
+			DataProvider	provider;
+		}
+
+
+		ParamInfo[] paramInfo;
+	}
+
+
+	private bool doParamGUI(uword i, ref Param param) {
+		if (!param.hasPlainSemantic || !param.hasTypeConstraint) {
+			return false;
+		}
+
+		if (paramInfo.length <= i) {
+			paramInfo.length = i+1;
+		}
+
+		final info = &paramInfo[i];
+		if (info.param !is &param) {
+			info.param = &param;
+			info.provider = null;
+		}
+
+		// TODO
+		/+try {
+			normalizedType = normalizeTypeName(param.type);
+		} catch (TypeParsingException e) {}+/
+
+		VarDef[] guiAnnots;
+		
+		if (param.annotation) {
+			final annots = *cast(Annotation[]*)param.annotation;
+			foreach (annot; annots) {
+				if ("gui" == annot.name) {
+					guiAnnots = annot.vars;
+				}
+			}
+		}
+
+		cstring provName;
+		foreach (v; guiAnnots) {
+			if ("widget" == v.name) {
+				provName = (cast(IdentifierValue)v.value).value;
+				break;
+			}
+		}
+
+		DataProvider	sourceProvider = info.provider;
+		cstring			normalizedType = param.type;
+
+		uword numProviders = 0;
+		
+		if (sourceProvider is null) {
+			foreach (foo, bar; dataProviderRegistry.iterProvidersForType(normalizedType)) {
+				++numProviders;
+				if (foo == provName || sourceProvider is null) {
+					sourceProvider = bar();
+				}
+			}
+
+			if (0 == numProviders) {
+				return false;
+			}
+		}
+
+		bool fixed = false;
+		auto box = HBox() [{
+			Label().text = param.type;
+			Label().text = param.name;
+			
+			auto check = Check().text("fixed");
+			if (!check.initialized) {
+				check.checked = sourceProvider !is null;
+			}
+			fixed = check.checked;
+		}];
+		if (!box.initialized) {
+			box.cfg(`layout = { spacing = 5; }`);
+			box.layoutAttribs = "hexpand hfill";
+		}
+		
+		
+		if (fixed) {
+			if (numProviders > 1) {
+				auto box2 = HBox() [{
+					Label().text = "widget: ";
+					
+					auto pt = Combo();
+					if (!pt.initialized) {
+						int initTo = -1;
+						int numAdded = 0;
+						int i; foreach (name, prov_; dataProviderRegistry.iterProvidersForType(normalizedType)) { scope (success) ++i;
+							pt.addItem(name);
+							++numAdded;
+							if (sourceProvider !is null && sourceProvider.name == name) {
+								initTo = i;
+							}
+						}
+						
+						if (initTo != -1) {
+							pt.selectedIdx = initTo;
+						} else if (1 == numAdded) {
+							pt.selectedIdx = 0;
+						}
+					}
+					
+					char[] providerName = pt.selected;
+					if (sourceProvider is null || sourceProvider.name != providerName) {
+						foreach (name, prov; dataProviderRegistry.iterProvidersForType(normalizedType)) {
+							if (name == providerName) {
+								sourceProvider = prov();
+								break;
+							}
+						}
+					}
+
+					assert (sourceProvider is null || sourceProvider.name == providerName);
+				}];
+
+				if (!box2.initialized) {
+					box2.layoutAttribs = "hexpand hfill";
+				}
+			}
+			
+			if (sourceProvider !is null) {
+				if (sourceProvider !is info.provider) {
+					sourceProvider.configure(guiAnnots);
+				}
+				
+				sourceProvider.doGUI();
+				if (sourceProvider.changed || info.provider !is sourceProvider) {
+					updateParamValue(param, sourceProvider);
+					_changed = true;
+				}
+			}
+		}
+
+		info.provider = sourceProvider;
+
+		return true;
+	}
+
+
+	private void updateParamValue(ref Param param, DataProvider prov) {
+		switch (param.type) {
+			case "float":
+				param.setValue(prov.getValue().get!(float));
+				break;
+			case "float2":
+				param.setValue(prov.getValue().get!(vec2).tuple);
+				break;
+			case "float3":
+				param.setValue(prov.getValue().get!(vec3).tuple);
+				break;
+			case "float4":
+				param.setValue(prov.getValue().get!(vec4).tuple);
+				break;
+			default:
+				assert (false, param.type);
+		}
+	}
 	
 	
 	void doGUI() {
-		//if (_node !is null) {
-			Group(`parametersRollout`) [{/+
-				int i; foreach (param; &iterParams) { scope (success) ++i;
+		_changed = false;
+
+		if (_node !is null) {
+			Group(`parametersRollout`) [{
+				uword i; foreach (ref param; &iterParams) { scope (success) ++i;
+					bool show = false;
+				
 					auto box = VBox(i) [{
-						char[]	normalizedType = param.type;
-						
-						try {
-							normalizedType = normalizeTypeName(param.type);
-						} catch (TypeParsingException e) {}
-						
-						
-						GraphNode			sourceDataNode;
-						char[]					sourceOutput;
-						DataProviderRef*	sourceProvider;
-						if (auto con = _node.hasConnectionToInput(param.name, &sourceOutput)) {
-							if (GraphNode.Type.Data == con.from.type) {
-								sourceDataNode = con.from;
-								if (auto pparam = con.from.data.getParam(sourceOutput)) {
-									sourceProvider = pparam.dataProvider;
-								}
-							}
-						}
-						
-						if (sourceProvider is null) {
-							return;
-						}						
-						
-						bool hasProviders = false;
-						foreach (foo, bar; dataProviderRegistry.iterProvidersForType(normalizedType)) {
-							hasProviders = true;
-							break;
-						}
-						
-						
-						bool fixed = false;
-						auto box = HBox() [{
-							Label().text = param.type;
-							Label().text = param.name;
-							
-							if (hasProviders) {
-								auto check = Check().text("fixed");
-								if (!check.initialized) {
-									check.checked = sourceProvider !is null;
-								}
-								fixed = check.checked;
-							}
-						}];
-						if (!box.initialized) {
-							box.cfg(`layout = { spacing = 5; }`);
-							box.layoutAttribs = "hexpand hfill";
-						}
-						
-						
-						if (fixed) {
-							auto box2 = HBox() [{
-								Label().text = "provider: ";
-								
-								auto pt = Combo();
-								if (!pt.initialized) {
-									int initTo = -1;
-									int numAdded = 0;
-									int i; foreach (name, prov_; dataProviderRegistry.iterProvidersForType(normalizedType)) { scope (success) ++i;
-										pt.addItem(name);
-										++numAdded;
-										if (sourceProvider.get !is null && sourceProvider.get.name == name) {
-											initTo = i;
-										}
-									}
-									
-									if (initTo != -1) {
-										pt.selectedIdx = initTo;
-									} else if (1 == numAdded) {
-										pt.selectedIdx = 0;
-									}
-								}
-								
-								char[] providerName = pt.selected;
-								if (sourceProvider.get is null || sourceProvider.get.name != providerName) {
-									foreach (name, prov; dataProviderRegistry.iterProvidersForType(normalizedType)) {
-										if (name == providerName) {
-											*sourceProvider = prov();
-											break;
-										}
-									}
-								}
-
-								assert (sourceProvider.get is null || sourceProvider.get.name == providerName);
-							}];
-							if (!box2.initialized) {
-								box2.layoutAttribs = "hexpand hfill";
-							}
-
-							if (sourceProvider.get !is null) {
-								sourceProvider.get.doGUI();
-							}
-						}
+						show = doParamGUI(i, param);
 					}];
+					
+					box.widgetEnabled = show;
 					
 					if (!box.initialized) {
 						box.cfg(`layout = { padding = 5 5; spacing = 5; } style.normal = { border = 1 rgba(1, 1, 1, .15); background = solid(rgba(0, 0, 0, 0.1)); }`);
 						box.layoutAttribs = "hexpand hfill";
 					}
-				}+/
+				}
 			}];
-		//}
+		}
 	}
 
 
-	/+private {
+	private {
 		int iterParams(int delegate(ref Param) dg) {
 			if (_node.isKernelBased) {
-				auto kr = KernelRef(_node.kernelName, _nucleus);
+				/+auto kr = KernelRef(_node.kernelName, _nucleus);
 				if (auto kernel = kr.tryGetKernel) {
 					if (auto fun = kernel.getFunction(_node.funcName)) {
-						foreach (p; &fun.iterParams) {
+						foreach (ref p; &fun.iterParams) {
 							if (p.isInput) {
 								if (auto r = dg(p)) {
 									return r;
@@ -146,11 +246,11 @@ class ParametersRollout {
 							}
 						}
 					}
-				}
+				}+/
 			} else {
 				if (_node.data) {
-					foreach (p; &_node.data.iterParams) {
-						if (p.isInput) {
+					foreach (ref p; _node.data.params) {
+						if (p.isOutput) {
 							if (auto r = dg(p)) {
 								return r;
 							}
@@ -165,7 +265,8 @@ class ParametersRollout {
 	
 	
 	private {
-		INucleus		_nucleus;
-		GraphNode	_node;
-	}+/
+		IKDefRegistry	_reg;
+		GraphNode		_node;
+		bool			_changed = false;
+	}
 }

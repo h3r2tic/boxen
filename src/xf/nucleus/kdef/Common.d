@@ -104,6 +104,7 @@ abstract class Scope {
 					this.classinfo.name,
 					_varNames
 				);
+				assert (false);		// FFFFFUUUUU dmd
 			}
 		} else {
 			*finalName = name;
@@ -733,19 +734,22 @@ class ParamDef {
 	ParamSemanticExp paramSemantic;
 	string name;
 	Value defaultValue;
+	Annotation[] annotations;
 
 	this (
 			string dir,
 			string type,
 			ParamSemanticExp paramSemantic,
 			string name,
-			Value defaultValue
+			Value defaultValue,
+			Annotation[] annotations
 	) {
 		this.dir = dir;
 		this.type = type;
 		this.paramSemantic = paramSemantic;
 		this.name = name;
 		this.defaultValue = defaultValue;
+		this.annotations = annotations;
 	}
 
 	bool opEquals(ParamDef other) {
@@ -754,6 +758,18 @@ class ParamDef {
 		&&	type == other.type
 		&&	equal(paramSemantic, other.paramSemantic)
 		&&	name == other.name
-		&&	equal(defaultValue, other.defaultValue);
+		&&	equal(defaultValue, other.defaultValue)
+		&&	annotations == other.annotations;
+	}
+}
+
+
+struct Annotation {
+	string		name;
+	VarDef[]	vars;
+
+
+	bool opEquals(ref Annotation other) {
+		return name == other.name && vars == other.vars;
 	}
 }

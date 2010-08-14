@@ -407,6 +407,7 @@ class KDefProcessor {
 						pnew.hasPlainSemantic = true;
 						getPlainSemanticForNode(p, pnew.semantic, supr);
 						pnew.copyValueFrom(p);
+						pnew.annotation = p.annotation;
 					} else {
 						node.params.add(*p).dir = ParamDirection.In;
 					}

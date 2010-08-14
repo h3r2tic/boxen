@@ -15,27 +15,20 @@ private {
 		xf.nucleus.SamplerDef,
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.model.KDefInvalidation;
-
-	import xf.vsd.VSD;
-	import xf.loader.Common;
-	import xf.loader.img.ImgLoader;
-
 	import
-		xf.gfx.Texture,
+		xf.vsd.VSD;
+	import
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
-	
-	import xf.utils.BitSet;
-	
+	import
+		xf.utils.BitSet;	
 	import
 		xf.mem.MainHeap,
 		xf.mem.FreeList,
-		xf.mem.Array,
-		/+xf.mem.ChunkQueue,
-		xf.mem.ScratchAllocator,+/
-		MemUtils = xf.utils.Memory;
-		
-	import xf.omg.util.ViewSettings;
-	import tango.core.Variant;
+		xf.mem.Array;
+	import
+		xf.omg.util.ViewSettings;
+	import
+		tango.core.Variant;
 }
 
 
@@ -127,6 +120,7 @@ abstract class Renderer
 
 	protected {
 		Array!(MaterialData)	_materials;
+		Array!(cstring)			_materialKernels;	// aliased from the MaterialDef
 		//ScratchFIFO				_materialMem;
 	}
 
@@ -134,121 +128,16 @@ abstract class Renderer
 	// TODO: mem
 	/+override +/void registerMaterial(MaterialDef def) {
 		if (def.id >= _materials.length) {
-			_materials.growBy(def.id - _materials.length + 1);
+			final gb = def.id - _materials.length + 1;
+			_materials.growBy(gb);
+			_materialKernels.growBy(gb);
 		}
 		
 		auto mat = _materials[def.id];
 		static assert (isReferenceType!(typeof(mat)));
-		
-		MemUtils.alloc(mat.info, def.params.length);
 
-		//assert (def.reflKernel !is null);
-		mat.kernelName = /+DgScratchAllocator(&_materialMem.pushBack)
-			.dupString(+/def.materialKernel.name;//);
-
-		uword sizeReq = 0;
-		
-		foreach (i, p; def.params) {
-			uword psize = p.valueSize;
-
-			switch (p.valueType) {
-				case ParamValueType.ObjectRef: {
-					Object objVal;
-					p.getValue(&objVal);
-					if (auto sampler = cast(SamplerDef)objVal) {
-						psize = Texture.sizeof;
-					} else {
-						error(
-							"Forward renderer: Don't know what to do with"
-							" a {} material param ('{}').",
-							objVal.classinfo.name,
-							p.name
-						);
-					}
-				} break;
-
-				case ParamValueType.String:
-				case ParamValueType.Ident: {
-					error(
-						"Forward renderer: Don't know what to do with"
-						" string/ident material params ('{}').",
-						p.name
-					);
-				} break;
-
-				default: break;
-			}
-
-			assert (psize != 0);
-			
-			// TODO: get clear ownership rules here
-			mat.info[i].name = cast(cstring)p.name;
-			mat.info[i].offset = sizeReq;
-			sizeReq += psize;
-			sizeReq += (uword.sizeof - 1);
-			sizeReq &= ~(uword.sizeof - 1);
-		}
-
-		mat.data = mainHeap.allocRaw(sizeReq);
-		memset(mat.data, 0, sizeReq);
-
-		foreach (i, p; def.params) {
-			void* dst = mat.data + mat.info[i].offset;
-			assert (dst < mat.data + sizeReq);
-			
-			switch (p.valueType) {
-				case ParamValueType.ObjectRef: {
-					Object objVal;
-					p.getValue(&objVal);
-					if (auto sampler = cast(SamplerDef)objVal) {
-						// TODO: proper handling of sampler objects and textures,
-						// separately, using the new GL 3.3 extension
-						Texture* tex = cast(Texture*)dst;
-						loadMaterialSamplerParam(sampler, tex);
-					} else {
-						error(
-							"Renderer: Don't know what to do with"
-							" a {} material param ('{}').",
-							objVal.classinfo.name,
-							p.name
-						);
-					}
-				} break;
-
-				case ParamValueType.String:
-				case ParamValueType.Ident: {
-					error(
-						"Renderer: Don't know what to do with"
-						" string/ident material params ('{}').",
-						p.name
-					);
-				} break;
-
-				default: {
-					memcpy(dst, p.value, p.valueSize);
-				} break;
-			}
-		}
-	}
-
-
-	protected void loadMaterialSamplerParam(SamplerDef sampler, Texture* tex) {
-		if (auto val = sampler.params.get("texture")) {
-			cstring filePath;
-			val.getValue(&filePath);
-
-			final img = imgLoader.load(getResourcePath(filePath));
-			if (!img.valid) {
-				// TODO: fallback
-				error("Could not load texture: '{}'", filePath);
-			}
-
-			*tex = _backend.createTexture(
-				img
-			);
-		} else {
-			assert (false, "TODO: use a fallback texture");
-		}
+		_materialKernels[def.id] = def.materialKernel.name;
+		createMaterialData(_backend, def.params, mat);
 	}
 
 

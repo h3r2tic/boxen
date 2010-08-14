@@ -36,6 +36,11 @@ abstract class Value {
 struct VarDef {
 	cstring	name;
 	Value	value;
+
+
+	bool opEquals(ref VarDef other) {
+		return name == other.name && equal(value, other.value);
+	}
 }
 
 

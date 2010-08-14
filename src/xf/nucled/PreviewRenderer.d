@@ -80,8 +80,44 @@ class MaterialPreviewRenderer {
 	}
 
 	KernelImpl		structureToUse;
-	MaterialDef		materialToUse;
-	
+	KernelImpl		materialToUse;
+	ParamList		materialParams;	// TODO
+
+	private {
+		// compiled out of the materialParams
+		MaterialData	_materialData;
+	}
+
+
+	void updateMaterialData() {
+		// BUG: leaks memory
+		_materialData = MaterialData.init;
+		createMaterialData(_backend, materialParams, &_materialData);
+
+		foreach (efInst; _renderableEI) {
+			void** instUniforms = efInst.getUniformPtrsDataPtr();
+
+			void** getInstUniformPtrPtr(cstring name) {
+				if (instUniforms) {
+					final idx = efInst.getUniformParamGroup.getUniformIndex(name);
+					if (idx != -1) {
+						return instUniforms + idx;
+					}
+				}
+				return null;
+			}
+
+			foreach (ref info; _materialData.info) {
+				char[256] fqn;
+				sprintf(fqn.ptr, "material__%.*s", info.name);
+				auto name = fromStringz(fqn.ptr);
+				void** ptr = getInstUniformPtrPtr(name);
+				if (ptr) {
+					*ptr = _materialData.data + info.offset;
+				}
+			}
+		}
+	}
 
 
 	private EffectInfo buildEffect() {
@@ -90,7 +126,7 @@ class MaterialPreviewRenderer {
 		EffectInfo effectInfo;
 
 		final structureKernel	= structureToUse;
-		final materialKernel	= materialToUse.materialKernel;
+		final materialKernel	= materialToUse;
 
 		alias KernelGraph.NodeType NT;
 
@@ -359,15 +395,13 @@ float3 eyePosition <
 
 			// ----
 
-			//assert (false, "TODO");
-			/+auto material = _materials[renderables.material[rid]];
-			foreach (ref info; material.info) {
+			/+foreach (ref info; _materialData.info) {
 				char[256] fqn;
 				sprintf(fqn.ptr, "material__%.*s", info.name);
 				auto name = fromStringz(fqn.ptr);
 				void** ptr = getInstUniformPtrPtr(name);
 				if (ptr) {
-					*ptr = material.data + info.offset;
+					*ptr = _materialData.data + info.offset;
 				}
 			}+/
 

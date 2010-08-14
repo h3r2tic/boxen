@@ -163,7 +163,7 @@ class TestApp : GfxApp {
 		gui.vfsMountDir(`../hybrid/`);
 		guiConfig = loadHybridConfig(`./GUI.cfg`);
 
-		paramsRollout = new ParametersRollout();
+		paramsRollout = new ParametersRollout(kdefRegistry);
 
 		tabs[0] = TabDesc(
 			"Top-level pipeline",
@@ -310,7 +310,25 @@ class TestApp : GfxApp {
 	}
 
 
+	private bool _prevRefresh;
+	void handleRefresh() {
+		if (keyboard.keyDown(KeySym.F5)) {
+			if (!_prevRefresh) {
+				if (auto tabDesc = activeTab in tabs) {
+					if (TabDesc.Role.GraphEditor == tabDesc.role) {
+						tabDesc.graphEditor.refresh();
+					}
+				}
+			}			
+		} else {
+			_prevRefresh = false;
+		}
+	}
+
+
 	override void render() {
+		handleRefresh();
+		
 		updateLights();
 		
 		renderer.resetState();
@@ -337,11 +355,11 @@ class TestApp : GfxApp {
 			);
 		}];
 
-		paramsRollout.doGUI();
-
 		gui.push(`main`);
 			doTabsGUI();
 		gui.pop();
+
+		paramsRollout.doGUI();
 
 		Group(`.outputPanel`) [{
 			SceneView initSv(SceneView sv) {
@@ -487,6 +505,20 @@ class TestApp : GfxApp {
 				}
 			} else {
 				// blah
+			}
+
+			GraphEditor curEditor = null;
+			if (TabDesc.Role.GraphEditor == tabs[activeTab].role) {
+				curEditor = tabs[activeTab].graphEditor;
+			}
+
+			if (curEditor !is null) {
+				paramsRollout.setNode(curEditor.selected);
+				if (paramsRollout.changed) {
+					curEditor.onParamsChanged();
+				}
+			} else {
+				paramsRollout.setNode(null);
 			}
 		}];
 		if (!layers.initialized) {

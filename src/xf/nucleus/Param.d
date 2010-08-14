@@ -62,6 +62,7 @@ struct Param {
 	private cstring	_name;
 	
 	void*			value;
+	void*			annotation;		// points to Annotation[] in the original kdef
 
 	ParamDirection	dir;
 	ParamValueType	valueType;
@@ -133,10 +134,13 @@ struct Param {
 
 
 	void copyValueFrom(Param* p) {
+		uword prevSize = value is null ? 0 : valueSize();
 		if (p.value) {
 			if (p.valueType != ParamValueType.ObjectRef) {
 				uword size = p.valueSize;
-				value = _allocator(size);
+				if (prevSize < size) {
+					value = _allocator(size);
+				}
 				memcpy(value, p.value, size);
 				valueType = p.valueType;
 			} else {
@@ -150,29 +154,41 @@ struct Param {
 
 
 	void setValue(float val) {
+		uword prevSize = value is null ? 0 : valueSize();
 		valueType = ParamValueType.Float;
-		value = _allocator(4);
+		if (prevSize < 4) {
+			value = _allocator(4);
+		}
 		*(cast(float*)value) = val;
 	}
 
 	void setValue(float a, float b) {
+		uword prevSize = value is null ? 0 : valueSize();
 		valueType = ParamValueType.Float2;
-		value = _allocator(8);
+		if (prevSize < 8) {
+			value = _allocator(8);
+		}
 		*cast(float*)(value+0) = a;
 		*cast(float*)(value+4) = b;
 	}
 
 	void setValue(float a, float b, float c) {
+		uword prevSize = value is null ? 0 : valueSize();
 		valueType = ParamValueType.Float3;
-		value = _allocator(12);
+		if (prevSize < 12) {
+			value = _allocator(12);
+		}
 		*cast(float*)(value+0) = a;
 		*cast(float*)(value+4) = b;
 		*cast(float*)(value+8) = c;
 	}
 
 	void setValue(float a, float b, float c, float d) {
+		uword prevSize = value is null ? 0 : valueSize();
 		valueType = ParamValueType.Float4;
-		value = _allocator(16);
+		if (prevSize < 16) {
+			value = _allocator(16);
+		}
 		*cast(float*)(value+0) = a;
 		*cast(float*)(value+4) = b;
 		*cast(float*)(value+8) = c;
@@ -180,15 +196,21 @@ struct Param {
 	}
 
 	void setValue(cstring val) {
+		uword prevSize = value is null ? 0 : valueSize();
 		valueType = ParamValueType.String;
-		value = _allocator(val.length+1);
+		if (prevSize < val.length+1) {
+			value = _allocator(val.length+1);
+		}
 		memcpy(value, val.ptr, val.length);
 		*cast(char*)(value+val.length) = 0;
 	}
 
 	void setValueIdent(cstring val) {
+		uword prevSize = value is null ? 0 : valueSize();
 		valueType = ParamValueType.Ident;
-		value = _allocator(val.length+1);
+		if (prevSize < val.length+1) {
+			value = _allocator(val.length+1);
+		}
 		memcpy(value, val.ptr, val.length);
 		*cast(char*)(value+val.length) = 0;
 	}
@@ -256,6 +278,7 @@ struct Param {
 		res.wantAutoFlow = this.wantAutoFlow;
 		res.dir = this.dir;
 		res.name = name;
+		res.annotation = annotation;
 		res.copyValueFrom(this);
 		return res;
 	}
@@ -286,6 +309,10 @@ struct Param {
 
 	void name(cstring n) {
 		_name = _allocString(n);
+	}
+
+	void unsafeOverrideName(cstring s) {
+		_name = s;
 	}
 
 

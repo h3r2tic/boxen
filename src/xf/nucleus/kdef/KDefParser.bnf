@@ -151,12 +151,14 @@ Param
 		string type,
 		ParamSemanticExp semantic,
 		string name,
-		Value defaultValue
+		Value defaultValue,
+		Annotation[] annotations
 	)
 	::= [ParamDirection:dir]
 	Identifier:name
 	[ "<" [ParamSemantic:semantic] ">" ]
-	[ "=" Value:defaultValue ];
+	[ "=" Value:defaultValue ]
+	AnnotationList:annotations;
 
 ParamDirection
 	= string dir
@@ -187,6 +189,16 @@ ParamSemanticTrait
 			["in" "."] Identifier
 		|	"in" "." Identifier "." "actual"
 		):name [ Value:value ];
+
+// ----------------------------------------------------------------------------------------------------------------
+
+AnnotationList
+	= Annotation[] value
+	::= Annotation:~value*;
+
+Annotation
+	= Annotation createAnnotation(string name, VarDef[] vars)
+	::= "@" Identifier:name [ "(" VarDef:~vars* ")" ];
 
 // ----------------------------------------------------------------------------------------------------------------
 
