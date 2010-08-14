@@ -366,7 +366,7 @@ class LightPrePassRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final materialKernel	= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel	= _kdefRegistry.getKernel(*_materialKernels[materialId]);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
@@ -1087,7 +1087,7 @@ float farPlaneDistance <
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final materialKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel	= _kdefRegistry.getKernel(*_materialKernels[materialId]);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;
@@ -1507,7 +1507,7 @@ float farPlaneDistance <
 					auto material = _materials[materialId];
 
 					final cacheKey = FinalEffectCacheKey(
-						material.kernelName,
+						*_materialKernels[materialId],
 						renderables.structureKernel[rid]
 					);
 					cacheKey.computeHash();

@@ -203,7 +203,7 @@ class ForwardRenderer : Renderer {
 		MaterialId materialId = renderables.material[rid];
 		auto material = _materials[materialId];
 
-		key.materialKernel = material.kernelName;
+		key.materialKernel = *_materialKernels[materialId];
 		key.reflKernel = surface.kernelName;
 		key.structureKernel = renderables.structureKernel[rid];
 
@@ -245,7 +245,7 @@ class ForwardRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
-		final materialKernel		= _kdefRegistry.getKernel(material.kernelName);
+		final materialKernel	= _kdefRegistry.getKernel(*_materialKernels[materialId]);
 		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
 
 		alias KernelGraph.NodeType NT;

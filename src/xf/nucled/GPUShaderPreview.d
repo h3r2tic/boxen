@@ -2,11 +2,13 @@ module xf.nucled.GPUShaderPreview;
 
 private {
 	import xf.Common;
-	import xf.nucled.Graph : NodeContents;
+	import xf.nucled.Graph : NodeContents, Graph, GraphNode;
 	import xf.nucled.PreviewRenderer;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.IStructureData;
+	import xf.nucleus.Param;
+	import xf.nucleus.KernelImpl;
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
 
 	import xf.hybrid.Common;
@@ -30,6 +32,9 @@ private {
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
+
+	import xf.mem.StackBuffer;
+	import xf.mem.ScratchAllocator;
 	//import xf.dog.Dog;
 	
 	//import tango.io.Stdout;
@@ -110,11 +115,36 @@ class GPUShaderPreview : NodeContents {
 	void compileEffects() {
 		_renderer.compileEffects();
 	}
+
+
+	void onParamsChanged(Graph kg) {
+		scope stack = new StackBuffer;
+		final plist = ParamList(&stack.allocRaw);
+
+		foreach (n; kg.nodes) {
+			if (GraphNode.Type.Data != n.type) {
+				continue;
+			}
+
+			if (n.data) {
+				foreach (p; n.data.params) {
+					if (p.value) {
+						plist.add(p);
+					}
+				}
+			}
+		}
+		
+		_renderer.materialParams = plist;
+		_renderer.updateMaterialData();
+		_renderer.materialParams = ParamList.init;
+	}
 	
 	
 	this (
 		RendererBackend backend,
 		IKDefRegistry reg,
+		KernelImpl matKernel,
 		cstring nodeLabel,
 		cstring nodeOutput
 	) {
@@ -129,15 +159,17 @@ class GPUShaderPreview : NodeContents {
 			nodeLabel, nodeOutput
 		);
 
+		_renderer.materialToUse = matKernel;
+/+
 		// HACK
 
 		foreach (mname, mat; &reg.materials) {
 			if ("tmpMat" == mname){
-				_renderer.materialToUse = mat;
+				_renderer.materialToUse = mat.materialKernel;
 			}
-		}
+		}+/
 
-		assert (_renderer.materialToUse !is null);
+		assert (_renderer.materialToUse.isValid);
 
 		_renderer.structureToUse = reg.getKernel("DefaultMeshStructure");
 		

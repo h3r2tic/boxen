@@ -25,7 +25,7 @@ private {
 	import xf.nucled.GPUShaderPreview : GPUShaderPreview;
 
 	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
+	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue, Statement;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.Param;
@@ -33,6 +33,7 @@ private {
 	import xf.nucleus.Log;
 
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
+	import xf.gfx.Texture;
 	
 	/+import xf.nucleus.CommonDef;
 	//import xf.nucleus.KernelCore;
@@ -52,7 +53,8 @@ private {
 	
 	import xf.linker.DefaultLinker;+/
 
-	import xf.gfx.Texture;
+	import xf.mem.ChunkQueue;
+	import xf.mem.ScratchAllocator;
 
 	import tango.text.Util;
 	import tango.io.stream.Format;
@@ -499,7 +501,59 @@ class GraphEditor {
 		//generateKernelGraph(tmpFileName);
 		
 		foreach (n; _graph.nodes) {
-			if (n.contents) {
+			refreshContents(n);
+		}
+	}
+
+
+	void onParamsChanged() {
+		foreach (n; _graph.nodes) {
+			if (auto sp = cast(GPUShaderPreview)n.contents) {
+				sp.onParamsChanged(_graph);
+			}
+		}
+	}
+
+
+	void refreshContents(GraphNode n) {
+		foreach (i, con; &n.iterOutputs) {
+			if (con.name == depOutputConnectorName) {
+				continue;
+			}
+
+			final memfifo = new ScratchFIFO;
+			final mem = DgScratchAllocator(&memfifo.pushBack);
+
+			final graphDef = mem._new!(GraphDef)(
+				cast(Statement[])null,
+				mem._allocator
+			);
+
+			graph.dump(graphDef, _registry);
+
+			if (n.contents is null) {
+			//try {
+				final sp = new GPUShaderPreview(
+					_backend,
+					_registry,
+					KernelImpl(graphDef),
+					n.label, con.name
+				);
+				n.contents = sp;
+
+				sp.setObjects(_objectsForPreview);
+				sp.compileEffects();
+
+				break;
+			/+} catch (NucleusException e) {
+				e.writeOut((cstring s) {
+					Stdout(e);
+					Stdout.newline;
+				});
+				n.contents = null;
+			}+/
+			} else if (auto gsp = cast(GPUShaderPreview)n.contents) {
+				gsp._renderer.materialToUse = KernelImpl(graphDef);
 				n.contents.refresh();
 			}
 		}
@@ -522,31 +576,7 @@ class GraphEditor {
 				}
 			}
 
-			foreach (i, con; &n.iterOutputs) {
-				if (con.name == depOutputConnectorName) {
-					continue;
-				}
-				
-				//try {
-					final sp = new GPUShaderPreview(
-						_backend,
-						_registry,
-						n.label, con.name
-					);
-					n.contents = sp;
-
-					sp.setObjects(_objectsForPreview);
-					sp.compileEffects();
-
-					break;
-				/+} catch (NucleusException e) {
-					e.writeOut((cstring s) {
-						Stdout(e);
-						Stdout.newline;
-					});
-					n.contents = null;
-				}+/
-			}
+			refreshContents(n);
 		}
 	}
 
@@ -581,9 +611,9 @@ class GraphEditor {
 			foreach (param; func.params) {
 				Stdout.formatln(`Creating a param '{}'`, param.name);
 				if (param.isInput) {
-					node.inputs ~= new ConnectorInfo(param.name, node);
+					node.inputs ~= new ConnectorInfo(param, node);
 				} else {
-					node.outputs ~= new ConnectorInfo(param.name, node);
+					node.outputs ~= new ConnectorInfo(param, node);
 				}
 			}
 		} else {
@@ -591,11 +621,11 @@ class GraphEditor {
 			foreach (name, n; graph.nodes) {
 				if ("input" == n.type) {
 					foreach (param; n.params) {
-						node.inputs ~= new ConnectorInfo(param.name, node);
+						node.inputs ~= new ConnectorInfo(param, node);
 					}
 				} else if ("output" == n.type) {
 					foreach (param; n.params) {
-						node.outputs ~= new ConnectorInfo(param.name, node);
+						node.outputs ~= new ConnectorInfo(param, node);
 					}
 				}
 			}

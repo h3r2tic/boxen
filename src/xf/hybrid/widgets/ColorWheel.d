@@ -126,7 +126,7 @@ class ColorWheel : Widget {
 	bool	triangleDirty = true;
 	bool	draggingRing = false;
 	bool	draggingTriangle = false;
-	vec2	curTriUV = { x: 1.f, y: 0.f };
+	//vec2	curTriUV = { x: 1.f, y: 0.f };
 	
 	static float angleToHue(float a) {
 		return fmodf(fmodf(a / (2.0 * pi), 1.f) + 1.f, 1.f);
@@ -151,8 +151,8 @@ class ColorWheel : Widget {
 		float margin = 5 / csize.x;
 		if (d > outer) return 0;
 		else if (d < inner) return 0;
-		else if (d > outer - margin) return rndint(255.f * (outer - d) / margin);
-		else if (d < inner + margin) return rndint(255.f * (d - inner) / margin);
+		else if (d > outer - margin) return cast(ubyte)rndint(255.f * (outer - d) / margin);
+		else if (d < inner + margin) return cast(ubyte)rndint(255.f * (d - inner) / margin);
 		//else if (d < inner + 1/csize.x*5) return cast(ubyte) ((d - inner + 1/csize.x*5) * 127f);
 		else return 255;
 	}
@@ -205,27 +205,19 @@ class ColorWheel : Widget {
 	
 	
 	private vec3 getTriangleColor(vec2 pt0, vec2 pt1, vec2 pt2, vec2 pt, out float s, out float v) {
-		float h = currentHue;
-		
-		vec2 height = (pt1 - pt2).rotatedHalfPi;
-		if (height.sqLength < 0.001f) {
-			s = v = 1;
-		} else {
-			float atHeight = dot(height.normalized, pt - pt0);
-			float maxHeight = dot(height.normalized, pt1 - pt0);
-			if (atHeight <= 0.001f) {
-				s = v = 1;
-			} else {
-				float atHeightRatio = atHeight / maxHeight;
-				s = 1.f - min(1, max(0, atHeightRatio));
-				vec2 m0 = pt0 + (pt1 - pt0) * atHeightRatio;
-				vec2 m1 = pt0 + (pt2 - pt0) * atHeightRatio;
-				v = (pt - m0).length / (m1 - m0).length;
-			}
-		}
+		float det = (pt0.x - pt2.x) * (pt1.y - pt2.y) - (pt0.y - pt2.y) * (pt1.x - pt2.x);
+		float b0 = ((pt1.y - pt2.y) * (pt.x - pt2.x) + (pt2.x - pt1.x) * (pt.y - pt2.y)) / det;
+		float b1 = ((pt2.y - pt0.y) * (pt.x - pt2.x) + (pt0.x - pt2.x) * (pt.y - pt2.y)) / det;
+		float b2 = 1.0 - b0 - b1;
+
+		s = 1.0 == b2 ? 0 : (b0 / (b0 + b1));
+		v = b0 + b1;
+
+		s = min(1.0, max(0.0, s));
+		v = min(1.0, max(0.0, v));
 		
 		vec3 rgb = void;
-		hsv2rgb(h, s, v, &rgb.r, &rgb.g, &rgb.b);
+		hsv2rgb(currentHue, s, v, &rgb.r, &rgb.g, &rgb.b);
 		return rgb;
 	}
 	
@@ -256,7 +248,7 @@ class ColorWheel : Widget {
 				float s, v;
 				auto rgb = getTriangleColor(pt0, pt1, pt2, vec2(x, y), s, v);
 				
-				return vec4ub(f2ub(rgb.r), f2ub(rgb.g), f2ub(rgb.b), rndint(fuzz * 255.f));
+				return vec4ub(f2ub(rgb.r), f2ub(rgb.g), f2ub(rgb.b), cast(ubyte)rndint(fuzz * 255.f));
 			} else {
 				return vec4ub.zero;
 			}
@@ -327,7 +319,7 @@ class ColorWheel : Widget {
 				Stdout.formatln("pos: {}", pt.toString);
 			}
 			
-			curTriUV = vec2(tu, tv);
+			//curTriUV = vec2(tu, tv);
 			Stdout.formatln("tu: {}, tv: {}", tu, tv);
 			
 			getTriangleColor(pt0, pt1, pt2, pt, this.currentSaturation, this.currentValue);
@@ -417,12 +409,28 @@ class ColorWheel : Widget {
 			vec2 pt0, pt1, pt2;
 			getTrianglePoints(pt0, pt1, pt2);
 			
-			vec2 p = pt0 * curTriUV.x + pt1 * curTriUV.y + pt2 * (1.f - curTriUV.x - curTriUV.y);
+			//vec2 p = pt0 * curTriUV.x + pt1 * curTriUV.y + pt2 * (1.f - curTriUV.x - curTriUV.y);
+			vec3 b = svToBarycentric(vec2(currentSaturation, currentValue));
+			vec2 p = pt0 * b.x + pt1 * b.y + pt2 * b.z;
 			
 			drawCachedTex(r, hotspotTexture, vec2.from(hotspotSize), this.size * (vec2(p.x, -p.y) + 1.f) * 0.5f - vec2.from(hotspotSize) / 2);
 		}
 
 		return EventHandling.Continue;
+	}
+
+
+	private vec3 svToBarycentric(vec2 sv) {
+		/+s = 1.0 == b2 ? 0 : (b0 / (b0 + b1));
+		v = b0 + b1;
+
+		s = min(1.0, max(0.0, s));
+		v = min(1.0, max(0.0, v));+/
+
+		float b0 = sv.x * sv.y;
+		float b1 = sv.y - b0;
+		float b2 = 1.0 - b0 - b1;
+		return vec3(b0, b1, b2);
 	}
 	
 	

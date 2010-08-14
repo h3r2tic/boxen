@@ -1265,8 +1265,8 @@ class KDefParser:KDefParserBase{
 
 	/*
 	Param
-		= ParamDef createParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue)
-		::= [ParamDirection:dir] Identifier:name ["<" [ParamSemantic:semantic] ">"] ["=" Value:defaultValue];
+		= ParamDef createParamDef(string dir="in",string type,ParamSemanticExp semantic,string name,Value defaultValue,Annotation[] annotations)
+		::= [ParamDirection:dir] Identifier:name ["<" [ParamSemantic:semantic] ">"] ["=" Value:defaultValue] AnnotationList:annotations;
 
 	*/
 	ParamDef value_Param;
@@ -1277,6 +1277,7 @@ class KDefParser:KDefParserBase{
 		ParamSemanticExp var_semantic;
 		string var_type;
 		Value var_defaultValue;
+		Annotation[] var_annotations;
 
 		// AndGroup
 			auto position3 = pos;
@@ -1318,26 +1319,32 @@ class KDefParser:KDefParserBase{
 			term7:
 				// Optional
 					// AndGroup
-						auto position14 = pos;
+						auto position15 = pos;
 							// Terminal
 							if(!match("=")){
-								goto fail15;
+								goto fail16;
 							}
-						term16:
+						term17:
 							// Production
 							if(parse_Value()){
 								smartAssign(var_defaultValue,value_Value);
-								goto pass0;
+								goto term13;
 							}
-						fail15:
-						pos = position14;
+						fail16:
+						pos = position15;
+						goto term13;
+			term13:
+				// Production
+				if(parse_AnnotationList()){
+					smartAssign(var_annotations,value_AnnotationList);
 					goto pass0;
+				}
 			fail4:
 			pos = position3;
 			goto fail1;
 		// Rule
 		pass0:
-			value_Param = createParamDef(var_dir,var_type,var_semantic,var_name,var_defaultValue);
+			value_Param = createParamDef(var_dir,var_type,var_semantic,var_name,var_defaultValue,var_annotations);
 			debug Stdout.format("\tparse_Param passed: {0}",value_Param).newline;
 			return true;
 		fail1:
@@ -1749,6 +1756,110 @@ class KDefParser:KDefParserBase{
 		fail1:
 			value_ParamSemanticTrait = (ParamSemanticExp).init;
 			debug Stdout.format("\tparse_ParamSemanticTrait failed").newline;
+			return false;
+	}
+
+	/*
+	AnnotationList
+		= Annotation[] value
+		::= Annotation:~value*;
+
+	*/
+	Annotation[] value_AnnotationList;
+	bool parse_AnnotationList(){
+		debug Stdout("parse_AnnotationList").newline;
+		Annotation[] var_value;
+
+		// Iterator
+		start2:
+			// (terminator)
+			if(!hasMore()){
+				goto end3;
+			}
+			// (expression)
+			expr4:
+				// Production
+				if(!parse_Annotation()){
+					goto end3;
+				}
+				smartAppend(var_value,value_Annotation);
+			goto start2;
+		end3:
+		// Rule
+		pass0:
+			value_AnnotationList = var_value;
+			debug Stdout.format("\tparse_AnnotationList passed: {0}",value_AnnotationList).newline;
+			return true;
+		fail1:
+			value_AnnotationList = (Annotation[]).init;
+			debug Stdout.format("\tparse_AnnotationList failed").newline;
+			return false;
+	}
+
+	/*
+	Annotation
+		= Annotation createAnnotation(string name,VarDef[] vars)
+		::= "@" Identifier:name ["(" VarDef:~vars* ")"];
+
+	*/
+	Annotation value_Annotation;
+	bool parse_Annotation(){
+		debug Stdout("parse_Annotation").newline;
+		string var_name;
+		VarDef[] var_vars;
+
+		// AndGroup
+			auto position3 = pos;
+				// Terminal
+				if(!match("@")){
+					goto fail4;
+				}
+			term5:
+				// Production
+				if(!parse_Identifier()){
+					goto fail4;
+				}
+				smartAssign(var_name,value_Identifier);
+			term6:
+				// Optional
+					// AndGroup
+						auto position8 = pos;
+							// Terminal
+							if(!match("(")){
+								goto fail9;
+							}
+						term10:
+							// Iterator
+							start11:
+								// (terminator)
+									// Terminal
+									if(match(")")){
+										goto end12;
+									}
+								// (expression)
+								expr13:
+									// Production
+									if(!parse_VarDef()){
+										goto fail9;
+									}
+									smartAppend(var_vars,value_VarDef);
+								goto start11;
+							end12:
+								goto pass0;
+						fail9:
+						pos = position8;
+					goto pass0;
+			fail4:
+			pos = position3;
+			goto fail1;
+		// Rule
+		pass0:
+			value_Annotation = createAnnotation(var_name,var_vars);
+			debug Stdout.format("\tparse_Annotation passed: {0}",value_Annotation).newline;
+			return true;
+		fail1:
+			value_Annotation = (Annotation).init;
+			debug Stdout.format("\tparse_Annotation failed").newline;
 			return false;
 	}
 

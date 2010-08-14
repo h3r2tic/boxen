@@ -11,9 +11,12 @@ private {
 	import xf.nucleus.KernelImpl : KernelImpl;
 	static import xf.nucleus.cpu.Reflection;		// for data inspection+/
 
+	import xf.Common;
+
 	import xf.nucleus.Param;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.kdef.model.IKDefUtilParser;
+	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
 	import xf.nucleus.Value;
 	
@@ -28,6 +31,9 @@ private {
 	import xf.utils.Array : arrayRemove = remove;
 
 	import xf.mem.ChunkQueue;
+	import xf.mem.Gather;
+
+	import Array = xf.utils.Array;
 	
 	//import xf.utils.OldCfg : Config = Array;
 	import xf.core.Registry;
@@ -112,6 +118,82 @@ class Graph {
 			}
 		}
 	}
+
+
+	void dump(KDefGraph kdef, IKDefRegistry reg) {
+		kdef._name = null;	// TODO
+		kdef._nodes = kdef.mem.allocArrayNoInit!(KDefGraphNode)(this.nodes.length);
+		kdef._nodeNames = kdef.mem.allocArrayNoInit!(cstring)(this.nodes.length);
+
+		foreach (ni, n; this.nodes) {
+			VarDef[1] vars;
+			vars[0] = VarDef("type", kdef.mem._new!(IdentifierValue)(n.typeName()));
+
+			kdef._nodes[ni] = kdef.mem._new!(KDefGraphNode)(
+				vars[],
+				kdef.mem._allocator
+			);
+			n.dump(kdef._nodes[ni], reg);
+			kdef._nodeNames[ni] = kdef.mem.dupString(n.label);
+		}
+
+		{
+			alias GraphDef.NodeConnection NC;
+
+			gatherArrays!(NC)(kdef.mem,
+			(void delegate(lazy NC) gen) {
+				foreach (n; nodes) {
+					foreach (con; n.outgoing) {
+						foreach (flow; con.flow) {
+							if (depOutputConnectorName == flow.from) {
+								gen(NC(
+									kdef._nodes[Array.indexOf(nodes, con.from)],
+									kdef._nodes[Array.indexOf(nodes, con.to)]
+								));
+							}
+						}
+					}
+				}
+			},
+			(NC[] nodeCons) {
+				kdef.nodeConnections = nodeCons;
+			});
+		}
+
+		{
+			alias GraphDef.NodeFieldConnection NFC;
+
+			gatherArrays!(NFC)(kdef.mem,
+			(void delegate(lazy NFC) gen) {
+				foreach (n; nodes) {
+					foreach (con; n.outgoing) {
+						foreach (flow; con.flow) {
+							if (depOutputConnectorName != flow.from) {
+								gen(NFC(
+									kdef._nodes[Array.indexOf(nodes, con.from)],
+									kdef._nodes[Array.indexOf(nodes, con.to)],
+
+									// duplicated later --->
+									flow.from,
+									flow.to
+								));
+							}
+						}
+					}
+				}
+			},
+			(NFC[] nodeCons) {
+				foreach (ref c; nodeCons) {
+					// <---
+					c.from = kdef.mem.dupString(c.from);
+					c.to = kdef.mem.dupString(c.to);
+				}
+				kdef.nodeFieldConnections = nodeCons;
+			});
+		}
+
+		// TODO: no-auto
+	}
 	
 	
 	void load(KDefGraph source) {
@@ -148,7 +230,7 @@ class Graph {
 		}
 	}
 
-	
+
 	protected {
 		GraphMngr	_mngr;
 		GraphNode[]	_nodes;
@@ -163,13 +245,13 @@ class Graph {
 
 
 class ConnectorInfo {
-	char[]			name;
+	char[]		name;
 	GraphNode	node;
-	vec2				windowPos = vec2.zero;
+	vec2		windowPos = vec2.zero;
 	
 	
-	this(char[] name, GraphNode node) {
-		this.name = name;
+	this(Param param, GraphNode node) {
+		this.name = param.name;
 		this.node = node;
 	}
 }
@@ -258,11 +340,17 @@ class GraphNode {
 		this.type = t;
 		
 		if (type != Type.Input && type != Type.Data) {
-			this.inputs ~= new ConnectorInfo(depInputConnectorName, this);
+			Param meh;
+			// works because the arg is a const string
+			meh.unsafeOverrideName(depInputConnectorName);
+			this.inputs ~= new ConnectorInfo(meh, this);
 		}
 		
 		if (type != Type.Output) {
-			this.outputs ~= new ConnectorInfo(depOutputConnectorName, this);
+			Param meh;
+			// works because the arg is a const string
+			meh.unsafeOverrideName(depOutputConnectorName);
+			this.outputs ~= new ConnectorInfo(meh, this);
 		}
 	}
 	
@@ -293,12 +381,11 @@ class GraphNode {
 		} else {
 			foreach (param; cfg.params) {
 				this.data.params.add(param);
-				char[] name = param.name;
 				
 				if (Type.Output == this.type) {
-					inputs ~= new ConnectorInfo(name, this);
+					inputs ~= new ConnectorInfo(param, this);
 				} else {
-					outputs ~= new ConnectorInfo(name, this);
+					outputs ~= new ConnectorInfo(param, this);
 				}
 			}
 		}
@@ -307,7 +394,7 @@ class GraphNode {
 
 	// TODO: mem
 	void addInput(Param p) {
-		inputs ~= new ConnectorInfo(p.name, this);
+		inputs ~= new ConnectorInfo(p, this);
 		if (!this.isKernelBased) {
 			this.data.params.add(p).dir = ParamDirection.In;
 		}
@@ -316,7 +403,7 @@ class GraphNode {
 
 	// TODO: mem
 	void addOutput(Param p) {
-		outputs ~= new ConnectorInfo(p.name, this);
+		outputs ~= new ConnectorInfo(p, this);
 		if (!this.isKernelBased) {
 			this.data.params.add(p).dir = ParamDirection.Out;
 		}
@@ -438,6 +525,15 @@ class GraphNode {
 			
 			//p.formatln(\t`primLevel = "{}";`, this.primLevelStr);
 		p(`};`\n);
+	}
+
+
+	void dump(KDefGraphNode kdef, IKDefRegistry reg) {
+		if (this.isKernelBased) {
+			kdef.kernelImpl = reg.getKernel(_kernelName);
+		} else {
+			kdef.params = data.params;
+		}
 	}
 	
 	
@@ -905,15 +1001,15 @@ class GraphNode {
 		model.onAddRow = {
 			char[] newName = safeName(null, "noname");
 			if (Type.Output == this.type) {
-				inputs ~= new ConnectorInfo(newName, this);
 				auto p = data.params.add(ParamDirection.In, newName);
 				p.hasPlainSemantic = true;
 				p.type = "void";
+				inputs ~= new ConnectorInfo(*p, this);
 			} else {
-				outputs ~= new ConnectorInfo(newName, this);
 				auto p = data.params.add(ParamDirection.Out, newName);
 				p.hasPlainSemantic = true;
 				p.type = "void";
+				outputs ~= new ConnectorInfo(*p, this);
 			}
 		};
 		model.onRemoveRow = (int i) {
