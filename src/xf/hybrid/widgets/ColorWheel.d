@@ -11,7 +11,7 @@ private {
 	import tango.stdc.math : fmodf;
 	import tango.math.Math;
 	
-	import tango.io.Stdout;
+	//import tango.io.Stdout;
 }
 
 
@@ -312,15 +312,15 @@ class ColorWheel : Widget {
 			
 			if (!inTri) {
 				pt = constrainToTriPerpendicular(pt, pt2, pt1, pt0);
-				Stdout.formatln("before: {} {}", tu, tv);
+				//Stdout.formatln("before: {} {}", tu, tv);
 				pointInTriangle(pt, pt0, pt1, pt2, tu, tv);
-				Stdout.formatln("after: {} {}", tu, tv);
+				//Stdout.formatln("after: {} {}", tu, tv);
 			} else {
-				Stdout.formatln("pos: {}", pt.toString);
+				//Stdout.formatln("pos: {}", pt.toString);
 			}
 			
 			//curTriUV = vec2(tu, tv);
-			Stdout.formatln("tu: {}, tv: {}", tu, tv);
+			//Stdout.formatln("tu: {}, tv: {}", tu, tv);
 			
 			getTriangleColor(pt0, pt1, pt2, pt, this.currentSaturation, this.currentValue);
 			
@@ -330,7 +330,7 @@ class ColorWheel : Widget {
 			this.currentValue = min(this.currentValue, 1);
 			this.currentValue = max(this.currentValue, 0);
 			
-			Stdout.formatln("hsv: {}", getHSV());
+			//Stdout.formatln("hsv: {}", getHSV());
 		} else if (draggingRing || (!draggingTriangle && click && !inTri)) {
 			if (click) draggingRing = true;
 			this.triRotation = atan2(y, x);
@@ -354,10 +354,24 @@ class ColorWheel : Widget {
 		}
 		
 		if (e.sinking && !e.handled && e.button.Left == e.button && e.down) {
+			gui.addGlobalHandler(&this.globalHandleMouseButton);
 			handleMouseInput(e.pos, true);
 			return EventHandling.Stop;
 		}
 		return EventHandling.Continue;
+	}
+
+
+	bool globalHandleMouseButton(MouseButtonEvent e) {
+		if (MouseButton.Left == e.button) {
+			if (!e.down) {
+				draggingRing = false;
+				draggingTriangle = false;
+				return true;
+			}
+		}
+		
+		return false;
 	}
 	
 	

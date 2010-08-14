@@ -12,6 +12,7 @@ import
 	xf.nucled.GraphEditor,
 	xf.nucled.Graph,
 	xf.nucled.Viewport,
+	xf.nucled.Dump,
 
 	xf.vsd.VSD,
 
@@ -256,7 +257,8 @@ class TestApp : GfxApp {
 		if (auto tabDesc = activeTab in tabs) {
 			if (TabDesc.Role.GraphEditor == tabDesc.role) {
 				scope f = new File("saved.kdef", File.WriteCreate);
-				tabDesc.graphEditor.saveKernelGraph("tmp", f);
+				final ge = tabDesc.graphEditor;
+				dumpGraph(ge.graph, "tmp", f);
 			}
 		}
 	}
