@@ -92,6 +92,10 @@ class Viewport {
 	alias SceneProxy.SceneObject	SceneObject;
 	alias SceneProxy.ChildrenFruct	ChildrenFruct;
 
+	public bool delegate(
+		int delegate(int delegate(ref RenderableId))
+	) contextMenuHandler;
+
 
 	this(Renderer r, VSDRoot* vsd, Array!(TrayRacer)* trayRacers) {
 		assert (vsd !is null);
@@ -245,29 +249,22 @@ class Viewport {
 		) {
 			sv.defaultEventHandler(sv, et, em, buttons, sel, pos, delta);
 			
-			if (et.Click == et && (buttons & MouseButton.Right) && !sel.isEmpty) {
-				gui().popup!(VBox)(sel) = (SceneView.Selection sel) {
-					/+void randomlyRotateSelection(SceneView.Selection sel) {
+			if (et.Click == et && (buttons & MouseButton.Right) && !sel.isEmpty && contextMenuHandler) {
+				gui().popup!(VBox)(sel, this) = (SceneView.Selection sel, Viewport _this) {
+					int selIter(int delegate(ref RenderableId) sink) {
 						foreach (so; sel) {
-							if (auto obj = cast(XNode)cast(Object)so) {
-								CoordSys cs;
-								obj.parent.getChildTransform(obj, cs.origin, cs.rotation);
-								cs.rotation = quat.yRotation(Kiss.instance.fraction * 360) * quat.xRotation(Kiss.instance.fraction * 180);
-								obj.parent.setChildTransform(obj, cs.origin, cs.rotation);
+							if (so !is cast(SceneObject)_this._vsd) {
+								uword idx = cast(CoordSys*)so - _this._vsd.transforms.ptr;
+								if (int r = sink(cast(RenderableId)idx)) {
+									return r;
+								}
 							}
 						}
-					}+/
 
-					return contextMenu(
-						menuLeaf("lol", /+randomlyRotateSelection(sel)+/Trace.formatln("lol")),
-						menuGroup("stuff",
-							menuLeaf("stuff1", Trace.formatln("stuff1")),
-							menuLeaf("stuff2", Trace.formatln("stuff2")),
-							menuLeaf("stuff3", Trace.formatln("stuff3"))
-						),
-						menuLeaf("heh"),
-						menuLeaf("lul")
-					).isOpen;
+						return 0;
+					}
+
+					return _this.contextMenuHandler(&selIter);
 				};
 			}
 		}
