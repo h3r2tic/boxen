@@ -42,15 +42,18 @@ class MaterialBrowser {
 		_obj = obj;
 	}
 
-	
+
 	void doGUI() {
+		selected = null;
+		
 		padded(70) = {
 			final wnd = MaterialBrowserWindow() [{
 				uword mi = uword.max;
 				foreach (cstring mname, MaterialDef mat; &_reg.materials) {
 					++mi;
 
-					MaterialMiniatureBox(mi) [{
+					final box = MaterialMiniatureBox(mi);
+					box [{
 						if (!(mname in _miniatures)) {
 							_miniatures[mname] = new MaterialMiniature(
 								_backend,
@@ -68,12 +71,19 @@ class MaterialBrowser {
 							.text(mname)
 							.layoutAttribs("hfill hexpand");
 					}];
+					
+					if (box.clicked) {
+						selected = mat;
+					}
 				}
 			}];
 			wnd.layoutAttribs = "vexpand vfill hexpand hfill";
 		};
 	}
 
+	public {
+		MaterialDef	selected;
+	}
 
 	private {
 		IKDefRegistry 		_reg;
@@ -89,7 +99,7 @@ class MaterialBrowserWindow : CustomWidget {
 	mixin MWidget;
 }
 
-class MaterialMiniatureBox : CustomWidget {
+class MaterialMiniatureBox : GenericButton {
 	mixin MWidget;
 }
 

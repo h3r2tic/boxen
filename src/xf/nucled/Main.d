@@ -289,7 +289,7 @@ class TestApp : GfxApp {
 		int delegate(int delegate(ref RenderableId)) selIter
 	) {
 		return contextMenu(
-			menuLeaf("set material", {
+			menuLeaf("Set material", {
 				RenderableId[] ids;
 				foreach (s; selIter) {
 					ids ~= s;
@@ -455,6 +455,13 @@ class TestApp : GfxApp {
 		if (GlobalMode.Mode.SelectingMaterial == globalMode.mode) {
 			if (DismissableOverlay(`.dismissableOverlay`) [{
 				matBrowser.doGUI();
+				if (auto mat = matBrowser.selected) {
+					foreach (rid; globalMode.selectingMaterial.rids) {
+						renderables.material[rid] = mat.id;
+						invalidateRenderable(rid);
+					}
+					globalMode.mode = GlobalMode.Mode.Normal;
+				}
 			}].dismissed) {
 				globalMode.mode = GlobalMode.Mode.Normal;
 			}

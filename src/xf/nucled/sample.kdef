@@ -77,7 +77,7 @@ TestMaterialImpl = material TestMaterial {
 };
 
 
-TestMaterialImpl2 = material TestMaterial {
+TestMaterialImpl2 = material TestMaterial2 {
 	albedoTint = 1 1 1 1;
 	albedoTex = sampler {
 		texture = "img/Lena.jpg";
@@ -279,6 +279,53 @@ TestMaterial = graph Material {
 
 	noauto nb.uv;
 	noauto ng.uv;
+	noauto ns.uv;
+
+	// ----
+
+	connect n0 n2;
+	connect n1.albedoTint n2.albedoTint;
+	connect n2 n3;
+};
+
+
+TestMaterial2 = graph Material {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D + use color>,
+		);
+	};
+	ns = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Material(
+			albedoTint <type float4 + use color>,
+			someImg <type Image>
+		) {
+			out_albedo = albedoTint * someImg.sample(texCoord);
+			out_specular = float4(1);
+			out_normal = normal;
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	// ----
+
+	connect n1 ns;
+	connect ns.sample n2.someImg;	// albedo tex -> sum
+
+	// ----
+
 	noauto ns.uv;
 
 	// ----
