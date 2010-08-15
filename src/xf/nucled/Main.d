@@ -41,6 +41,8 @@ import
 	xf.mem.ScratchAllocator,
 	xf.mem.MainHeap,
 	xf.mem.Array,
+
+	xf.utils.Bind,
 	
 	tango.io.Stdout,
 	tango.io.device.File,
@@ -51,6 +53,8 @@ import xf.hybrid.Hybrid;
 import xf.hybrid.WidgetConfig : HybridConfig = Config;
 import xf.hybrid.widgets.SceneView;
 import xf.hybrid.backend.Gfx : HybridRenderer = Renderer, TopLevelWidget = TopLevel;
+
+import tango.util.log.Trace;		// TMP
 	
 
 
@@ -90,6 +94,25 @@ struct TabDesc {
 
 
 
+struct GlobalMode {
+	enum Mode {
+		Normal,
+		SelectingMaterial
+	}
+
+	Mode mode = Mode.Normal;
+
+	struct SelectingMaterial {
+		RenderableId[] rids;
+	}
+
+	union {
+		SelectingMaterial selectingMaterial;
+	}
+}
+
+
+
 class TestApp : GfxApp {
 	HybridRenderer	guiRenderer;
 	HybridConfig	guiConfig;
@@ -121,6 +144,8 @@ class TestApp : GfxApp {
 
 	IStructureData[]	previewObjects;
 	Array!(TrayRacer)	trayRacers;
+
+	GlobalMode	globalMode;
 
 	
 	override void configureWindow(Window wnd) {
@@ -244,8 +269,41 @@ class TestApp : GfxApp {
 		fwdViewport = new Viewport(fwdRenderer, &vsd, &trayRacers);
 		defViewport = new Viewport(defRenderer, &vsd, &trayRacers);
 
+		fwdViewport.contextMenuHandler = &viewportContextMenuHandler;
+		defViewport.contextMenuHandler = &viewportContextMenuHandler;
+
 		matBrowser = new MaterialBrowser(kdefRegistry, rendererBackend);
 		matBrowser.setObjectsForPreview(previewObjects);
+	}
+
+
+	void beginMaterialSelection(RenderableId[] rids) {
+		globalMode.mode = GlobalMode.Mode.SelectingMaterial;
+		globalMode.selectingMaterial = GlobalMode.SelectingMaterial(
+			rids
+		);
+	}
+
+
+	bool viewportContextMenuHandler(
+		int delegate(int delegate(ref RenderableId)) selIter
+	) {
+		return contextMenu(
+			menuLeaf("set material", {
+				RenderableId[] ids;
+				foreach (s; selIter) {
+					ids ~= s;
+				}
+				beginMaterialSelection(ids);
+			}()),
+			menuGroup("stuff",
+				menuLeaf("stuff1", Trace.formatln("stuff1")),
+				menuLeaf("stuff2", Trace.formatln("stuff2")),
+				menuLeaf("stuff3", Trace.formatln("stuff3"))
+			),
+			menuLeaf("heh"),
+			menuLeaf("lul")
+		).isOpen;
 	}
 
 
@@ -394,9 +452,13 @@ class TestApp : GfxApp {
 			doTabsGUI();
 		gui.pop();
 
-		/+DismissableOverlay(`.dismissableOverlay`) [{
-			matBrowser.doGUI();
-		}];+/
+		if (GlobalMode.Mode.SelectingMaterial == globalMode.mode) {
+			if (DismissableOverlay(`.dismissableOverlay`) [{
+				matBrowser.doGUI();
+			}].dismissed) {
+				globalMode.mode = GlobalMode.Mode.Normal;
+			}
+		}
 
 		paramsRollout.doGUI();
 
