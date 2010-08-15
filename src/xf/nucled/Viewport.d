@@ -202,11 +202,11 @@ class Viewport {
 		void intersect(Ray r, void delegate(SceneObject) dg) {
 			SceneObject closestNode;
 
-			Trace.formatln(
+			/+Trace.formatln(
 				"Intersecting the scene with {}->{}",
 				r.origin.toString,
 				r.direction.toString
-			);
+			);+/
 			
 			Hit hit;
 			hit.distance = float.max;
@@ -223,18 +223,14 @@ class Viewport {
 			if (closestNode !is null) {
 				final cs = cast(CoordSys*)closestNode;
 				
-				Trace.formatln(
+/+				Trace.formatln(
 					"Picked {} @ {} (cs: {})",
 					cs - renderables.transform,
 					hit.distance,
 					cs.toString
-				);
+				);+/
 				dg(closestNode);
 			}
-
-			/+intersectSceneNodes(_world.root, r, (XWorldEntity n) {
-				dg(cast(SceneObject)n);
-			});+/
 		}
 
 

@@ -1,7 +1,5 @@
 module xf.hybrid.widgets.SceneView;
 
-version = HybridSceneViewSpam;
-
 private {
 	import xf.hybrid.Common;
 	import xf.hybrid.CustomWidget;
