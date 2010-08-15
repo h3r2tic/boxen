@@ -8,6 +8,7 @@ private {
 	import xf.utils.Memory;
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.color.HSV;
+	import xf.omg.color.RGB;
 	import tango.stdc.math : fmodf;
 	import tango.math.Math;
 	
@@ -218,6 +219,11 @@ class ColorWheel : Widget {
 		
 		vec3 rgb = void;
 		hsv2rgb(currentHue, s, v, &rgb.r, &rgb.g, &rgb.b);
+
+		foreach (ref float c; rgb.cell) {
+			c = Gamma.sRGB.toLinear(c);
+		}
+
 		return rgb;
 	}
 	
@@ -247,6 +253,9 @@ class ColorWheel : Widget {
 				
 				float s, v;
 				auto rgb = getTriangleColor(pt0, pt1, pt2, vec2(x, y), s, v);
+				foreach (ref float c; rgb.cell) {
+					c = Gamma.sRGB.fromLinear(c);
+				}
 				
 				return vec4ub(f2ub(rgb.r), f2ub(rgb.g), f2ub(rgb.b), cast(ubyte)rndint(fuzz * 255.f));
 			} else {

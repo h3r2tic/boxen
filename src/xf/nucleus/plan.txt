@@ -240,7 +240,12 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ render the preview-specific effects
 		- SceneView in previews for object manipulation
 			* have a reset button
-	- fancy material browser
+	~ fancy material browser
+		+ display of the material and its name
+		- selection of a material
+		- display of the kernel name
+		- context menu for cloning, renaming, etc
+		- parameter editing on the rollout
 	- saving of kernels
 		* keep track of what's being edited
 		* ability to select and change the name

@@ -159,21 +159,21 @@ private struct WidgetIterator(WidgetIterDir direction) {
 					if (auto r = dg(w)) return r;
 					if (auto r = iterChildren(w, dg)) return r;
 				} else static if (WidgetIterDir.TopBottom == direction) {
-					if (w.childrenGoAbove) {
+					//if (w.childrenGoAbove) {
 						if (auto r = revIterChildren(w, dg)) return r;
 						if (auto r = dg(w)) return r;
-					} else {
+					/+} else {
 						if (auto r = dg(w)) return r;
 						if (auto r = revIterChildren(w, dg)) return r;
-					}
+					}+/
 				} else static if (WidgetIterDir.BottomTop == direction) {
-					if (w.childrenGoAbove) {
+					//if (w.childrenGoAbove) {
 						if (auto r = dg(w)) return r;
 						if (auto r = iterChildren(w, dg)) return r;
-					} else {
+					/+} else {
 						if (auto r = iterChildren(w, dg)) return r;
 						if (auto r = dg(w)) return r;
-					}
+					}+/
 				} else static assert (false);
 			}
 			

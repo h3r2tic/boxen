@@ -168,92 +168,89 @@ class MaterialPreviewRenderer {
 
 		GraphNodeId designatedOutputNid;
 
-		{
-			GraphBuilder builder;
-			builder.sourceKernelType = SourceKernelType.Material;
-			builder.build(kg, materialKernel, &materialInfo, stack,
-				(cstring nname, GraphNodeId nid) {
-					if (_designatedOutputNode == nname) {
-						designatedOutputNid = nid;
-					}
-				},
-				true
-			);
-
-			assert (materialInfo.input.valid);
-		}
-
-		assert (designatedOutputNid.valid);
-
-		final materialNodesTopo = stack.allocArray!(GraphNodeId)(materialInfo.nodes.length);
-		findTopologicalOrder(kg.backend_readOnly, materialInfo.nodes, materialNodesTopo);
-
-		//File.set("graph.dot", toGraphviz(kg));
-
-		/+fuseGraph(
-			kg,
-			materialInfo.input,
-			convCtx,
-			materialNodesTopo,
-			
-			// _findSrcParam
-			delegate bool(
-				Param* dstParam,
-				GraphNodeId* srcNid,
-				Param** srcParam
-			) {
-				return getOutputParamIndirect(
-					kg,
-					structureInfo.output,
-					dstParam.name,
-					srcNid,
-					srcParam
-				);
+		GraphBuilder builder;
+		builder.sourceKernelType = SourceKernelType.Material;
+		builder.build(kg, materialKernel, &materialInfo, stack,
+			(cstring nname, GraphNodeId nid) {
+				if (_designatedOutputNode == nname) {
+					designatedOutputNid = nid;
+				}
 			},
+			true
+		);
 
-			OutputNodeConversion.Perform
-		);+/
+		assert (materialInfo.input.valid);
 
-		foreach (param; &kg.getNode(structureInfo.output).getParamList.iterOutputs) {
-			kg.flow.addDataFlow(
-				structureInfo.output, param.name,
-				materialInfo.input, param.name
-			);
-		}
+		GraphNodeId outNid;
 
+		if (_designatedOutputNode is null) {
+			outNid = materialInfo.output;
 
-		bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
-			if (type == kg.getNode(id).type) {
-				kg.removeNode(id);
-				return true;
-			} else {
-				return false;
+			foreach (param; &kg.getNode(structureInfo.output).getParamList.iterOutputs) {
+				kg.flow.addDataFlow(
+					structureInfo.output, param.name,
+					materialInfo.input, param.name
+				);
 			}
+
+			convertGraphDataFlow(
+				kg,
+				convCtx
+			);
+		} else {
+			assert (designatedOutputNid.valid);
+
+			final materialNodesTopo = stack.allocArray!(GraphNodeId)(materialInfo.nodes.length);
+			findTopologicalOrder(kg.backend_readOnly, materialInfo.nodes, materialNodesTopo);
+
+			foreach (param; &kg.getNode(structureInfo.output).getParamList.iterOutputs) {
+				kg.flow.addDataFlow(
+					structureInfo.output, param.name,
+					materialInfo.input, param.name
+				);
+			}
+
+
+			bool removeNodeIfTypeMatches(GraphNodeId id, NT type) {
+				if (type == kg.getNode(id).type) {
+					kg.removeNode(id);
+					return true;
+				} else {
+					return false;
+				}
+			}
+
+			Param* designatedParam;
+
+			if (_designatedOutputParam !is null) {
+				designatedParam = kg.getNode(designatedOutputNid)
+					.getOutputParam(_designatedOutputParam);
+			} else {
+				designatedParam = (*kg.getNode(designatedOutputNid)
+					.getParamList())[0];
+			}
+				
+			assert (designatedParam !is null, _designatedOutputParam);
+
+			convertGraphDataFlow(
+				kg,
+				convCtx
+			);
+
+			outNid = kg.addNode(NT.Output);
+			final outNode = kg.getNode(outNid).output.params
+				.add(ParamDirection.In, "output");
+			outNode.hasPlainSemantic = true;
+			outNode.type = designatedParam.type;
+			outNode.semantic.addTrait("use", "color");
+
+			kg.flow.addDataFlow(
+				designatedOutputNid, _designatedOutputParam,
+				outNid, "output"
+			);
+
+			removeNodeIfTypeMatches(materialInfo.output, NT.Output);
 		}
-
-		final designatedParam = kg.getNode(designatedOutputNid)
-			.getOutputParam(_designatedOutputParam);
-			
-		assert (designatedParam !is null, _designatedOutputParam);
-
-		convertGraphDataFlow(
-			kg,
-			convCtx
-		);
-
-		auto outNid = kg.addNode(NT.Output);
-		final outNode = kg.getNode(outNid).output.params
-			.add(ParamDirection.In, "output");
-		outNode.hasPlainSemantic = true;
-		outNode.type = designatedParam.type;
-		outNode.semantic.addTrait("use", "color");
-
-		kg.flow.addDataFlow(
-			designatedOutputNid, _designatedOutputParam,
-			outNid, "output"
-		);
-
-		removeNodeIfTypeMatches(materialInfo.output, NT.Output);
 
 		// For codegen below
 		materialInfo.output = outNid;

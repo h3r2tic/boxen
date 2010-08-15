@@ -1,73 +1,27 @@
 module xf.nucled.GPUShaderPreview;
 
 private {
-	import xf.Common;
-	import xf.nucled.Graph : NodeContents, Graph, GraphNode;
-	import xf.nucled.PreviewRenderer;
-
-	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.IStructureData;
-	import xf.nucleus.Param;
-	import xf.nucleus.KernelImpl;
-	import xf.gfx.IRenderer : RendererBackend = IRenderer;
-
-	import xf.hybrid.Common;
-
-	/+import xf.nucleus.model.INucleus;
-	import xf.nucleus.Renderable;
-	import xf.nucleus.Effector;
-	import xf.nucleus.model.INucleusWorld;
-	import xf.nucleus.NucleusWorld;
-	import xf.nucleus.rg.Node;
-	import xf.nucleus.rg.Leaf;
-	import xf.nucleus.rg.FlatGroup;
-	import xf.nucleus.model.GraphProcessor;
-	import xf.nucleus.Viewport;
-	import xf.nucleus.graph.Node : CalcNode, Node, GPUWrapNode, OutputNode, DataFlow;
-	import xf.nucleus.graph.Graph : _connect;
-	import xf.nucleus.CommonDef;+/
-
-	//import tango.core.Variant;
-	//import xf.hybrid.backend.GL;
-	import xf.omg.core.LinearAlgebra;
-	import xf.omg.core.CoordSys;
-	import xf.omg.util.ViewSettings;
-
-	import xf.mem.StackBuffer;
-	import xf.mem.ScratchAllocator;
-	//import xf.dog.Dog;
-	
-	//import tango.io.Stdout;
-	
-	//alias xf.nucleus.Viewport.Viewport Viewport;
-}
-
-
-class CustomDrawWidget : Widget {
-	override EventHandling handleRender(RenderEvent e) {
-		if (!widgetVisible) {
-			return EventHandling.Stop;
-		}
-		
-		if (e.sinking && renderingHandler) {
-			if (auto r = e.renderer) {
-				r.pushClipRect();
-				r.clip(Rect(this.globalOffset, this.globalOffset + this.size));
-				r.direct(&this._handleRender, Rect(this.globalOffset, this.globalOffset + this.size));
-				r.popClipRect();
-			}
-		}
-
-		return EventHandling.Continue;
-	}
-
-	void _handleRender(GuiRenderer r) {
-		renderingHandler(vec2i.from(this.size));
-	}
-
-	void delegate(vec2i) renderingHandler;
-
-	mixin MWidget;
+	import
+		xf.Common;
+	import
+		xf.nucled.PreviewRenderer,
+		xf.nucled.Widgets,
+		xf.nucled.Graph : NodeContents, Graph, GraphNode;
+	import
+		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.IStructureData,
+		xf.nucleus.Param,
+		xf.nucleus.KernelImpl,
+		xf.gfx.IRenderer : RendererBackend = IRenderer;
+	import
+		xf.hybrid.Common;
+	import
+		xf.omg.core.LinearAlgebra,
+		xf.omg.core.CoordSys,
+		xf.omg.util.ViewSettings;
+	import
+		xf.mem.StackBuffer,
+		xf.mem.ScratchAllocator;
 }
 
 
@@ -93,8 +47,10 @@ class GPUShaderPreview : NodeContents {
 	
 	
 	void draw(vec2i size) {
-		_backend.framebuffer.settings.clearColorValue[0] = vec4.zero;
-		_backend.framebuffer.settings.clearColorEnabled[0] = true;
+		/+_backend.framebuffer.settings.clearColorValue[0] = vec4.zero;
+		_backend.framebuffer.settings.clearColorEnabled[0] = true;+/
+		_backend.framebuffer.settings.clearColorEnabled[0] = false;
+		_backend.framebuffer.settings.clearDepthEnabled = true;
 		_backend.clearBuffers();
 
 		ViewSettings vs;

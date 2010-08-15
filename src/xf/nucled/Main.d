@@ -13,6 +13,8 @@ import
 	xf.nucled.Graph,
 	xf.nucled.Viewport,
 	xf.nucled.Dump,
+	xf.nucled.MaterialBrowser,
+	xf.nucled.Widgets,
 
 	xf.vsd.VSD,
 
@@ -97,6 +99,8 @@ class TestApp : GfxApp {
 	Viewport	defViewport;
 	SceneView	defSV;
 	Renderer	defRenderer;
+
+	MaterialBrowser	matBrowser;
 
 	TabView		graphEdTabView;
 
@@ -213,6 +217,9 @@ class TestApp : GfxApp {
 
 		fwdViewport = new Viewport(fwdRenderer, &vsd);
 		defViewport = new Viewport(defRenderer, &vsd);
+
+		matBrowser = new MaterialBrowser(kdefRegistry, rendererBackend);
+		matBrowser.setObjectsForPreview(previewObjects);
 	}
 
 
@@ -360,6 +367,10 @@ class TestApp : GfxApp {
 		gui.push(`main`);
 			doTabsGUI();
 		gui.pop();
+
+		/+DismissableOverlay(`.dismissableOverlay`) [{
+			matBrowser.doGUI();
+		}];+/
 
 		paramsRollout.doGUI();
 
