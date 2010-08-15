@@ -30,7 +30,16 @@ CompiledSceneAsset compileHSFSceneAsset(
 	
 	scope loader = new HsfLoader;
 	loader.load(path);
-	
+
+	return compileHSFSceneAsset(loader, allocator, opts);
+}
+
+
+CompiledSceneAsset compileHSFSceneAsset(
+	HsfLoader loader,
+	DgScratchAllocator allocator,
+	SceneAssetCompilationOptions opts = SceneAssetCompilationOptions.init
+) {
 	final scene = loader.scene;
 	assert (scene !is null);
 	assert (loader.meshes.length > 0);

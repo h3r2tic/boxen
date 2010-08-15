@@ -15,6 +15,7 @@ import
 	xf.nucled.Dump,
 	xf.nucled.MaterialBrowser,
 	xf.nucled.Widgets,
+	xf.nucled.Intersect,
 
 	xf.vsd.VSD,
 
@@ -29,6 +30,9 @@ import
 	xf.nucleus.asset.compiler.SceneCompiler,
 	xf.nucleus.structure.MeshStructure,
 
+	xf.loader.scene.hsf.Hsf,
+	xf.loader.Common,
+
 	xf.omg.core.LinearAlgebra,
 	xf.omg.core.CoordSys,
 	xf.omg.core.Misc,
@@ -36,6 +40,7 @@ import
 
 	xf.mem.ScratchAllocator,
 	xf.mem.MainHeap,
+	xf.mem.Array,
 	
 	tango.io.Stdout,
 	tango.io.device.File,
@@ -84,6 +89,7 @@ struct TabDesc {
 }
 
 
+
 class TestApp : GfxApp {
 	HybridRenderer	guiRenderer;
 	HybridConfig	guiConfig;
@@ -114,6 +120,7 @@ class TestApp : GfxApp {
 	vec4[]			lightIllums;
 
 	IStructureData[]	previewObjects;
+	Array!(TrayRacer)	trayRacers;
 
 	
 	override void configureWindow(Window wnd) {
@@ -203,20 +210,39 @@ class TestApp : GfxApp {
 			cstring model = `mesh/lightTest.hsf`;
 			float scale = 0.02f;
 
+			model = getResourcePath(model);			
+			scope loader = new HsfLoader;
+			loader.load(model);
+
 			SceneAssetCompilationOptions opts;
 			opts.scale = scale;
 
 			final compiledScene = compileHSFSceneAsset(
-				model,
+				loader,
 				DgScratchAllocator(&mainHeap.allocRaw),
 				opts
 			);
 
-			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 0, 0]));
+			loadScene(compiledScene, &vsd, CoordSys.identity,
+				(uword i, RenderableId rid) {
+					trayRacers.growBy(i+1-trayRacers.length);
+					final mem = DgScratchAllocator(&mainHeap.allocRaw);
+
+					vec3[] pos = mem.dupArray(loader.meshes[i].positions);
+					foreach (ref p; pos) {
+						p *= scale;
+					}
+					
+					trayRacers[i] = mem._new!(MeshTrayRacer)(
+						pos,
+						mem.dupArray(loader.meshes[i].indices)
+					);
+				}
+			);
 		}
 
-		fwdViewport = new Viewport(fwdRenderer, &vsd);
-		defViewport = new Viewport(defRenderer, &vsd);
+		fwdViewport = new Viewport(fwdRenderer, &vsd, &trayRacers);
+		defViewport = new Viewport(defRenderer, &vsd, &trayRacers);
 
 		matBrowser = new MaterialBrowser(kdefRegistry, rendererBackend);
 		matBrowser.setObjectsForPreview(previewObjects);

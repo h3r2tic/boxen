@@ -74,8 +74,6 @@ class HsfLoader {
 		}
 	}
 	
-	
-	float	scale = 1.f;
 	Scene	scene;
 
 	Mesh[]		meshes;
@@ -466,12 +464,12 @@ protected:
 				vec3 axis = vec3.from(rotation);
 				axis.normalize();
 				cs = CoordSys(
-					vec3fi.from(translation/+ * scale+/),
+					vec3fi.from(translation),
 					quat.axisRotation(axis, rotation.a)
 				);
 			} else {
 				cs = CoordSys(
-					vec3fi.from(translation/+ * scale+/),
+					vec3fi.from(translation),
 					quat.identity
 				);
 			}

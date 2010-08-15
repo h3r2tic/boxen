@@ -3,6 +3,7 @@ module xf.nucled.Viewport;
 private {
 	import xf.Common;
 	import xf.hybrid.Hybrid;
+	import xf.nucled.Intersect;
 	import xf.nucleus.Nucleus;
 	import xf.nucleus.Scene;
 	/+import xf.dog.Dog;
@@ -22,6 +23,7 @@ private {
 	import xf.omg.geom.Plane;
 	import xf.omg.geom.Triangle;
 	import xf.vsd.VSD;
+	import xf.mem.Array;
 	//import xf.rt.Misc;
 	
 	import tango.math.random.Kiss;
@@ -91,10 +93,11 @@ class Viewport {
 	alias SceneProxy.ChildrenFruct	ChildrenFruct;
 
 
-	this(Renderer r, VSDRoot* vsd) {
+	this(Renderer r, VSDRoot* vsd, Array!(TrayRacer)* trayRacers) {
 		assert (vsd !is null);
 		_vsd = vsd;
 		_renderer = r;
+		_trayRacers = trayRacers;
 	}
 	
 	
@@ -197,6 +200,38 @@ class Viewport {
 		
 		
 		void intersect(Ray r, void delegate(SceneObject) dg) {
+			SceneObject closestNode;
+
+			Trace.formatln(
+				"Intersecting the scene with {}->{}",
+				r.origin.toString,
+				r.direction.toString
+			);
+			
+			Hit hit;
+			hit.distance = float.max;
+
+			foreach (i, o; *_trayRacers) {
+				if (o) {
+					Ray tr = r * renderables.transform[i].inverse;
+					if (o.intersect(tr, &hit)) {
+						closestNode = cast(SceneObject)&renderables.transform[i];
+					}
+				}
+			}
+
+			if (closestNode !is null) {
+				final cs = cast(CoordSys*)closestNode;
+				
+				Trace.formatln(
+					"Picked {} @ {} (cs: {})",
+					cs - renderables.transform,
+					hit.distance,
+					cs.toString
+				);
+				dg(closestNode);
+			}
+
 			/+intersectSceneNodes(_world.root, r, (XWorldEntity n) {
 				dg(cast(SceneObject)n);
 			});+/
@@ -270,6 +305,7 @@ class Viewport {
 	private {
 		VSDRoot*	_vsd;
 		Renderer	_renderer;
+		Array!(TrayRacer)*	_trayRacers;
 	}
 }
 

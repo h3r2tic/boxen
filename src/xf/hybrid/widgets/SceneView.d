@@ -1,5 +1,7 @@
 module xf.hybrid.widgets.SceneView;
 
+version = HybridSceneViewSpam;
+
 private {
 	import xf.hybrid.Common;
 	import xf.hybrid.CustomWidget;
@@ -91,7 +93,7 @@ class SceneView : Widget {
 	Selection	selection;
 	float		nearPlane = 0.1f;
 	float		farPlane = 1000.f;
-	mat4		viewMatrix;
+	mat4		projMatrix;
 	float		yaw = 0, pitch = 0, roll = 0;
 	vec3		viewOffset = vec3.zero;
 	
@@ -484,7 +486,7 @@ class SceneView : Widget {
 			}
 				
 			case ViewType.Perspective: {
-				auto mat = this.viewMatrix;
+				auto mat = this.projMatrix;
 				mat.invert;
 				
 				vec4 near = mat * vec4(wpos.x, wpos.y, -this.nearPlane, 1);
@@ -542,7 +544,7 @@ class SceneView : Widget {
 		vs.nearPlaneDistance = this.nearPlane;
 		vs.farPlaneDistance = this.farPlane;
 
-		this.viewMatrix = vs.computeViewMatrix;
+		this.projMatrix = vs.computeProjectionMatrix;
 		this.windowSize = vec2.from(size);
 
 		scene.draw(size, vs, this.displayMode);
