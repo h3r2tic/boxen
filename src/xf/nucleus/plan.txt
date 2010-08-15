@@ -242,7 +242,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 			* have a reset button
 	~ fancy material browser
 		+ display of the material and its name
-		- selection of a material
+		+ selection of a material
 		- display of the kernel name
 		- context menu for cloning, renaming, etc
 		- parameter editing on the rollout
@@ -258,7 +258,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- light creation
 	- gizmos (needed for light manipulation)
 	- object/light parameter editing
-	- application of materials to objects
+	+ application of materials to objects
 	- management of material instances
 		* 'default' created immediately, forked upon by the user
 		* 'FooMat.BarInst' could be used for naming

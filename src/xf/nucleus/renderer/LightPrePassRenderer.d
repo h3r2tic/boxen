@@ -332,6 +332,7 @@ class LightPrePassRenderer : Renderer {
 			void computeHash() {
 				hash = 0;
 				hash += typeid(cstring).getHash(&materialKernel);
+				hash *= 7;
 				hash += typeid(cstring).getHash(&structureKernel);
 			}
 
@@ -1487,8 +1488,6 @@ float farPlaneDistance <
 				}
 				
 				_structureRenderableEI[rid] = efInst;
-				
-				this._renderableValid.set(rid);
 			}
 		}
 	}
@@ -1953,6 +1952,7 @@ float farPlaneDistance <
 			_backend.state.sRGB = false;
 			_backend.state.depth.enabled = true;
 			_backend.state.blend.enabled = false;
+			_backend.state.cullFace = origState.cullFace;
 			_lightFB.settings.clearDepthEnabled = true;
 			_backend.render(blist);
 
