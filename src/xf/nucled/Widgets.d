@@ -216,3 +216,31 @@ class FloatingWindow : CustomWidgetT!(Draggable) {
 class ConnectionBreaker : GenericButton {
 	mixin MWidget;
 }
+
+
+class CustomDrawWidget : Widget {
+	override EventHandling handleRender(RenderEvent e) {
+		if (!widgetVisible) {
+			return EventHandling.Stop;
+		}
+		
+		if (e.sinking && renderingHandler) {
+			if (auto r = e.renderer) {
+				r.pushClipRect();
+				r.clip(Rect(this.globalOffset, this.globalOffset + this.size));
+				r.direct(&this._handleRender, Rect(this.globalOffset, this.globalOffset + this.size));
+				r.popClipRect();
+			}
+		}
+
+		return EventHandling.Continue;
+	}
+
+	void _handleRender(GuiRenderer r) {
+		renderingHandler(vec2i.from(this.size));
+	}
+
+	void delegate(vec2i) renderingHandler;
+
+	mixin MWidget;
+}
