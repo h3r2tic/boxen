@@ -28,13 +28,14 @@ void loadScene(
 	CompiledSceneAsset asset,
 	VSDRoot* vsd,
 	CoordSys coordSys,
+	void delegate(uword, RenderableId) assetRenderableMapWatcher = null
 ) {
 	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
 
 	cstring material = "TestMaterialImpl";
 	cstring surface = "TestSurface3";
 	
-	foreach (i, compiledMesh; asset.meshes) {
+	foreach (uword i, compiledMesh; asset.meshes) {
 		final ms = allocator._new!(MeshStructure)(compiledMesh, rendererBackend);
 
 		final rid = createRenderable();
@@ -48,6 +49,8 @@ void loadScene(
 		
 		renderables.transform[rid] = asset.meshCS[i] in coordSys;
 		renderables.localHalfSize[rid] = compiledMesh.halfSize;
+
+		assetRenderableMapWatcher(i, rid);
 	}
 }
 

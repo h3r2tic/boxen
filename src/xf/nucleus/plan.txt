@@ -254,6 +254,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- graceful handling of kdef parsing and processing errors
 	- loading new scene objects
 	- deleting scene objects
+	+ object picking and movement
 	- light creation
 	- gizmos (needed for light manipulation)
 	- object/light parameter editing

@@ -10,14 +10,14 @@ private {
 enum IntersectFlags {
 	ComputeUV			= 0b1,
 	ComputeNormal		= 0b10,
-	Default					= 0
+	Default				= 0
 }
 
 
 struct HitT(flt) {
-	flt					distance = flt.max;
-	flt					u;
-	flt					v;
+	flt				distance = flt.max;
+	flt				u;
+	flt				v;
 	Vector!(flt, 3)	normal;
 	size_t			primitive;
 }
@@ -43,5 +43,5 @@ struct RayT(flt) {
 }
 
 
-alias HitT!(float)		Hit;
+alias HitT!(float)	Hit;
 alias RayT!(float)	Ray;

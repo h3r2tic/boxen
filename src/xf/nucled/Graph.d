@@ -33,7 +33,7 @@ private {
 	import xf.mem.ChunkQueue;
 	import xf.mem.Gather;
 
-	import Array = xf.utils.Array;
+	static import xf.utils.Array;
 	
 	//import xf.utils.OldCfg : Config = Array;
 	import xf.core.Registry;
@@ -128,8 +128,8 @@ class Graph {
 						foreach (flow; con.flow) {
 							if (depOutputConnectorName == flow.from) {
 								gen(NC(
-									kdef._nodes[Array.indexOf(nodes, con.from)],
-									kdef._nodes[Array.indexOf(nodes, con.to)]
+									kdef._nodes[xf.utils.Array.indexOf(nodes, con.from)],
+									kdef._nodes[xf.utils.Array.indexOf(nodes, con.to)]
 								));
 							}
 						}
@@ -151,8 +151,8 @@ class Graph {
 						foreach (flow; con.flow) {
 							if (depOutputConnectorName != flow.from) {
 								gen(NFC(
-									kdef._nodes[Array.indexOf(nodes, con.from)],
-									kdef._nodes[Array.indexOf(nodes, con.to)],
+									kdef._nodes[xf.utils.Array.indexOf(nodes, con.from)],
+									kdef._nodes[xf.utils.Array.indexOf(nodes, con.to)],
 
 									// duplicated later --->
 									flow.from,
