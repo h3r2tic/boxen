@@ -14,6 +14,7 @@ private {
 		xf.nucleus.kernel.KernelDef;
 
 	import
+		xf.nucleus.Defs,
 		xf.nucleus.TypeSystem,
 		xf.nucleus.TypeConversion,
 		xf.nucleus.Function,
@@ -56,14 +57,14 @@ class KDefProcessor {
 	
 	
 	void processFile(string path) {
-		if (auto mod = path in modules) {
+		if (auto mod = path in _modules) {
 			if ((*mod).processing) {
 				throw new Exception("Cyclic import in kernel module '" ~ path ~ "'");
 			}
 		} else {
 			log.trace("KDefProcessor.parseFile({})", path);
 			auto mod = fileParser.parseFile(path);
-			modules[path] = mod;
+			_modules[path] = mod;
 			mod.processing = true;
 			mod.filePath = path;
 			process(mod, modAlloc(mod));
@@ -73,7 +74,7 @@ class KDefProcessor {
 	
 	
 	KDefModule getModuleForPath(string path) {
-		if (auto mod = path in modules) {
+		if (auto mod = path in _modules) {
 			return *mod;
 		} else {
 			return null;
@@ -87,17 +88,17 @@ class KDefProcessor {
 	
 	
 	void dispose() {
-		foreach (ref mod; modules) {
+		foreach (ref mod; _modules) {
 			delete mod;
 		}
 		// TODO(?): do more thorough cleaning
-		modules = null;
+		_modules = null;
 	}
 	
 	
 	void dumpInfo() {
-		Stdout.formatln("got {} modules:", modules.keys.length);
-		foreach (name, mod; modules) {
+		Stdout.formatln("got {} modules:", _modules.keys.length);
+		foreach (name, mod; _modules) {
 			Stdout.formatln("mod {}:", name);
 			dumpInfo(mod);
 		}
@@ -105,7 +106,7 @@ class KDefProcessor {
 
 
 	struct KernelInfo {
-		KernelImpl	impl;
+		KernelImpl*	impl;
 		KDefModule	mod;
 	}
 	
@@ -113,7 +114,7 @@ class KDefProcessor {
 
 
 	int converters(int delegate(ref SemanticConverter) dg) {
-		foreach (name, mod; modules) {
+		foreach (name, mod; _modules) {
 			foreach (ref conv; mod.converters) {
 				if (auto r = dg(conv)) {
 					return r;
@@ -127,7 +128,7 @@ class KDefProcessor {
 	
 	KernelImpl getKernel(string name) {
 		if (auto impl = name in this.kernels) {
-			return impl.impl;
+			return *impl.impl;
 		} else {
 			error("Unknown kernel: '{}'.", name);
 			assert (false);
@@ -135,9 +136,25 @@ class KDefProcessor {
 	}
 
 
+	// BUG: this is slow
+	KernelImpl getKernel(KernelImplId id) {
+		assert (id.isValid);
+		
+		foreach (k, ref v; this.kernels) {
+			assert (v.impl.id.isValid);
+			if (v.impl.id == id) {
+				return *v.impl;
+			}
+		}
+
+		error("Unknown kernel id: '{}'.", id.value);
+		assert (false);
+	}
+
+
 	bool getKernel(string name, KernelImpl* res) {
 		if (auto impl = name in this.kernels) {
-			*res = impl.impl;
+			*res = *impl.impl;
 			return true;
 		} else {
 			return false;
@@ -147,7 +164,7 @@ class KDefProcessor {
 
 	int kernelImpls(int delegate(ref KernelImpl) dg) {
 		foreach (n, k; this.kernels) {
-			if (int r = dg(k.impl)) {
+			if (int r = dg(*k.impl)) {
 				return r;
 			}
 		}
@@ -157,7 +174,7 @@ class KDefProcessor {
 
 
 	int surfaces(int delegate(ref string, ref SurfaceDef) dg) {
-		foreach (name, mod; modules) {
+		foreach (name, mod; _modules) {
 			foreach (name, ref surf; mod.surfaces) {
 				string meh = name;
 				if (auto r = dg(meh, surf)) {
@@ -171,7 +188,7 @@ class KDefProcessor {
 
 
 	int materials(int delegate(ref string, ref MaterialDef) dg) {
-		foreach (name, mod; modules) {
+		foreach (name, mod; _modules) {
 			foreach (name, ref surf; mod.materials) {
 				string meh = name;
 				if (auto r = dg(meh, surf)) {
@@ -184,19 +201,30 @@ class KDefProcessor {
 	}
 
 
+	int modules(int delegate(ref string, ref KDefModule) dg) {
+		foreach (name, mod; _modules) {
+			if (int r = dg(name, mod)) {
+				return r;
+			}
+		}
+		
+		return 0;
+	}
+
+
 	KDefInvalidationInfo invalidateDifferences(KDefProcessor other) {
 		KDefInvalidationInfo res;
 
-		foreach (modName, mod; other.modules) {
-			if (!(modName in this.modules)) {
+		foreach (modName, mod; other._modules) {
+			if (!(modName in this._modules)) {
 				if (mod.converters.length > 0) {
 					res.anyConverters = true;
 				}
 			}
 		}
 		
-		foreach (modName, mod; modules) {
-			if (auto otherMod = modName in other.modules) {
+		foreach (modName, mod; _modules) {
+			if (auto otherMod = modName in other._modules) {
 				foreach (name, ref o; mod.kernels) {
 					if (auto o2 = name in otherMod.kernels) {
 						if (o != *o2) {
@@ -268,7 +296,7 @@ class KDefProcessor {
 				}
 			}
 			
-			foreach (modName, mod; modules) {
+			foreach (modName, mod; _modules) {
 				foreach (name, ref o; mod.kernels) {
 					process(o.dependentOnThis);
 				}
@@ -298,7 +326,7 @@ class KDefProcessor {
 		void doKernelSemantics() {
 			Processed[KernelImpl] processed;
 
-			foreach (name, mod; modules) {
+			foreach (name, mod; _modules) {
 				foreach (kname, ref kimpl; mod.kernels) {
 					if (kname in this.kernels) {
 						error(
@@ -309,7 +337,7 @@ class KDefProcessor {
 						);
 					} else {
 						this.kernels[kname] = KernelInfo(
-							kimpl,
+							&kimpl,
 							mod
 						);
 					}
@@ -317,7 +345,7 @@ class KDefProcessor {
 			}
 
 
-			foreach (name, mod; modules) {
+			foreach (name, mod; _modules) {
 				foreach (ref surf; mod.surfaces) {
 					getKernel(surf.reflKernelName)
 						.dependentOnThis.add(surf.dependentOnThis);
@@ -331,7 +359,7 @@ class KDefProcessor {
 			
 
 			foreach (n, ref k; kernels) {
-				doKernelSemantics(k.impl, modAlloc(k.mod), processed);
+				doKernelSemantics(*k.impl, modAlloc(k.mod), processed);
 			}
 		}
 
@@ -784,7 +812,7 @@ class KDefProcessor {
 					auto path = stmt.path;
 					processFile(path);
 					auto names = stmt.what;
-					auto mod = modules[path];
+					auto mod = _modules[path];
 					
 					if (names !is null) {
 						assert (false, "TODO: selective imports");
@@ -832,6 +860,6 @@ class KDefProcessor {
 		IKDefFileParser		fileParser;
 		
 		// indexed by path
-		KDefModule[string]	modules;
+		KDefModule[string]	_modules;
 	}
 }

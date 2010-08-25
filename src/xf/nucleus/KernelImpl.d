@@ -2,6 +2,7 @@ module xf.nucleus.KernelImpl;
 
 private {
 	import xf.Common;
+	import xf.nucleus.Defs;
 	import xf.nucleus.graph.GraphDef;
 	import xf.nucleus.kernel.KernelDef;
 	import xf.nucleus.DepTracker;
@@ -19,12 +20,14 @@ struct KernelImpl {
 		KernelDef	kernel;
 	}
 	
-	Type type;
+	KernelImplId	id;
+	Type			type;
 
 
 	static KernelImpl opCall(IGraphDef g) {
 		KernelImpl res = void;
 		res.graph = g;
+		res.id = KernelImplId.invalid;
 		res.type = Type.Graph;
 		return res;
 	}
@@ -32,6 +35,7 @@ struct KernelImpl {
 	static KernelImpl opCall(KernelDef k) {
 		KernelImpl res = void;
 		res.kernel = k;
+		res.id = KernelImplId.invalid;
 		res.type = Type.Kernel;
 		return res;
 	}

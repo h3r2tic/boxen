@@ -70,6 +70,8 @@ private {
 	//import tango.core.Memory : GC;
 	import tango.io.Stdout;
 
+	import tango.text.convert.Format;
+
 	import xf.mem.StackBuffer;
 }
 
@@ -721,6 +723,7 @@ class GraphEditor {
 						node.spawnPosition = spawnPosition;
 						//node.CPU = kernel.type == KernelDef.Type.CPU;
 						createKernelNodeInputs(node, kernel);
+						node.label = Format("node_{}", node.id);
 													
 						/+auto func = kernel.getFunction(funcName);
 						

@@ -122,7 +122,7 @@ class ParametersRollout {
 			fixed = check.checked;
 		}];
 		if (!box.initialized) {
-			box.cfg(`layout = { spacing = 5; }`);
+			box.icfg(`layout = { spacing = 5; }`);
 			box.layoutAttribs = "hexpand hfill";
 		}
 		
@@ -223,7 +223,7 @@ class ParametersRollout {
 					box.widgetEnabled = show;
 					
 					if (!box.initialized) {
-						box.cfg(`layout = { padding = 5 5; spacing = 5; } style.normal = { border = 1 rgba(1, 1, 1, .15); background = solid(rgba(0, 0, 0, 0.1)); }`);
+						box.icfg(`layout = { padding = 5 5; spacing = 5; } style.normal = { border = 1 rgba(1, 1, 1, .15); background = solid(rgba(0, 0, 0, 0.1)); }`);
 						box.layoutAttribs = "hexpand hfill";
 					}
 				}

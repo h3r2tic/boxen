@@ -152,3 +152,24 @@ void assure(bool cond, cstring msg = "assure() failed") {
 pragma (ctfe) cstring ct_allocaArray(cstring type, cstring name, cstring len) {
 	return `auto `~name~` = (cast(`~type~`*)alloca(`~type~`.sizeof * `~len~`))[0..`~len~`];`;
 }
+
+
+
+bool containsElement(Container, Item)(
+	ref Container c,
+	Item item
+) {
+	static if (isAssocArrayType!(Container) || is(typeof(!!c.opIn_r(item)))) {
+		return !!(item in c);
+	} else static if (isArrayType!(Container) || is(typeof(c.opApply((ref Item) { return 0; })))) {
+		foreach (ref x; c) {
+			if (x == item) return true;
+		}
+		return false;
+	} else static if (is(typeof(c.opApply((ref int, ref Item) { return 0; })))) {
+		foreach (dummy, ref x; c) {
+			if (x == item) return true;
+		}
+		return false;
+	}
+}

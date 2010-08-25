@@ -116,7 +116,7 @@ class DepthRenderer : Renderer {
 
 
 	private {
-		HashMap!(cstring, EffectInfo) _structureEffectCache;
+		HashMap!(KernelImplId, EffectInfo) _structureEffectCache;
 	}
 
 
@@ -317,7 +317,7 @@ float farPlaneDistance <
 				EffectInfo effectInfo;
 
 				{
-					final cacheKey = renderables.structureKernel[rid];
+					final cacheKey = _kdefRegistry.getKernel(renderables.structureKernel[rid]).id;
 					EffectInfo* info = cacheKey in _structureEffectCache;
 					
 					if (info !is null && info.effect !is null) {

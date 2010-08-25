@@ -147,6 +147,8 @@ class TestApp : GfxApp {
 				opts
 			);
 
+			assert (compiledScene !is null);
+
 			loadScene(compiledScene, &vsd, CoordSys(vec3fi[1, -2, 0]));
 			loadScene(compiledScene, &vsd, CoordSys(vec3fi[-1, -2, 0]));
 

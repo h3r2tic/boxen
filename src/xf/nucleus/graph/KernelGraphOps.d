@@ -268,7 +268,11 @@ void fuseGraph(
 								&fromNode,
 								&fromParam
 							)) {
-								assert (false);
+								error(
+									"_findSrcParam returned false for param '{}' and node {}.",
+									fromTmp.name,
+									input.id
+								);
 							}
 
 							if (doManualFlow(

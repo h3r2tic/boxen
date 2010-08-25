@@ -325,18 +325,18 @@ class LightPrePassRenderer : Renderer {
 
 	private {
 		struct FinalEffectCacheKey {
-			cstring		materialKernel;
-			cstring		structureKernel;
-			hash_t		hash;
+			KernelImplId	materialKernel;
+			KernelImplId	structureKernel;
+			//hash_t			hash;
 
 			void computeHash() {
-				hash = 0;
-				hash += typeid(cstring).getHash(&materialKernel);
+				/+hash = 0;
+				hash += materialKernel.value;
 				hash *= 7;
-				hash += typeid(cstring).getHash(&structureKernel);
+				hash += structureKernel.value;+/
 			}
 
-			hash_t toHash() {
+			/+hash_t toHash() {
 				return hash;
 			}
 
@@ -344,14 +344,14 @@ class LightPrePassRenderer : Renderer {
 				return
 						materialKernel == other.materialKernel
 					&&	structureKernel == other.structureKernel;
-			}
+			}+/
 		}
 
 		private {
 			HashMap!(FinalEffectCacheKey, EffectInfo) _finalEffectCache;
 		}
 
-		HashMap!(cstring, EffectInfo) _structureEffectCache;
+		HashMap!(KernelImplId, EffectInfo) _structureEffectCache;
 	}
 
 
@@ -1354,7 +1354,7 @@ float farPlaneDistance <
 				EffectInfo effectInfo;
 
 				{
-					final cacheKey = renderables.structureKernel[rid];
+					final cacheKey = _kdefRegistry.getKernel(renderables.structureKernel[rid]).id;
 					EffectInfo* info = cacheKey in _structureEffectCache;
 					
 					if (info !is null && info.effect !is null) {
@@ -1507,7 +1507,7 @@ float farPlaneDistance <
 
 					final cacheKey = FinalEffectCacheKey(
 						*_materialKernels[materialId],
-						renderables.structureKernel[rid]
+						_kdefRegistry.getKernel(renderables.structureKernel[rid]).id
 					);
 					cacheKey.computeHash();
 					

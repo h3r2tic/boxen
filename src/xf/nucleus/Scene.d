@@ -37,10 +37,12 @@ void loadScene(
 	
 	foreach (uword i, compiledMesh; asset.meshes) {
 		final ms = allocator._new!(MeshStructure)(compiledMesh, rendererBackend);
+		assert (ms !is null);
 
 		final rid = createRenderable();
 
 		vsd.createObject(rid);
+
 		renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 		renderables.structureData[rid] = ms;
 
@@ -50,7 +52,9 @@ void loadScene(
 		renderables.transform[rid] = asset.meshCS[i] in coordSys;
 		renderables.localHalfSize[rid] = compiledMesh.halfSize;
 
-		assetRenderableMapWatcher(i, rid);
+		if (assetRenderableMapWatcher) {
+			assetRenderableMapWatcher(i, rid);
+		}
 	}
 }
 

@@ -152,7 +152,7 @@ class TestApp : GfxApp {
 		super.configureWindow(wnd);
 		wnd.width = 1040;
 		//wnd.height = 650;
-		wnd.height = 1040;
+		wnd.height = 900;
 		wnd.title = "Nucled";
 		this.exitOnEscape = false;
 	}
@@ -556,7 +556,7 @@ class TestApp : GfxApp {
 						break;
 						
 					case TabDesc.Role.KernelImplNameSelector:
-						VBox().cfg(`layout = { spacing = 5; }`) [{
+						VBox().icfg(`layout = { spacing = 5; }`) [{
 							char[256] buf;
 							Label().text(buf[0..sprintf(buf.ptr, "Select a composite to edit for kernel %.*s", "TODO")]);
 							
@@ -597,7 +597,7 @@ class TestApp : GfxApp {
 							}
 							
 							HBox() [{
-								char[] name = trim(Input().cfg(`size = 100 0;`).text);
+								char[] name = trim(Input().icfg(`size = 100 0;`).text);
 								if (Button().text("New").clicked && name.length > 0) {
 									tabDesc.compositeName = name.dup;
 									tabDesc.label = tabDesc.kernelDef.name ~ "( " ~ tabDesc.compositeName ~ " )";
@@ -630,7 +630,7 @@ class TestApp : GfxApp {
 			}
 		}];
 		if (!layers.initialized) {
-			layers.cfg(`layout = Layered;`);
+			layers.icfg(`layout = Layered;`);
 			layers.layoutAttribs = "hfill vfill hexpand vexpand";
 		}
 		gui.close;

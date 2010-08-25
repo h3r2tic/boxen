@@ -6,12 +6,26 @@ private {
 }
 
 
+private struct _Id(store) {
+	typedef store Type;
+	
+	Type value = Type.max;
 
+	const _Id invalid = { value : Type.max };
+
+	bool isValid() {
+		return value != Type.max;
+	}
+}
+
+
+// TODO: use the _Id template
 typedef u32	RenderableId;
 typedef u32	LightId;
 typedef u8	SurfaceId;
 typedef u16	MaterialId;		// the indices should be kept low (reused)
 
+alias _Id!(u32)	KernelImplId;
 
 
 enum Domain {

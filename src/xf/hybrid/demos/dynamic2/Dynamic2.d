@@ -65,7 +65,7 @@ void main() {
 							continue;
 						}
 						
-						HBox(i++).cfg(`layout = { spacing = 5; }`) [{
+						HBox(i++).icfg(`layout = { spacing = 5; }`) [{
 							Label().text(prop.name).halign(2)
 							.layoutAttribs(`vexpand`).userSize = vec2(75, 0);
 							

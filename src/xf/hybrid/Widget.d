@@ -40,6 +40,14 @@ template MWidgetCfg() {
 		}
 		return this;
 	}
+
+	typeof(this) icfg(char[] data) {
+		if (!this.initialized) {
+			return this.cfg(data);
+		} else {
+			return this;
+		}
+	}
 }
 
 

@@ -250,7 +250,7 @@ class SceneView : Widget {
 		switch (e.keySym) {
 			case KeySym.x: istate.xAxis = e.down; break;
 			case KeySym.z: istate.zAxis = e.down; break;
-			case KeySym.s: istate.yAxis = e.down; break;
+			case KeySym.a: istate.yAxis = e.down; break;
 			
 			case KeySym.Shift_L:
 			case KeySym.Shift_R:
