@@ -754,7 +754,7 @@ class GraphNode {
 				if (1 == impls.length) {
 					onSelected(impls[0]);
 				} else if (impls.length > 1) {
-					VBox().cfg(`layout={padding = 5 5;}`) [{
+					VBox().icfg(`layout={padding = 5 5;}`) [{
 						Label().text("Select implementation:");
 						Dummy().userSize = vec2(0, 10);
 						

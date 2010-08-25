@@ -11,6 +11,8 @@ private {
 
 	import tango.io.vfs.FileFolder;
 	import tango.core.Variant;
+
+	import tango.text.convert.Format;
 }
 
 
@@ -61,11 +63,22 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 	kdefRegistry.reload();
 	kdefRegistry.dumpInfo();
 
+	foreach (ki; &kdefRegistry.kernelImpls) {
+		assert (ki.id == kdefRegistry.getKernel(ki.id).id);
+		assert (
+			ki.name == kdefRegistry.getKernel(ki.id).name,
+			Format("POOP! '{}' vs '{}' id={}", ki.name, kdefRegistry.getKernel(ki.id).name, ki.id.value)
+		);
+	}
+
 	// ----
 
 	foreach (surfName, surf; &kdefRegistry.surfaces) {
 		surf.id = nextSurfaceId++;
 		surf.reflKernel = kdefRegistry.getKernel(surf.reflKernelName);
+		assert (surf.reflKernel.isValid);
+		assert (surf.reflKernel.id.isValid);
+		assert (kdefRegistry.getKernel(surf.reflKernel.id).name == surf.reflKernelName);
 		surfaces[surfName.dup] = surf.id;
 		assert (surf.id == surfaceNames.length);
 		surfaceNames ~= surfName;
@@ -74,6 +87,9 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 	foreach (matName, mat; &kdefRegistry.materials) {
 		mat.id = nextMaterialId++;
 		mat.materialKernel = kdefRegistry.getKernel(mat.materialKernelName);
+		assert (mat.materialKernel.isValid);
+		assert (mat.materialKernel.id.isValid);
+		assert (kdefRegistry.getKernel(mat.materialKernel.id).name == mat.materialKernelName);
 		materials[matName.dup] = mat.id;
 		assert (mat.id == materialNames.length);
 		materialNames ~= matName;

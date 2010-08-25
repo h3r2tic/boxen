@@ -234,6 +234,10 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ floats (spinner / slider)
 		- textures (just a load/preview for now)
 	- apply changes within Nucleus (fix kdef change notification handling)
+		+ give indices to kernels
+		~ upon kdef reload, keep the indices of materials, surfaces and kernels the same unless they were invalidated
+		~ base renderer caches on indices instead of names -> no dupping will be needed then
+		- call special funcs for materials/surfaces whose values only changed, instead of invalidating them right away
 	~ material preview
 		+ display anything in the preview
 		+ fix the PreviewRenderer so it properly instantiates preview effects

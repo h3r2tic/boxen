@@ -82,9 +82,9 @@ class ForwardRenderer : Renderer {
 				word	offset;
 			}
 			
-			Info[]		info;
-			void*		data;
-			cstring		kernelName;
+			Info[]			info;
+			void*			data;
+			KernelImplId	kernelId;
 			//KernelImpl	reflKernel;
 		}
 		
@@ -99,7 +99,8 @@ class ForwardRenderer : Renderer {
 		surf.info.length = def.params.length;
 
 		//assert (def.reflKernel !is null);
-		surf.kernelName = def.reflKernel.name;
+		assert (def.reflKernel.id.isValid);
+		surf.kernelId = def.reflKernel.id;
 
 		uword sizeReq = 0;
 		
@@ -170,11 +171,11 @@ class ForwardRenderer : Renderer {
 
 	// TODO: mem, indices instead of names (?)
 	struct EffectCacheKey {
-		cstring		materialKernel;
-		cstring		reflKernel;
-		cstring		structureKernel;
-		cstring[]	lightKernels;
-		hash_t		hash;
+		KernelImplId	materialKernel;
+		KernelImplId	reflKernel;
+		KernelImplId	structureKernel;
+		KernelImplId[]	lightKernels;
+		hash_t			hash;
 
 		hash_t toHash() {
 			return hash;
@@ -204,27 +205,27 @@ class ForwardRenderer : Renderer {
 		auto material = _materials[materialId];
 
 		key.materialKernel = *_materialKernels[materialId];
-		key.reflKernel = surface.kernelName;
-		key.structureKernel = renderables.structureKernel[rid];
+		key.reflKernel = surface.kernelId;
+		key.structureKernel = _kdefRegistry.getKernel(renderables.structureKernel[rid]).id;
 
 		key.lightKernels.length = affectingLights.length;
 
 		foreach (lightI, light; affectingLights) {
-			key.lightKernels[lightI] = light.kernelName;
+			key.lightKernels[lightI] = _kdefRegistry.getKernel(light.kernelName).id;
 		}
 
 		key.lightKernels.sort;
 
 		hash_t hash = 0;
-		hash += typeid(cstring).getHash(&key.materialKernel);
+		hash += key.materialKernel.value;
 		hash *= 7;
-		hash += typeid(cstring).getHash(&key.reflKernel);
+		hash += key.reflKernel.value;
 		hash *= 7;
-		hash += typeid(cstring).getHash(&key.structureKernel);
+		hash += key.structureKernel.value;
 
 		foreach (ref lightKernel; key.lightKernels) {
 			hash *= 7;
-			hash += typeid(cstring).getHash(&lightKernel);
+			hash += lightKernel.value;
 		}
 
 		key.hash = hash;
@@ -246,7 +247,18 @@ class ForwardRenderer : Renderer {
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final materialKernel	= _kdefRegistry.getKernel(*_materialKernels[materialId]);
-		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final reflKernel		= _kdefRegistry.getKernel(surface.kernelId);
+
+		log.info(
+			"buildEffectForRenderable for structure {}, mat {}, refl {}",
+			structureKernel.name,
+			materialKernel.name,
+			reflKernel.name
+		);
+
+		assert (structureKernel.isValid);
+		assert (materialKernel.isValid);
+		assert (reflKernel.isValid);
 
 		alias KernelGraph.NodeType NT;
 

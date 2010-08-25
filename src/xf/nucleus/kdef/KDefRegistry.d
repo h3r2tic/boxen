@@ -1,8 +1,10 @@
 module xf.nucleus.kdef.KDefRegistry;
 
 private {
+	import xf.Common;
 	import xf.core.Registry;
-	
+
+	import xf.nucleus.Defs;
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.model.KDefInvalidation;
 	import xf.nucleus.kdef.Common;
@@ -13,7 +15,9 @@ private {
 	import xf.nucleus.KernelImpl;
 	import xf.nucleus.SurfaceDef;
 	import xf.nucleus.MaterialDef;
-	import xf.nucleus.Log : log = nucleusLog;
+	import xf.nucleus.Log : log = nucleusLog, error = nucleusError;
+
+	import xf.mem.ChunkQueue;
 
 	import tango.core.Thread;
 	import tango.core.Runtime;
@@ -38,9 +42,7 @@ class KDefRegistry : IKDefRegistry {
 
 
 	this() {
-		kdefProcessor = new KDefProcessor(_fileParser = create!(IKDefFileParser)());
 		super("*.kdef");
-		startWatcherThread();
 	}
 
 
@@ -98,6 +100,10 @@ class KDefRegistry : IKDefRegistry {
 		return kdefProcessor.getKernel(name);
 	}
 
+	KernelImpl getKernel(KernelImplId id) {
+		return kdefProcessor.getKernel(id);
+	}
+
 	bool getKernel(string name, KernelImpl* res) {
 		return kdefProcessor.getKernel(name, res);
 	}
@@ -136,11 +142,6 @@ class KDefRegistry : IKDefRegistry {
 		return kdefProcessor.materials(dg);
 	}
 
-	
-	void doSemantics() {
-		kdefProcessor.doSemantics();
-	}
-
 
 	bool invalidated() {
 		return _filesModified;
@@ -157,20 +158,80 @@ class KDefRegistry : IKDefRegistry {
 		_allFiles = _allFiles[0..0];
 		processRegistrations();
 
+		newProc.doSemantics();
+
 		if (oldProc) {
 			// for the invalidation handlers
 			kdefProcessor = oldProc;
 
 			auto invInfo = oldProc.invalidateDifferences(newProc);
+			assignConsistentIds(oldProc, newProc);
+			
 			foreach (o; invalidationObservers) {
 				o.onKDefInvalidated(invInfo);
 			}
 
 			kdefProcessor = newProc;
 			//oldProc.dispose();
+		} else {
+			assignConsistentIds(null, newProc);
+			startWatcherThread();
 		}
+	}
 
-		doSemantics();
+
+	private void assignConsistentIds(KDefProcessor op, KDefProcessor np) {
+		// kernels
+		{
+			ChunkQueue!(KernelImplId.Type) matchingKernelIds;
+			scope (exit) matchingKernelIds.dispose();
+
+			if (op)
+			foreach (modName, mod; &op.modules) {
+				if (auto newMod = np.getModuleForPath(modName)) {
+					foreach (name, ref o; mod.kernels) {
+						if (auto o2 = name in newMod.kernels) {
+							if (o.isValid) {
+								if (o2.id.isValid) {
+									if (o2.id != o.id) {
+										assert (
+											false,
+											"id of a kernel in the new module is already"
+											" assigned to something else than the id"
+											" in the original kernel"
+										);
+									}
+								} else {
+									assert (o.id.isValid);
+									o2.id = o.id;
+
+									matchingKernelIds.pushBack(o.id.value);
+								}
+							}
+						}
+					}
+				}
+			}
+
+			KernelImplId.Type _nextId = 0;
+
+			KernelImplId.Type genId() {
+				while (containsElement(matchingKernelIds, _nextId)) {
+					++_nextId;
+				}
+				return _nextId++;
+			}
+			
+			foreach (modName, mod; &np.modules) {
+				foreach (name, ref o; mod.kernels) {
+					if (!o.id.isValid) {
+						o.id.value = genId();
+						log.trace("Assigned id {} to kernel {}", o.id.value, o.name);
+						assert (o.id.isValid);
+					}
+				}
+			}
+		}
 	}
 	
 

@@ -120,7 +120,7 @@ abstract class Renderer
 
 	protected {
 		Array!(MaterialData)	_materials;
-		Array!(cstring)			_materialKernels;	// aliased from the MaterialDef
+		Array!(KernelImplId)	_materialKernels;	// aliased from the MaterialDef
 		//ScratchFIFO				_materialMem;
 	}
 
@@ -136,7 +136,8 @@ abstract class Renderer
 		auto mat = _materials[def.id];
 		static assert (isReferenceType!(typeof(mat)));
 
-		_materialKernels[def.id] = def.materialKernel.name;
+		assert (def.materialKernel.id.isValid);
+		_materialKernels[def.id] = def.materialKernel.id;
 		createMaterialData(_backend, def.params, mat);
 	}
 

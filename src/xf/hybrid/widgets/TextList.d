@@ -26,7 +26,7 @@ class TextList : CustomWidget {
 	typeof(this) addItem(char[] t) {
 		t = t.dup;
 		_items ~= t;
-		_picker.getSub(null).addChild((new Label).cfg(`fontSize = 12;`).text(t).layoutAttribs("hexpand hfill"));
+		_picker.getSub(null).addChild((new Label).icfg(`fontSize = 12;`).text(t).layoutAttribs("hexpand hfill"));
 		return this;
 	}
 	

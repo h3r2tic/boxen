@@ -180,7 +180,7 @@ class DynamicGridInput : Group {
 		popupBorder.color = vec4(1, 1, 1, 0.15);
 
 		gui.openOverlay();
-			with (VBox().cfg(`layout = { padding = 8 8; }`) [{
+			with (VBox().icfg(`layout = { padding = 8 8; }`) [{
 				with (Label()) {
 					text = popupMsg;
 					fontSize = 11;
