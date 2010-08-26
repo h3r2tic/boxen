@@ -99,6 +99,10 @@ struct RenderBin {
 	void clear() {
 		objects.resize(0);
 	}
+
+	bool isEmpty() {
+		return 0 == objects.length;
+	}
 }
 
 

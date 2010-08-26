@@ -35,6 +35,8 @@ private {
 	import tango.math.random.Kiss;
 	import tango.stdc.math : fmodf;
 	import xf.omg.color.HSV;
+
+	import tango.core.Memory;
 }
 
 
@@ -81,7 +83,7 @@ class TestApp : GfxApp {
 
 		// ----
 
-		const numLights = 3;
+		const numLights = 1;
 		for (int i = 0; i < numLights; ++i) {
 			createLight((lights ~= new TestShadowedLight)[$-1]);
 			version (Sponza) {
@@ -127,10 +129,18 @@ class TestApp : GfxApp {
 			cstring model = `mesh/lightTest.hsf`;
 			float scale = 0.01f;
 
-			loadScene(
-				model, scale, CoordSys(vec3fi[0, 1, 0]),
-				"TestSurface3", "TestMaterialImpl"
+			SceneAssetCompilationOptions opts;
+			opts.scale = scale;
+
+			final compiledScene = compileHSFSceneAsset(
+				model,
+				DgScratchAllocator(&mainHeap.allocRaw),
+				opts
 			);
+
+			assert (compiledScene !is null);
+
+			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 1, 0]));
 		} else {
 			/+cstring model = `mesh/soldier.hsf`;
 			float scale = 1.0f;+/
@@ -303,7 +313,7 @@ class TestApp : GfxApp {
 		
 		vsd.update();
 
-		static bool wantDeferred = true; {
+		static bool wantDeferred = false; {
 			static bool prevKeyDown = false;
 			bool keyDown = keyboard.keyDown(KeySym.Return);
 			if (keyDown && !prevKeyDown) {

@@ -1439,7 +1439,7 @@ float farPlaneDistance <
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {
-						*ptr = material.data + info.offset;
+						*ptr = info.ptr;
 					}
 				}
 
@@ -1596,7 +1596,7 @@ float farPlaneDistance <
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {
-						*ptr = material.data + info.offset;
+						*ptr = info.ptr;
 					}
 				}
 

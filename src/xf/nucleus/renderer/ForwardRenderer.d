@@ -46,6 +46,7 @@ private {
 		xf.omg.util.ViewSettings,
 		xf.mem.StackBuffer,
 		xf.mem.MainHeap,
+		xf.mem.ChunkQueue,
 		xf.mem.ScratchAllocator,
 		xf.mem.SmallTempArray,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
@@ -76,19 +77,20 @@ class ForwardRenderer : Renderer {
 	}
 
 	private {
+		// all mem allocated off the scratch fifo
 		struct SurfaceData {
 			struct Info {
-				cstring	name;
-				word	offset;
+				cstring	name;		// stringz
+				void*	ptr;
 			}
 			
 			Info[]			info;
-			void*			data;
 			KernelImplId	kernelId;
+			ScratchFIFO		_mem;
 			//KernelImpl	reflKernel;
 		}
 		
-		SurfaceData[256]		_surfaces;
+		SurfaceData[256]	_surfaces;
 	}
 
 
@@ -96,7 +98,11 @@ class ForwardRenderer : Renderer {
 	// TODO: textures
 	override void registerSurface(SurfaceDef def) {
 		auto surf = &_surfaces[def.id];
-		surf.info.length = def.params.length;
+
+		surf._mem.initialize();
+		final mem = DgScratchAllocator(&surf._mem.pushBack);
+
+		surf.info = mem.allocArray!(SurfaceData.Info)(def.params.length);
 
 		//assert (def.reflKernel !is null);
 		assert (def.reflKernel.id.isValid);
@@ -105,19 +111,13 @@ class ForwardRenderer : Renderer {
 		uword sizeReq = 0;
 		
 		foreach (i, p; def.params) {
-			surf.info[i].name = cast(cstring)p.name;
-			surf.info[i].offset = sizeReq;
-			sizeReq += p.valueSize;
-			sizeReq += 3;
-			sizeReq &= ~3;
-		}
-
-		surf.data = mainHeap.allocRaw(sizeReq);
-		memset(surf.data, 0, sizeReq);
-
-		foreach (i, p; def.params) {
-			void* dst = surf.data + surf.info[i].offset;
-			memcpy(dst, p.value, p.valueSize);
+			surf.info[i].name = mem.dupStringz(cast(cstring)p.name);
+			// TODO: figure out whether that alignment is needed at all
+			memcpy(
+				surf.info[i].ptr = mem.alignedAllocRaw(p.valueSize, uword.sizeof),
+				p.value,
+				p.valueSize
+			);
 		}
 	}
 
@@ -129,24 +129,28 @@ class ForwardRenderer : Renderer {
 		
 		if (info.anyConverters) {
 			foreach (eck, ref einfo; _effectCache) {
-				toDispose.pushBack(einfo.effect, &stack.allocRaw);
-				einfo.dispose();
+				if (einfo.isValid) {
+					toDispose.pushBack(einfo.effect, &stack.allocRaw);
+					einfo.dispose();
+				}
 			}
 		} else {
 			foreach (eck, ref einfo; _effectCache) {
-				if (
-						!_kdefRegistry.getKernel(eck.materialKernel).isValid
-					||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
-					||	!_kdefRegistry.getKernel(eck.reflKernel).isValid
-				) {
-					toDispose.pushBack(einfo.effect, &stack.allocRaw);
-					einfo.dispose();
-				} else {
-					foreach (lk; eck.lightKernels) {
-						if (!_kdefRegistry.getKernel(lk).isValid) {
-							toDispose.pushBack(einfo.effect, &stack.allocRaw);
-							einfo.dispose();
-							break;
+				if (einfo.isValid) {
+					if (
+							!_kdefRegistry.getKernel(eck.materialKernel).isValid
+						||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
+						||	!_kdefRegistry.getKernel(eck.reflKernel).isValid
+					) {
+						toDispose.pushBack(einfo.effect, &stack.allocRaw);
+						einfo.dispose();
+					} else {
+						foreach (lk; eck.lightKernels) {
+							if (!_kdefRegistry.getKernel(lk).isValid) {
+								toDispose.pushBack(einfo.effect, &stack.allocRaw);
+								einfo.dispose();
+								break;
+							}
 						}
 					}
 				}
@@ -154,11 +158,13 @@ class ForwardRenderer : Renderer {
 		}
 
 		foreach (ref ei; _renderableEI) {
-			auto eiEf = ei.getEffect;
-			foreach (e; toDispose.items) {
-				if (e is eiEf) {
-					ei.dispose();
-					break;
+			if (ei.isValid) {
+				auto eiEf = ei.getEffect;
+				foreach (e; toDispose.items) {
+					if (e is eiEf) {
+						ei.dispose();
+						break;
+					}
 				}
 			}
 		}
@@ -874,7 +880,7 @@ float3 eyePosition <
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {
-						*ptr = surface.data + info.offset;
+						*ptr = info.ptr;
 					}
 				}
 				
@@ -885,7 +891,7 @@ float3 eyePosition <
 					auto name = fromStringz(fqn.ptr);
 					void** ptr = getInstUniformPtrPtr(name);
 					if (ptr) {
-						*ptr = material.data + info.offset;
+						*ptr = info.ptr;
 					}
 				}
 

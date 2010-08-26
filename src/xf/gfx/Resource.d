@@ -48,6 +48,7 @@ template MResource() {
 	bool valid() {
 		return _resHandle !is Handle.init;
 	}
+	alias valid isValid;
 }
 
 
