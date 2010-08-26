@@ -343,8 +343,9 @@ class LightPrePassRenderer : Renderer {
 			rd.dispose();
 		}
 		_numReflData = 0;
-
 		unregisterMaterials();
+		_renderableValid.clearAll();
+		
 
 		scope stack = new StackBuffer;
 		mixin MSmallTempArray!(Effect) toDispose;
@@ -413,11 +414,13 @@ class LightPrePassRenderer : Renderer {
 		}
 
 
-		foreach (ref ei; lightEI) {
-			ei.dispose();
+		if (lightEffectInfo.isValid) {
+			foreach (ref ei; lightEI) {
+				ei.dispose();
+			}
+			_backend.disposeEffect(lightEffectInfo.effect);
+			lightEffectInfo.dispose();
 		}
-		_backend.disposeEffect(lightEffectInfo.effect);
-		lightEffectInfo.dispose();
 	}
 
 
@@ -1515,6 +1518,8 @@ float farPlaneDistance <
 				 */
 				setEffectInstanceUniformDefaults(&effectInfo, efInst);
 
+
+				pragma (msg, "do this for modified materials even when stuff is not re-compiled");
 
 				{
 					SurfaceId surfaceId = renderables.surface[rid];
