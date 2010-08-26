@@ -238,7 +238,8 @@ TestMaterial = graph Material {
 			albedoTint <type float4 + use color>,
 			someImg <type Image>
 		) {
-			out_albedo =  albedoTint * someImg.sample(texCoord);
+			out_albedo = albedoTint * someImg.sample(texCoord);
+//			out_albedo.yzw = 0;
 			out_specular = float4(1);
 			out_normal = normal;
 		};
