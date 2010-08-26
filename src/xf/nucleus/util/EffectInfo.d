@@ -37,6 +37,10 @@ struct EffectInfo {
 		uniformDefaults = null;
 		effect = null;
 	}
+
+	bool isValid() {
+		return effect !is null;
+	}
 }
 
 

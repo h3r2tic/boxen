@@ -16,6 +16,9 @@ private template Ref(T) {
 
 
 template MScratchAllocator() {
+	private static import xf.Common;
+
+	
 	T[] allocArray(T)(size_t len, bool throwExc = true) {
 		auto res = allocArrayNoInit!(T)(len, throwExc);
 		if (res) {
@@ -80,6 +83,23 @@ template MScratchAllocator() {
 		copy[] = arr;
 		copy.ptr[copy.length] = 0;
 		return copy;
+	}
+
+
+	void* alignedAllocRaw(size_t bytes, size_t al, bool throwExc = true) {
+		assert (xf.Common.isPowerOfTwo(al));
+		final size_t alm1 = al-1;
+
+		union Meh {
+			void*	a;
+			size_t	b;
+		}
+
+		Meh ptr = void;
+		ptr.a = allocRaw(bytes+alm1);
+		ptr.b += alm1;
+		ptr.b &= ~alm1;
+		return ptr.a;
 	}
 }
 

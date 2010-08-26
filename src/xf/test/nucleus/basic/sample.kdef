@@ -183,6 +183,7 @@ TestShadowedLight = graph Light {
 				intensity *= shadowed2 * mask;
 				//intensity = float4(uv, 0, 0);
 				//intensity = mask;
+				//intensity = mean;
 			} else {
 				intensity = 0;
 				lightSize = 0;

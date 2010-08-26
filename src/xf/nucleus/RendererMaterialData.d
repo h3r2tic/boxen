@@ -14,38 +14,40 @@ private {
 		xf.gfx.Texture,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
 	import
-		xf.mem.MainHeap,
-		MemUtils = xf.utils.Memory;
+		xf.mem.ChunkQueue,
+		xf.mem.ScratchAllocator;
 }
 
 
 
+// all mem allocated off the scratch fifo
 struct MaterialData {
 	struct Info {
-		cstring	name;		// not owned here
-		word	offset;
+		cstring	name;		// stringz
+		void*	ptr;
 	}
 	
-	Info[]	info;
-	void*	data;
+	Info[]		info;
+	ScratchFIFO	_mem;
 }
 
 
 
 void createMaterialData(RendererBackend backend, ParamList params, MaterialData* mat) {
-	MemUtils.alloc(mat.info, params.length);
+	mat._mem.initialize();
+	final mem = DgScratchAllocator(&mat._mem.pushBack);
 
-	uword sizeReq = 0;
+	mat.info = mem.allocArray!(MaterialData.Info)(params.length);
 	
 	foreach (i, p; params) {
-		uword psize = p.valueSize;
-
 		switch (p.valueType) {
 			case ParamValueType.ObjectRef: {
 				Object objVal;
 				p.getValue(&objVal);
 				if (auto sampler = cast(SamplerDef)objVal) {
-					psize = Texture.sizeof;
+					mat.info[i].ptr = mem._new!(Texture)();
+					Texture* tex = cast(Texture*)mat.info[i].ptr;
+					loadMaterialSamplerParam(backend, sampler, tex);
 				} else {
 					error(
 						"Forward renderer: Don't know what to do with"
@@ -65,58 +67,17 @@ void createMaterialData(RendererBackend backend, ParamList params, MaterialData*
 				);
 			} break;
 
-			default: break;
-		}
-
-		assert (psize != 0);
-		
-		// TODO: get clear ownership rules here
-		mat.info[i].name = cast(cstring)p.name;
-		mat.info[i].offset = sizeReq;
-		sizeReq += psize;
-		sizeReq += (uword.sizeof - 1);
-		sizeReq &= ~(uword.sizeof - 1);
-	}
-
-	mat.data = mainHeap.allocRaw(sizeReq);
-	memset(mat.data, 0, sizeReq);
-
-	foreach (i, p; params) {
-		void* dst = mat.data + mat.info[i].offset;
-		assert (dst < mat.data + sizeReq);
-		
-		switch (p.valueType) {
-			case ParamValueType.ObjectRef: {
-				Object objVal;
-				p.getValue(&objVal);
-				if (auto sampler = cast(SamplerDef)objVal) {
-					// TODO: proper handling of sampler objects and textures,
-					// separately, using the new GL 3.3 extension
-					Texture* tex = cast(Texture*)dst;
-					loadMaterialSamplerParam(backend, sampler, tex);
-				} else {
-					error(
-						"Renderer: Don't know what to do with"
-						" a {} material param ('{}').",
-						objVal.classinfo.name,
-						p.name
-					);
-				}
-			} break;
-
-			case ParamValueType.String:
-			case ParamValueType.Ident: {
-				error(
-					"Renderer: Don't know what to do with"
-					" string/ident material params ('{}').",
-					p.name
+			default: {
+				// TODO: figure out whether that alignment is needed at all
+				memcpy(
+					mat.info[i].ptr = mem.alignedAllocRaw(p.valueSize, uword.sizeof),
+					p.value,
+					p.valueSize
 				);
 			} break;
-
-			default: {
-				memcpy(dst, p.value, p.valueSize);
-			} break;
 		}
+
+		mat.info[i].name = mem.dupStringz(cast(cstring)p.name);
 	}
 }
 

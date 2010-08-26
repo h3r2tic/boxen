@@ -96,6 +96,8 @@ struct RendererCaps {
 }
 
 
+// TODO: the renderOrdinal and _idxInRenderer for an Effect must match,
+// so perhaps just leave one
 class Renderer : IRenderer {
 	mixin(Implements("IRenderer"));
 	
@@ -315,7 +317,6 @@ class Renderer : IRenderer {
 	}
 
 
-	// TODO: do anything about Effect ordinals?
 	void disposeEffect(Effect effect_) {
 		if (auto effect = cast(CgEffect)effect_) {
 			log.info("Disposing an effect.");
@@ -326,6 +327,7 @@ class Renderer : IRenderer {
 			if (effect._idxInRenderer+1 != _effects.length) {
 				auto other = &_effects[$-1];
 				other.effect._idxInRenderer = effect._idxInRenderer;
+				other.effect.renderOrdinal = effect.renderOrdinal;
 				*data = *other;
 				*other = EffectData.init;
 			}
@@ -1488,10 +1490,12 @@ class Renderer : IRenderer {
 					" of the rendering process"
 				);
 			}
-			
-		//log.trace("render at {}", __LINE__);
-			render(_effects[eidx].effect, &renderBin.objects, &rcb);
-		//log.trace("render at {}", __LINE__);
+
+			if (!renderBin.isEmpty) {
+			//log.trace("render at {}", __LINE__);
+				render(_effects[eidx].effect, &renderBin.objects, &rcb);
+			//log.trace("render at {}", __LINE__);
+			}
 		}
 	}
 
@@ -1607,15 +1611,11 @@ class Renderer : IRenderer {
 	}
 	
 	
-	void render(
+	private void render(
 			Effect effect,
 			typeof(RenderBin.objects)* objects,
 			RenderCallbacks* rcb
 	) {
-		if (0 == objects.length) {
-			return;
-		}
-
 		//log.trace("render at {}", __LINE__);
 		
 		void** prevUniformValues = null;

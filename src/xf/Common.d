@@ -173,3 +173,8 @@ bool containsElement(Container, Item)(
 		return false;
 	}
 }
+
+
+bool isPowerOfTwo(uword x) {
+	return x != 0 && 0 == (x & (x-1));
+}
