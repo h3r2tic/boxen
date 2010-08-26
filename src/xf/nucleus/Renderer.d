@@ -1,3 +1,4 @@
+
 module xf.nucleus.Renderer;
 
 private {
@@ -139,6 +140,15 @@ abstract class Renderer
 		assert (def.materialKernel.id.isValid);
 		_materialKernels[def.id] = def.materialKernel.id;
 		createMaterialData(_backend, def.params, mat);
+	}
+
+
+	protected void unregisterMaterials() {
+		foreach (ref m; _materials) {
+			m.dispose();
+		}
+
+		_materials.resize(0);
 	}
 
 

@@ -88,6 +88,12 @@ class ForwardRenderer : Renderer {
 			KernelImplId	kernelId;
 			ScratchFIFO		_mem;
 			//KernelImpl	reflKernel;
+
+			void dispose() {
+				_mem.dispose();
+				info = null;
+				kernelId = KernelImplId.invalid;
+			}
 		}
 		
 		SurfaceData[256]	_surfaces;
@@ -122,8 +128,18 @@ class ForwardRenderer : Renderer {
 	}
 
 
+	protected void unregisterSurfaces() {
+		foreach (ref surf; _surfaces) {
+			surf.dispose();
+		}
+	}
+
+
 	// implements IKDefInvalidationObserver
 	void onKDefInvalidated(KDefInvalidationInfo info) {
+		unregisterMaterials();
+		unregisterSurfaces();
+		
 		scope stack = new StackBuffer;
 		mixin MSmallTempArray!(Effect) toDispose;
 		

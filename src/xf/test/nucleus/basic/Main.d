@@ -83,7 +83,7 @@ class TestApp : GfxApp {
 
 		// ----
 
-		const numLights = 1;
+		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
 			createLight((lights ~= new TestShadowedLight)[$-1]);
 			version (Sponza) {
@@ -313,7 +313,7 @@ class TestApp : GfxApp {
 		
 		vsd.update();
 
-		static bool wantDeferred = false; {
+		static bool wantDeferred = true; {
 			static bool prevKeyDown = false;
 			bool keyDown = keyboard.keyDown(KeySym.Return);
 			if (keyDown && !prevKeyDown) {
@@ -388,9 +388,7 @@ class TestApp : GfxApp {
 		}
 
 
-		if (kdefRegistry.invalidated) {
-			kdefRegistry.reload();
-		}
+		nucleusHotSwap();
 	}
 }
 

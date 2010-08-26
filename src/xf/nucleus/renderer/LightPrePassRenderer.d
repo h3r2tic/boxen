@@ -61,6 +61,7 @@ private {
 		xf.mem.StackBuffer,
 		xf.mem.MainHeap,
 		xf.mem.ScratchAllocator,
+		xf.mem.ChunkQueue,
 		xf.mem.SmallTempArray,
 		xf.utils.DgOutputStream,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
@@ -143,24 +144,36 @@ class LightPrePassRenderer : Renderer {
 	private {
 		struct SurfaceData {
 			struct Info {
-				cstring	name;
-				word	offset;
+				cstring	name;		// stringz
+				void*	ptr;
 			}
 			
-			Info[]		info;
-			void*		data;
-			cstring		kernelName;
-			ubyte		reflIdx;
-			//KernelImpl	reflKernel;
+			Info[]			info;
+			KernelImplId	kernelId;
+			ScratchFIFO		_mem;
+			ubyte			reflIdx;
+
+			void dispose() {
+				_mem.dispose();
+				info = null;
+				kernelId = KernelImplId.invalid;
+				reflIdx = 0;
+			}
 		}
 
 		struct ReflData {
-			cstring			kernelName;
+			KernelImplId	kernelId;
+			//cstring			kernelName;
 			KernelGraph		graph;
 			GraphNodeId[]	topological;		// allocated off the KernelGraph's allocator
 			GraphNodeId		input;
 			GraphNodeId		output;
 			ParamList*		dataNodeParams;
+
+			void dispose() {
+				disposeKernelGraph(graph);
+				// TODO(?)
+			}
 
 			int inputs(int delegate(ref int, ref Param) sink) {
 				final inputNode = graph.getNode(input);
@@ -213,32 +226,31 @@ class LightPrePassRenderer : Renderer {
 	// TODO
 	override void registerSurface(SurfaceDef def) {
 		auto surf = &_surfaces[def.id];
-		surf.info.length = def.params.length;
+
+		surf._mem.initialize();
+		final mem = DgScratchAllocator(&surf._mem.pushBack);
+
+		surf.info = mem.allocArray!(SurfaceData.Info)(def.params.length);
 
 		//assert (def.reflKernel !is null);
-		surf.kernelName = def.reflKernel.name;//.dup;
+		assert (def.reflKernel.id.isValid);
+		surf.kernelId = def.reflKernel.id;
 
 		uword sizeReq = 0;
 		
 		foreach (i, p; def.params) {
-			surf.info[i].name = (cast(cstring)p.name);//.dup;
-			surf.info[i].offset = sizeReq;
-			sizeReq += p.valueSize;
-			sizeReq += 3;
-			sizeReq &= ~3;
-		}
-
-		surf.data = mainHeap.allocRaw(sizeReq);
-		memset(surf.data, 0, sizeReq);
-
-		foreach (i, p; def.params) {
-			void* dst = surf.data + surf.info[i].offset;
-			memcpy(dst, p.value, p.valueSize);
+			surf.info[i].name = mem.dupStringz(cast(cstring)p.name);
+			// TODO: figure out whether that alignment is needed at all
+			memcpy(
+				surf.info[i].ptr = mem.alignedAllocRaw(p.valueSize, uword.sizeof),
+				p.value,
+				p.valueSize
+			);
 		}
 
 		bool reflFound = false;
 		foreach (ubyte i, ref refl; _reflData) {
-			if (refl.kernelName == surf.kernelName) {
+			if (refl.kernelId == surf.kernelId) {
 				surf.reflIdx = i;
 				reflFound = true;
 				break;
@@ -253,7 +265,7 @@ class LightPrePassRenderer : Renderer {
 			}
 			auto refl = &_reflData[surf.reflIdx];
 
-			refl.kernelName = surf.kernelName;
+			refl.kernelId = surf.kernelId;
 
 			refl.graph = createKernelGraph();
 			GraphBuilder builder;
@@ -317,9 +329,95 @@ class LightPrePassRenderer : Renderer {
 	}
 
 
+	protected void unregisterSurfaces() {
+		foreach (ref surf; _surfaces) {
+			surf.dispose();
+		}
+	}
+
+
 	// implements IKDefInvalidationObserver
 	// TODO
 	void onKDefInvalidated(KDefInvalidationInfo info) {
+		foreach (ref rd; _reflData) {
+			rd.dispose();
+		}
+		_numReflData = 0;
+
+		unregisterMaterials();
+
+		scope stack = new StackBuffer;
+		mixin MSmallTempArray!(Effect) toDispose;
+		
+		if (info.anyConverters) {
+			foreach (eck, ref einfo; _finalEffectCache) {
+				if (einfo.isValid) {
+					toDispose.pushBack(einfo.effect, &stack.allocRaw);
+					einfo.dispose();
+				}
+			}
+
+			foreach (eck, ref einfo; _structureEffectCache) {
+				if (einfo.isValid) {
+					toDispose.pushBack(einfo.effect, &stack.allocRaw);
+					einfo.dispose();
+				}
+			}
+		} else {
+			foreach (eck, ref einfo; _finalEffectCache) {
+				if (einfo.isValid) {
+					if (
+							!_kdefRegistry.getKernel(eck.materialKernel).isValid
+						||	!_kdefRegistry.getKernel(eck.structureKernel).isValid
+					) {
+						toDispose.pushBack(einfo.effect, &stack.allocRaw);
+						einfo.dispose();
+					}
+				}
+			}
+
+			foreach (eck, ref einfo; _structureEffectCache) {
+				if (!_kdefRegistry.getKernel(eck).isValid) {
+					toDispose.pushBack(einfo.effect, &stack.allocRaw);
+					einfo.dispose();
+				}
+			}
+		}
+
+		foreach (ref ei; _structureRenderableEI) {
+			if (ei.isValid) {
+				auto eiEf = ei.getEffect;
+				foreach (e; toDispose.items) {
+					if (e is eiEf) {
+						ei.dispose();
+						break;
+					}
+				}
+			}
+		}
+
+		foreach (ref ei; _finalRenderableEI) {
+			if (ei.isValid) {
+				auto eiEf = ei.getEffect;
+				foreach (e; toDispose.items) {
+					if (e is eiEf) {
+						ei.dispose();
+						break;
+					}
+				}
+			}
+		}
+
+		foreach (ef; toDispose.items) {
+			_backend.disposeEffect(ef);
+		}
+
+
+		foreach (ref ei; lightEI) {
+			ei.dispose();
+		}
+		_backend.disposeEffect(lightEffectInfo.effect);
+		lightEffectInfo.dispose();
 	}
 
 
@@ -368,7 +466,7 @@ class LightPrePassRenderer : Renderer {
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final materialKernel	= _kdefRegistry.getKernel(*_materialKernels[materialId]);
-		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final reflKernel		= _kdefRegistry.getKernel(surface.kernelId);
 
 		alias KernelGraph.NodeType NT;
 
@@ -865,7 +963,7 @@ float farPlaneDistance <
 		
 		foreach (reflIdx, refl; _reflData) {
 			fmt("struct BRDF__")(reflIdx)(" {");
-			fmt("\t// ")(refl.kernelName);
+			fmt("\t// ")(_kdefRegistry.getKernel(refl.kernelId).name);
 			fmt.newline;
 
 			final inputNode = refl.graph.getNode(refl.input);
@@ -1089,7 +1187,7 @@ float farPlaneDistance <
 
 		final structureKernel	= _kdefRegistry.getKernel(renderables.structureKernel[rid]);
 		final materialKernel	= _kdefRegistry.getKernel(*_materialKernels[materialId]);
-		final reflKernel		= _kdefRegistry.getKernel(surface.kernelName);
+		final reflKernel		= _kdefRegistry.getKernel(surface.kernelId);
 
 		alias KernelGraph.NodeType NT;
 

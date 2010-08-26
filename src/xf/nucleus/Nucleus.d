@@ -37,6 +37,8 @@ private {
 	MaterialId[cstring]	materials;
 	cstring[]			materialNames;
 	MaterialId			nextMaterialId;
+
+	Renderer[]			renderers;
 }
 
 
@@ -71,7 +73,71 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 		);
 	}
 
-	// ----
+	reloadSurfMats();
+
+	vsmRenderer = createRenderer("Depth");
+	vsmRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
+}
+
+
+void nucleusHotSwap() {
+	if (kdefRegistry.invalidated) {
+		kdefRegistry.reload();
+		
+		reloadSurfMats();
+
+		foreach (r; renderers) {
+			foreach (surfName, surf; &kdefRegistry.surfaces) {
+				r.registerSurface(surf);
+			}
+
+			foreach (matName, mat; &kdefRegistry.materials) {
+				r.registerMaterial(mat);
+			}
+		}
+	}
+}
+
+
+Renderer createRenderer(cstring name) {
+	if (!(name in _rendererFactories)) {
+		nucleusError("Unknown renderer: '{}'.", name);
+	}
+	
+	final res = _rendererFactories[name]();
+	kdefRegistry.registerObserver(res);
+	registerLightObserver(res);
+
+	foreach (surfName, surf; &kdefRegistry.surfaces) {
+		res.registerSurface(surf);
+	}
+
+	foreach (matName, mat; &kdefRegistry.materials) {
+		res.registerMaterial(mat);
+	}
+
+	renderers ~= res;
+
+	return res;
+}
+
+
+void registerRenderer(T)(cstring name) {
+	_rendererFactories[name] = function Renderer() {
+		return new T(.rendererBackend, kdefRegistry);
+	};
+}
+
+
+private void reloadSurfMats() {
+	nextSurfaceId = nextSurfaceId.init;
+	nextMaterialId = nextMaterialId.init;
+
+	surfaces = null;
+	surfaceNames = null;
+
+	materials = null;
+	materialNames = null;
 
 	foreach (surfName, surf; &kdefRegistry.surfaces) {
 		surf.id = nextSurfaceId++;
@@ -94,39 +160,8 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 		assert (mat.id == materialNames.length);
 		materialNames ~= matName;
 	}
-
-	// ----
-
-	vsmRenderer = createRenderer("Depth");
-	vsmRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
 }
 
-
-Renderer createRenderer(cstring name) {
-	if (!(name in _rendererFactories)) {
-		nucleusError("Unknown renderer: '{}'.", name);
-	}
-	
-	final res = _rendererFactories[name]();
-	kdefRegistry.registerObserver(res);
-	registerLightObserver(res);
-
-	foreach (surfName, surf; &kdefRegistry.surfaces) {
-		res.registerSurface(surf);
-	}
-
-	foreach (matName, mat; &kdefRegistry.materials) {
-		res.registerMaterial(mat);
-	}
-	return res;
-}
-
-
-void registerRenderer(T)(cstring name) {
-	_rendererFactories[name] = function Renderer() {
-		return new T(.rendererBackend, kdefRegistry);
-	};
-}
 
 // TODO: registration
 
