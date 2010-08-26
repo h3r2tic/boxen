@@ -3,6 +3,7 @@ module xf.mem.Array;
 private {
 	import xf.mem.ArrayAllocator;
 	import xf.mem.Log;
+	import tango.text.convert.Format;
 }
 
 
@@ -19,13 +20,13 @@ private template MArrCommon(T) {
 	
 	
 	void opIndexAssign(T x, size_t i) {
-		assert (i < _length);
+		assert (i < _length, Format("opIndexAssign({}) out of bounds. Length={}.", i, _length));
 		_ptr[i] = x;
 	}
 	
 
 	T* opIndex(size_t i) {
-		assert (i < _length);
+		assert (i < _length, Format("opIndex({}) out of bounds. Length={}.", i, _length));
 		assert (_ptr !is null);
 		return _ptr + i;
 	}
@@ -74,7 +75,7 @@ private template MArrCommon(T) {
 
 
 	void removeKeepOrder(size_t i) {
-		assert (i < _length);
+		assert (i < _length, Format("removeKeepOrder({}) out of bounds. Length={}.", i, _length));
 		for (; i+1 < _length; ++i) {
 			_ptr[i] = _ptr[i+1];
 		}
@@ -98,7 +99,7 @@ private template MArrCommon(T) {
 
 
 	void removeNoOrder(size_t idx) {
-		assert (idx < _length);
+		assert (idx < _length, Format("removeNoOrder({}) out of bounds. Length={}.", idx, _length));
 		if (idx != _length-1) {
 			_ptr[idx] = _ptr[_length-1];
 		}

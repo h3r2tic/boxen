@@ -26,6 +26,11 @@ struct MaterialData {
 		cstring	name;		// stringz
 		void*	ptr;
 	}
+
+	void dispose() {
+		_mem.dispose();
+		info = null;
+	}
 	
 	Info[]		info;
 	ScratchFIFO	_mem;
