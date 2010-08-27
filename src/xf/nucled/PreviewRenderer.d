@@ -113,7 +113,7 @@ class MaterialPreviewRenderer {
 				auto name = fromStringz(fqn.ptr);
 				void** ptr = getInstUniformPtrPtr(name);
 				if (ptr) {
-					*ptr = _materialData.data + info.offset;
+					*ptr = info.ptr;
 				}
 			}
 		}

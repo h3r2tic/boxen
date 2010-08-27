@@ -496,7 +496,7 @@ class TestApp : GfxApp {
 				if (Check().text("deferred: ").checked) {
 					defSV = initSv(SceneView());
 					
-					if (defSV) {
+					if (fwdSV) {
 						defSV.yaw = fwdSV.yaw;
 						defSV.pitch = fwdSV.pitch;
 						defSV.roll = fwdSV.roll;
@@ -512,6 +512,8 @@ class TestApp : GfxApp {
 		
 		gui.end();
 		gui.render(guiRenderer);
+
+		nucleusHotSwap();
 	}
 
 	void doTabsGUI() {

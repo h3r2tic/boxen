@@ -139,6 +139,7 @@ class ForwardRenderer : Renderer {
 	void onKDefInvalidated(KDefInvalidationInfo info) {
 		unregisterMaterials();
 		unregisterSurfaces();
+		_renderableValid.clearAll();
 		
 		scope stack = new StackBuffer;
 		mixin MSmallTempArray!(Effect) toDispose;
