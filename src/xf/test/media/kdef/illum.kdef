@@ -44,6 +44,8 @@ ABC = graph Reflectance {
 	connect n1.BRDF_A n2.BRDF_A;
 	connect n1.BRDF_B n2.BRDF_B;
 	connect n1.BRDF_C n2.BRDF_C;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
 	connect n2 n3;
 };
 
@@ -117,6 +119,8 @@ ABg_h = graph Reflectance {
 	connect n1.BRDF_A n2.BRDF_A;
 	connect n1.BRDF_B n2.BRDF_B;
 	connect n1.BRDF_g n2.BRDF_g;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
 	connect n2 n3;
 };
 
@@ -169,6 +173,8 @@ ABg = graph Reflectance {
 	connect n1.BRDF_A n2.BRDF_A;
 	connect n1.BRDF_B n2.BRDF_B;
 	connect n1.BRDF_g n2.BRDF_g;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
 	connect n2 n3;
 };
 
@@ -234,6 +240,8 @@ AshikhminShirley = graph Reflectance {
 	connect n0 n2;
 	connect n1.roughness n2.roughness;
 	connect n1.fresnelR0 n2.fresnelR0;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
 	connect n2 n3;
 };
 
@@ -314,6 +322,8 @@ CookTorrance = graph Reflectance {
 	connect n0 n2;
 	connect n1.roughness n2.roughness;
 	connect n1.fresnelR0 n2.fresnelR0;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
 	connect n2 n3;
 };
 
@@ -346,6 +356,8 @@ BlinnPhong = graph Reflectance {
 
 	connect n0 n2;
 	connect n1.specularPower n2.specularPower;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
 	connect n2 n3;
 };
 

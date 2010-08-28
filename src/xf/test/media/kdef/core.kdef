@@ -17,16 +17,16 @@ Reflectance = kernel(
 	in lightSize <type float>,
 	in toLight <type float3 + basis world + use toLight>,
 	in toEye <type float3 + use toEye + basis world + unit true>,
-	out diffuse <type float4 + use diffuse>,
-	out specular <type float4 + use specular>
+	out diffuse <type float4 + use color>,
+	out specular <type float4 + use color>
 );
 
 Material = kernel(
 	in position <type float3 + basis world + use position>,
 	in normal <type float3 + basis world + use normal + unit true>,
 	in texCoord <type float2 + use uv>,
-	out out_albedo <type float4 + use diffuse>,
-	out out_specular <type float4 + use specular>,
+	out out_albedo <type float4 + use color>,
+	out out_specular <type float4 + use color>,
 	out out_normal <type float3 + basis world + use normal + unit true>
 );
 
@@ -40,7 +40,7 @@ GeometryShader = kernel(
 
 Image = kernel(
 	in uv <type float2 + use uv>,
-	out sample <type float4>
+	out sample <type float4 + use color>
 );
 
 Blit = kernel(

@@ -23,6 +23,7 @@ private {
 // all mem allocated off the scratch fifo
 struct MaterialData {
 	struct Info {
+		// TODO: store the type to be safe in value updates
 		cstring	name;		// stringz
 		void*	ptr;
 	}
@@ -55,7 +56,7 @@ void createMaterialData(RendererBackend backend, ParamList params, MaterialData*
 					loadMaterialSamplerParam(backend, sampler, tex);
 				} else {
 					error(
-						"Forward renderer: Don't know what to do with"
+						"Don't know what to do with"
 						" a {} material param ('{}').",
 						objVal.classinfo.name,
 						p.name
@@ -66,7 +67,7 @@ void createMaterialData(RendererBackend backend, ParamList params, MaterialData*
 			case ParamValueType.String:
 			case ParamValueType.Ident: {
 				error(
-					"Forward renderer: Don't know what to do with"
+					"Don't know what to do with"
 					" string/ident material params ('{}').",
 					p.name
 				);
@@ -83,6 +84,37 @@ void createMaterialData(RendererBackend backend, ParamList params, MaterialData*
 		}
 
 		mat.info[i].name = mem.dupStringz(cast(cstring)p.name);
+	}
+}
+
+
+void updateMaterialData(RendererBackend backend, ParamList params, MaterialData* mat) {
+	foreach (i, p; params) {
+		assert (mat.info[i].name == cast(cstring)p.name);
+		
+		switch (p.valueType) {
+			case ParamValueType.ObjectRef: {
+				// TODO
+			} break;
+
+			case ParamValueType.String:
+			case ParamValueType.Ident: {
+				error(
+					"Don't know what to do with"
+					" string/ident material params ('{}').",
+					p.name
+				);
+			} break;
+
+			default: {
+				// TODO: figure out whether that alignment is needed at all
+				memcpy(
+					mat.info[i].ptr,
+					p.value,
+					p.valueSize
+				);
+			} break;
+		}
 	}
 }
 

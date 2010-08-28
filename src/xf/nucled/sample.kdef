@@ -285,6 +285,10 @@ TestMaterial = graph Material {
 
 	connect n0 n2;
 	connect n1.albedoTint n2.albedoTint;
+
+	connect n2.out_albedo n3.out_albedo;
+	connect n2.out_specular n3.out_specular;
+
 	connect n2 n3;
 };
 
@@ -332,6 +336,10 @@ TestMaterial2 = graph Material {
 
 	connect n0 n2;
 	connect n1.albedoTint n2.albedoTint;
+
+	connect n2.out_albedo n3.out_albedo;
+	connect n2.out_specular n3.out_specular;
+
 	connect n2 n3;
 };
 
@@ -347,7 +355,7 @@ BlurImage = kernel(
 	in uv <type float2>,
 	in offset <type float2>,
 	in img <type Image>,
-	out sample <type float4>
+	out sample <type float4 + use color>
 ) {
     // 1D Gaussian 7 taps coefficients
     const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
@@ -370,7 +378,7 @@ BlurImageOffHalf = kernel(
 	in uv <type float2>,
 	in offset <type float2>,
 	in img <type Image>,
-	out sample <type float4>
+	out sample <type float4 + use color>
 ) {
     // 1D Gaussian 7 taps coefficients
     const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
@@ -394,7 +402,7 @@ BlurImage2 = kernel(
 	in uv <type float2>,
 	in offset <type float2>,
 	in img <type Image>,
-	out sample <type float4>
+	out sample <type float4 + use color>
 ) {
 	uv += offset / 24;
 
@@ -748,11 +756,11 @@ TestPostNop = graph {
 
 
 AddGlare = kernel(
-	in baseColor <type float4>,
-	in blurredColor <type float4>,
-	in blurredColor2 <type float4>,
-	in blurredColor3 <type float4>,
-	out output <type float4>
+	in baseColor <type float4 + use color>,
+	in blurredColor <type float4 + use color>,
+	in blurredColor2 <type float4 + use color>,
+	in blurredColor3 <type float4 + use color>,
+	out output <type float4 + use color>
 ) {
 //	output = blurredColor;
 

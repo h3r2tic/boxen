@@ -29,7 +29,7 @@ Tex2D = kernel (
 SampleImage = kernel (
 	in image <type Image>,
 	in uv <type float2 + use uv>,
-	out sample <in.image.actual + type float4>
+	out sample <use color + in.image.actual + type float4>
 ) {
 	sample = image.sample(uv);
 };

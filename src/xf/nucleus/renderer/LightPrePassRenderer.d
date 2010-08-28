@@ -512,7 +512,7 @@ class LightPrePassRenderer : Renderer {
 		void buildMaterialGraph() {
 			GraphBuilder builder;
 			builder.sourceKernelType = SourceKernelType.Material;
-			builder.build(kg, materialKernel, &materialInfo, stack);
+			builder.build(kg, materialKernel, &materialInfo, stack, null, true);
 
 			assert (materialInfo.input.valid);
 		}
