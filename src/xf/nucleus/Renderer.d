@@ -112,8 +112,15 @@ abstract class Renderer
 	// TODO: updateSurface
 	void registerSurface(SurfaceDef def) {}
 	
-	// TODO: updateMaterial
 	//abstract void registerMaterial(MaterialDef def);
+
+
+	void updateMaterial(MaterialDef def) {
+		auto mat = _materials[def.id];
+		static assert (isReferenceType!(typeof(mat)));
+		updateMaterialData(_backend, def.params, mat);
+	}
+
 
 	static assert (isReferenceType!(SurfaceDef));
 	static assert (isReferenceType!(MaterialDef));

@@ -242,14 +242,17 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 			* fixed by invalidating all renderables
 		~ upon kdef reload, keep the indices of materials, surfaces and kernels the same unless they were invalidated
 			+ kernels
-			- the rest (?)
-		- call special funcs for materials/surfaces whose values only changed, instead of invalidating them right away
+			* the rest doesn't seem to be needed, can invalidate them all instead
+		~ call special funcs for materials/surfaces whose values only changed, instead of invalidating them right away
+			+ from the param rollout
+			- from kdef reloads
 	~ material preview
 		+ display anything in the preview
 		+ fix the PreviewRenderer so it properly instantiates preview effects
 		+ render the preview-specific effects
 		- SceneView in previews for object manipulation
 			* have a reset button
+	+ modification of live material values from within the param rollout
 	~ fancy material browser
 		+ display of the material and its name
 		+ selection of a material
@@ -261,6 +264,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		* ability to select and change the name
 		* don't focus on files, have a material browser as the interface to
 		  materials, their impls and renaming. hide files, only expose matlibs
+		* store default material instances
 	- graceful handling of kdef parsing and processing errors
 	- loading new scene objects
 	- deleting scene objects

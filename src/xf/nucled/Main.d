@@ -626,6 +626,10 @@ class TestApp : GfxApp {
 				paramsRollout.setNode(curEditor.selected);
 				if (paramsRollout.changed) {
 					curEditor.onParamsChanged();
+					foreach (matname, mat; &kdefRegistry.materials) {
+						fwdRenderer.updateMaterial(mat);
+						defRenderer.updateMaterial(mat);
+					}
 				}
 			} else {
 				paramsRollout.setNode(null);

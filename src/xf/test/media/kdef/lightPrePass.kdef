@@ -221,8 +221,8 @@ LightPrePassFinalOut = graph {
 		type = input;
 		params = (
 			position <type float4 + use position + basis clip>,
-			albedo <type float4 + use diffuse>,
-			specular <type float4 + use specular>			
+			albedo <type float4 + use color>,
+			specular <type float4 + use color>
 		);
 	};
 
@@ -238,8 +238,8 @@ LightPrePassFinalOut = graph {
 		type = kernel;
 		kernel = kernel(
 			in position <type float4 + use position + basis clip>,
-			in albedo <type float4 + use diffuse>,
-			in specular <type float4 + use specular>,
+			in albedo <type float4 + use color>,
+			in specular <type float4 + use color>,
 			in diffuseIlluminationSampler <type sampler2D + use diffuse>,
 			in specularIlluminationSampler <type sampler2D + use specular>,
 			out color <type float4 + use color>
@@ -258,6 +258,8 @@ LightPrePassFinalOut = graph {
 		);
 	};
 
+	connect input.albedo calc.albedo;
+	connect input.specular calc.specular;
 	connect input calc;
 	connect data calc;
 	connect calc output;

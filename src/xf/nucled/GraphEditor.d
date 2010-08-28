@@ -503,6 +503,25 @@ class GraphEditor {
 				sp.onParamsChanged(_graph);
 			}
 		}
+
+		// HACK
+		foreach (mname, mat; &_registry.materials) {
+			if (mat.materialKernel.name == "tmp") {
+				foreach (node; _graph.nodes) {
+					if (!node.isKernelBased && node.data) {
+						foreach (p; node.data.params) {
+							if (p.isOutput) {
+								foreach (ref p2; mat.params) {
+									if (p2.valueType == p.valueType && p2.value && p2.valueSize == p.valueSize) {
+										memcpy(p2.value, p.value, p2.valueSize);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 
