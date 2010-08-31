@@ -31,11 +31,11 @@ CompiledMaterialAsset compileMaterialAsset(
 	vec4	specularTint = vec4.one;
 	float	roughness = 0.9f;
 
+	vec2	albedoTexTile = vec2.one;
+	vec2	specularTexTile = vec2.one;
+			
+			
 	/+
-			vec2 diffuseTexTile = vec2.one;
-			vec2 specularTexTile = vec2.one;
-			
-			
 			float smoothness = 0.1f;
 			float ior = 1.5f;
 	//ior = material.ior;
@@ -50,7 +50,7 @@ CompiledMaterialAsset compileMaterialAsset(
 		TextureAssetCompilationOptions topts;
 		topts.imgBaseDir = opts.imgBaseDir;
 		albedoTex = compileTextureAsset(map, allocator, topts);
-		//diffuseTexTile = map.uvTile;
+		albedoTexTile = map.uvTile;
 	} else {
 		TextureAssetCompilationOptions topts;
 		albedoTex = compileTextureAsset("img/white.bmp", allocator, topts);
@@ -60,7 +60,7 @@ CompiledMaterialAsset compileMaterialAsset(
 		TextureAssetCompilationOptions topts;
 		topts.imgBaseDir = opts.imgBaseDir;
 		specularTex = compileTextureAsset(map, allocator, topts);
-		//specularTexTile = map.uvTile;
+		specularTexTile = map.uvTile;
 	} else {
 		TextureAssetCompilationOptions topts;
 		specularTex = compileTextureAsset("img/white.bmp", allocator, topts);
@@ -79,7 +79,7 @@ CompiledMaterialAsset compileMaterialAsset(
 		!(RGBSpace.sRGB, RGBSpace.Linear_sRGB)
 		(material.specularTint, &specularTint);
 
-	uword numParams = 3;
+	uword numParams = 5;
 	if (albedoTex) ++numParams;
 	if (specularTex) ++numParams;
 	
@@ -105,6 +105,16 @@ CompiledMaterialAsset compileMaterialAsset(
 			++i;
 		}
 
+		name[i] = "albedoTexTile";
+		valueType[i] = ParamValueType.Float2;
+		value[i] = cast(void*)allocator._new!(vec2)(albedoTexTile.tuple);
+		++i;
+
+		name[i] = "specularTexTile";
+		valueType[i] = ParamValueType.Float2;
+		value[i] = cast(void*)allocator._new!(vec2)(specularTexTile.tuple);
+		++i;
+
 		name[i] = "albedoTint";
 		valueType[i] = ParamValueType.Float4;
 		value[i] = cast(void*)allocator._new!(vec4)(albedoTint.tuple);
@@ -121,10 +131,12 @@ CompiledMaterialAsset compileMaterialAsset(
 		++i;
 	}
 
+	assert (i == numParams);
+
 	cmat.name = allocator.dupString(material.name);
 
 	// TODO
-	cmat.kernelName = "TestMaterial2";
+	cmat.kernelName = "MaxDefaultMaterial";
 	
 	return cmat;
 }

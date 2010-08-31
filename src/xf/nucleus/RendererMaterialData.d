@@ -83,7 +83,32 @@ void createMaterialData(RendererBackend backend, Material matDef, MaterialData* 
 			} break;
 
 			default: {
-				uword valueSize = paramValueSize(ass.params.valueType[i], ass.params.value);
+				/+log.trace("Handling '{}'.", ass.params.name[i]);
+				log.trace("Type: '{}'.", cast(int)ass.params.valueType[i]);
+				log.trace("Value: '{}'.", ass.params.value[i]);+/
+
+				void* value = ass.params.value[i];
+				ParamValueType valueType = ass.params.valueType[i];
+
+				uword valueSize;
+				
+				if (value) {
+					switch (valueType) {
+						case ParamValueType.Float:	valueSize = 4; break;
+						case ParamValueType.Float2: valueSize = 8; break;
+						case ParamValueType.Float3: valueSize = 12; break;
+						case ParamValueType.Float4: valueSize = 16; break;
+						default: assert (false);
+					}
+				}
+
+				// WTF, this segfaults at total bullshit :<
+				/+uword valueSize = paramValueSize(
+					ass.params.valueType[i],
+					ass.params.value[i]
+				);+/
+
+				//log.trace("Memcpy w/ size {}.", valueSize);
 				
 				// TODO: figure out whether that alignment is needed at all
 				memcpy(
@@ -91,6 +116,8 @@ void createMaterialData(RendererBackend backend, Material matDef, MaterialData* 
 					ass.params.value[i],
 					valueSize
 				);
+
+				//log.trace("Memcpied.");
 			} break;
 		}
 
@@ -225,10 +252,13 @@ private void loadMaterialSamplerParam(
 		cstring filePath;
 		val.getValue(&filePath);
 
-		final img = imgLoader.load(getResourcePath(filePath));
+		auto img = imgLoader.load(getResourcePath(filePath));
 		if (!img.valid) {
-			// TODO: fallback
-			error("Could not load texture: '{}'", filePath);
+			log.warn("Could not load texture: '{}'", filePath);
+			img = imgLoader.load(getResourcePath("img/testgrid.png"));
+			if (!img.valid) {
+				error("Could not fallback texture.");
+			}
 		}
 
 		*tex = backend.createTexture(
@@ -247,10 +277,13 @@ private void loadMaterialSamplerParam(
 ) {
 	cstring filePath = sampler.bitmapPath;
 
-	final img = imgLoader.load(getResourcePath(filePath));
+	auto img = imgLoader.load(getResourcePath(filePath));
 	if (!img.valid) {
-		// TODO: fallback
-		error("Could not load texture: '{}'", filePath);
+		log.warn("Could not load texture: '{}'", filePath);
+		img = imgLoader.load(getResourcePath("img/testgrid.png"));
+		if (!img.valid) {
+			error("Could not fallback texture.");
+		}
 	}
 
 	*tex = backend.createTexture(

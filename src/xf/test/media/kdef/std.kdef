@@ -49,3 +49,11 @@ SamplerToImage = kernel (
 	res.sampler = sampler;
 	image = res;
 };
+
+ErrorMaterial = kernel Material {
+	out_albedo = float4(1, 0, 1, 0);
+	out_specular = float4(1, 0, 1, 0);
+	out_normal = normal;
+};
+
+ErrorMaterial = material ErrorMaterial {};

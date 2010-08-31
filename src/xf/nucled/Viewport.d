@@ -143,7 +143,7 @@ class Viewport {
 					}
 				}
 
-				rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.zero;
+				rendererBackend.framebuffer.settings.clearColorValue[0] = vec4.one * 0.01;
 				rendererBackend.framebuffer.settings.clearColorEnabled[0] = true;
 				rendererBackend.clearBuffers();
 				
