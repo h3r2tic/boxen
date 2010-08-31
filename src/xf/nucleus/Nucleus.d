@@ -53,7 +53,12 @@ private {
 
 
 MaterialId getMaterialIdByName(cstring name) {
-	return materials[name].id;
+	if (auto m = name in materials) {
+		return (*m).id;
+	} else {
+		error("getMaterialIdByName: unknown material: '{}'", name);
+		return MaterialId.init;
+	}
 }
 
 

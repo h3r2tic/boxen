@@ -144,8 +144,8 @@ class TestApp : GfxApp {
 		} else {
 			/+cstring model = `mesh/soldier.hsf`;
 			float scale = 1.0f;+/
-			cstring model = `mesh/masha.hsf`;
-			//cstring model = `mesh/foo.hsf`;
+			//cstring model = `mesh/masha.hsf`;
+			cstring model = `mesh/foo.hsf`;
 			float scale = 0.02f;
 
 			SceneAssetCompilationOptions opts;
