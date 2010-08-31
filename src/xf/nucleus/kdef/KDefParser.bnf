@@ -203,8 +203,8 @@ Annotation
 // ----------------------------------------------------------------------------------------------------------------
 
 VarDef
-	= VarDef parseVarDef(string name, Value value)
-	::= Identifier:name "=" Value:value ";";
+	= VarDef parseVarDef(string name, Value value, Annotation[] annotations)
+	::= Identifier:name "=" Value:value AnnotationList:annotations ";";
 	
 Value
 	= Value value

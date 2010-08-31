@@ -30,9 +30,6 @@ class ParametersRollout {
 	
 	
 	void setNode(GraphNode node) {
-		if (_node !is node) {
-			paramInfo.length = 0;
-		}
 		_node = node;
 	}
 
@@ -42,30 +39,9 @@ class ParametersRollout {
 	}
 
 
-	private {
-		struct ParamInfo {
-			Param*			param;
-			DataProvider	provider;
-		}
-
-
-		ParamInfo[] paramInfo;
-	}
-
-
-	private bool doParamGUI(uword i, ref Param param) {
+	private bool doParamGUI(Param* param, ParamValueInfo* info) {
 		if (!param.hasPlainSemantic || !param.hasTypeConstraint) {
 			return false;
-		}
-
-		if (paramInfo.length <= i) {
-			paramInfo.length = i+1;
-		}
-
-		final info = &paramInfo[i];
-		if (info.param !is &param) {
-			info.param = &param;
-			info.provider = null;
 		}
 
 		// TODO
@@ -115,11 +91,12 @@ class ParametersRollout {
 			Label().text = param.type;
 			Label().text = param.name;
 			
-			auto check = Check().text("fixed");
+			/+auto check = Check().text("fixed");
 			if (!check.initialized) {
 				check.checked = sourceProvider !is null;
 			}
-			fixed = check.checked;
+			fixed = check.checked;+/
+			fixed = true;
 		}];
 		if (!box.initialized) {
 			box.icfg(`layout = { spacing = 5; }`);
@@ -172,6 +149,10 @@ class ParametersRollout {
 			if (sourceProvider !is null) {
 				if (sourceProvider !is info.provider) {
 					sourceProvider.configure(guiAnnots);
+					info.provider = sourceProvider;
+					if (param.value) {
+						info.provider.setValue(param);
+					}
 				}
 				
 				sourceProvider.doGUI();
@@ -179,16 +160,16 @@ class ParametersRollout {
 					updateParamValue(param, sourceProvider);
 					_changed = true;
 				}
+			} else {
+				info.provider = null;
 			}
 		}
-
-		info.provider = sourceProvider;
 
 		return true;
 	}
 
 
-	private void updateParamValue(ref Param param, DataProvider prov) {
+	private void updateParamValue(Param* param, DataProvider prov) {
 		switch (param.type) {
 			case "float":
 				param.setValue(prov.getValue().get!(float));
@@ -213,11 +194,11 @@ class ParametersRollout {
 
 		if (_node !is null) {
 			Group(`parametersRollout`) [{
-				uword i; foreach (ref param; &iterParams) { scope (success) ++i;
+				uword i; foreach (ref param, ref valInfo; &iterParams) { scope (success) ++i;
 					bool show = false;
 				
 					auto box = VBox(i) [{
-						show = doParamGUI(i, param);
+						show = doParamGUI(&param, &valInfo);
 					}];
 					
 					box.widgetEnabled = show;
@@ -233,7 +214,7 @@ class ParametersRollout {
 
 
 	private {
-		int iterParams(int delegate(ref Param) dg) {
+		int iterParams(int delegate(ref Param, ref ParamValueInfo) dg) {
 			if (_node.isKernelBased) {
 				/+auto kr = KernelRef(_node.kernelName, _nucleus);
 				if (auto kernel = kr.tryGetKernel) {
@@ -249,9 +230,9 @@ class ParametersRollout {
 				}+/
 			} else {
 				if (_node.data) {
-					foreach (ref p; _node.data.params) {
+					foreach (pi, ref p; _node.data.params) {
 						if (p.isOutput) {
-							if (auto r = dg(p)) {
+							if (auto r = dg(p, _node.paramValueInfo[pi])) {
 								return r;
 							}
 						}

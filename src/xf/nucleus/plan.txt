@@ -233,14 +233,14 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ colors (color wheel)
 		+ floats (spinner / slider)
 		- textures (just a load/preview for now)
-	- apply changes within Nucleus (fix kdef change notification handling)
+	~ apply changes within Nucleus (fix kdef change notification handling)
 		+ give indices to kernels
 		+ fixed a bug in gfx.gl3.Renderer's effect ordinal management, fixes issues in post-proc
 		+ moved MaterialData and SurfaceData to using chunked mem allocation instead of aliasing the GCd kdefs
 		+ base renderer caches on indices instead of names -> no dupping will be needed then
 		+ fix the lpp renderer being funny when light kernels are modified - materials change o_O
 			* fixed by invalidating all renderables
-		~ upon kdef reload, keep the indices of materials, surfaces and kernels the same unless they were invalidated
+		+ upon kdef reload, keep the indices of materials, surfaces and kernels the same unless they were invalidated
 			+ kernels
 			* the rest doesn't seem to be needed, can invalidate them all instead
 		~ call special funcs for materials/surfaces whose values only changed, instead of invalidating them right away
@@ -253,18 +253,23 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		- SceneView in previews for object manipulation
 			* have a reset button
 	+ modification of live material values from within the param rollout
+	+ load materials from hsf
 	~ fancy material browser
 		+ display of the material and its name
 		+ selection of a material
 		- display of the kernel name
 		- context menu for cloning, renaming, etc
 		- parameter editing on the rollout
+	~ surface browser
+		+ display surface names
+		- draw previews
 	- saving of kernels
 		* keep track of what's being edited
 		* ability to select and change the name
 		* don't focus on files, have a material browser as the interface to
 		  materials, their impls and renaming. hide files, only expose matlibs
 		* store default material instances
+
 	- graceful handling of kdef parsing and processing errors
 	- loading new scene objects
 	- deleting scene objects

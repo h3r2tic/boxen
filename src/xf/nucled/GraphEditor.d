@@ -24,6 +24,7 @@ private {
 	import xf.nucled.Settings;
 	import xf.nucled.GPUShaderPreview : GPUShaderPreview;
 
+	import xf.nucleus.Nucleus;
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue, Statement;
 	import xf.nucleus.kernel.KernelDef;
@@ -505,15 +506,17 @@ class GraphEditor {
 		}
 
 		// HACK
-		foreach (mname, mat; &_registry.materials) {
-			if (mat.materialKernel.name == "tmp") {
+		foreach (mat; allMaterials) {
+			if (mat.asset.name == "tmp_default") {
 				foreach (node; _graph.nodes) {
 					if (!node.isKernelBased && node.data) {
 						foreach (p; node.data.params) {
 							if (p.isOutput) {
-								foreach (ref p2; mat.params) {
-									if (p2.valueType == p.valueType && p2.value && p2.valueSize == p.valueSize) {
-										memcpy(p2.value, p.value, p2.valueSize);
+								auto par = &mat.asset.params;
+								for (uword i = 0; i < par.length; ++i) {
+								//foreach (ref p2; par) {
+									if (par.valueType[i] == p.valueType && par.value[i] && paramValueSize(par.valueType[i], par.value[i]) == p.valueSize) {
+										memcpy(par.value[i], p.value, p.valueSize);
 									}
 								}
 							}

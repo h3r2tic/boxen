@@ -5,8 +5,10 @@ private {
 	import
 		xf.nucleus.Defs,
 		xf.nucleus.Param,
+		xf.nucleus.Material,
 		xf.nucleus.MaterialDef,
-		xf.nucleus.SamplerDef;
+		xf.nucleus.SamplerDef,
+		xf.nucleus.asset.CompiledTextureAsset;
 	import
 		xf.loader.Common,
 		xf.loader.img.ImgLoader;
@@ -23,7 +25,6 @@ private {
 // all mem allocated off the scratch fifo
 struct MaterialData {
 	struct Info {
-		// TODO: store the type to be safe in value updates
 		cstring	name;		// stringz
 		void*	ptr;
 	}
@@ -33,10 +34,106 @@ struct MaterialData {
 		info = null;
 	}
 	
-	Info[]		info;
-	ScratchFIFO	_mem;
+	Info[]				info;
+	ParamValueType[]	types;
+	ScratchFIFO			_mem;
 }
 
+
+
+void createMaterialData(RendererBackend backend, Material matDef, MaterialData* mat) {
+	mat._mem.initialize();
+	final mem = DgScratchAllocator(&mat._mem.pushBack);
+
+	final ass = matDef.asset;
+	assert (ass !is null);
+
+	mat.info = mem.allocArray!(MaterialData.Info)(ass.params.length);
+	mat.types = mem.allocArray!(ParamValueType)(ass.params.length);
+
+	for (uword i = 0; i < ass.params.length; ++i) {
+		switch (ass.params.valueType[i]) {
+			case ParamValueType.ObjectRef: {
+				Object objVal = cast(Object)ass.params.value[i];
+				if (auto sampler = cast(SamplerDef)objVal) {
+					mat.info[i].ptr = mem._new!(Texture)();
+					Texture* tex = cast(Texture*)mat.info[i].ptr;
+					loadMaterialSamplerParam(backend, sampler, tex);
+				} else if (auto sampler = cast(CompiledTextureAsset)objVal) {
+					mat.info[i].ptr = mem._new!(Texture)();
+					Texture* tex = cast(Texture*)mat.info[i].ptr;
+					loadMaterialSamplerParam(backend, sampler, tex);
+				} else {
+					error(
+						"Don't know what to do with"
+						" a {} material param ('{}').",
+						objVal.classinfo.name,
+						ass.params.name[i]
+					);
+				}
+			} break;
+
+			case ParamValueType.String:
+			case ParamValueType.Ident: {
+				error(
+					"Don't know what to do with"
+					" string/ident material params ('{}').",
+					ass.params.name[i]
+				);
+			} break;
+
+			default: {
+				uword valueSize = paramValueSize(ass.params.valueType[i], ass.params.value);
+				
+				// TODO: figure out whether that alignment is needed at all
+				memcpy(
+					mat.info[i].ptr = mem.alignedAllocRaw(valueSize, uword.sizeof),
+					ass.params.value[i],
+					valueSize
+				);
+			} break;
+		}
+
+		mat.info[i].name = mem.dupStringz(cast(cstring)ass.params.name[i]);
+		mat.types[i] = ass.params.valueType[i];
+	}
+}
+
+
+void updateMaterialData(RendererBackend backend, Material matDef, MaterialData* mat) {
+	final ass = matDef.asset;
+	
+	for (uword i = 0; i < ass.params.length; ++i) {
+		assert (mat.info[i].name == ass.params.name[i]);
+		assert (mat.types[i] == ass.params.valueType[i]);
+		
+		switch (ass.params.valueType[i]) {
+			case ParamValueType.ObjectRef: {
+				// TODO
+			} break;
+
+			case ParamValueType.String:
+			case ParamValueType.Ident: {
+				error(
+					"Don't know what to do with"
+					" string/ident material params ('{}').",
+					ass.params.name[i]
+				);
+			} break;
+
+			default: {
+				uword valueSize = paramValueSize(ass.params.valueType[i], ass.params.value);
+				
+				// TODO: figure out whether that alignment is needed at all
+				memcpy(
+					mat.info[i].ptr,
+					ass.params.value[i],
+					valueSize
+				);
+			} break;
+		}
+	}
+}
 
 
 void createMaterialData(RendererBackend backend, ParamList params, MaterialData* mat) {
@@ -140,4 +237,23 @@ private void loadMaterialSamplerParam(
 	} else {
 		assert (false, "TODO: use a fallback texture");
 	}
+}
+
+
+private void loadMaterialSamplerParam(
+	RendererBackend backend,
+	CompiledTextureAsset sampler,
+	Texture* tex
+) {
+	cstring filePath = sampler.bitmapPath;
+
+	final img = imgLoader.load(getResourcePath(filePath));
+	if (!img.valid) {
+		// TODO: fallback
+		error("Could not load texture: '{}'", filePath);
+	}
+
+	*tex = backend.createTexture(
+		img
+	);
 }

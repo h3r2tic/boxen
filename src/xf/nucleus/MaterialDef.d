@@ -49,8 +49,4 @@ final class MaterialDef {
 	// TODO: make these props
 	cstring		name;
 	cstring		materialKernelName;
-
-	KernelImpl	materialKernel;
-
-	MaterialId	id;
 }

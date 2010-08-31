@@ -16,7 +16,7 @@ private {
 		xf.nucleus.KernelParamInterface,
 		xf.nucleus.KernelCompiler,
 		xf.nucleus.SurfaceDef,
-		xf.nucleus.MaterialDef,
+		xf.nucleus.Material,
 		xf.nucleus.SamplerDef,
 		xf.nucleus.codegen.Codegen,
 		xf.nucleus.codegen.Body,

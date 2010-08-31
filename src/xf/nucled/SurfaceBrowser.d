@@ -1,10 +1,10 @@
-module xf.nucled.MaterialBrowser;
+module xf.nucled.SurfaceBrowser;
 
 private {
 	import
 		xf.Common;
 	import
-		xf.nucleus.MaterialDef,
+		xf.nucleus.SurfaceDef,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.IStructureData,
@@ -31,7 +31,7 @@ private {
 
 
 
-class MaterialBrowser {
+class SurfaceBrowser {
 	this (IKDefRegistry reg, RendererBackend backend) {
 		_reg = reg;
 		_backend = backend;
@@ -48,32 +48,32 @@ class MaterialBrowser {
 		
 		padded(70) = {
 			final wnd = MaterialBrowserWindow() [{
-				uword mi = uword.max;
-				foreach (cstring mname, MaterialDef mat; &_reg.materials) {
-					++mi;
+				uword si = uword.max;
+				foreach (cstring sname, SurfaceDef surf; &_reg.surfaces) {
+					++si;
 
-					final box = MaterialMiniatureBox(mi);
+					final box = MaterialMiniatureBox(si);
 					box [{
-						if (!(mname in _miniatures)) {
-							_miniatures[mname] = new MaterialMiniature(
+						if (!(sname in _miniatures)) {
+							_miniatures[sname] = new SurfaceMiniature(
 								_backend,
 								_reg,
-								mat,
+								surf,
 								_obj
 							);
 						}
 
-						_miniatures[mname].doGUI();
+						_miniatures[sname].doGUI();
 
 						Label()
 							.fontSize(11)
 							.halign(1)
-							.text(mname)
+							.text(sname)
 							.layoutAttribs("hfill hexpand");
 					}];
 					
 					if (box.clicked) {
-						selected = mat;
+						selected = surf;
 					}
 				}
 			}];
@@ -82,7 +82,7 @@ class MaterialBrowser {
 	}
 
 	public {
-		MaterialDef	selected;
+		SurfaceDef	selected;
 	}
 
 	private {
@@ -90,12 +90,12 @@ class MaterialBrowser {
 		IStructureData[]	_obj;
 		RendererBackend		_backend;
 
-		MaterialMiniature[cstring]	_miniatures;
+		SurfaceMiniature[cstring]	_miniatures;
 	}
 }
 
 
-class MaterialMiniature {
+class SurfaceMiniature {
 	void doGUI() {
 		auto w = CustomDrawWidget();
 		w.layoutAttribs = "hexpand hfill";
@@ -105,7 +105,7 @@ class MaterialMiniature {
 
 
 	void draw(vec2i size) {
-		_backend.framebuffer.settings.clearColorEnabled[0] = false;
+		/+_backend.framebuffer.settings.clearColorEnabled[0] = false;
 		_backend.framebuffer.settings.clearDepthEnabled = true;
 		_backend.clearBuffers();
 
@@ -115,19 +115,19 @@ class MaterialMiniature {
 		vs.aspectRatio = cast(float)size.x / size.y;
 		vs.nearPlaneDistance = 0.1f;
 		vs.farPlaneDistance = 100.0f;
-		_renderer.render(vs);
+		_renderer.render(vs);+/
 	}
 
 
 	this (
 		RendererBackend backend,
 		IKDefRegistry reg,
-		MaterialDef mat,
+		SurfaceDef surf,
 		IStructureData[] obj
 	) {
 		this._backend = backend;
 
-		_renderer = new MaterialPreviewRenderer(
+		/+_renderer = new MaterialPreviewRenderer(
 			backend,
 			reg,
 			null, null
@@ -135,9 +135,7 @@ class MaterialMiniature {
 		
 		_renderer.setObjects(obj);
 
-		_renderer.materialToUse
-			= reg.getKernel(mat.materialKernelName);
-			
+		_renderer.materialToUse = mat.materialKernel;
 		assert (_renderer.materialToUse.isValid);
 
 		_renderer.structureToUse = reg.getKernel("DefaultMeshStructure");
@@ -145,10 +143,10 @@ class MaterialMiniature {
 
 		_renderer.materialParams = mat.params;
 		_renderer.updateMaterialData();
-		_renderer.materialParams = ParamList.init;
+		_renderer.materialParams = ParamList.init;+/
 	}
 	
 
 	RendererBackend			_backend;
-	MaterialPreviewRenderer _renderer;
+	//MaterialPreviewRenderer _renderer;
 }

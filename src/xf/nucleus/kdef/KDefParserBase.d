@@ -59,8 +59,8 @@ class KDefParserBase : Parser!(KDefToken) {
 		}
 		
 
-		VarDef parseVarDef(string name, Value value) {
-			return VarDef(mem.dupString(name), value);
+		VarDef parseVarDef(string name, Value value, Annotation[] annots) {
+			return VarDef(mem.dupString(name), value, mem.dupArray(annots).ptr);
 		}
 		
 
@@ -228,10 +228,12 @@ class KDefParserBase : Parser!(KDefToken) {
 			auto res = mem._new!(MaterialDefValue)();
 			auto mat = res.material = mem._new!(MaterialDef)(mem.dupString(materialKernel), mem._allocator);
 			foreach (var; vars) {
+				final par = mat.params.add(ParamDirection.Out, var.name);
 				setParamValue(
-					mat.params.add(ParamDirection.Out, var.name),
+					par,
 					var.value
 				);
+				par.annotation = var.annotation;
 			}
 			return res;
 		}
@@ -242,10 +244,12 @@ class KDefParserBase : Parser!(KDefToken) {
 			auto meh = res.value = mem._new!(SamplerDef)(mem._allocator);
 
 			foreach (var; vars) {
+				final par = meh.params.add(ParamDirection.Out, var.name);
 				setParamValue(
-					meh.params.add(ParamDirection.Out, var.name),
+					par,
 					var.value
 				);
+				par.annotation = var.annotation;
 			}
 			return res;
 		}

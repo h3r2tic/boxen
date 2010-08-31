@@ -63,10 +63,12 @@ struct KernelImpl {
 	DepTracker* dependentOnThis() {
 		switch (type) {
 			case KernelImpl.Type.Graph: {
+				assert (graph !is null);
 				return graph.dependentOnThis();
 			}
 			
 			case KernelImpl.Type.Kernel: {
+				assert (kernel !is null);
 				return kernel.dependentOnThis();
 			}
 			
@@ -76,11 +78,36 @@ struct KernelImpl {
 
 
 	void invalidate() {
-		dependentOnThis.valid = false;
+		switch (type) {
+			case KernelImpl.Type.Graph: {
+				if (graph !is null)
+				graph.dependentOnThis().valid = false;
+			}
+			
+			case KernelImpl.Type.Kernel: {
+				if (kernel !is null)
+				kernel.dependentOnThis().valid = false;
+			}
+			
+			default: assert (false);
+		}
 	}
 
+
 	bool isValid() {
-		return dependentOnThis.valid;
+		switch (type) {
+			case KernelImpl.Type.Graph: {
+				if (graph is null) return false;
+				else return graph.dependentOnThis().valid;
+			}
+			
+			case KernelImpl.Type.Kernel: {
+				if (kernel is null) return false;
+				else return kernel.dependentOnThis().valid;
+			}
+			
+			default: assert (false);
+		}
 	}
 	
 

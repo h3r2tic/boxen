@@ -79,6 +79,8 @@ class WidgetSlider(bool horizontal) : Widget {
 	override EventHandling handleExpandLayout(ExpandLayoutEvent e) {
 		if (e.sinking) {
 			if (_child !is null) {
+				float frac = fraction();
+				
 				vec2 po = vec2.zero;
 				*v0p(po) = _position * v0(this.size);
 				_child.parentOffset = po;
@@ -93,6 +95,8 @@ class WidgetSlider(bool horizontal) : Widget {
 				} else {
 					_realHandleSize = v0(s) / v0(this.size);
 				}
+
+				fraction = frac;
 			}
 		}
 		return EventHandling.Continue;

@@ -4,9 +4,11 @@ private {
 	import xf.Common;
 	
 	import xf.nucleus.asset.CompiledMeshAsset;
+	import xf.nucleus.asset.CompiledMaterialAsset;
 	import xf.nucleus.asset.CompiledSceneAsset;
 
 	import xf.nucleus.asset.compiler.MeshCompiler;
+	import xf.nucleus.asset.compiler.MaterialCompiler;
 
 	import xf.loader.scene.model.Mesh : LoaderMesh = Mesh;
 	import xf.loader.scene.hsf.Hsf;
@@ -50,6 +52,15 @@ CompiledSceneAsset compileHSFSceneAsset(
 	final result = allocator._new!(CompiledSceneAsset)();
 	result.meshes = allocator.allocArrayNoInit!(CompiledMeshAsset)(loader.meshes.length);
 	result.meshCS = allocator.allocArrayNoInit!(CoordSys)(loader.meshes.length);
+	result.meshMaterials = allocator.allocArrayNoInit!(CompiledMaterialAsset)(loader.meshes.length);
+
+	result.materials = allocator.allocArrayNoInit!(CompiledMaterialAsset)(loader.materials.length);
+
+	foreach (i, ref m; loader.materials) {
+		MaterialAssetCompilationOptions mopts;
+		mopts.imgBaseDir = "mesh/";
+		result.materials[i] = compileMaterialAsset(m, allocator, mopts);
+	}
 
 	foreach (i, ref m; loader.meshes) {
 		MeshAssetCompilationOptions mopts;
@@ -60,6 +71,10 @@ CompiledSceneAsset compileHSFSceneAsset(
 
 		result.meshes[i] = compileMeshAsset(m, allocator, mopts);
 		result.meshCS[i] = scaledCS in opts.coordSys;
+		result.meshMaterials[i] =
+			m.material
+			? result.materials[m.material - loader.materials.ptr]
+			: null;
 	}
 
 	return result;

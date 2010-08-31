@@ -32,8 +32,13 @@ void loadScene(
 ) {
 	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
 
-	cstring material = "TestMaterialImpl";
-	cstring surface = "TestSurface3";
+	cstring surface = "TestSurface4";
+
+	// TODO: load materials
+
+	foreach (mat; asset.materials) {
+		loadMaterial(mat);
+	}
 	
 	foreach (uword i, compiledMesh; asset.meshes) {
 		final ms = allocator._new!(MeshStructure)(compiledMesh, rendererBackend);
@@ -46,7 +51,13 @@ void loadScene(
 		renderables.structureKernel[rid] = defaultStructureKernel(ms.structureTypeName);
 		renderables.structureData[rid] = ms;
 
-		renderables.material[rid] = getMaterialIdByName(material);
+		final matName =	asset.meshMaterials[i]
+			? asset.meshMaterials[i].name
+			: "ErrorMaterial";
+
+		renderables.material[rid] = getMaterialIdByName(
+			matName
+		);
 		renderables.surface[rid] = getSurfaceIdByName(surface);
 		
 		renderables.transform[rid] = asset.meshCS[i] in coordSys;

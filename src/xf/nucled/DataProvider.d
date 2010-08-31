@@ -8,11 +8,17 @@ private {
 		xf.nucleus.Param,
 		xf.nucleus.kdef.Common;
 	import
-		tango.core.Variant;
+		tango.core.Variant,
+		tango.io.stream.Format;
 	static import
 		xf.utils.Array;
 }
 
+
+
+struct ParamValueInfo {
+	DataProvider provider;
+}
 
 
 template MDataProvider(cstring _type, cstring _name) {
@@ -69,8 +75,9 @@ static:
 
 abstract class DataProvider {
 	abstract Variant	getValue();
+	abstract void		setValue(Param*);
 	abstract void		configure(VarDef[]);
-	abstract void		serialize(void delegate(cstring));
+	abstract void		dumpConfig(FormatOutput!(char));
 	abstract cstring	name();
 	abstract cstring	type();
 	

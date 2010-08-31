@@ -29,31 +29,32 @@ void hsv2rgb(float h, float s, float v, float* r, float* g, float* b) {
 }
 
 
-/+void rgb2hsv(float r, float g, float b, float *hr, float *sr, float *vr)
+void rgb2hsv(float r, float g, float b, float *hr, float *sr, float *vr)
 {
-  double h, s, v, max, min, del, rc, gc, bc;
+	double h, s, v, max, min, del, rc, gc, bc;
 
-  max = max3(r, g, b);
-  min = min3(r, g, b);
+	max = .max(r, .max(g, b));
+	min = .min(r, .min(g, b));
 
-  del = max - min;
-  v = max;
-  s = max == 0.0 ? 0.0 : del / max;
+	del = max - min;
+	v = max;
+	s = max == 0.0 ? 0.0 : del / max;
 
-  h = -1;					/* No hue */
-  if (s != 0.0) {
-    rc = (max - r) / del;
-    gc = (max - g) / del;
-    bc = (max - b) / del;
+	h = -1;					/* No hue */
+	if (s != 0.0) {
+		rc = (max - r) / del;
+		gc = (max - g) / del;
+		bc = (max - b) / del;
 
-    if (r == max) h = bc - gc;
-    else if (g == max) h = 2 + rc - bc;
-    else /* if (b == max) */ h = 4 + gc - rc;
+		if (r == max) h = bc - gc;
+		else if (g == max) h = 2 + rc - bc;
+		else /* if (b == max) */ h = 4 + gc - rc;
 
-    h = h * 60;
-    if (h < 0) h += 360;
-  }
+		h = h * 60;
+		if (h < 0) {
+			h += 360;
+		}
+	}
 
-  *hr = h;  *sr = s;  *vr = v;
+	*hr = h;  *sr = s;  *vr = v;
 }
-+/
