@@ -36,6 +36,7 @@ abstract class Value {
 struct VarDef {
 	cstring	name;
 	Value	value;
+	void*	annotation;		// points to Annotation[] in the original kdef
 
 
 	bool opEquals(ref VarDef other) {

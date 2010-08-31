@@ -17,7 +17,8 @@ private {
 		xf.omg.color.HSV;
 	import
 		tango.core.Variant,
-		tango.text.convert.Format;
+		tango.text.convert.Format,
+		tango.io.stream.Format;
 }
 
 
@@ -34,11 +35,15 @@ class ColorTextureProvider : DataProvider {
 	override Variant getValue() {
 		return Variant(null);
 	}
+
+	override void setValue(Param* p) {
+		// TODO
+	}
 	
 	override void configure(VarDef[]) {
 	}
-	
-	override void serialize(void delegate(char[])) {
+
+	override void dumpConfig(FormatOutput!(char)) {
 	}
 }
 
@@ -71,6 +76,10 @@ class FloatProvider : DataProvider {
 		return Variant(value);
 	}
 
+	override void setValue(Param* p) {
+		p.getValue(&value);
+	}
+
 	override void configure(VarDef[] params) {
 		foreach (p; params) {
 			switch (p.name) {
@@ -90,8 +99,8 @@ class FloatProvider : DataProvider {
 		}
 	}
 
-	override void serialize(void delegate(char[]) sink) {
-		sink(Format("float value={},float min={},float max={}", value, min, max));
+	override void dumpConfig(FormatOutput!(char) f) {
+		f.format("min = {}; max = {};", min, max);
 	}
 }
 
@@ -111,18 +120,52 @@ class Float2Provider : DataProvider {
 			}
 			return s;
 		}
+
+		HSlider[2] sliders;
+		
 		for (int i = 0; i < 2; ++i) {
-			auto s = setup(HSlider(i), i);
+			auto s = sliders[i] = setup(HSlider(i), i);
 			float v = s.position;
 			if (v != value.cell[i]) {
 				value.cell[i] = v;
 				invalidate();
 			}
 		}
+
+		if (Check().text("cfg").checked) {
+			HBox() [{
+				Label().text("min").icfg(`size = 40 0;`);
+				for (int i = 0; i < 2; ++i) HBox(i) [{
+					auto s = FloatInputSpinner();
+					if (!s.initialized) {
+						s.value = min.cell[i];
+					}
+					if (s.value != min.cell[i]) {
+						sliders[i].minValue = min.cell[i] = s.value;
+					}
+				}];
+			}].icfg(`layout = { spacing = 5; }`);
+			HBox() [{
+				Label().text("max").icfg(`size = 40 0;`);
+				for (int i = 0; i < 2; ++i) HBox(i) [{
+					auto s = FloatInputSpinner();
+					if (!s.initialized) {
+						s.value = max.cell[i];
+					}
+					if (s.value != max.cell[i]) {
+						sliders[i].maxValue = max.cell[i] = s.value;
+					}
+				}];
+			}].icfg(`layout = { spacing = 5; }`);
+		}
 	}
 	
 	override Variant getValue() {
 		return Variant(value);
+	}
+
+	override void setValue(Param* p) {
+		p.getValue(&value.x, &value.y);
 	}
 
 	override void configure(VarDef[] params) {
@@ -144,8 +187,8 @@ class Float2Provider : DataProvider {
 		}
 	}
 
-	override void serialize(void delegate(char[]) sink) {
-		//sink(Format("float value={},float min={},float max={}", value, min, max));
+	override void dumpConfig(FormatOutput!(char) f) {
+		f.format("min = {} {}; max = {} {};", min.tuple, max.tuple);
 	}
 }
 
@@ -175,6 +218,12 @@ class ColorProvider : DataProvider {
 		return Variant(val);
 	}
 
+	override void setValue(Param* p) {
+		vec4 rgba;
+		p.getValue(&rgba.x, &rgba.y, &rgba.z, &rgba.w);
+		rgb2hsv(rgba.xyz.tuple, &hsv.x, &hsv.y, &hsv.z);
+	}
+
 	override void configure(VarDef[] params) {
 		foreach (p; params) {
 			if ("hsv" == p.name) {
@@ -183,7 +232,7 @@ class ColorProvider : DataProvider {
 		}
 	}
 
-	override void serialize(void delegate(char[]) sink) {
-		sink(Format("vec3 hsv={} {} {}", hsv.tuple));
+
+	override void dumpConfig(FormatOutput!(char) f) {
 	}
 }

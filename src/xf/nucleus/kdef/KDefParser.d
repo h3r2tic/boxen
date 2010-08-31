@@ -1865,8 +1865,8 @@ class KDefParser:KDefParserBase{
 
 	/*
 	VarDef
-		= VarDef parseVarDef(string name,Value value)
-		::= Identifier:name "=" Value:value ";";
+		= VarDef parseVarDef(string name,Value value,Annotation[] annotations)
+		::= Identifier:name "=" Value:value AnnotationList:annotations ";";
 
 	*/
 	VarDef value_VarDef;
@@ -1874,6 +1874,7 @@ class KDefParser:KDefParserBase{
 		debug Stdout("parse_VarDef").newline;
 		Value var_value;
 		string var_name;
+		Annotation[] var_annotations;
 
 		// AndGroup
 			auto position3 = pos;
@@ -1894,6 +1895,12 @@ class KDefParser:KDefParserBase{
 				}
 				smartAssign(var_value,value_Value);
 			term7:
+				// Production
+				if(!parse_AnnotationList()){
+					goto fail4;
+				}
+				smartAssign(var_annotations,value_AnnotationList);
+			term8:
 				// Terminal
 				if(match(";")){
 					goto pass0;
@@ -1903,7 +1910,7 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
-			value_VarDef = parseVarDef(var_name,var_value);
+			value_VarDef = parseVarDef(var_name,var_value,var_annotations);
 			debug Stdout.format("\tparse_VarDef passed: {0}",value_VarDef).newline;
 			return true;
 		fail1:

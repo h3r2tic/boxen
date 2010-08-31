@@ -15,7 +15,7 @@ private {
 		xf.nucleus.KernelParamInterface,
 		xf.nucleus.KernelCompiler,
 		xf.nucleus.SurfaceDef,
-		xf.nucleus.MaterialDef,
+		xf.nucleus.Material,
 		xf.nucleus.SamplerDef,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,

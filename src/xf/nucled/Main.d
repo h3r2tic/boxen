@@ -14,6 +14,7 @@ import
 	xf.nucled.Viewport,
 	xf.nucled.Dump,
 	xf.nucled.MaterialBrowser,
+	xf.nucled.SurfaceBrowser,
 	xf.nucled.Widgets,
 	xf.nucled.Intersect,
 
@@ -97,7 +98,8 @@ struct TabDesc {
 struct GlobalMode {
 	enum Mode {
 		Normal,
-		SelectingMaterial
+		SelectingMaterial,
+		SelectingSurface
 	}
 
 	Mode mode = Mode.Normal;
@@ -106,8 +108,13 @@ struct GlobalMode {
 		RenderableId[] rids;
 	}
 
+	struct SelectingSurface {
+		RenderableId[] rids;
+	}
+
 	union {
-		SelectingMaterial selectingMaterial;
+		SelectingMaterial	selectingMaterial;
+		SelectingSurface	selectingSurface;
 	}
 }
 
@@ -130,6 +137,7 @@ class TestApp : GfxApp {
 	Renderer	defRenderer;
 
 	MaterialBrowser	matBrowser;
+	SurfaceBrowser	surfBrowser;
 
 	TabView		graphEdTabView;
 
@@ -232,7 +240,7 @@ class TestApp : GfxApp {
 		}
 
 		{
-			cstring model = `mesh/lightTest.hsf`;
+			cstring model = `mesh/tank.hsf`;
 			float scale = 0.02f;
 
 			model = getResourcePath(model);			
@@ -274,12 +282,23 @@ class TestApp : GfxApp {
 
 		matBrowser = new MaterialBrowser(kdefRegistry, rendererBackend);
 		matBrowser.setObjectsForPreview(previewObjects);
+
+		surfBrowser = new SurfaceBrowser(kdefRegistry, rendererBackend);
+		surfBrowser.setObjectsForPreview(previewObjects);
 	}
 
 
 	void beginMaterialSelection(RenderableId[] rids) {
 		globalMode.mode = GlobalMode.Mode.SelectingMaterial;
 		globalMode.selectingMaterial = GlobalMode.SelectingMaterial(
+			rids
+		);
+	}
+
+
+	void beginSurfaceSelection(RenderableId[] rids) {
+		globalMode.mode = GlobalMode.Mode.SelectingSurface;
+		globalMode.selectingSurface = GlobalMode.SelectingSurface(
 			rids
 		);
 	}
@@ -295,6 +314,13 @@ class TestApp : GfxApp {
 					ids ~= s;
 				}
 				beginMaterialSelection(ids);
+			}()),
+			menuLeaf("Set surface", {
+				RenderableId[] ids;
+				foreach (s; selIter) {
+					ids ~= s;
+				}
+				beginSurfaceSelection(ids);
 			}()),
 			menuGroup("stuff",
 				menuLeaf("stuff1", Trace.formatln("stuff1")),
@@ -350,6 +376,7 @@ class TestApp : GfxApp {
 				scope f = new File("saved.kdef", File.WriteCreate);
 				final ge = tabDesc.graphEditor;
 				dumpGraph(ge.graph, "tmp", f);
+				dumpMaterial(ge.graph, "tmp_default", "tmp", f);
 			}
 		}
 	}
@@ -457,7 +484,21 @@ class TestApp : GfxApp {
 				matBrowser.doGUI();
 				if (auto mat = matBrowser.selected) {
 					foreach (rid; globalMode.selectingMaterial.rids) {
-						renderables.material[rid] = mat.id;
+						renderables.material[rid]
+							= getMaterialIdByName(mat.name);
+						invalidateRenderable(rid);
+					}
+					globalMode.mode = GlobalMode.Mode.Normal;
+				}
+			}].dismissed) {
+				globalMode.mode = GlobalMode.Mode.Normal;
+			}
+		} else if (GlobalMode.Mode.SelectingSurface == globalMode.mode) {
+			if (DismissableOverlay(`.dismissableOverlay`) [{
+				surfBrowser.doGUI();
+				if (auto surf = surfBrowser.selected) {
+					foreach (rid; globalMode.selectingSurface.rids) {
+						renderables.surface[rid] = surf.id;
 						invalidateRenderable(rid);
 					}
 					globalMode.mode = GlobalMode.Mode.Normal;
@@ -626,7 +667,7 @@ class TestApp : GfxApp {
 				paramsRollout.setNode(curEditor.selected);
 				if (paramsRollout.changed) {
 					curEditor.onParamsChanged();
-					foreach (matname, mat; &kdefRegistry.materials) {
+					foreach (mat; allMaterials) {
 						fwdRenderer.updateMaterial(mat);
 						defRenderer.updateMaterial(mat);
 					}

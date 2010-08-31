@@ -1,16 +1,6 @@
 module xf.nucled.Graph;
 
 private {
-	/+import xf.nucleus.CommonDef;
-	import xf.nucleus.model.KernelProvider : QuarkRef;
-	import xf.nucleus.model.INucleus;
-	import xf.nucleus.quark.QuarkDef;
-	import xf.nucleus.graph.Node : PrimLevel;
-	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
-	import xf.nucleus.kdef.model.IKDefUtilParser;
-	import xf.nucleus.KernelImpl : KernelImpl;
-	static import xf.nucleus.cpu.Reflection;		// for data inspection+/
-
 	import xf.Common;
 
 	import xf.nucleus.Param;
@@ -19,6 +9,7 @@ private {
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
 	import xf.nucleus.Value;
+	import xf.nucled.DataProvider;
 	
 	import xf.hybrid.Hybrid;
 	import xf.hybrid.Common;
@@ -359,9 +350,11 @@ class GraphNode {
 		
 		if (this.isKernelBased) {
 			this._kernelName = identVal("kernel");
+			// TODO: ParamValueInfo
 		} else {
 			foreach (param; cfg.params) {
 				this.data.params.add(param);
+				paramValueInfo ~= ParamValueInfo();
 				
 				if (Type.Output == this.type) {
 					inputs ~= new ConnectorInfo(param, this);
@@ -379,6 +372,7 @@ class GraphNode {
 		if (!this.isKernelBased) {
 			this.data.params.add(p).dir = ParamDirection.In;
 		}
+		// TODO: ParamValueInfo
 	}
 		
 
@@ -388,6 +382,7 @@ class GraphNode {
 		if (!this.isKernelBased) {
 			this.data.params.add(p).dir = ParamDirection.Out;
 		}
+		// TODO: ParamValueInfo
 	}
 
 	
@@ -1191,6 +1186,8 @@ class GraphNode {
 		bool			showDataNames = true;
 		NodeContents	contents;
 		DataCommons		data;
+
+		ParamValueInfo[]	paramValueInfo;
 		
 		Connection[]	incoming;
 		Connection[]	outgoing;

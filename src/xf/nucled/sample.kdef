@@ -87,6 +87,9 @@ TestMaterialImpl2 = material TestMaterial2 {
 };
 
 
+ErrorMaterial = material ErrorMaterial {};
+
+
 TestLight = graph Light {
 	n0 = node {
 		type = input;
@@ -345,8 +348,15 @@ TestMaterial2 = graph Material {
 
 
 SpecularOnly = kernel Material {
+	out_albedo = float4(0);
 	out_specular = float4(1);
-	out_diffuse = float4(0);
+	out_normal = normal;
+};
+
+
+ErrorMaterial = kernel Material {
+	out_albedo = float4(1, 0, 1, 0);
+	out_specular = float4(1, 0, 1, 0);
 	out_normal = normal;
 };
 

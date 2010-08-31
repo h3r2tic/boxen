@@ -4,10 +4,18 @@ private {
 	import xf.Common;
 	import xf.core.Registry;
 
-	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.Log;
+	import
+		xf.nucleus.Param,
+		xf.nucleus.Material,
+		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.Log,
+		xf.nucleus.asset.CompiledMaterialAsset;
 
 	import xf.gfx.IRenderer : RendererBackend = IRenderer;
+
+	import
+		xf.mem.ScratchAllocator,
+		xf.mem.MainHeap;
 
 	import tango.io.vfs.FileFolder;
 	import tango.core.Variant;
@@ -25,6 +33,8 @@ public {
 	RendererBackend	rendererBackend;
 	Renderer		vsmRenderer;
 	IKDefRegistry	kdefRegistry;
+
+	Material[]		allMaterials;
 }
 
 private {
@@ -34,7 +44,7 @@ private {
 	cstring[]			surfaceNames;
 	SurfaceId			nextSurfaceId;
 
-	MaterialId[cstring]	materials;
+	Material[cstring]	materials;
 	cstring[]			materialNames;
 	MaterialId			nextMaterialId;
 
@@ -43,7 +53,7 @@ private {
 
 
 MaterialId getMaterialIdByName(cstring name) {
-	return materials[name];
+	return materials[name].id;
 }
 
 
@@ -90,10 +100,6 @@ void nucleusHotSwap() {
 			foreach (surfName, surf; &kdefRegistry.surfaces) {
 				r.registerSurface(surf);
 			}
-
-			foreach (matName, mat; &kdefRegistry.materials) {
-				r.registerMaterial(mat);
-			}
 		}
 	}
 }
@@ -112,7 +118,7 @@ Renderer createRenderer(cstring name) {
 		res.registerSurface(surf);
 	}
 
-	foreach (matName, mat; &kdefRegistry.materials) {
+	foreach (mat; allMaterials) {
 		res.registerMaterial(mat);
 	}
 
@@ -126,6 +132,44 @@ void registerRenderer(T)(cstring name) {
 	_rendererFactories[name] = function Renderer() {
 		return new T(.rendererBackend, kdefRegistry);
 	};
+}
+
+
+void registerMaterial(Material mat) {
+	assert (mat !is null);
+	assert (!mat.materialKernel.isValid);
+	assert (mat.asset !is null);
+
+	assert (nextMaterialId == materialNames.length);
+	
+	mat.id = nextMaterialId++;
+	mat.materialKernel = kdefRegistry.getKernel(mat.asset.kernelName);
+	assert (mat.materialKernel.isValid);
+	assert (mat.materialKernel.id.isValid);
+	assert (kdefRegistry.getKernel(mat.materialKernel.id).name == mat.asset.kernelName);
+
+	cstring name = mat.asset.name.dup;
+	materials[name] = mat;
+
+	materialNames ~= name;
+	allMaterials ~= mat;
+
+	foreach (r; renderers) {
+		r.registerMaterial(mat);
+	}
+}
+
+
+Material loadMaterial(CompiledMaterialAsset asset) {
+	if (auto m = asset.name in materials) {
+		return *m;
+	} else {
+		assert (asset !is null);
+		final mat = new Material;
+		mat.asset = asset;
+		registerMaterial(mat);
+		return mat;
+	}
 }
 
 
@@ -150,15 +194,34 @@ private void reloadSurfMats() {
 		surfaceNames ~= surfName;
 	}
 
-	foreach (matName, mat; &kdefRegistry.materials) {
-		mat.id = nextMaterialId++;
-		mat.materialKernel = kdefRegistry.getKernel(mat.materialKernelName);
-		assert (mat.materialKernel.isValid);
-		assert (mat.materialKernel.id.isValid);
-		assert (kdefRegistry.getKernel(mat.materialKernel.id).name == mat.materialKernelName);
-		materials[matName.dup] = mat.id;
-		assert (mat.id == materialNames.length);
-		materialNames ~= matName;
+	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
+
+	foreach (matName, matDef; &kdefRegistry.materials) {
+		final mat = new Material;
+
+		// BUG(?): aliases mem from the kdef
+
+		uword numParams = matDef.params.length;
+
+		final cmat = allocator._new!(CompiledMaterialAsset)();
+
+		cmat.params.length		= numParams;
+		cmat.params.name		= allocator.allocArray!(cstring)(numParams).ptr;
+		cmat.params.valueType	= allocator.allocArray!(ParamValueType)(numParams).ptr;
+		cmat.params.value		= allocator.allocArray!(void*)(numParams).ptr;
+
+		cmat.name = allocator.dupString(matName);
+		cmat.kernelName = allocator.dupString(matDef.materialKernelName);
+
+		foreach (i, ref p; matDef.params) {
+			cmat.params.name[i] = p.name;
+			cmat.params.valueType[i] = p.valueType;
+			cmat.params.value[i] = p.value;
+		}
+
+		mat.asset = cmat;
+
+		registerMaterial(mat);
 	}
 }
 

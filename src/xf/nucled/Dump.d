@@ -2,8 +2,18 @@ module xf.nucled.Dump;
 
 private {
 	import xf.Common;
-	import xf.nucled.Graph;
-	import xf.nucled.Settings;
+
+	import
+		xf.nucleus.Param,
+		xf.nucleus.Value,
+		xf.nucleus.kdef.Common;
+	
+	import
+		xf.nucled.Graph,
+		xf.nucled.Settings,
+		xf.nucled.ParametersRollout,
+		xf.nucled.DataProvider,
+		xf.nucled.Log;
 
 	import tango.text.Util;
 	import tango.io.stream.Format;
@@ -13,6 +23,8 @@ private {
 	import tango.sys.Process;
 }
 
+
+
 void dumpGraph(Graph graph, cstring label, OutputStream cond) {
 	scope layout = new TextLayout!(char);
 	scope print = new FormatOutput!(char)(layout, cond, "\n");
@@ -21,6 +33,36 @@ void dumpGraph(Graph graph, cstring label, OutputStream cond) {
 	dumpGraph(graph, print);
 	print.formatln(`};`);
 	print.flush;
+	cond.flush;
+}
+
+
+void dumpMaterial(Graph graph, cstring matName, cstring kernelName, OutputStream cond) {
+	scope layout = new TextLayout!(char);
+	scope p = new FormatOutput!(char)(layout, cond, "\n");
+
+	p.formatln(`{} = material {} {{`, matName, kernelName);
+
+	foreach (n; graph.nodes) {
+		if (GraphNode.Type.Data == n.type) {
+			foreach (paramI, ref param; n.data.params) {
+				if (param.value && n.paramValueInfo) {
+					p.format(\t\t`{}`, param.name);
+
+					ParamValueInfo* pvi;
+					if (n.paramValueInfo) {
+						pvi = &n.paramValueInfo[paramI];
+					}
+
+					dumpParamValueInfo(&param, pvi, p);
+					p(';').newline;
+				}
+			}
+		}
+	}
+	
+	p(`};`).newline;
+	p.flush;
 	cond.flush;
 }
 
@@ -54,8 +96,15 @@ private void dumpGraphNode(GraphNode n, FormatOutput!(char) p) {
 			if (n.data.params.length > 0) {
 				p(\t`params = (`\n);
 				int i = 0;
-				foreach (ref param; n.data.params) {
+				foreach (paramI, ref param; n.data.params) {
 					p.format(\t\t`{}`, param.toString);
+
+					ParamValueInfo* pvi;
+					if (n.paramValueInfo) {
+						pvi = &n.paramValueInfo[paramI];
+					}
+
+					dumpParamValueInfo(&param, pvi, p);
 
 					if (++i != n.data.params.length) {
 						p(",\n");
@@ -77,4 +126,116 @@ private void dumpGraphNode(GraphNode n, FormatOutput!(char) p) {
 		
 		//p.formatln(\t`primLevel = "{}";`, n.primLevelStr);
 	p(`};`\n);
+}
+
+
+private void dumpParamValueInfo(
+	Param* param,
+	ParamValueInfo* info,
+	FormatOutput!(char) p
+) {
+	assert (param !is null);
+
+	// TODO: proper dumping of annotations
+
+	if (param.value) {
+		p(" = ");
+		dumpParamValue(param, p);
+	}
+
+	if (info && info.provider) {
+		p.formatln(" @gui(");
+		p.formatln("widget = {};", info.provider.name);
+		info.provider.dumpConfig(p);
+		p(")");
+	} else {
+		if (param.annotation) {
+			final annots = *cast(Annotation[]*)param.annotation;
+			foreach (annot; annots) {
+				if ("gui" == annot.name) {
+					dumpParamAnnot(annot.name, annot.vars, p);
+					break;
+				}
+			}
+		}
+	}
+}
+
+
+private void dumpParamAnnot(
+	cstring name,
+	VarDef[] vars,
+	FormatOutput!(char) p
+) {
+	p.formatln(" @{}(", name);
+	foreach (var; vars) {
+		p.format("{} = ", var.name);
+		dumpValue(var.value, p);
+		p(';').newline;
+	}
+	p(")");
+}
+
+
+private void dumpValue(
+	Value val,
+	FormatOutput!(char) p
+) {
+	if (auto v = cast(NumberValue)val) {
+		p.format("{}", v.value);
+	} else if (auto v = cast(BooleanValue)val) {
+		p.format("{}", v.value);
+	} else if (auto v = cast(Vector2Value)val) {
+		p.format("{} {}", v.value.tuple);
+	} else if (auto v = cast(Vector3Value)val) {
+		p.format("{} {} {}", v.value.tuple);
+	} else if (auto v = cast(Vector4Value)val) {
+		p.format("{} {} {} {}", v.value.tuple);
+	} else if (auto v = cast(StringValue)val) {
+		p.format("\"{}\"", v.value);
+	} else if (auto v = cast(IdentifierValue)val) {
+		p.format("{}", v.value);
+	} else {
+		nucledError("Unhandled value type when taking a dump: '{}'.", val.classinfo.name);
+	}
+}
+
+
+private void dumpParamValue(
+	Param* param,
+	FormatOutput!(char) p
+) {
+	switch (param.valueType) {
+		case ParamValueType.Float: {
+			float x;
+			param.getValue(&x);
+			p.format("{}", x);
+		} break;
+		case ParamValueType.Float2: {
+			float x, y;
+			param.getValue(&x, &y);
+			p.format("{} {}", x, y);
+		} break;
+		case ParamValueType.Float3: {
+			float x, y, z;
+			param.getValue(&x, &y, &z);
+			p.format("{} {} {}", x, y, z);
+		} break;
+		case ParamValueType.Float4: {
+			float x, y, z, w;
+			param.getValue(&x, &y, &z, &w);
+			p.format("{} {} {} {}", x, y, z, w);
+		} break;
+		case ParamValueType.String: {
+			cstring val;
+			param.getValue(&val);
+			p.format("\"{}\"", val);
+		} break;
+		case ParamValueType.Ident: {
+			cstring val;
+			param.getValueIdent(&val);
+			p.format("{}", val);
+		} break;
+		default: break;
+	}
 }

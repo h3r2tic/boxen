@@ -244,3 +244,12 @@ class CustomDrawWidget : Widget {
 
 	mixin MWidget;
 }
+
+
+class MaterialBrowserWindow : CustomWidget {
+	mixin MWidget;
+}
+
+class MaterialMiniatureBox : GenericButton {
+	mixin MWidget;
+}

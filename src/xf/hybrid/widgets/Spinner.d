@@ -311,6 +311,6 @@ class InputSpinner(T) : CustomWidget {
 	The basic instances of the InputSpinner widget template
 */
 alias InputSpinner!(ubyte)	UbyteInputSpinner;
-alias InputSpinner!(int)		IntInputSpinner;		/// ditto
+alias InputSpinner!(int)	IntInputSpinner;		/// ditto
 alias InputSpinner!(float)	FloatInputSpinner;		/// ditto
 alias InputSpinner!(double)	DoubleInputSpinner;	/// ditto

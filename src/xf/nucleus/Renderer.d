@@ -12,7 +12,7 @@ private {
 		xf.nucleus.Light,
 		xf.nucleus.RenderList,
 		xf.nucleus.SurfaceDef,
-		xf.nucleus.MaterialDef,
+		xf.nucleus.Material,
 		xf.nucleus.SamplerDef,
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.model.KDefInvalidation;
@@ -115,15 +115,15 @@ abstract class Renderer
 	//abstract void registerMaterial(MaterialDef def);
 
 
-	void updateMaterial(MaterialDef def) {
+	void updateMaterial(Material def) {
 		auto mat = _materials[def.id];
 		static assert (isReferenceType!(typeof(mat)));
-		updateMaterialData(_backend, def.params, mat);
+		updateMaterialData(_backend, def, mat);
 	}
 
 
 	static assert (isReferenceType!(SurfaceDef));
-	static assert (isReferenceType!(MaterialDef));
+	static assert (isReferenceType!(Material));
 
 
 	protected {
@@ -134,7 +134,7 @@ abstract class Renderer
 
 
 	// TODO: mem
-	/+override +/void registerMaterial(MaterialDef def) {
+	/+override +/void registerMaterial(Material def) {
 		if (def.id >= _materials.length) {
 			final gb = def.id - _materials.length + 1;
 			_materials.growBy(gb);
@@ -146,7 +146,7 @@ abstract class Renderer
 
 		assert (def.materialKernel.id.isValid);
 		_materialKernels[def.id] = def.materialKernel.id;
-		createMaterialData(_backend, def.params, mat);
+		createMaterialData(_backend, def, mat);
 	}
 
 

@@ -47,6 +47,22 @@ ParamDirection ParamDirectionFromString(cstring str) {
 }
 
 
+uword paramValueSize(ParamValueType valueType, void* value) {
+	if (value) {
+		switch (valueType) {
+			case ParamValueType.Float:	return 4;
+			case ParamValueType.Float2: return 8;
+			case ParamValueType.Float3: return 12;
+			case ParamValueType.Float4: return 16;
+			case ParamValueType.Ident:	// fall through
+			case ParamValueType.String: return 1+strlen(cast(char*)value);
+			case ParamValueType.ObjectRef: return 0;
+			default: assert (false);
+		}
+	} else return 0;
+}
+
+
 struct Param {
 	// TODO: tags / non-trait semantics
 
@@ -71,18 +87,7 @@ struct Param {
 
 
 	uword valueSize() {
-		if (value) {
-			switch (valueType) {
-				case ParamValueType.Float:	return 4;
-				case ParamValueType.Float2: return 8;
-				case ParamValueType.Float3: return 12;
-				case ParamValueType.Float4: return 16;
-				case ParamValueType.Ident:	// fall through
-				case ParamValueType.String: return 1+strlen(cast(char*)value);
-				case ParamValueType.ObjectRef: return 0;
-				default: assert (false);
-			}
-		} else return 0;
+		return paramValueSize(valueType, value);
 	}
 
 
