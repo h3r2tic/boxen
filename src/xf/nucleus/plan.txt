@@ -254,6 +254,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 			* have a reset button
 	+ modification of live material values from within the param rollout
 	+ load materials from hsf
+	+ revive the 4-split scene view
 	~ fancy material browser
 		+ display of the material and its name
 		+ selection of a material

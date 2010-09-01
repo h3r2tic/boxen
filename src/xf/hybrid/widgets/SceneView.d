@@ -94,6 +94,7 @@ class SceneView : Widget {
 	mat4		projMatrix;
 	float		yaw = 0, pitch = 0, roll = 0;
 	vec3		viewOffset = vec3.zero;
+	bool		rotationEnabled = true;
 	
 	// vec3 offset, float yaw, float pitch, float roll, bool ortho, bool wireframe
 	
@@ -338,7 +339,7 @@ class SceneView : Widget {
 						sv.shiftView(shift);
 					}
 					
-					if (em & em.Ctrl) {
+					if (rotationEnabled && (em & em.Ctrl)) {
 						sv.rotateYaw(delta.x * moveScale.x * -90);
 						sv.rotatePitch(delta.y * moveScale.y * -90);
 					}
