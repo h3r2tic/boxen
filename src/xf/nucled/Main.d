@@ -17,6 +17,7 @@ import
 	xf.nucled.SurfaceBrowser,
 	xf.nucled.Widgets,
 	xf.nucled.Intersect,
+	xf.nucled.ViewportTab,
 
 	xf.vsd.VSD,
 
@@ -95,31 +96,6 @@ struct TabDesc {
 
 
 
-struct GlobalMode {
-	enum Mode {
-		Normal,
-		SelectingMaterial,
-		SelectingSurface
-	}
-
-	Mode mode = Mode.Normal;
-
-	struct SelectingMaterial {
-		RenderableId[] rids;
-	}
-
-	struct SelectingSurface {
-		RenderableId[] rids;
-	}
-
-	union {
-		SelectingMaterial	selectingMaterial;
-		SelectingSurface	selectingSurface;
-	}
-}
-
-
-
 class TestApp : GfxApp {
 	HybridRenderer	guiRenderer;
 	HybridConfig	guiConfig;
@@ -135,6 +111,8 @@ class TestApp : GfxApp {
 	Viewport	defViewport;
 	SceneView	defSV;
 	Renderer	defRenderer;
+
+	ViewportTab	viewportTab;
 
 	MaterialBrowser	matBrowser;
 	SurfaceBrowser	surfBrowser;
@@ -216,6 +194,11 @@ class TestApp : GfxApp {
 			createGraphEditor(`RenderViewport`),
 			null/+,
 			core.kregistry[`RenderViewport`]+/
+		);
+
+		tabs[1] = TabDesc(
+			"Scene view",
+			TabDesc.Role.SceneView
 		);
 
 		vsd = VSDRoot();
@@ -571,10 +554,10 @@ class TestApp : GfxApp {
 			if (auto tabDesc = activeTab in tabs) {
 				switch (tabDesc.role) {
 					case TabDesc.Role.SceneView: {
-						/+if (viewportTab is null) {
-							viewportTab = new ViewportTab(core, world);
+						if (viewportTab is null) {
+							viewportTab = new ViewportTab(fwdRenderer, &vsd, &trayRacers);
 						}
-						viewportTab.doGUI();+/
+						viewportTab.doGUI();
 					} break;
 					
 					case TabDesc.Role.GraphEditor: {
