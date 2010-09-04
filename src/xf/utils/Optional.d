@@ -38,18 +38,9 @@ struct Optional(T) {
 	}
 	
 	
-	static if (isRefType) {
-		TRef value(T t) {
-			_available = true;
-			_value = t;
-			return getRef(_value);
-		}
-	} else {
-		TRef value(ref T t) {
-			_available = true;
-			_value = t;
-			return getRef(_value);
-		}
+	void value(T t) {
+		_available = true;
+		_value = t;
 	}
 	
 	

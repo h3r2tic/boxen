@@ -47,9 +47,9 @@ class HsfLoader {
 		});
 		flattenMeshArrays(meshes);
 		
-		/+foreach (ref mesh; meshes) {
+		foreach (ref mesh; meshes) {
 			computeExtraMeshData(mesh);
-		}+/
+		}
 	}
 	
 	void computeExtraMeshData(ref Mesh mesh) {

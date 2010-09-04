@@ -1,6 +1,8 @@
 Structure = kernel(
 	out position <type float3 + basis model + use position>,
 	out normal <type float3 + basis model + use normal>,
+	out tangent <type float3 + basis model + use tangent>,
+	out bitangent <type float3 + basis model + use bitangent>,
 	out texCoord <type float2 + use uv>
 );
 
@@ -24,6 +26,8 @@ Reflectance = kernel(
 Material = kernel(
 	in position <type float3 + basis world + use position>,
 	in normal <type float3 + basis world + use normal + unit true>,
+	in tangent <type float3 + basis world + use tangent + unit true>,
+	in bitangent <type float3 + basis world + use bitangent + unit true>,
 	in texCoord <type float2 + use uv>,
 	out out_albedo <type float4 + use color>,
 	out out_specular <type float4 + use color>,

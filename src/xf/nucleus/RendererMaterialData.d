@@ -11,7 +11,8 @@ private {
 		xf.nucleus.asset.CompiledTextureAsset;
 	import
 		xf.loader.Common,
-		xf.loader.img.ImgLoader;
+		xf.loader.img.ImgLoader,
+		xf.img.Image;
 	import
 		xf.gfx.Texture,
 		xf.gfx.IRenderer : RendererBackend = IRenderer;
@@ -277,7 +278,22 @@ private void loadMaterialSamplerParam(
 ) {
 	cstring filePath = sampler.bitmapPath;
 
+	TextureRequest req;
+
 	auto img = imgLoader.load(getResourcePath(filePath));
+	if (sampler.colorSpace.available) {
+		switch (*sampler.colorSpace.value) {
+			case Image.ColorSpace.Linear: {
+				req.internalFormat = TextureInternalFormat.RGBA8;
+			} break;
+			case Image.ColorSpace.sRGB: {
+				req.internalFormat = TextureInternalFormat.SRGB8_ALPHA8;
+			} break;
+			
+			default: assert (false);
+		}
+	}
+	
 	if (!img.valid) {
 		log.warn("Could not load texture: '{}'", filePath);
 		img = imgLoader.load(getResourcePath("img/testgrid.png"));
@@ -287,6 +303,7 @@ private void loadMaterialSamplerParam(
 	}
 
 	*tex = backend.createTexture(
-		img
+		img,
+		req
 	);
 }

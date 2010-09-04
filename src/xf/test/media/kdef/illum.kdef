@@ -72,7 +72,7 @@ ABg_h = graph Reflectance {
 			specular = 0;
 			return;+/
 		
-			BRDF_g *= pow(lightSize, 0.25);
+			//BRDF_g *= pow(lightSize, 0.25);
 
 			/+//BRDF_A *= pow(lightSize, 0.5);
 			//BRDF_B *= pow(lightSize, 0.5);
@@ -153,13 +153,31 @@ ABg = graph Reflectance {
 
 			float tmp = dot(B - B0, B - B0);
 			tmp = pow(tmp, 0.5*BRDF_g);
+			float tmp2 = tmp;
 			tmp = BRDF_A / (BRDF_B + tmp);
+			tmp2 = BRDF_A / (BRDF_B + tmp2 * 1.0001);
 
-			float tmp2 = dot(B - B0, B - B0);
-			tmp2 = pow(tmp2, 0.5*BRDF_g);
-			tmp2 = BRDF_A / (BRDF_B + 0.3 + tmp2);
+			// Compute any aliases and intermediary values
+			// -------------------------------------------
+			float3 H	= normalize(toLight + toEye);
+			float NdotL	= max(0.000f, dot(normal, toLight));
+			float NdotH	= max(0.001f, dot(normal, H));
+			float NdotV	= max(0.001f, dot(normal, toEye));
+			float VdotH	= max(0.001f, dot(toEye, H));
+		 
+			// Evaluate the geometric term
+			// ---------------------------
+
+			float geoTerm; {
+				float geo_numerator = 2.0f * NdotH;
+			 
+				float geo_b	= geo_numerator * NdotV / VdotH;
+				float geo_c	= geo_numerator * NdotL / VdotH;
+				geoTerm		= saturate((min(geo_b, geo_c)));
+			}
 
 			tmp -= tmp2;
+			//tmp *= geoTerm;
 
 			specular = 10 * intensity * tmp * saturate(dot( toLight, normal ).x);
 			diffuse = 10 * intensity * tmp2 * saturate(dot( toLight, normal ).x);
@@ -335,7 +353,7 @@ BlinnPhong = graph Reflectance {
 	n1 = node {
 		type = data;
 		params = (
-			specularPower <type float> = 0.2
+			specularPower <type float> = 20
 		);
 	};
 	n2 = node {
@@ -347,7 +365,7 @@ BlinnPhong = graph Reflectance {
 			float3 H = normalize(toEye + toLight);
 			diffuse = intensity * saturate(NdotL);
 			specular = intensity * pow(saturate(dot(H, normal)), specularPower).xxxx;
-			specular = NdotL > 0 ? specular : float4(0, 0, 0, 0);
+			specular = NdotL > 0.0 ? specular : float4(0, 0, 0, 0);
 		};
 	};
 	n3 = node {
