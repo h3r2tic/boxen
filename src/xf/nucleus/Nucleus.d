@@ -35,6 +35,7 @@ public {
 	IKDefRegistry	kdefRegistry;
 
 	Material[]		allMaterials;
+	Material[]		assetMaterials;
 }
 
 private {
@@ -98,14 +99,7 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 void nucleusHotSwap() {
 	if (kdefRegistry.invalidated) {
 		kdefRegistry.reload();
-		
 		reloadSurfMats();
-
-		foreach (r; renderers) {
-			foreach (surfName, surf; &kdefRegistry.surfaces) {
-				r.registerSurface(surf);
-			}
-		}
 	}
 }
 
@@ -173,6 +167,7 @@ Material loadMaterial(CompiledMaterialAsset asset) {
 		final mat = new Material;
 		mat.asset = asset;
 		registerMaterial(mat);
+		assetMaterials ~= mat;
 		return mat;
 	}
 }
@@ -188,6 +183,8 @@ private void reloadSurfMats() {
 	materials = null;
 	materialNames = null;
 
+	allMaterials.length = 0;
+
 	foreach (surfName, surf; &kdefRegistry.surfaces) {
 		surf.id = nextSurfaceId++;
 		surf.reflKernel = kdefRegistry.getKernel(surf.reflKernelName);
@@ -197,6 +194,10 @@ private void reloadSurfMats() {
 		surfaces[surfName.dup] = surf.id;
 		assert (surf.id == surfaceNames.length);
 		surfaceNames ~= surfName;
+
+		foreach (r; renderers) {
+			r.registerSurface(surf);
+		}
 	}
 
 	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
@@ -227,6 +228,18 @@ private void reloadSurfMats() {
 		mat.asset = cmat;
 
 		registerMaterial(mat);
+	}
+
+	foreach (mat; assetMaterials) {
+		cstring name = mat.asset.name.dup;
+		materials[name] = mat;
+
+		materialNames ~= name;
+		allMaterials ~= mat;
+
+		foreach (r; renderers) {
+			r.registerMaterial(mat);
+		}
 	}
 }
 

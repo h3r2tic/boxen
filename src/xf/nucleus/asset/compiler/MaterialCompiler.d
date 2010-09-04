@@ -10,6 +10,7 @@ private {
 	import xf.omg.core.LinearAlgebra;
 	import xf.omg.color.RGB;
 	import xf.mem.ScratchAllocator;
+	import xf.img.Image;
 }
 
 
@@ -26,6 +27,8 @@ CompiledMaterialAsset compileMaterialAsset(
 
 	Texture albedoTex;
 	Texture specularTex;
+	Texture maskTex;
+	Texture normalTex;
 
 	vec4	albedoTint = vec4.one;
 	vec4	specularTint = vec4.one;
@@ -33,7 +36,8 @@ CompiledMaterialAsset compileMaterialAsset(
 
 	vec2	albedoTexTile = vec2.one;
 	vec2	specularTexTile = vec2.one;
-			
+	vec2	maskTexTile = vec2.one;
+	vec2	normalTexTile = vec2.one;
 			
 	/+
 			float smoothness = 0.1f;
@@ -43,7 +47,9 @@ CompiledMaterialAsset compileMaterialAsset(
 	
 	enum {
 		AlbedoIdx = 1,
-		SpecularIdx = 2
+		SpecularIdx = 2,
+		MaskIdx = 6,
+		NormalIdx = 8
 	}
 	
 	if (auto map = material.getMap(AlbedoIdx)) {
@@ -66,6 +72,28 @@ CompiledMaterialAsset compileMaterialAsset(
 		specularTex = compileTextureAsset("img/white.bmp", allocator, topts);
 	}
 
+	if (auto map = material.getMap(MaskIdx)) {
+		TextureAssetCompilationOptions topts;
+		topts.imgBaseDir = opts.imgBaseDir;
+		maskTex = compileTextureAsset(map, allocator, topts);
+		maskTexTile = map.uvTile;
+	} else {
+		TextureAssetCompilationOptions topts;
+		maskTex = compileTextureAsset("img/white.bmp", allocator, topts);
+	}
+
+	if (auto map = material.getMap(NormalIdx)) {
+		TextureAssetCompilationOptions topts;
+		topts.imgBaseDir = opts.imgBaseDir;
+		normalTex = compileTextureAsset(map, allocator, topts);
+		normalTex.colorSpace.value = Image.ColorSpace.Linear;
+		normalTexTile = map.uvTile;
+	} else {
+		TextureAssetCompilationOptions topts;
+		normalTex = compileTextureAsset("img/defnormal.bmp", allocator, topts);
+		normalTex.colorSpace.value = Image.ColorSpace.Linear;
+	}
+
 	roughness = 1.0f - material.shininess;
 	if (roughness < 0.01f) {
 		roughness = 0.01f;
@@ -79,9 +107,11 @@ CompiledMaterialAsset compileMaterialAsset(
 		!(RGBSpace.sRGB, RGBSpace.Linear_sRGB)
 		(material.specularTint, &specularTint);
 
-	uword numParams = 5;
+	uword numParams = 7;
 	if (albedoTex) ++numParams;
 	if (specularTex) ++numParams;
+	if (maskTex) ++numParams;
+	if (normalTex) ++numParams;
 	
 	cmat.params.length = numParams;
 
@@ -105,6 +135,20 @@ CompiledMaterialAsset compileMaterialAsset(
 			++i;
 		}
 
+		if (maskTex) {
+			name[i] = "maskTex";
+			valueType[i] = ParamValueType.ObjectRef;
+			value[i] = cast(void*)maskTex;
+			++i;
+		}
+
+		if (normalTex) {
+			name[i] = "normalTex";
+			valueType[i] = ParamValueType.ObjectRef;
+			value[i] = cast(void*)normalTex;
+			++i;
+		}
+
 		name[i] = "albedoTexTile";
 		valueType[i] = ParamValueType.Float2;
 		value[i] = cast(void*)allocator._new!(vec2)(albedoTexTile.tuple);
@@ -113,6 +157,16 @@ CompiledMaterialAsset compileMaterialAsset(
 		name[i] = "specularTexTile";
 		valueType[i] = ParamValueType.Float2;
 		value[i] = cast(void*)allocator._new!(vec2)(specularTexTile.tuple);
+		++i;
+
+		name[i] = "maskTexTile";
+		valueType[i] = ParamValueType.Float2;
+		value[i] = cast(void*)allocator._new!(vec2)(maskTexTile.tuple);
+		++i;
+
+		name[i] = "normalTexTile";
+		valueType[i] = ParamValueType.Float2;
+		value[i] = cast(void*)allocator._new!(vec2)(maskTexTile.tuple);
 		++i;
 
 		name[i] = "albedoTint";

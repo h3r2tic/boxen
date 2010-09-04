@@ -43,7 +43,7 @@ struct LexerBase {
 		string peekBuffer,
 		LexerConfig cfg = LexerConfig.init
 	) {
-		LexerBase res = void;
+		LexerBase res;
 		res.stream = stream;
 		res.peekBuffer = RollingBuffer(peekBuffer);
 		res.cfg = cfg;
@@ -352,6 +352,11 @@ struct LexerBase {
 
 	
 	void consume(int num = 1) {
+		for (int i = 0; i < num; ++i) {
+			if ('\r' == peekBuffer[i]) {
+				++_line;
+			}
+		}
 		peekBuffer.consume(num);
 	}
 	
@@ -364,6 +369,7 @@ struct LexerBase {
 	void error(cstring fmt, ...) {
 		char[256] buffer;
 		char[] msg = tango.text.convert.Format.Format.vprint(buffer, fmt, _arguments, _argptr);
+		msg ~= tango.text.convert.Format.Format(" at line {}.", _line);
 		throw new LexerException(msg.dup);
 	}
 	
@@ -398,5 +404,7 @@ struct LexerBase {
 		RollingBuffer	peekBuffer;
 		LexerConfig		cfg;
 		bool			_eof;
+
+		uint			_line = 1;
 	}
 }

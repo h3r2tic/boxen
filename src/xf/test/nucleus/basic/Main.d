@@ -41,6 +41,7 @@ private {
 
 
 //version = LightTest;
+version = Sponza;
 
 
 class TestApp : GfxApp {
@@ -83,9 +84,9 @@ class TestApp : GfxApp {
 
 		// ----
 
-		const numLights = 3;
+		const numLights = 100;
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestShadowedLight)[$-1]);
+			createLight((lights ~= new TestLight)[$-1]);
 			version (Sponza) {
 				lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 10.0, 0);
 				lightAngles ~= Kiss.instance.fraction() * 360.0f;
@@ -110,21 +111,37 @@ class TestApp : GfxApp {
 		// ----
 
 		version (Sponza) {
-			cstring model = `mesh/sponza.hsf`;
+			cstring model = `mesh/csponza.hsf`;
 			float scale = 1f;
 
-			loadScene(
-				model, scale, CoordSys(vec3fi[0, -3, 0]),
-				"TestSurface3", "TestMaterialImpl"
+			SceneAssetCompilationOptions opts;
+			opts.scale = scale;
+
+			final compiledScene = compileHSFSceneAsset(
+				model,
+				DgScratchAllocator(&mainHeap.allocRaw),
+				opts
 			);
+
+			assert (compiledScene !is null);
+
+			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, -3, 0]));
 		} else version (Sibenik) {
 			cstring model = `mesh/sibenik.hsf`;
 			float scale = 1f;
 
-			loadScene(
-				model, scale, CoordSys(vec3fi[0, -3, 0]),
-				"TestSurface3", "TestMaterialImpl"
+			SceneAssetCompilationOptions opts;
+			opts.scale = scale;
+
+			final compiledScene = compileHSFSceneAsset(
+				model,
+				DgScratchAllocator(&mainHeap.allocRaw),
+				opts
 			);
+
+			assert (compiledScene !is null);
+
+			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, -3, 0]));
 		} else version (LightTest) {
 			cstring model = `mesh/lightTest.hsf`;
 			float scale = 0.01f;
@@ -144,8 +161,8 @@ class TestApp : GfxApp {
 		} else {
 			/+cstring model = `mesh/soldier.hsf`;
 			float scale = 1.0f;+/
-			//cstring model = `mesh/masha.hsf`;
-			cstring model = `mesh/foo.hsf`;
+			cstring model = `mesh/masha.hsf`;
+			//cstring model = `mesh/foo.hsf`;
 			float scale = 0.02f;
 
 			SceneAssetCompilationOptions opts;
@@ -326,7 +343,7 @@ class TestApp : GfxApp {
 			}
 			prevKeyDown = keyDown;
 		}
-		
+
 
 		final nr = wantDeferred ? this.nr : this.nr2;
 

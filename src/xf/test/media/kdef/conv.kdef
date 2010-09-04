@@ -25,7 +25,7 @@ converter<linear>(20) model2world_p (
 }
 
 converter<linear>(20) model2world_n (
-	in a <type float3 + basis model + use normal>,
+	in a <type float3 + basis model>,
 	out b <in.a.actual + basis world>
 ) {
 	b = mul(modelToWorld, float4(a, 0)).xyz;
@@ -39,14 +39,14 @@ converter<linear>(20) world2view_p (
 }
 
 converter<linear>(20) world2view_n (
-	in a <type float3 + basis world + use normal>,
+	in a <type float3 + basis world>,
 	out b <in.a.actual + type float3 + basis view>
 ) {
 	b = mul(worldToView, float4(a, 0.0)).xyz;
 }
 
 converter<linear>(20) view2world_n (
-	in a <type float3 + basis view + use normal>,
+	in a <type float3 + basis view>,
 	out b <in.a.actual + type float3 + basis world>
 ) {
 	b = mul(viewToWorld, float4(a, 0.0)).xyz;

@@ -7,7 +7,6 @@
 ../../../nucleus/kdef/
 ../../../nucleus/renderer/
 +xtango
-+rmo
 -g
 -I../../../..
 +xxf.omg.core
