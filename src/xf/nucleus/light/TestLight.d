@@ -15,6 +15,7 @@ private {
 	import xf.loader.img.ImgLoader;	
 	
 	import xf.gfx.Texture;
+	import xf.gfx.TextureCache;
 
 	import xf.vsd.VSD;
 
@@ -78,6 +79,7 @@ class TestShadowedLight : TestLight {
 			
 			spotlightMask = rendererBackend.createTexture(
 				img,
+				TextureCacheKey.path(filePath),
 				treq
 			);
 		}

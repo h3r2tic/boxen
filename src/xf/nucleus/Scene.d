@@ -53,7 +53,7 @@ void loadScene(
 
 		final matName =	asset.meshMaterials[i]
 			? asset.meshMaterials[i].name
-			: "ErrorMaterial";
+			: "TestMaterialImpl";
 
 		renderables.material[rid] = getMaterialIdByName(
 			matName

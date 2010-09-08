@@ -42,6 +42,7 @@ private {
 
 //version = LightTest;
 version = Sponza;
+// version = FixedTest
 
 
 class TestApp : GfxApp {
@@ -66,6 +67,10 @@ class TestApp : GfxApp {
 	
 
 	override void initialize() {
+		version (FixedTest) {
+			Kiss.instance.seed(12345);
+		}
+		
 		setMediaDir(`../../media`);
 		initializeNucleus(this.renderer, "../../media/kdef", ".");
 		
@@ -78,13 +83,22 @@ class TestApp : GfxApp {
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
 
-		camera = new SimpleCamera(vec3(0, 0, 10), 0, 0, inputHub.mainChannel);
+		version (Sponza) {
+			camera = new SimpleCamera(vec3(-7.54, 2.9, 5.03), -7.00, 12.80, inputHub.mainChannel);
+		} else {
+			camera = new SimpleCamera(vec3(0, 3, 4), 0, 0, inputHub.mainChannel);
+		}
 		window.interceptCursor = true;
 		window.showCursor = false;
 
 		// ----
 
-		const numLights = 100;
+		version (FixedTest) {
+			const numLights = 50;
+		} else {
+			const numLights = 50;
+		}
+		
 		for (int i = 0; i < numLights; ++i) {
 			createLight((lights ~= new TestLight)[$-1]);
 			version (Sponza) {
@@ -105,7 +119,12 @@ class TestApp : GfxApp {
 
 			vec4 rgba = vec4.zero;
 			hsv2rgb(h, s, v, &rgba.r, &rgba.g, &rgba.b);
-			lightIllums ~= rgba;
+
+			version (FixedTest) {
+				lightIllums ~= rgba * (1000.f / numLights);
+			} else {
+				lightIllums ~= rgba * (1000.f / numLights);
+			}
 		}
 
 		// ----
@@ -248,13 +267,16 @@ class TestApp : GfxApp {
 
 
 	override void render() {
-		if (keyboard.keyDown(KeySym.e)) {
-			for (int li = 0; li < lights.length; ++li) {
-				lightAngles[li] += lightSpeeds[li] * -0.01;
-			}
-		} else {
-			for (int li = 0; li < lights.length; ++li) {
-				lightAngles[li] += lightSpeeds[li];
+		version (FixedTest) {}
+		else {
+			if (keyboard.keyDown(KeySym.e)) {
+				/+for (int li = 0; li < lights.length; ++li) {
+					lightAngles[li] += lightSpeeds[li] * -0.01;
+				}+/
+			} else {
+				for (int li = 0; li < lights.length; ++li) {
+					lightAngles[li] += lightSpeeds[li];
+				}
 			}
 		}
 
@@ -360,7 +382,7 @@ class TestApp : GfxApp {
 
 		buildRenderList(&vsd, viewSettings, rlist);
 
-		static bool wantPost = true; {
+		static bool wantPost = false; {
 			static bool prevKeyDown = false;
 			bool keyDown = keyboard.keyDown(KeySym.space);
 			if (keyDown && !prevKeyDown) {

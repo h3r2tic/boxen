@@ -631,6 +631,11 @@ TestPost = graph PostProcess {
 		kernel = SampleImage;
 	};
 
+	sampleBlurred4 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
 	output = node {
 		type = output;
 	};
@@ -656,14 +661,16 @@ TestPost = graph PostProcess {
 	connect blur9 blur10;
 
 	connect blur1 sampleBlurred;
-	connect blur3 sampleBlurred2;
-	connect blur9 sampleBlurred3;
+	connect blur2 sampleBlurred2;
+	connect blur3 sampleBlurred3;
+	connect blur9 sampleBlurred4;
 	connect input sampleOrig;
 
 	connect sampleOrig.sample glare.baseColor;
 	connect sampleBlurred.sample glare.blurredColor;
 	connect sampleBlurred2.sample glare.blurredColor2;
 	connect sampleBlurred3.sample glare.blurredColor3;
+	connect sampleBlurred4.sample glare.blurredColor4;
 
 	connect glare.output output.output;
 
@@ -671,6 +678,7 @@ TestPost = graph PostProcess {
 	noauto sampleBlurred.uv;
 	noauto sampleBlurred2.uv;
 	noauto sampleBlurred3.uv;
+	noauto sampleBlurred4.uv;
 };
 
 
@@ -706,32 +714,32 @@ AddGlare = kernel(
 	in blurredColor <type float4 + use color>,
 	in blurredColor2 <type float4 + use color>,
 	in blurredColor3 <type float4 + use color>,
+	in blurredColor4 <type float4 + use color>,
 	out output <type float4 + use color>
 ) {
 //	output = blurredColor;
 
 	float baseLuma = dot(float3(0.2126, 0.7152, 0.0722), baseColor.xyz).x;
 	float blurredLuma = dot(float3(0.2126, 0.7152, 0.0722), blurredColor.xyz).x;
-	float blurredLuma2 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor2.xyz).x;
 	float blurredLuma3 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor3.xyz).x;
+	float blurredLuma4 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor4.xyz).x;
 
 	// Spatial acuity and color sunsitivity loss
-	float acuity = smoothstep(-0.005, 0.018, max(blurredLuma, max(blurredLuma3, blurredLuma2)));
+	float acuity = smoothstep(-0.005, 0.018, max(blurredLuma, max(blurredLuma4, blurredLuma3)));
 	output = min(float4(1.0), lerp(blurredColor, baseColor, acuity));
 	output = lerp(dot(float3(0.2126, 0.7152, 0.0722), output).xxxx, output, acuity);
 
-	/+float toneMapping = 0.1 / blurredLuma3;
-	toneMapping = pow(toneMapping, 0.5);
-	output *= toneMapping;+/
-
 	{
-		float luma = max(0.0001, blurredLuma);
-		float targetLuma = 0.045*pow(luma, 1.7);
-		output += max(float4(0), blurredColor*targetLuma/luma);
+		//float luma = max(0.0001, blurredLuma);
+		//float targetLuma = 0.045*pow(luma, 1.7);
+		//output += max(float4(0), blurredColor*targetLuma/luma);
+		output += blurredColor * 0.03;
+		output += blurredColor2 * 0.02;
+		output += blurredColor3 * 0.01;
 	}
 	{
-		float luma = max(0.0001, blurredLuma3);
+		float luma = max(0.0001, blurredLuma4);
 		float targetLuma = min(0.5, 0.2*pow(luma, 1.4));
-		output += lerp(max(float4(0), blurredColor3*targetLuma/luma), float4(targetLuma), 0.8);
+		output += lerp(max(float4(0), blurredColor4*targetLuma/luma), float4(targetLuma), 0.8);
 	}
 };
