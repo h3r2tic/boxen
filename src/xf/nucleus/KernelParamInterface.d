@@ -25,7 +25,7 @@ struct KernelParamInterface {
 		if (auto pp = getUniformParam(name)) {
 			*pp = ptr;
 		} else {
-			gfxLog.warn("{} not found in an effect. Perhaps the scope is wrong?", name);
+			//gfxLog.warn("{} not found in an effect. Perhaps the scope is wrong?", name);
 		}
 	}
 }

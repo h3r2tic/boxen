@@ -18,6 +18,7 @@ private {
 		xf.gfx.IndexData,
 		xf.gfx.UniformBuffer,
 		xf.gfx.Texture,
+		xf.gfx.TextureCache,
 		xf.gfx.Framebuffer,
 		xf.gfx.Mesh,
 		xf.gfx.IRenderer,
@@ -120,7 +121,10 @@ class Renderer : IRenderer {
 
 		ThreadUnsafeResourcePool!(TextureImpl, TextureHandle)
 			_textures;
-		
+
+		TextureCache
+			_textureCache;
+
 		ThreadUnsafeResourcePool!(FramebufferImpl, FramebufferHandle)
 			_framebuffers;
 			
@@ -150,6 +154,7 @@ class Renderer : IRenderer {
 		view.width = _window.width;
 		view.height = _window.height;
 		_window.reshape = &reshapeCallback;
+		_textureCache.initialize();
 	}
 
 
@@ -817,8 +822,13 @@ class Renderer : IRenderer {
 
 	private {
 		Texture toResourceHandle(_textures.ResourceReturn resource) {
+			return toResourceHandle(resource.handle);
+		}
+		
+
+		Texture toResourceHandle(TextureHandle h) {
 			Texture res = void;
-			res._resHandle = resource.handle;
+			res._resHandle = h;
 			res._resMngr = cast(void*)cast(ITextureMngr)this;
 			res._refMngr = cast(void*)this;
 			final rcnt = &resCountTexture;
@@ -826,7 +836,7 @@ class Renderer : IRenderer {
 			
 			return res;
 		}
-		
+
 		
 		bool resCountTexture(TextureHandle h, int cnt) {
 			if (auto resData = _textures.find(h, cnt > 0)) {
@@ -837,14 +847,33 @@ class Renderer : IRenderer {
 					return true;
 				} else if (goodBefore) {
 					_textures.free(resData);
+					if (res.cached) {
+						_textureCache.remove(res.cacheKey);
+					}
 				}
 			}
 			
 			return false;
 		}
 	}
+
+	Texture createTexture(Image img, TextureCacheKey key, TextureRequest req = TextureRequest.init) {
+		if (auto h = _textureCache.find(key)) {
+			++_textures.find(*h).res.refCount;
+			return toResourceHandle(*h);
+		} else {
+			final tex = createTexture(img, req);
+			
+			with (*_textures.find(tex._resHandle).res) {
+				cached = true;
+				cacheKey = _textureCache.add(key, tex._resHandle);
+			}
+			
+			return tex;
+		}
+	}
 	
-	Texture createTexture(Image img, TextureRequest req = TextureRequest.init) {
+	private Texture createTexture(Image img, TextureRequest req) {
 		assert (img.valid, "Invalid image passed to Renderer.createTexture()");
 		
 		return toResourceHandle(
@@ -2043,6 +2072,8 @@ private struct TextureImpl {
 	vec3i			size;
 	TextureRequest	request;
 	TextureImpl*	parent;		// for cube map faces
+	TextureCacheKey	cacheKey;
+	bool			cached = false;
 	
 	TextureImpl acquireCubeMapFace(CubeMapFace face) {
 		if (TEXTURE_CUBE_MAP == target) {

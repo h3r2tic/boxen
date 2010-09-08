@@ -263,7 +263,8 @@ private void loadMaterialSamplerParam(
 		}
 
 		*tex = backend.createTexture(
-			img
+			img,
+			TextureCacheKey.path(filePath)
 		);
 	} else {
 		assert (false, "TODO: use a fallback texture");
@@ -304,6 +305,7 @@ private void loadMaterialSamplerParam(
 
 	*tex = backend.createTexture(
 		img,
+		TextureCacheKey.path(filePath),
 		req
 	);
 }

@@ -6,6 +6,7 @@ private {
 	import xf.omg.core.CoordSys;
 	import xf.omg.core.LinearAlgebra : mat4, vec3, vec3fi, vec2, quat;
 	import xf.omg.core.Misc : exp;
+	import xf.utils.Log;
 }
 
 
@@ -19,6 +20,7 @@ class SimpleCamera {
 		this.pitch = pitch;
 		this.yaw = yaw;
 		this.updateFrequency = updateFrequency;
+		this.rot = quat.yRotation(this.yaw) * quat.xRotation(this.pitch);
 		
 		jobHub.addRepeatableJob(&update, updateFrequency);
 	}
@@ -48,6 +50,10 @@ class SimpleCamera {
 		}
 		
 		pos += rot.xform(move) * seconds;
+
+		if (move != move.zero) {
+			utilsLog.info("camera pos: {}", this.pos);
+		}
 	}
 	
 	
@@ -79,6 +85,9 @@ class SimpleCamera {
 		void handle(MouseInput* i) {
 			this.outer.pitch -= i.move.y * mouseSensitivity.y;
 			this.outer.yaw -= i.move.x * mouseSensitivity.x;
+			if (i.move != i.move.zero) {
+				utilsLog.info("camera pitch: {}, yaw: {}", this.outer.pitch, this.outer.yaw);
+			}
 			this.outer.rot = quat.yRotation(this.outer.yaw) * quat.xRotation(this.outer.pitch);
 		}
 	   

@@ -5,9 +5,11 @@ public {
 }
 
 private {
+	import xf.Common;
 	import xf.gfx.Resource;
 	import xf.omg.core.LinearAlgebra;
 	import xf.img.Image;
+	import xf.mem.ScratchAllocator;
 }
 
 
@@ -75,8 +77,42 @@ struct TextureRequest {
 }
 
 
+struct TextureCacheKey {
+	// does not duplicate the string from the source
+	static TextureCacheKey path(cstring s) {
+		TextureCacheKey key;
+		key.sourcePath = s;
+		key.computeHash();
+		return key;
+	}
+
+	hash_t toHash() {
+		return hash;
+	}
+
+	bool opEquals(TextureCacheKey other) {
+		return this.hash == other.hash && this.sourcePath == other.sourcePath;
+	}
+
+	void computeHash() {
+		hash = typeid(cstring).getHash(&sourcePath);
+	}
+
+	TextureCacheKey dup(DgScratchAllocator mem) {
+		TextureCacheKey res;
+		res.hash = this.hash;
+		res.sourcePath = mem.dupString(this.sourcePath);
+		return res;
+	}
+	
+	cstring	sourcePath;
+	hash_t	hash;
+}
+
+
 interface ITextureMngr {
-	Texture createTexture(Image img, TextureRequest req = TextureRequest.init);
+//	Texture createTexture(Image img, TextureRequest req = TextureRequest.init);
+	Texture createTexture(Image img, TextureCacheKey key, TextureRequest req = TextureRequest.init);
 	Texture createTexture(vec2i size, TextureRequest req, vec4 delegate(vec3) = null);
 	void	updateTexture(Texture, vec2i origin, vec2i size, ubyte* data);
 	void	updateTexture(Texture, vec2i origin, vec2i size, float* data);

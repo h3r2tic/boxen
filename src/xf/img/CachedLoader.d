@@ -33,7 +33,7 @@ class CachedLoader : Loader {
 		
 		Image im = cached.load(filename, req);
 		if (im.valid) {
-			cache[key] = im;
+			cache[CacheKey(key.source.dup, key.req)] = im;
 			log.trace("{} cached.", filename);
 		} else {
 			log.warn("Cannot load image: '{}'." , filename);
@@ -67,18 +67,18 @@ private struct CacheKey {
 		return hash + typeid(typeof(req)).getHash(&req);
 	}
 	
-	int opCmp(ref CacheKey rhs) {
-		if (auto strCmp = typeid(cstring).compare(
-			cast(void*)&source,
-			cast(void*)&rhs.source)
-		) {
-			return strCmp;
+	int opCmp(CacheKey* rhs) {
+		if (auto val = typeid(typeof(req)).compare(&req, &rhs.req)) {
+			return val;
 		}
 		
-		return typeid(typeof(req)).compare(&req, &rhs.req);
+		return typeid(cstring).compare(
+			cast(void*)&source,
+			cast(void*)&rhs.source
+		);
 	}
 
-	bool opEquals(ref CacheKey other) {
+	bool opEquals(CacheKey* other) {
 		return source == other.source && req == other.req;
 	}
 }
