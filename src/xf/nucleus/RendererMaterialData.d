@@ -8,6 +8,7 @@ private {
 		xf.nucleus.Material,
 		xf.nucleus.MaterialDef,
 		xf.nucleus.SamplerDef,
+		xf.nucleus.util.SamplerLoading,
 		xf.nucleus.asset.CompiledTextureAsset;
 	import
 		xf.loader.Common,
@@ -241,71 +242,4 @@ void updateMaterialData(RendererBackend backend, ParamList params, MaterialData*
 			} break;
 		}
 	}
-}
-
-
-private void loadMaterialSamplerParam(
-	RendererBackend backend,
-	SamplerDef sampler,
-	Texture* tex
-) {
-	if (auto val = sampler.params.get("texture")) {
-		cstring filePath;
-		val.getValue(&filePath);
-
-		auto img = imgLoader.load(getResourcePath(filePath));
-		if (!img.valid) {
-			log.warn("Could not load texture: '{}'", filePath);
-			img = imgLoader.load(getResourcePath("img/testgrid.png"));
-			if (!img.valid) {
-				error("Could not fallback texture.");
-			}
-		}
-
-		*tex = backend.createTexture(
-			img,
-			TextureCacheKey.path(filePath)
-		);
-	} else {
-		assert (false, "TODO: use a fallback texture");
-	}
-}
-
-
-private void loadMaterialSamplerParam(
-	RendererBackend backend,
-	CompiledTextureAsset sampler,
-	Texture* tex
-) {
-	cstring filePath = sampler.bitmapPath;
-
-	TextureRequest req;
-
-	auto img = imgLoader.load(getResourcePath(filePath));
-	if (sampler.colorSpace.available) {
-		switch (*sampler.colorSpace.value) {
-			case Image.ColorSpace.Linear: {
-				req.internalFormat = TextureInternalFormat.RGBA8;
-			} break;
-			case Image.ColorSpace.sRGB: {
-				req.internalFormat = TextureInternalFormat.SRGB8_ALPHA8;
-			} break;
-			
-			default: assert (false);
-		}
-	}
-	
-	if (!img.valid) {
-		log.warn("Could not load texture: '{}'", filePath);
-		img = imgLoader.load(getResourcePath("img/testgrid.png"));
-		if (!img.valid) {
-			error("Could not fallback texture.");
-		}
-	}
-
-	*tex = backend.createTexture(
-		img,
-		TextureCacheKey.path(filePath),
-		req
-	);
 }

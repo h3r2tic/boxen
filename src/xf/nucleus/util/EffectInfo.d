@@ -4,8 +4,10 @@ private {
 	import
 		xf.Common,
 		xf.nucleus.SamplerDef,
+		xf.nucleus.util.SamplerLoading,
 		xf.gfx.Texture,
-//		xf.nucleus.Param,
+		xf.nucleus.Param,
+		xf.nucleus.graph.KernelGraph,
 		xf.utils.FormatTmp,
 		xf.mem.MainHeap,
 		xf.mem.ScratchAllocator,
@@ -18,10 +20,6 @@ private {
 		xf.loader.Common,
 		xf.loader.img.ImgLoader,
 		xf.img.Image;
-
-	import
-		xf.nucleus.Param,
-		xf.nucleus.graph.KernelGraph;
 
 	static import
 		xf.nucleus.codegen.Rename;
@@ -176,56 +174,4 @@ void setEffectInstanceUniformDefaults(EffectInfo* effectInfo, EffectInstance efI
 			memcpy(*ptr, ud.value.ptr, ud.value.length);
 		}
 	}				
-}
-
-private void loadMaterialSamplerParam(
-	RendererBackend backend,
-	SamplerDef sampler,
-	Texture* tex
-) {
-	if (auto val = sampler.params.get("texture")) {
-		cstring filePath;
-		val.getValue(&filePath);
-
-		auto img = imgLoader.load(getResourcePath(filePath));
-		if (!img.valid) {
-			log.warn("Could not load texture: '{}'", filePath);
-			img = imgLoader.load(getResourcePath("img/testgrid.png"));
-			if (!img.valid) {
-				error("Could not fallback texture.");
-			}
-		}
-
-		TextureRequest req;
-		foreach (p; sampler.params) {
-			if ("minFilter" == p.name) {
-				cstring val;
-				p.getValueIdent(&val);
-				switch (val) {
-					case "linear": req.minFilter = TextureMinFilter.Linear; break;
-					case "nearest": req.minFilter = TextureMinFilter.Nearest; break;
-					case "mipmapLinear": req.minFilter = TextureMinFilter.LinearMipmapLinear; break;
-					default: log.error("Unrecognized texture min filter: '{}'", val);
-				}
-			}
-
-			if ("magFilter" == p.name) {
-				cstring val;
-				p.getValueIdent(&val);
-				switch (val) {
-					case "linear": req.magFilter = TextureMagFilter.Linear; break;
-					case "nearest": req.magFilter = TextureMagFilter.Nearest; break;
-					default: log.error("Unrecognized texture mag filter: '{}'", val);
-				}
-			}
-		}
-
-		*tex = backend.createTexture(
-			img,
-			TextureCacheKey.path(filePath),
-			req
-		);
-	} else {
-		assert (false, "TODO: use a fallback texture");
-	}
 }
