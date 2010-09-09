@@ -2,8 +2,8 @@ from scipy.stats import norm
 from math import *
 from functools import reduce
 
-numSamples = 24
-sigma = 4
+numSamples = 17
+sigma = 3
 weights = []
 offsets = []
 

@@ -705,7 +705,7 @@ float farPlaneDistance <
 
 		// ----
 
-		findEffectInfo(kg, &effectInfo);
+		findEffectInfo(_backend, kg, &effectInfo);
 
 		return effectInfo;
 	}
@@ -946,7 +946,7 @@ float farPlaneDistance <
 
 		// ----
 
-		findEffectInfo(kg, &effectInfo);
+		findEffectInfo(_backend, kg, &effectInfo);
 
 		return effectInfo;
 	}
@@ -1440,7 +1440,7 @@ float farPlaneDistance <
 
 		// ----
 
-		findEffectInfo(kg, &effectInfo);
+		findEffectInfo(_backend, kg, &effectInfo);
 
 		return effectInfo;
 	}
