@@ -8,6 +8,7 @@ private {
 	import
 		xf.nucleus.kdef.model.IKDefRegistry,
 		xf.nucleus.kdef.KDefGraphBuilder,
+		xf.nucleus.kdef.model.KDefInvalidation,
 		xf.nucleus.Param,
 		xf.nucleus.Function,
 		xf.nucleus.Code,
@@ -52,7 +53,7 @@ private {
 
 
 
-final class PostProcessor {
+final class PostProcessor : IKDefInvalidationObserver {
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
 		_backend = backend;
 		_kdefRegistry = kdefRegistry;
@@ -84,6 +85,8 @@ final class PostProcessor {
 			indices
 		);
 
+		kdefRegistry.registerObserver(this);
+
 		/+final vdata = efInst.getVaryingParamData("VertexProgram.input.position");
 		vdata.buffer = &vb;
 		vdata.attrib = &va;+/
@@ -114,6 +117,18 @@ final class PostProcessor {
 	void setKernel(cstring kernelName) {
 		if (_kernelName != kernelName) {
 			_kernelName = kernelName.dup;
+			_settingsDirty = true;
+		}
+	}
+
+
+	// implements IKDefInvalidationObserver
+	void onKDefInvalidated(KDefInvalidationInfo info) {
+		KernelImpl kernel;
+		if (	info.anyConverters
+			||	!_kdefRegistry.getKernel(_kernelName, &kernel)
+			||	!kernel.isValid
+		) {
 			_settingsDirty = true;
 		}
 	}
@@ -157,8 +172,25 @@ final class PostProcessor {
 
 
 	private void reconfigure() {
+		if (_renderStageList) {
+			for (auto rs = _renderStageList; rs !is null; rs = rs.next) {
+				foreach (ref tex; rs.outTextures) {
+					if (tex.isValid) {
+						tex.dispose();
+					}
+				}
+
+				if (rs.fb.isValid) {
+					rs.fb.dispose();
+				}
+			}
+
+			_allocator.clear();
+			_renderStageList = null;
+		}
+
 		checkBlitSignature();
-		
+
 		scope (success) _settingsDirty = false;
 		scope stack = new StackBuffer;
 

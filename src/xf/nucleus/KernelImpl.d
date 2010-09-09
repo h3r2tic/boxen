@@ -82,12 +82,12 @@ struct KernelImpl {
 			case KernelImpl.Type.Graph: {
 				if (graph !is null)
 				graph.dependentOnThis().valid = false;
-			}
+			} break;
 			
 			case KernelImpl.Type.Kernel: {
 				if (kernel !is null)
 				kernel.dependentOnThis().valid = false;
-			}
+			} break;
 			
 			default: assert (false);
 		}

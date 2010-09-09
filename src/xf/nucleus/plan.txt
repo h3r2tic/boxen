@@ -242,6 +242,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 		+ base renderer caches on indices instead of names -> no dupping will be needed then
 		+ fix the lpp renderer being funny when light kernels are modified - materials change o_O
 			* fixed by invalidating all renderables
+		+ fixed the post-processor's reload of kdef
 		+ upon kdef reload, keep the indices of materials, surfaces and kernels the same unless they were invalidated
 			+ kernels
 			* the rest doesn't seem to be needed, can invalidate them all instead
