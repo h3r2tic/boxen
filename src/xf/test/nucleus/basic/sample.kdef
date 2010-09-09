@@ -233,7 +233,7 @@ TestMaterial = graph Material {
 	};
 	nb = node {
 		type = kernel;
-		kernel = BlurImage;
+		kernel = BlurImage4;
 	};
 	na = node {
 		type = kernel;
@@ -297,7 +297,7 @@ SpecularOnly = kernel Material {
 };
 
 
-BlurImage = kernel(
+BlurImage4 = kernel(
 	in uv <type float2>,
 	in offset <type float2>,
 	in img <type Image>,
@@ -308,68 +308,54 @@ BlurImage = kernel(
 
 	float4 res = 0;
 
-	res += img.sample(uv - offset) * coeff[0];
-	res += img.sample(uv - offset * (2.0 / 3)) * coeff[1];
-	res += img.sample(uv - offset * (1.0 / 3)) * coeff[2];
-	res += img.sample(uv) * coeff[3];
-	res += img.sample(uv + offset * (1.0 / 3)) * coeff[4];
-	res += img.sample(uv + offset * (2.0 / 3)) * coeff[5];
-	res += img.sample(uv + offset) * coeff[6];
+	res += img.sample(uv - offset * -11.3284848158) * 0.00344955654999;
+	res += img.sample(uv - offset * -9.35647839838) * 0.0124830535863;
+	res += img.sample(uv - offset * -7.38548701365) * 0.0353508285286;
+	res += img.sample(uv - offset * -5.41533177608) * 0.0783525525245;
+	res += img.sample(uv - offset * -3.44581018937) * 0.135932707143;
+	res += img.sample(uv - offset * -1.47670118166) * 0.184604482231;
+	res += img.sample(uv - offset * 0.49222872994) * 0.196256946284;
+	res += img.sample(uv - offset * 2.4612184935) * 0.163333696051;
+	res += img.sample(uv - offset * 4.43050522546) * 0.106410433636;
+	res += img.sample(uv - offset * 6.4003170319) * 0.0542658480096;
+	res += img.sample(uv - offset * 8.37086640381) * 0.0216603999566;
+	res += img.sample(uv - offset * 10.3423445803) * 0.00676636855144;
+	res += img.sample(uv - offset * 12.0) * 0.00113312694789;
 
-	sample = res;
-};
-
-
-BlurImageOffHalf = kernel(
-	in uv <type float2>,
-	in offset <type float2>,
-	in img <type Image>,
-	out sample <type float4 + use color>
-) {
-    // 1D Gaussian 7 taps coefficients
-    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
-
-	float4 res = 0;
-
-	res += img.sample(uv - offset * (3.15 / 3)) * coeff[0];
+/+	res += img.sample(uv - offset * (3.15 / 3)) * coeff[0];
 	res += img.sample(uv - offset * (2.15 / 3)) * coeff[1];
 	res += img.sample(uv - offset * (1.15 / 3)) * coeff[2];
 	res += img.sample(uv - offset * (0.15 / 3)) * coeff[3] * 0.5;
 	res += img.sample(uv + offset * (0.15 / 3)) * coeff[3] * 0.5;
 	res += img.sample(uv + offset * (1.15 / 3)) * coeff[4];
 	res += img.sample(uv + offset * (2.15 / 3)) * coeff[5];
-	res += img.sample(uv + offset * (3.15 / 3)) * coeff[6];
+	res += img.sample(uv + offset * (3.15 / 3)) * coeff[6];+/
 
 	sample = res;
 };
 
 
-BlurImage2 = kernel(
+BlurImage4ds = kernel(
 	in uv <type float2>,
 	in offset <type float2>,
 	in img <type Image>,
 	out sample <type float4 + use color>
 ) {
-	uv += offset / 24;
-
-    // 1D Gaussian 7 taps coefficients
-    const float coeff[7] = {0.006f, 0.061f, 0.242f, 0.382f, 0.242f, 0.061f, 0.006f};     
-
 	float4 res = 0;
-	res += img.sample(uv - offset * (3.2 / 3)) * coeff[0] * 0.5;
-	res += img.sample(uv - offset * (2.7 / 3)) * coeff[0] * 0.5;
-	res += img.sample(uv - offset * (2.2 / 3)) * coeff[1] * 0.5;
-	res += img.sample(uv - offset * (1.7 / 3)) * coeff[1] * 0.5;
-	res += img.sample(uv - offset * (1.2 / 3)) * coeff[2] * 0.5;
-	res += img.sample(uv - offset * (0.7 / 3)) * coeff[2] * 0.5;
-	res += img.sample(uv - offset * (0.2 / 3)) * coeff[3] * 0.5;
-	res += img.sample(uv + offset * (0.2 / 3)) * coeff[3] * 0.5;
-	res += img.sample(uv + offset * (0.7 / 3)) * coeff[4] * 0.5;
-	res += img.sample(uv + offset * (1.2 / 3)) * coeff[4] * 0.5;
-	res += img.sample(uv + offset * (1.7 / 3)) * coeff[5] * 0.5;
-	res += img.sample(uv + offset * (2.2 / 3)) * coeff[5] * 0.5;
-	res += img.sample(uv + offset * (2.7 / 3)) * coeff[6] * 0.5;
-	res += img.sample(uv + offset * (3.2 / 3)) * coeff[6] * 0.5;
+
+	res += img.sample(uv - offset * -10.8353792692) * 0.004872923193;
+	res += img.sample(uv - offset * -8.86364193747) * 0.0165852433972;
+	res += img.sample(uv - offset * -6.89287735618) * 0.0441763364198;
+	res += img.sample(uv - offset * -4.92290033672) * 0.0920966949571;
+	res += img.sample(uv - offset * -2.9535032178) * 0.150288031831;
+	res += img.sample(uv - offset * -0.984461209649) * 0.191980770202;
+	res += img.sample(uv - offset * 0.984461209649) * 0.191980770202;
+	res += img.sample(uv - offset * 2.9535032178) * 0.150288031831;
+	res += img.sample(uv - offset * 4.92290033672) * 0.0920966949571;
+	res += img.sample(uv - offset * 6.89287735618) * 0.0441763364198;
+	res += img.sample(uv - offset * 8.86364193747) * 0.0165852433972;
+	res += img.sample(uv - offset * 10.8353792692) * 0.004872923193;
+
 	sample = res;
 };
 
@@ -390,8 +376,8 @@ Blur = graph {
 			out blurOff1 <type float2>,
 			out blurOff2 <type float2>
 		) {
-			blurOff1 = float2(3.0 / imgSize.x, 0.0);
-			blurOff2 = float2(0.0, 3.0 / imgSize.y);
+			blurOff1 = float2(1.0 / imgSize.x, 0.0);
+			blurOff2 = float2(0.0, 1.0 / imgSize.y);
 		};
 	};
 
@@ -402,7 +388,7 @@ Blur = graph {
 
 	n1 = node {
 		type = kernel;
-		kernel = BlurImageOffHalf;
+		kernel = BlurImage4;
 	};
 
 	nb = node {
@@ -412,7 +398,7 @@ Blur = graph {
 
 	n11 = node {
 		type = kernel;
-		kernel = BlurImageOffHalf;
+		kernel = BlurImage4;
 	};
 
 	nb2 = node {
@@ -461,8 +447,8 @@ BlurAndDownsample = graph {
 			out blurOff1 <type float2>,
 			out blurOff2 <type float2>
 		) {
-			blurOff1 = float2(12.0 / imgSize.x, 0.0);
-			blurOff2 = float2(0.0, 12.0 / imgSize.y);
+			blurOff1 = float2(1.0 / imgSize.x, 0.0);
+			blurOff2 = float2(0.0, 1.0 / imgSize.y);
 		};
 	};
 
@@ -473,7 +459,7 @@ BlurAndDownsample = graph {
 
 	n1 = node {
 		type = kernel;
-		kernel = BlurImage2;
+		kernel = BlurImage4ds;
 	};
 
 	nb = node {
@@ -484,7 +470,7 @@ BlurAndDownsample = graph {
 
 	n11 = node {
 		type = kernel;
-		kernel = BlurImage2;
+		kernel = BlurImage4ds;
 	};
 
 	nb2 = node {
@@ -719,10 +705,13 @@ AddGlare = kernel(
 ) {
 //	output = blurredColor;
 
-	float baseLuma = dot(float3(0.2126, 0.7152, 0.0722), baseColor.xyz).x;
-	float blurredLuma = dot(float3(0.2126, 0.7152, 0.0722), blurredColor.xyz).x;
-	float blurredLuma3 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor3.xyz).x;
-	float blurredLuma4 = dot(float3(0.2126, 0.7152, 0.0722), blurredColor4.xyz).x;
+	const float3 grayWt = float3(0.2126, 0.7152, 0.0722);
+
+	float baseLuma = dot(grayWt, baseColor.xyz).x;
+	float blurredLuma = dot(grayWt, blurredColor.xyz).x;
+	float blurredLuma2 = dot(grayWt, blurredColor2.xyz).x;
+	float blurredLuma3 = dot(grayWt, blurredColor3.xyz).x;
+	float blurredLuma4 = dot(grayWt, blurredColor4.xyz).x;
 
 	// Spatial acuity and color sunsitivity loss
 	float acuity = smoothstep(-0.005, 0.018, max(blurredLuma, max(blurredLuma4, blurredLuma3)));
@@ -733,13 +722,15 @@ AddGlare = kernel(
 		//float luma = max(0.0001, blurredLuma);
 		//float targetLuma = 0.045*pow(luma, 1.7);
 		//output += max(float4(0), blurredColor*targetLuma/luma);
-		output += blurredColor * 0.03;
-		output += blurredColor2 * 0.02;
-		output += blurredColor3 * 0.01;
+		output += blurredColor * pow(blurredLuma, 0.3) * 0.08;
+		output += blurredColor2 * pow(blurredLuma2, 0.3) * 0.08;
+		output += blurredColor3 * pow(blurredLuma3, 0.3) * 0.08;
 	}
 	{
 		float luma = max(0.0001, blurredLuma4);
 		float targetLuma = min(0.5, 0.2*pow(luma, 1.4));
 		output += lerp(max(float4(0), blurredColor4*targetLuma/luma), float4(targetLuma), 0.8);
 	}
+
+//	output = blurredColor;
 };

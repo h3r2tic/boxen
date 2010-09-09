@@ -42,7 +42,7 @@ private {
 
 //version = LightTest;
 version = Sponza;
-// version = FixedTest
+//version = FixedTest
 
 
 class TestApp : GfxApp {
@@ -178,11 +178,11 @@ class TestApp : GfxApp {
 
 			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 1, 0]));
 		} else {
-			/+cstring model = `mesh/soldier.hsf`;
-			float scale = 1.0f;+/
-			cstring model = `mesh/masha.hsf`;
-			//cstring model = `mesh/foo.hsf`;
-			float scale = 0.02f;
+			cstring model = `mesh/soldier.hsf`;
+			float scale = 1.0f;
+			//cstring model = `mesh/masha.hsf`;
+			/+cstring model = `mesh/foo.hsf`;
+			float scale = 0.02f;+/
 
 			SceneAssetCompilationOptions opts;
 			opts.scale = scale;
