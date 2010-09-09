@@ -41,8 +41,8 @@ private {
 }
 
 
-//version = LightTest;
-version = Sponza;
+version = LightTest;
+//version = Sponza;
 //version = FixedTest
 
 
@@ -96,12 +96,14 @@ class TestApp : GfxApp {
 
 		version (FixedTest) {
 			const numLights = 50;
+			alias PointLight LightType;
 		} else {
-			const numLights = 50;
+			const numLights = 3;
+			alias SpotLight_VSM LightType;
 		}
 		
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new PointLight)[$-1]);
+			createLight((lights ~= new LightType)[$-1]);
 			version (Sponza) {
 				lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 10.0, 0);
 				lightAngles ~= Kiss.instance.fraction() * 360.0f;

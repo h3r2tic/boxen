@@ -25,9 +25,9 @@ AddGlare = kernel(
 		//float luma = max(0.0001, blurredLuma);
 		//float targetLuma = 0.045*pow(luma, 1.7);
 		//output += max(float4(0), blurredColor*targetLuma/luma);
-		output += blurredColor * pow(blurredLuma, 0.3) * 0.08;
-		output += blurredColor2 * pow(blurredLuma2, 0.3) * 0.08;
-		output += blurredColor3 * pow(blurredLuma3, 0.3) * 0.08;
+		output += blurredColor * pow(blurredLuma, 0.3) * 0.07;
+		output += blurredColor2 * pow(blurredLuma2, 0.3) * 0.07;
+		output += blurredColor3 * pow(blurredLuma3, 0.3) * 0.07;
 	}
 	{
 		float luma = max(0.0001, blurredLuma4);
