@@ -32,6 +32,7 @@ public {
 
 	RendererBackend	rendererBackend;
 	Renderer		vsmRenderer;
+	Renderer		smRenderer;
 	IKDefRegistry	kdefRegistry;
 
 	Material[]		allMaterials;
@@ -93,6 +94,9 @@ void initializeNucleus(RendererBackend bk, cstring[] kdefPaths ...) {
 
 	vsmRenderer = createRenderer("Depth");
 	vsmRenderer.setParam("outKernel", Variant("VarianceDepthRendererOut"));
+
+	smRenderer = createRenderer("Depth");
+	smRenderer.setParam("outKernel", Variant("DepthRendererOut"));
 }
 
 

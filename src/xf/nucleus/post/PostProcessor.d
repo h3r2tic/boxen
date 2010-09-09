@@ -14,6 +14,7 @@ private {
 		xf.nucleus.Code,
 		xf.nucleus.KernelCompiler,
 		xf.nucleus.KernelImpl,
+		xf.nucleus.RendererMaterialData,
 		xf.nucleus.graph.Graph,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.KernelGraphOps,
@@ -104,6 +105,7 @@ final class PostProcessor : IKDefInvalidationObserver {
 		vec2[]			outTextureSizes;
 		StageInputSrc[]	inputs;
 		Framebuffer		fb;
+		MaterialData	matData;
 	}
 
 
@@ -1085,7 +1087,7 @@ final class PostProcessor : IKDefInvalidationObserver {
 		rs.effect = stageEffect;
 		rs.efInst = _backend.instantiateEffect(stageEffect);
 
-		findEffectInfo(graph, &rs.efInfo);
+		findEffectInfo(_backend, graph, &rs.efInfo);
 		allocateDefaultUniformStorage(rs.efInst);
 		setEffectInstanceUniformDefaults(&rs.efInfo, rs.efInst);
 
@@ -1099,7 +1101,21 @@ final class PostProcessor : IKDefInvalidationObserver {
 		rs.outTextureSizes = _mem.allocArray!(vec2)(outNode.params.length);
 		rs.inputs = _mem.allocArray!(StageInputSrc)(numInputs);
 
+		//extractRenderStageMatData(graph, rs);
+
 		return rs;
+	}
+
+
+	private void extractRenderStageMatData(KernelGraph kg, RenderStage* rs) {
+		scope stack = new StackBuffer;
+		final params = ParamList(&stack.allocRaw);
+
+		foreach (nid, n; kg.iterNodes(KernelGraph.NodeType.Data)) {
+			params.copyFrom(n.data.params);
+		}
+
+		createMaterialData(_backend, params, &rs.matData);
 	}
 
 

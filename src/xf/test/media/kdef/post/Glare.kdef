@@ -1,0 +1,39 @@
+AddGlare = kernel(
+	in baseColor <type float4 + use color>,
+	in blurredColor <type float4 + use color>,
+	in blurredColor2 <type float4 + use color>,
+	in blurredColor3 <type float4 + use color>,
+	in blurredColor4 <type float4 + use color>,
+	out output <type float4 + use color>
+) {
+//	output = blurredColor;
+
+	const float3 grayWt = float3(0.2126, 0.7152, 0.0722);
+
+	float baseLuma = dot(grayWt, baseColor.xyz).x;
+	float blurredLuma = dot(grayWt, blurredColor.xyz).x;
+	float blurredLuma2 = dot(grayWt, blurredColor2.xyz).x;
+	float blurredLuma3 = dot(grayWt, blurredColor3.xyz).x;
+	float blurredLuma4 = dot(grayWt, blurredColor4.xyz).x;
+
+	// Spatial acuity and color sunsitivity loss
+	float acuity = smoothstep(-0.005, 0.018, max(blurredLuma, max(blurredLuma4, blurredLuma3)));
+	output = min(float4(1.0), lerp(blurredColor, baseColor, acuity));
+	output = lerp(dot(float3(0.2126, 0.7152, 0.0722), output).xxxx, output, acuity);
+
+	{
+		//float luma = max(0.0001, blurredLuma);
+		//float targetLuma = 0.045*pow(luma, 1.7);
+		//output += max(float4(0), blurredColor*targetLuma/luma);
+		output += blurredColor * pow(blurredLuma, 0.3) * 0.08;
+		output += blurredColor2 * pow(blurredLuma2, 0.3) * 0.08;
+		output += blurredColor3 * pow(blurredLuma3, 0.3) * 0.08;
+	}
+	{
+		float luma = max(0.0001, blurredLuma4);
+		float targetLuma = min(0.5, 0.2*pow(luma, 1.4));
+		output += lerp(max(float4(0), blurredColor4*targetLuma/luma), float4(targetLuma), 0.8);
+	}
+
+//	output = blurredColor;
+};

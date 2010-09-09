@@ -15,7 +15,8 @@ private {
 
 	import xf.nucleus.Nucleus;
 	import xf.nucleus.Scene;
-	import xf.nucleus.light.TestLight;
+	import xf.nucleus.light.Point;
+	import xf.nucleus.light.Spot;
 
 	import xf.vsd.VSD;
 
@@ -58,7 +59,7 @@ class TestApp : GfxApp {
 	PostProcessor	post;
 
 
-	TestLight[]		lights;
+	Light[]			lights;
 	vec3[]			lightOffsets;
 	float[]			lightDists;
 	float[]			lightSpeeds;
@@ -100,7 +101,7 @@ class TestApp : GfxApp {
 		}
 		
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestLight)[$-1]);
+			createLight((lights ~= new PointLight)[$-1]);
 			version (Sponza) {
 				lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 10.0, 0);
 				lightAngles ~= Kiss.instance.fraction() * 360.0f;
@@ -123,7 +124,7 @@ class TestApp : GfxApp {
 			version (FixedTest) {
 				lightIllums ~= rgba * (1000.f / numLights);
 			} else {
-				lightIllums ~= rgba * (1000.f / numLights);
+				lightIllums ~= rgba;
 			}
 		}
 
@@ -180,8 +181,8 @@ class TestApp : GfxApp {
 		} else {
 			cstring model = `mesh/soldier.hsf`;
 			float scale = 1.0f;
-			//cstring model = `mesh/masha.hsf`;
-			/+cstring model = `mesh/foo.hsf`;
+			/+cstring model = `mesh/masha.hsf`;
+			//cstring model = `mesh/foo.hsf`;
 			float scale = 0.02f;+/
 
 			SceneAssetCompilationOptions opts;
@@ -321,7 +322,7 @@ class TestApp : GfxApp {
 		foreach (li, l; lights) {
 			l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
 			l.lumIntens = lightIllums[li] * lightScale;
-			l.radius = lightRad;
+			//l.radius = lightRad;
 		}
 
 		/+lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, 0) + vec3(0, 0, -2) * lightDist);
@@ -382,7 +383,7 @@ class TestApp : GfxApp {
 
 		buildRenderList(&vsd, viewSettings, rlist);
 
-		static bool wantPost = false; {
+		static bool wantPost = true; {
 			static bool prevKeyDown = false;
 			bool keyDown = keyboard.keyDown(KeySym.space);
 			if (keyDown && !prevKeyDown) {

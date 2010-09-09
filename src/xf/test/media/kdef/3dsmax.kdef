@@ -1,0 +1,103 @@
+MaxDefaultMaterial = graph Material {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D + use color>,
+			maskTex <type sampler2D + use color>,
+			normalTex <type sampler2D + use color>,
+			albedoTexTile <type float2>,
+			specularTint <type float4 + use color> = 1 1 1 1,
+			specularTex <type sampler2D + use color>,
+			specularTexTile <type float2>,
+			maskTexTile <type float2>,
+			normalTexTile <type float2>,
+		);
+	};
+	ns_albedo = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	ns_specular = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	ns_mask = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	ns_normal = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Material(
+			albedoTint <type float4 + use color>,
+			albedoImg <type Image>,
+			specularTint <type float4 + use color>,
+			specularImg <type Image>,
+			maskImg <type Image>,
+			normalImg <type Image>,
+			albedoTexTile <type float2>,
+			specularTexTile <type float2>,
+			maskTexTile <type float2>,
+			normalTexTile <type float2>,
+		) {
+			if (maskImg.sample(texCoord * maskTexTile).x <= 0.01) discard;
+			out_albedo = albedoTint * albedoImg.sample(texCoord * albedoTexTile);
+			out_specular = specularTint * specularImg.sample(texCoord * specularTexTile);
+
+			float3 tnorm = normalImg.sample(texCoord * normalTexTile).xyz * 2.0 - 1.0;
+			out_normal = tnorm.z * normal + tnorm.x * tangent - tnorm.y * bitangent;
+			out_normal = normalize(out_normal);
+
+//			out_albedo = 0.5 * tangent.xyzz + 0.5;
+//			out_albedo = 0.5 * out_normal.xyzz + 0.5;
+//			out_albedo = float4(texCoord.xy, 0, 1);
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n1.albedoTexTile n2.albedoTexTile;
+	connect n1.specularTexTile n2.specularTexTile;
+	connect n1.maskTexTile n2.maskTexTile;
+	connect n1.normalTexTile n2.normalTexTile;
+
+	// ----
+
+	connect n1.specularTex ns_specular.texture;
+	connect ns_specular.sample n2.specularImg;
+
+	connect n1.albedoTex ns_albedo.texture;
+	connect ns_albedo.sample n2.albedoImg;
+
+	connect n1.maskTex ns_mask.texture;
+	connect ns_mask.sample n2.maskImg;
+
+	connect n1.normalTex ns_normal.texture;
+	connect ns_normal.sample n2.normalImg;
+
+	// ----
+
+	noauto ns_albedo.uv;
+	noauto ns_specular.uv;
+	noauto ns_mask.uv;
+	noauto ns_normal.uv;
+
+	// ----
+
+	connect n0 n2;
+	connect n1.albedoTint n2.albedoTint;
+	connect n1.specularTint n2.specularTint;
+
+	connect n2.out_albedo n3.out_albedo;
+	connect n2.out_specular n3.out_specular;
+
+	connect n2 n3;
+};

@@ -801,7 +801,7 @@ float3 eyePosition <
 
 		// ----
 
-		findEffectInfo(kg, &effectInfo);
+		findEffectInfo(_backend, kg, &effectInfo);
 
 		//assureNotCyclic(kg);
 
