@@ -219,6 +219,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ z-clamp for light volumes
 
 +	shadows
+	+ shadow mapping
 	+ variance shadow mapping
 	+ blurring the moment map
 
@@ -291,6 +292,7 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- post-processing pipeline editing and preview
 		* the preview is easy here, just capture the intermediate textures
 		  via inspection in the PostProcessor
+		* the more tricky part is displaying it in a meaningful way; downsampling the thing -- meh
 	- uh, animation of some sorts so it looks real-time :P
 
 -	recursive rendering
