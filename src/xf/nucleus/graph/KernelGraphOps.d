@@ -1100,7 +1100,7 @@ private void doAutoFlow(
 	foreach (fromId; graph.flow.iterIncomingConnections(toId)) {
 		foreach (fl; graph.flow.iterDataFlow(fromId, toId)) {
 			final p = plist.get(fl.to);
-			assert (p !is null);
+			assert (p !is null, "auto flow: fl.to missing: " ~ fl.to);
 			portHasDataFlow.set(plist.indexOf(p));
 		}
 	}

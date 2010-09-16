@@ -659,7 +659,7 @@ class GLWindow : GLContext {
 		}
 
 		
-		{
+		/+{
 			auto tmpRc = cast(typeof(_hrc))xf.gfx.api.gl3.platform.Win32.wglCreateContext(_hdc);
 			if (tmpRc is null) {
 				throw new Exception("wglCreateContext failed");
@@ -698,7 +698,7 @@ class GLWindow : GLContext {
 					throw new Exception("wglCreateContextAttribsARB failed. You probably don't have OpenGL 3.x support");
 				}
 			}
-		}
+		}+/
 		if (_hrc is null) {
 			_hrc = cast(typeof(_hrc))xf.gfx.api.gl3.platform.Win32.wglCreateContext(_hdc);
 		}

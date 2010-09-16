@@ -29,4 +29,5 @@ struct IndexData {
 	uword			minIndex	= 0;
 	uword			maxIndex	= uword.max;
 	MeshTopology	topology	= MeshTopology.Triangles;	// ditto
+	bool			useIndexBuffer	= true;
 }

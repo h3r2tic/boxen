@@ -5,8 +5,9 @@ AddNoise = kernel(
 	out output <type float4 + use color>
 ) {
 	//output = tex2D(noiseSampler, tex2D(noiseSampler, uv * 10).xy);
+	uv += time.second;
 	float3 noise = tex2D(noiseSampler, uv * float2(13.3321, 17.9234) + uv.yx * float2(7.2341, 3.2435));
 	output = baseColor;
-	output.xyz += (noise-0.5) / 512;
+	output.xyz += (noise-0.5) / 400;
 };
 

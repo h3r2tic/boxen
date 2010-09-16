@@ -13,6 +13,7 @@ struct GraphNodeId {
 	bool valid() {
 		return id != ushort.max;
 	}
+	alias valid isValid;
 }
 
 

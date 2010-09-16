@@ -33,7 +33,8 @@ private {
 		xf.nucleus.graph.KernelGraphOps,
 		xf.nucleus.graph.GraphMisc,
 		xf.nucleus.graph.Simplify,
-		xf.nucleus.util.EffectInfo;
+		xf.nucleus.util.EffectInfo,
+		xf.nucleus.StdUniforms;
 
 	import xf.vsd.VSD;
 		
@@ -92,6 +93,8 @@ class LightPrePassRenderer : Renderer {
 		maxSurfaces = 256,
 		maxLights = 16*1024		// arbitrary
 	}
+
+	mixin MStdUniforms;
 
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
@@ -648,24 +651,9 @@ class LightPrePassRenderer : Renderer {
 			cgSetup,
 			&ctx,
 			_backend,
+			_kdefRegistry,
 			(CodeSink fmt) {
-				fmt(
-`
-float3x4 modelToWorld;
-float4x4 worldToView <
-	string scope = "effect";
->;
-float4x4 viewToClip <
-	string scope = "effect";
->;
-float3 eyePosition <
-	string scope = "effect";
->;
-float farPlaneDistance <
-	string scope = "effect";
->;
-`
-				);
+				fmt(stdUniformsCg);
 			}
 		);
 
@@ -676,32 +664,7 @@ float farPlaneDistance <
 		// HACK
 		allocateDefaultUniformStorage(effect);
 
-		//assureNotCyclic(kg);
-
-		void** uniforms = effect.getUniformPtrsDataPtr();
-
-		void** getUniformPtrPtr(cstring name) {
-			if (uniforms) {
-				final idx = effect.effectUniformParams.getUniformIndex(name);
-				if (idx != -1) {
-					return uniforms + idx;
-				}
-			}
-			return null;
-		}
-		
-		void setUniform(cstring name, void* ptr) {
-			if (auto upp = getUniformPtrPtr(name)) {
-				*upp = ptr;
-			}
-		}
-
-		if (uniforms) {
-			setUniform("worldToView", &worldToView);
-			setUniform("viewToClip", &viewToClip);
-			setUniform("eyePosition", &eyePosition);
-			setUniform("farPlaneDistance", &farPlaneDistance);
-		}
+		bindStdUniforms(effect);
 
 		// ----
 
@@ -853,31 +816,7 @@ float farPlaneDistance <
 
 		// ----
 
-		fmt(
-`
-float3x4 modelToWorld;
-float4x4 worldToView <
-	string scope = "effect";
->;
-float4x4 worldToClip <
-	string scope = "effect";
->;
-float4x4 viewToWorld <
-	string scope = "effect";
->;
-float4x4 viewToClip <
-	string scope = "effect";
->;
-float4x4 clipToView <
-	string scope = "effect";
->;
-float3 eyePosition <
-	string scope = "effect";
->;
-float farPlaneDistance <
-	string scope = "effect";
->;
-`);
+		fmt(stdUniformsCg);
 
 		// ----
 
@@ -890,7 +829,8 @@ float farPlaneDistance <
 			stack,
 			kg,
 			cgSetup,
-			&ctx
+			&ctx,
+			_kdefRegistry
 		);
 
 		fmt.flush();
@@ -914,35 +854,7 @@ float farPlaneDistance <
 		// HACK
 		allocateDefaultUniformStorage(effect);
 
-		//assureNotCyclic(kg);
-
-		void** uniforms = effect.getUniformPtrsDataPtr();
-
-		void** getUniformPtrPtr(cstring name) {
-			if (uniforms) {
-				final idx = effect.effectUniformParams.getUniformIndex(name);
-				if (idx != -1) {
-					return uniforms + idx;
-				}
-			}
-			return null;
-		}
-		
-		void setUniform(cstring name, void* ptr) {
-			if (auto upp = getUniformPtrPtr(name)) {
-				*upp = ptr;
-			}
-		}
-
-		if (uniforms) {
-			setUniform("worldToView", &worldToView);
-			setUniform("viewToWorld", &viewToWorld);
-			setUniform("worldToClip", &worldToClip);
-			setUniform("viewToClip", &viewToClip);
-			setUniform("clipToView", &clipToView);
-			setUniform("eyePosition", &eyePosition);
-			setUniform("farPlaneDistance", &farPlaneDistance);
-		}
+		bindStdUniforms(effect);
 
 		// ----
 
@@ -1371,33 +1283,9 @@ float farPlaneDistance <
 			cgSetup,
 			&ctx,
 			_backend,
+			_kdefRegistry,
 			(CodeSink fmt) {
-				fmt(
-`
-float3x4 modelToWorld;
-float4x4 worldToView <
-	string scope = "effect";
->;
-float4x4 worldToClip <
-	string scope = "effect";
->;
-float4x4 viewToWorld <
-	string scope = "effect";
->;
-float4x4 viewToClip <
-	string scope = "effect";
->;
-float4x4 clipToView <
-	string scope = "effect";
->;
-float3 eyePosition <
-	string scope = "effect";
->;
-float farPlaneDistance <
-	string scope = "effect";
->;
-`
-				);
+				fmt(stdUniformsCg);
 			}
 		);
 
@@ -1408,35 +1296,7 @@ float farPlaneDistance <
 		// HACK
 		allocateDefaultUniformStorage(effect);
 
-		//assureNotCyclic(kg);
-
-		void** uniforms = effect.getUniformPtrsDataPtr();
-
-		void** getUniformPtrPtr(cstring name) {
-			if (uniforms) {
-				final idx = effect.effectUniformParams.getUniformIndex(name);
-				if (idx != -1) {
-					return uniforms + idx;
-				}
-			}
-			return null;
-		}
-		
-		void setUniform(cstring name, void* ptr) {
-			if (auto upp = getUniformPtrPtr(name)) {
-				*upp = ptr;
-			}
-		}
-
-		if (uniforms) {
-			setUniform("worldToView", &worldToView);
-			setUniform("worldToClip", &worldToClip);
-			setUniform("viewToWorld", &viewToWorld);
-			setUniform("viewToClip", &viewToClip);
-			setUniform("clipToView", &clipToView);
-			setUniform("eyePosition", &eyePosition);
-			setUniform("farPlaneDistance", &farPlaneDistance);
-		}
+		bindStdUniforms(effect);
 
 		// ----
 
@@ -1547,6 +1407,8 @@ float farPlaneDistance <
 				}
 
 				// ----
+
+				_structureRenderableIndexData[rid] = null;
 
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
@@ -1912,14 +1774,7 @@ float farPlaneDistance <
 			l.prepareRenderData(vsd);
 		}
 
-		this.viewToClip = vs.computeProjectionMatrix();
-		this.clipToView = this.viewToClip.inverse();
-		this.worldToView = vs.computeViewMatrix();
-		this.worldToClip = this.viewToClip * this.worldToView;
-		this.viewToWorld = this.worldToView.inverse();
-		this.eyePosition = vec3.from(vs.eyeCS.origin);
-		this.farPlaneDistance = vs.farPlaneDistance;
-		this.nearPlaneDistance = vs.nearPlaneDistance;
+		updateStdUniforms(vs);
 
 		if (_fbSize != _backend.state.viewport.size) {
 			_fbSize = _backend.state.viewport.size;
@@ -2118,14 +1973,5 @@ float farPlaneDistance <
 		Texture		_diffuseIllumTex;
 		Texture		_specularIllumTex;
 		Framebuffer	_lightFB;
-
-		mat4	worldToView;
-		mat4	worldToClip;
-		mat4	viewToWorld;
-		mat4	viewToClip;
-		mat4	clipToView;
-		vec3	eyePosition;
-		float	farPlaneDistance;
-		float	nearPlaneDistance;
 	}
 }

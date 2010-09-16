@@ -6,17 +6,20 @@ private {
 
 	import
 		xf.nucleus.Param,
+		xf.nucleus.KernelImpl,
 		xf.nucleus.codegen.Defs,
 		xf.nucleus.codegen.CgDefs,
 		xf.nucleus.codegen.Rename,
 		xf.nucleus.codegen.Deps,
 		xf.nucleus.codegen.Body,
 		xf.nucleus.codegen.Misc,
+		xf.nucleus.kernel.KernelDef,
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.GraphOps,
 		xf.nucleus.graph.GraphMisc,
 		xf.nucleus.graph.Simplify,
-		xf.nucleus.graph.KernelGraphOps;
+		xf.nucleus.graph.KernelGraphOps,
+		xf.nucleus.kdef.model.IKDefRegistry;
 
 	import
 		xf.mem.StackBuffer;
@@ -30,7 +33,8 @@ void codegen(
 	StackBufferUnsafe stack,
 	KernelGraph graph,
 	CodegenSetup setup,
-	CodegenContext* ctx
+	CodegenContext* ctx,
+	IKDefRegistry registry
 ) {
 	final sink = ctx.sink;
 	
@@ -42,22 +46,29 @@ void codegen(
 	GraphNodeId	vinputNodeId = setup.inputNode;
 	GraphNodeId	foutputNodeId = setup.outputNode;
 
+	bool wantGeometryShader = false;
+
 	foreach (nid, node; graph.iterNodes) {
-		if (
-			NT.Kernel == node.type
-		&&	"Rasterize" == node.kernel.kernel.func.name
-		) {
+		if (NT.Kernel == node.type && "Rasterize" == node.kernel.kernel.func.name) {
 			rasterNode = nid;
-		}
+		}/+ else if (
+				NT.Func == node.type
+			&&	node.func.func.kernelDef
+			&&	registry.isSubKernelOf(
+					KernelImpl(cast(KernelDef)node.func.func.kernelDef),
+					"GeometryShader"
+				)
+		) {
+			wantGeometryShader = true;
+			rasterNode = nid;
+		}+/
 	}
 
-	if (rasterNode.valid && setup.gsNode.valid) {
+	if (rasterNode.valid && setup.gsNode.valid && setup.gsNode != rasterNode) {
 		error("Can only have a Rasterize xor a geometry shader node, not both.");
 	} else if (!rasterNode.valid && !setup.gsNode.valid) {
 		error("'Rasterize' or geometry shader node not found, can't codegen :(");
 	}
-
-	bool wantGeometryShader = false;
 
 	if (setup.gsNode.valid) {
 		wantGeometryShader = true;
@@ -632,8 +643,18 @@ void codegenGeometryProgram(
 	cstring[] node2compName
 ) {
 	auto sink = ctx.sink;
+
+	cstring inPrim = `POINT`;
+	cstring outPrim = `TRIANGLE`;
+
+	final gsFuncNode = graph.getNode(gsNode).func();
+
+	foreach (t; gsFuncNode.func.tags) {
+		t.startsWith(`gsin.`, &inPrim);
+		t.startsWith(`gsout.`, &outPrim);
+	}
 	
-	sink("POINT TRIANGLE_OUT ");		// tmp
+	sink.format("{} {}_OUT ", inPrim, outPrim);
 	sink.formatln("void {} (", domainFuncName);
 	
 	foreach (i, par; inputs) {
@@ -655,7 +676,6 @@ void codegenGeometryProgram(
 	sink(") {").newline();
 	sink("int vert__I;").newline();
 
-	final gsFuncNode = graph.getNode(gsNode).func();
 	final gsFuncParams = gsFuncNode.params;
 	
 	foreach (i, par; inputs) {
@@ -714,6 +734,6 @@ void codegenGeometryProgram(
 		sink(text);
 	});
 
-	sink("#undef emitVertex").newline();
+	sink.newline()("#undef emitVertex").newline();
 	sink("}").newline();
 }

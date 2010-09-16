@@ -75,7 +75,8 @@ class AbstractFunction {
 
 
 class Function : AbstractFunction {
-	Code code;
+	Code	code;
+	void*	kernelDef;		// KernelDef
 	
 	this (cstring name, cstring[] tags, Code code, void* delegate(uword) allocator) {
 		super (name, tags, allocator);

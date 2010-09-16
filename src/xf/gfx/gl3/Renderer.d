@@ -1896,9 +1896,7 @@ class Renderer : IRenderer {
 			final efInst = effectInstances[objects.eiRenderOrdinal[objIdx]];
 			
 		//log.trace("render at {}", __LINE__);
-			if (	0 == obj.indexData.numIndices
-				&&	0 == (obj.flags & RenderableData.Flags.NoIndices)
-			) {
+			if (0 == obj.indexData.numIndices) {
 				continue;
 			} else if (!minimizeStateChanges) {
 				prevUniformValues =
@@ -1921,7 +1919,9 @@ class Renderer : IRenderer {
 			setObjVaryings(efInst);
 		//log.trace("render at {}", __LINE__);
 
-			if (0 == (obj.flags & RenderableData.Flags.NoIndices)) {
+			if (
+				0 == (obj.flags & RenderableData.Flags.NoIndices)
+			&&	obj.indexData.useIndexBuffer) {
 			//if (0 == obj.flags & obj.flags.IndexBufferBound) {
 				if (!obj.indexData.indexBuffer.valid) {
 					continue;
@@ -1972,8 +1972,10 @@ class Renderer : IRenderer {
 
 			// ----
 
-
-			if ((obj.flags & RenderableData.Flags.NoIndices) != 0) {
+			if (
+					(obj.flags & RenderableData.Flags.NoIndices) != 0
+				||	!obj.indexData.useIndexBuffer
+			) {
 		//log.trace("render at {}", __LINE__);
 				if (1 == obj.numInstances) {
 		//log.trace("render at {}", __LINE__);

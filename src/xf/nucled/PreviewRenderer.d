@@ -273,6 +273,7 @@ class MaterialPreviewRenderer {
 			cgSetup,
 			&ctx,
 			_backend,
+			_kdefRegistry,
 			(CodeSink fmt) {
 				fmt(
 `
@@ -328,7 +329,7 @@ float3 eyePosition <
 
 		// ----
 
-		findEffectInfo(kg, &effectInfo);
+		findEffectInfo(_backend, kg, &effectInfo);
 
 		//assureNotCyclic(kg);
 

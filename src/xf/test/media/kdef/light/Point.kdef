@@ -20,8 +20,10 @@ PointLight = graph Light {
 			lumIntens <type float4 + use lumIntens>
 		) {
 			toLight = lightPos - position;
-			float atten = length(toLight) / influenceRadius;
-			intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+//			float atten = length(toLight) / influenceRadius;
+			float toLight2 = dot(toLight, toLight).x;
+			float atten2 = toLight2 / (influenceRadius * influenceRadius);
+			intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten2)) / (1.0 + toLight2));
 //			intensity = lumIntens / (0.5 + dot(toLight, toLight).xxxx);
 //			intensity = lumIntens * max(0.0, (4.0 * exp(-6* atten) - 0.01));
 //			intensity = lumIntens / dot(toLight, toLight).xxxx;

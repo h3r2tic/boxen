@@ -177,10 +177,13 @@ class KDefParserBase : Parser!(KDefToken) {
 			res.kernelDef = mem._new!(KernelDef)(mem._allocator);
 			
 			if (code != code.init) {
-				res.kernelDef.func = createFunction(null, tags, params, code);
+				final func = createFunction(null, tags, params, code);
+				res.kernelDef.func = func;
+				func.kernelDef = cast(void*)res.kernelDef;
 			} else {
 				res.kernelDef.func = createAbstractFunction(null, tags, params);
 			}
+
 			res.kernelDef.superKernel = mem.dupString(superKernel);
 			return res;
 		}

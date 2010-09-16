@@ -47,7 +47,7 @@ CompiledMaterialAsset compileMaterialAsset(
 	
 	enum {
 		AlbedoIdx = 1,
-		SpecularIdx = 2,
+		SpecularIdx = 3,
 		MaskIdx = 6,
 		NormalIdx = 8
 	}

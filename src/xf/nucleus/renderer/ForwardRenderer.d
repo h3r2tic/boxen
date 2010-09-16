@@ -25,7 +25,8 @@ private {
 		xf.nucleus.graph.KernelGraph,
 		xf.nucleus.graph.KernelGraphOps,
 		xf.nucleus.graph.GraphMisc,
-		xf.nucleus.util.EffectInfo;
+		xf.nucleus.util.EffectInfo,
+		xf.nucleus.StdUniforms;
 
 	import xf.vsd.VSD;
 		
@@ -68,6 +69,8 @@ private {
 
 class ForwardRenderer : Renderer {
 	mixin MRenderer!("Forward");
+
+	mixin MStdUniforms;
 
 	
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
@@ -746,21 +749,9 @@ class ForwardRenderer : Renderer {
 			cgSetup,
 			&ctx,
 			_backend,
+			_kdefRegistry,
 			(CodeSink fmt) {
-				fmt(
-`
-float3x4 modelToWorld;
-float4x4 worldToView <
-	string scope = "effect";
->;
-float4x4 viewToClip <
-	string scope = "effect";
->;
-float3 eyePosition <
-	string scope = "effect";
->;
-`
-				);
+				fmt(stdUniformsCg);
 			}
 		);
 
@@ -773,34 +764,7 @@ float3 eyePosition <
 		// HACK
 		allocateDefaultUniformStorage(effect);
 
-		//assureNotCyclic(kg);
-
-		void** uniforms = effect.getUniformPtrsDataPtr();
-
-		void** getUniformPtrPtr(cstring name) {
-			if (uniforms) {
-				final idx = effect.effectUniformParams.getUniformIndex(name);
-				if (idx != -1) {
-					return uniforms + idx;
-				}
-			}
-			return null;
-		}
-		
-		void setUniform(cstring name, void* ptr) {
-			if (auto upp = getUniformPtrPtr(name)) {
-				*upp = ptr;
-			}
-		}
-
-		if (uniforms) {
-			setUniform("worldToView", &worldToView);
-			setUniform("viewToClip", &viewToClip);
-			setUniform("eyePosition", &eyePosition);
-		}
-
-		// ----
-
+		bindStdUniforms(effect);
 		findEffectInfo(_backend, kg, &effectInfo);
 
 		//assureNotCyclic(kg);
@@ -939,6 +903,8 @@ float3 eyePosition <
 					));
 				}
 
+				_renderableIndexData[rid] = null;
+
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
 					
@@ -1002,9 +968,7 @@ float3 eyePosition <
 			l.prepareRenderData(vsd);
 		}
 
-		this.viewToClip = vs.computeProjectionMatrix();
-		this.worldToView = vs.computeViewMatrix();
-		this.eyePosition = vec3.from(vs.eyeCS.origin);
+		updateStdUniforms(vs);
 
 		final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileEffectsForRenderables(rids);
@@ -1035,9 +999,5 @@ float3 eyePosition <
 		IndexData*[]		_renderableIndexData;
 
 		IKDefRegistry		_kdefRegistry;
-
-		mat4	worldToView;
-		mat4	viewToClip;
-		vec3	eyePosition;
 	}
 }
