@@ -29,6 +29,7 @@ abstract class IKDefRegistry : AbstractRegistry {
 	abstract KernelImpl getKernel(string name);
 	abstract KernelImpl getKernel(KernelImplId id);
 	abstract bool getKernel(string name, KernelImpl* res);
+	abstract bool isSubKernelOf(KernelImpl impl, string subName);
 	abstract IKDefFileParser kdefFileParser();
 	abstract KDefModule getModuleForPath(string path);
 	abstract int converters(int delegate(ref SemanticConverter) dg);

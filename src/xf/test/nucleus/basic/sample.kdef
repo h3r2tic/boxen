@@ -30,15 +30,94 @@ DefaultMeshStructure = graph Structure {
 };
 
 
-/*TestSurface1 = surface BlinnPhong {
-	specularPower = 20;
-};*/
+DefaultPointCloudStructure = graph Structure {
+	node_0 = node {
+		type = input;
+		params = (
+			position <type float3 + basis model + use position>
+		);
+	};
+	node_1 = node {
+		type = kernel;
+		kernel = kernel <gsin.POINT gsout.TRIANGLE> GeometryShader(
+			in inPos <type float3 + use position + basis view>,
+			out position <type float3 + basis view + use position>,
+			out normal <type float3 + basis view + use normal>,
+			out tangent <type float3 + basis view + use tangent>,
+			out bitangent <type float3 + basis view + use bitangent>,
+			out texCoord <type float2 + use uv>
+		) {
+			const float psize = 0.1f;
+
+			normal = float3(0, 0, 1);
+			tangent = float3(1, 0, 0);
+			bitangent = float3(0, 1, 0);
+
+			int i = 0; {
+				position = inPos[i] + float3(-psize, psize, 0);
+				clipSpacePosition = mul(viewToClip, float4(position, 1.0));
+				texCoord = float2(0, 1);
+				emitVertex(i);
+
+				position = inPos[i] + float3(-psize,-psize, 0);
+				clipSpacePosition = mul(viewToClip, float4(position, 1.0));
+				texCoord = float2(0, 0);
+				emitVertex(i);
+
+				position = inPos[i] + float3( psize, psize, 0);
+				clipSpacePosition = mul(viewToClip, float4(position, 1.0));
+				texCoord = float2(1, 1);
+				emitVertex(i);
+
+				position = inPos[i] + float3( psize,-psize, 0);
+				clipSpacePosition = mul(viewToClip, float4(position, 1.0));
+				texCoord = float2(1, 0);
+				emitVertex(i);
+
+				restartStrip();
+			}
+		};
+	};
+	node_2 = node {
+		type = output;
+		params = (
+			position <type float3 + basis view + use position>,
+			normal <type float3 + basis view + use normal>,
+			tangent <type float3 + basis view + use tangent>,
+			bitangent <type float3 + basis view + use bitangent>
+		);
+	};
+
+	connect node_0 node_1;
+	connect node_1 node_2;
+};
+
+
+
+//TestSurface1 = surface Lambert {};
+
+/+TestSurface1 = surface CookTorrance {
+	fresnelR0 = 0.18;
+	roughness = 0.3;
+};+/
 
 TestSurface1 = surface ABg {
 	BRDF_A = 0.06;
 	BRDF_B = 0.001;
 	BRDF_g = 1.3;
 };
+
+ParticleSurface = surface Uniform {};
+
+/+TestSurface1 = surface HenyeyGreenstein {
+	roughness = 0.5;
+};+/
+
+/+TestSurface1 = surface ABC {
+	BRDF_A = 1;
+	BRDF_B = 7000.0;
+	BRDF_C = 0.7;
+};+/
 
 TestSurface4 = surface HalfLambert {
 };
@@ -78,6 +157,16 @@ TestMaterialImpl = material TestMaterial {
 	albedoTint = 1 1 1 1;
 	albedoTex = sampler {
 		texture = "img/testgrid.png";
+		minFilter = mipmapLinear;
+		magFilter = linear;
+	};
+};
+
+
+TestParticleMaterial = material TestParticleMaterial {
+	albedoTint = 1 1 1 1;
+	albedoTex = sampler {
+		texture = "img/spotlight.dds";
 		minFilter = mipmapLinear;
 		magFilter = linear;
 	};
@@ -165,6 +254,108 @@ TestMaterial = graph Material {
 };
 
 
+TestParticleMaterial = graph Material {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D + use color>,
+		);
+	};
+	ns = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	nm = node {
+		type = kernel;
+		kernel = Mul;
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Material(
+			albedoImg <type Image>
+		) {
+			float2 offCenter = texCoord.xy - 0.5f;
+			if (dot(offCenter, offCenter) > 0.25f) discard;
+			out_albedo = 0.025 * albedoImg.sample(texCoord);
+			out_specular = 0;
+			out_normal = normal;
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	// ----
+
+	connect n1 ns;
+	connect ns.sample nm.a;
+	connect n1.albedoTint nm.b;
+	connect nm.c n2.albedoImg;
+	noauto ns.uv;
+
+	connect n0 n2;
+	connect n2.out_albedo n3.out_albedo;
+	connect n2.out_specular n3.out_specular;
+	connect n2 n3;
+};
+
+/+
+TestParticleMaterial = graph Material {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			albedoTint <type float4 + use color> = 1 1 1 1,
+			albedoTex <type sampler2D + use color>,
+		);
+	};
+	ns = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
+	nm = node {
+		type = kernel;
+		kernel = Mul;
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Material(
+			albedoImg <type Image>
+		) {
+			float2 oc = texCoord.xy - 0.5f;
+			if (dot(oc, oc) > 0.249f) discard;
+			out_albedo = 1;
+			out_specular = 0;
+			oc *= 2;
+			out_normal = tangent * oc.x + bitangent * oc.y + normal * sqrt(1.0 - dot(oc, oc));
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	// ----
+
+	connect n1 ns;
+	connect ns.sample nm.a;
+	connect n1.albedoTint nm.b;
+	connect nm.c n2.albedoImg;
+	noauto ns.uv;
+
+	connect n0 n2;
+	connect n2.out_albedo n3.out_albedo;
+	connect n2.out_specular n3.out_specular;
+	connect n2 n3;
+};
++/
+
+
 SpecularOnly = kernel Material {
 	out_specular = float4(1);
 	out_diffuse = float4(0);
@@ -184,6 +375,11 @@ TestPost = graph PostProcess {
 				texture = "img/random.bmp";
 				minFilter = nearest;
 				magFilter = nearest;
+			},
+			distortSampler <type sampler2D + use color> = sampler {
+				texture = "img/noise.jpg";
+				minFilter = linear;
+				magFilter = linear;
 			}
 		);
 	};
@@ -287,11 +483,27 @@ TestPost = graph PostProcess {
 		kernel = AddNoise;
 	};
 
+	distort = node {
+		type = kernel;
+		kernel = kernel(
+			in baseColor <type Image>,
+			in distortSampler <type sampler2D + use color>,
+			in uv <type float2 + use uv>,
+			out output <type float4 + use color>
+		) {
+			float2 off = cos(tex2D(distortSampler, uv * 3 + time.minute).xy * 27.123 + radians(time.second * 360)) * 0.005;
+			float2 meh = smoothstep(1, 0.9, saturate(2 * abs(uv - float2(0.5))));
+			output = baseColor.sample(saturate(uv + off * meh));
+		};
+	};
+
 //	connect input blur1;
 	connect sampleOrig.sample clampInput.input;
-	connect clampInput.output blur1.input;
+	connect clampInput.output distort.baseColor;
+	connect distort.output blur1.input;
 	connect input.size blur1.inputSize;
 	connect data.randSampler noise.noiseSampler;
+	connect data.distortSampler distort.distortSampler;
 
 	connect blur1 blur2;
 	connect blur2 blur3;
@@ -309,7 +521,7 @@ TestPost = graph PostProcess {
 	connect blur9 sampleBlurred4;
 	connect input sampleOrig;
 
-	connect sampleOrig.sample glare.baseColor;
+	connect distort.output glare.baseColor;
 	connect sampleBlurred.sample glare.blurredColor;
 	connect sampleBlurred2.sample glare.blurredColor2;
 	connect sampleBlurred3.sample glare.blurredColor3;
@@ -324,6 +536,7 @@ TestPost = graph PostProcess {
 	noauto sampleBlurred3.uv;
 	noauto sampleBlurred4.uv;
 	noauto noise.uv;
+	noauto distort.uv;
 };
 
 

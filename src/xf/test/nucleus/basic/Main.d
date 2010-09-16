@@ -12,6 +12,7 @@ private {
 	import xf.nucleus.asset.compiler.SceneCompiler;
 	import xf.nucleus.asset.CompiledSceneAsset;
 	import xf.nucleus.post.PostProcessor;
+	import xf.nucleus.structure.PointCloud;
 
 	import xf.nucleus.Nucleus;
 	import xf.nucleus.Scene;
@@ -41,8 +42,8 @@ private {
 }
 
 
-version = LightTest;
-//version = Sponza;
+//version = LightTest;
+version = Sponza;
 //version = FixedTest
 
 
@@ -50,6 +51,7 @@ class TestApp : GfxApp {
 	Renderer		nr;
 	Renderer		nr2;
 	VSDRoot			vsd;
+	VSDRoot			tvsd;
 	SimpleCamera	camera;
 	
 	Texture			fbTex;
@@ -65,6 +67,9 @@ class TestApp : GfxApp {
 	float[]			lightSpeeds;
 	float[]			lightAngles;
 	vec4[]			lightIllums;
+
+	PointCloud		pointCloud;
+	RenderableId	pointCloudRid;
 	
 
 	override void initialize() {
@@ -83,6 +88,7 @@ class TestApp : GfxApp {
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
+		tvsd = VSDRoot();
 
 		version (Sponza) {
 			camera = new SimpleCamera(vec3(-7.54, 2.9, 5.03), -7.00, 12.80, inputHub.mainChannel);
@@ -98,8 +104,8 @@ class TestApp : GfxApp {
 			const numLights = 50;
 			alias PointLight LightType;
 		} else {
-			const numLights = 3;
-			alias SpotLight_VSM LightType;
+			const numLights = 50;
+			alias PointLight LightType;
 		}
 		
 		for (int i = 0; i < numLights; ++i) {
@@ -113,11 +119,16 @@ class TestApp : GfxApp {
 				lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
 				lightAngles ~= Kiss.instance.fraction() * 360.0f;
 				lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
-				lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+				lightSpeeds ~= 0.2f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+
+				/+lightOffsets ~= vec3(0, -2 + Kiss.instance.fraction() * 4, 0);
+				lightAngles ~= Kiss.instance.fraction() * 360.0f;
+				lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
+				lightSpeeds ~= 0.2f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);+/
 			}
 
 			float h = cast(float)i / numLights;//Kiss.instance.fraction();
-			float s = 0.6f;
+			float s = 0.92f;
 			float v = 1.0f;
 
 			vec4 rgba = vec4.zero;
@@ -126,7 +137,7 @@ class TestApp : GfxApp {
 			version (FixedTest) {
 				lightIllums ~= rgba * (1000.f / numLights);
 			} else {
-				lightIllums ~= rgba;
+				lightIllums ~= rgba;// * (1000.f / numLights);
 			}
 		}
 
@@ -236,6 +247,15 @@ class TestApp : GfxApp {
 				surfaceNames[renderables.surface[rid]]
 			);
 		}+/
+
+		pointCloud = new PointCloud(100_000, vec3.one * 15, rendererBackend);
+		pointCloudRid = loadSceneObject(
+			pointCloud,
+			"ParticleSurface",
+			"TestParticleMaterial",
+			&tvsd,
+			CoordSys.identity
+		);
 		
 		{
 			mainFb = rendererBackend.framebuffer;
@@ -282,6 +302,8 @@ class TestApp : GfxApp {
 				}
 			}
 		}
+
+		renderables.transform[pointCloudRid].rotation *= quat.yRotation(0.01);
 
 		for (int li = 0; li < lights.length; ++li) {
 			lightAngles[li] = fmodf(lightAngles[li], 360.0);
@@ -347,6 +369,8 @@ class TestApp : GfxApp {
 		// Renderables as to reduce allocations and unnecessary copies of dta.
 		vsd.transforms = renderables.transform[0..renderables.length];
 		vsd.localHalfSizes = renderables.localHalfSize[0..renderables.length];
+		tvsd.transforms = vsd.transforms;
+		tvsd.localHalfSizes = vsd.localHalfSizes;
 		
 		// update vsd.enabledFlags
 		// update vsd.invalidationFlags
@@ -354,6 +378,7 @@ class TestApp : GfxApp {
 		//vsd.invalidateObject(rid);
 		
 		vsd.update();
+		tvsd.update();
 
 		static bool wantDeferred = true; {
 			static bool prevKeyDown = false;
@@ -371,9 +396,14 @@ class TestApp : GfxApp {
 
 
 		final nr = wantDeferred ? this.nr : this.nr2;
+		final tnr = this.nr2;
 
 		final rlist = nr.createRenderList();
-		scope (exit) nr.disposeRenderList(rlist);
+		final trlist = tnr.createRenderList();
+		scope (exit) {
+			nr.disposeRenderList(rlist);
+			tnr.disposeRenderList(trlist);
+		}
 
 		final viewSettings = ViewSettings(
 			camera.coordSys,
@@ -384,6 +414,7 @@ class TestApp : GfxApp {
 		);
 
 		buildRenderList(&vsd, viewSettings, rlist);
+		buildRenderList(&tvsd, viewSettings, trlist);
 
 		static bool wantPost = true; {
 			static bool prevKeyDown = false;
@@ -406,6 +437,20 @@ class TestApp : GfxApp {
 
 		rendererBackend.state.sRGB = true;
 
+		void renderTranslucent() {
+			final st = *rendererBackend.state;
+			with (rendererBackend.state.blend) {
+				enabled = true;
+				src = src.One;
+				dst = dst.One;
+			}
+			with (rendererBackend.state.depth) {
+				writeMask = false;
+			}
+			tnr.render(viewSettings, &tvsd, trlist);
+			*rendererBackend.state = st;
+		}
+
 		if (wantPost) {
 			rendererBackend.framebuffer = texFb;
 
@@ -414,6 +459,7 @@ class TestApp : GfxApp {
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, &vsd, rlist);
+			renderTranslucent();
 
 			rendererBackend.framebuffer = mainFb;
 			rendererBackend.clearBuffers();
@@ -427,6 +473,7 @@ class TestApp : GfxApp {
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, &vsd, rlist);
+			renderTranslucent();
 		}
 
 

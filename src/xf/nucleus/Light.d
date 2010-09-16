@@ -22,11 +22,9 @@ abstract class Light {
 	LightId	_id;
 
 	void	calcInfluenceRadius() {
-		// cuts off at 0.01 luma assuming 1/r2 attenuation
-		//float meh = dot(vec4(0.2126, 0.7152, 0.0722, 0), lumIntens) * 100.0f + 0.5;
-
+		// cuts off at 0.01 intens luma assuming 1/(1+r2) attenuation
 		// hrm, actually luma-based looks wrong
-		float meh = dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) * 100.0f + 0.5;
+		float meh = dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) * 100.0f + 1.0;
 		influenceRadius = meh <= 0 ? 0 : sqrt(meh);
 	}
 

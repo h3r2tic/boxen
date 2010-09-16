@@ -65,6 +65,7 @@ MaterialId getMaterialIdByName(cstring name) {
 
 
 SurfaceId getSurfaceIdByName(cstring name) {
+	assert (name in surfaces, name);
 	return surfaces[name];
 }
 

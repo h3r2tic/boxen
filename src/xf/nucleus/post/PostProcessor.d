@@ -46,6 +46,8 @@ private {
 		xf.mem.SmallTempArray,
 		xf.utils.BitSet;
 
+	import tango.time.StopWatch;
+
 	// tmp
 	import xf.nucleus.graph.GraphMisc;
 	import tango.text.convert.Format;
@@ -91,6 +93,8 @@ final class PostProcessor : IKDefInvalidationObserver {
 		/+final vdata = efInst.getVaryingParamData("VertexProgram.input.position");
 		vdata.buffer = &vb;
 		vdata.attrib = &va;+/
+
+		_stopWatch.start();
 	}
 
 	const cstring imageSizeName	= "size";
@@ -190,6 +194,8 @@ final class PostProcessor : IKDefInvalidationObserver {
 			_allocator.clear();
 			_renderStageList = null;
 		}
+
+		_rsIdx = 0;
 
 		checkBlitSignature();
 
@@ -638,8 +644,6 @@ final class PostProcessor : IKDefInvalidationObserver {
 	}
 
 
-	uint rsIdx = 0;
-
 	private RenderStage* genRenderStage(
 		KernelGraph graph,
 		GraphNodeId[] inNodes,
@@ -1024,11 +1028,11 @@ final class PostProcessor : IKDefInvalidationObserver {
 		}
 
 		formatTmp((Fmt fmt) {
-			fmt.format("graph{}.dot", rsIdx);
+			fmt.format("graph{}.dot", _rsIdx);
 		}, (cstring name) {
 			File.set(name, toGraphviz(subgraph));
 		});
-		++rsIdx;
+		++_rsIdx;
 
 		return addRenderStage(subgraph, inNid, outNid, inputBridge.length);
 	}
@@ -1075,7 +1079,19 @@ final class PostProcessor : IKDefInvalidationObserver {
 			setup,
 			&ctx,
 			_backend,
-			null	// extra codegen
+			_kdefRegistry,
+			(CodeSink fmt) {
+				fmt(
+`
+struct Time_struct {
+	float second;
+	float minute;
+};
+
+Time_struct	time;
+`
+				);
+			}
 		);
 
 		stageEffect.compile();
@@ -1090,6 +1106,15 @@ final class PostProcessor : IKDefInvalidationObserver {
 		findEffectInfo(_backend, graph, &rs.efInfo);
 		allocateDefaultUniformStorage(rs.efInst);
 		setEffectInstanceUniformDefaults(&rs.efInfo, rs.efInst);
+
+		void setUniform(cstring name, void* ptr) {
+			if (auto upp = rs.efInst.getUniformPtrPtr(name)) {
+				*upp = ptr;
+			}
+		}
+
+		setUniform("time.second", &_time_second);
+		setUniform("time.minute", &_time_minute);
 
 		final vdata = rs.efInst.getVaryingParamData("VertexProgram.structure__position");
 		vdata.buffer = &_vb;
@@ -1186,6 +1211,10 @@ final class PostProcessor : IKDefInvalidationObserver {
 
 		_backend.state.depth.enabled = false;
 
+		ulong microsec = _stopWatch.microsec;
+		_time_second = cast(float)(microsec % 1_000_000) / 1_000_000;
+		_time_minute = cast(float)(microsec % 60_000_000) / 60_000_000;
+
 		for (auto rs = _renderStageList; rs !is null; rs = rs.next) {
 			final renderList = _backend.createRenderList();
 			assert (renderList !is null);
@@ -1233,5 +1262,11 @@ final class PostProcessor : IKDefInvalidationObserver {
 		vec2			_inputTextureSize;
 
 		RenderStage*	_renderStageList;
+
+		StopWatch		_stopWatch;
+		float			_time_second;
+		float			_time_minute;
+
+		uint			_rsIdx = 0;		// for debug out
 	}
 }

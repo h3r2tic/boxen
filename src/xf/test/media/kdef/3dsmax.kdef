@@ -50,10 +50,15 @@ MaxDefaultMaterial = graph Material {
 			if (maskImg.sample(texCoord * maskTexTile).x <= 0.01) discard;
 			out_albedo = albedoTint * albedoImg.sample(texCoord * albedoTexTile);
 			out_specular = specularTint * specularImg.sample(texCoord * specularTexTile);
+			//out_specular *= out_albedo;
+			//out_albedo = 0;
+			//out_specular = 0;
 
 			float3 tnorm = normalImg.sample(texCoord * normalTexTile).xyz * 2.0 - 1.0;
 			out_normal = tnorm.z * normal + tnorm.x * tangent - tnorm.y * bitangent;
 			out_normal = normalize(out_normal);
+
+//			out_normal = normal;
 
 //			out_albedo = 0.5 * tangent.xyzz + 0.5;
 //			out_albedo = 0.5 * out_normal.xyzz + 0.5;

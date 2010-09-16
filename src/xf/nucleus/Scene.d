@@ -13,8 +13,11 @@ private {
 	import xf.nucleus.structure.MeshStructure;
 	import xf.nucleus.structure.KernelMapping;
 
+	import xf.nucleus.IStructureData;
+
 	import xf.vsd.VSD;
 
+	import xf.omg.core.LinearAlgebra;
 	import xf.omg.core.CoordSys;
 	import xf.omg.util.ViewSettings;
 
@@ -67,6 +70,33 @@ void loadScene(
 			assetRenderableMapWatcher(i, rid);
 		}
 	}
+}
+
+
+RenderableId loadSceneObject(
+	IStructureData str,
+	cstring surfName,
+	cstring matName,
+	VSDRoot* vsd,
+	CoordSys coordSys
+) {
+	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
+	final rid = createRenderable();
+
+	vsd.createObject(rid);
+
+	renderables.structureKernel[rid] = defaultStructureKernel(str.structureTypeName);
+	renderables.structureData[rid] = str;
+
+	renderables.material[rid] = getMaterialIdByName(
+		matName
+	);
+	renderables.surface[rid] = getSurfaceIdByName(surfName);
+	
+	renderables.transform[rid] = coordSys;
+	renderables.localHalfSize[rid] = vec3.one * 10;		// TODO
+
+	return rid;
 }
 
 

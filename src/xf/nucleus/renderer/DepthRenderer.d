@@ -34,7 +34,8 @@ private {
 		xf.nucleus.graph.KernelGraphOps,
 		xf.nucleus.graph.GraphMisc,
 		xf.nucleus.graph.Simplify,
-		xf.nucleus.util.EffectInfo;
+		xf.nucleus.util.EffectInfo,
+		xf.nucleus.StdUniforms;
 
 	import xf.vsd.VSD;
 		
@@ -86,6 +87,8 @@ private {
 class DepthRenderer : Renderer {
 	mixin MRenderer!("Depth");
 	cstring depthOutKernel = "DepthRendererOut";
+
+	mixin MStdUniforms;
 
 
 	this (RendererBackend backend, IKDefRegistry kdefRegistry) {
@@ -234,24 +237,9 @@ class DepthRenderer : Renderer {
 			cgSetup,
 			&ctx,
 			_backend,
+			_kdefRegistry,
 			(CodeSink fmt) {
-				fmt(
-`
-float3x4 modelToWorld;
-float4x4 worldToView <
-	string scope = "effect";
->;
-float4x4 viewToClip <
-	string scope = "effect";
->;
-float3 eyePosition <
-	string scope = "effect";
->;
-float farPlaneDistance <
-	string scope = "effect";
->;
-`
-				);
+				fmt(stdUniformsCg);
 			}
 		);
 
@@ -262,33 +250,7 @@ float farPlaneDistance <
 		// HACK
 		allocateDefaultUniformStorage(effect);
 
-		void** uniforms = effect.getUniformPtrsDataPtr();
-
-		void** getUniformPtrPtr(cstring name) {
-			if (uniforms) {
-				final idx = effect.effectUniformParams.getUniformIndex(name);
-				if (idx != -1) {
-					return uniforms + idx;
-				}
-			}
-			return null;
-		}
-		
-		void setUniform(cstring name, void* ptr) {
-			if (auto upp = getUniformPtrPtr(name)) {
-				*upp = ptr;
-			}
-		}
-
-		if (uniforms) {
-			setUniform("worldToView", &worldToView);
-			setUniform("viewToClip", &viewToClip);
-			setUniform("eyePosition", &eyePosition);
-			setUniform("farPlaneDistance", &farPlaneDistance);
-		}
-
-		// ----
-
+		bindStdUniforms(effect);
 		findEffectInfo(_backend, kg, &effectInfo);
 
 		return effectInfo;
@@ -366,6 +328,8 @@ float farPlaneDistance <
 				 */
 				setEffectInstanceUniformDefaults(&effectInfo, efInst);
 
+				_structureRenderableIndexData[rid] = null;
+
 				renderables.structureData[rid].setKernelObjectData(
 					KernelParamInterface(
 					
@@ -424,13 +388,7 @@ float farPlaneDistance <
 
 
 	override void render(ViewSettings vs, VSDRoot* vsd, RenderList* rlist) {
-		this.viewToClip = vs.computeProjectionMatrix();
-		this.clipToView = this.viewToClip.inverse();
-		this.worldToView = vs.computeViewMatrix();
-		this.worldToClip = this.viewToClip * this.worldToView;
-		this.viewToWorld = this.worldToView.inverse();
-		this.eyePosition = vec3.from(vs.eyeCS.origin);
-		this.farPlaneDistance = vs.farPlaneDistance;
+		updateStdUniforms(vs);
 
 		final rids = rlist.list.renderableId[0..rlist.list.length];
 		compileStructureEffectsForRenderables(rids);
@@ -466,13 +424,5 @@ float farPlaneDistance <
 		IndexData*[]		_structureRenderableIndexData;
 
 		IKDefRegistry		_kdefRegistry;
-
-		mat4	worldToView;
-		mat4	worldToClip;
-		mat4	viewToWorld;
-		mat4	viewToClip;
-		mat4	clipToView;
-		vec3	eyePosition;
-		float	farPlaneDistance;
 	}
 }

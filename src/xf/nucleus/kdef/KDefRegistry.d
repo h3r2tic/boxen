@@ -57,36 +57,30 @@ class KDefRegistry : IKDefRegistry {
 
 
 	private void watcherThreadFunc() {
-		try {
-			Thread.sleep(2);
+		Thread.sleep(2);
 
-			while (!Runtime.isHalting) {
-				bool anyMods = false;
-
+		while (!Runtime.isHalting) {
+			try {
 				size_t i = 0;
 				foreach (path; &iterAllFiles) {
 					if (	path != _allFiles[i].path
 						||	Path.modified(path).ticks != _allFiles[i].timeModified
 					) {
-						anyMods = true;
+						_filesModified = true;
 						break;
 					}
 					++i;
 
 					Thread.yield();
 				}
-
-				if (anyMods) {
-					_filesModified = true;
-				}
-
-				Thread.sleep(0.1);
+			} catch (Exception e) {
+				char[] msg;
+				e.writeOut((char[] x) { msg ~= x; });
+				log.error("Exception in KDef change watcher thread.");
+				log.error("{}", msg);
 			}
-		} catch (Exception e) {
-			char[] msg;
-			e.writeOut((char[] x) { msg ~= x; });
-			log.error("KDef change watcher thread crashed.");
-			log.error("{}", msg);
+
+			Thread.sleep(0.1);
 		}
 	}
 	
@@ -96,15 +90,33 @@ class KDefRegistry : IKDefRegistry {
 	}
 	
 	
-	KernelImpl getKernel(string name) {
+	override KernelImpl getKernel(string name) {
 		return kdefProcessor.getKernel(name);
 	}
 
-	KernelImpl getKernel(KernelImplId id) {
+	override bool isSubKernelOf(KernelImpl impl, string subName) {
+		assert (impl.isValid);
+		
+		while (true) {
+			cstring sname =	KernelImpl.Type.Kernel == impl.type
+				? impl.kernel.superKernel
+				: GraphDef(impl.graph).superKernel;
+
+			if (subName == sname) {
+				return true;
+			}
+
+			if (sname is null || !getKernel(sname, &impl)) {
+				return false;
+			}
+		}
+	}
+
+	override KernelImpl getKernel(KernelImplId id) {
 		return kdefProcessor.getKernel(id);
 	}
 
-	bool getKernel(string name, KernelImpl* res) {
+	override bool getKernel(string name, KernelImpl* res) {
 		return kdefProcessor.getKernel(name, res);
 	}
 

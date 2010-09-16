@@ -828,7 +828,7 @@ class CgEffect : Effect {
 				CGparameter target = p;
 				assert (target !is null);
 
-				paramLoop: foreach (domain, prog; &iterCgPrograms) {
+				foreach (domain, prog; &iterCgPrograms) {
 					if (auto p2 = cgGetNamedProgramParameter(
 						prog,
 						CG_GLOBAL,

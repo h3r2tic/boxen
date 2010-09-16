@@ -35,7 +35,8 @@ SpotLight_VSM = graph Light {
 				toLight = lightPos - position;
 				float distToLight = length(toLight);
 				float atten = distToLight / influenceRadius;
-				intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+				intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
+				//intensity = lumIntens * saturate(( 2.0 / (1.0 + atten*atten) ) - 1.0);
 				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 				toLight = normalize(toLight);
 
@@ -49,7 +50,7 @@ SpotLight_VSM = graph Light {
 				float shadowed2 = variance / (variance + meh);
 				float shadowed = saturate(max(shadowed1, shadowed2));
 
-				const float shadowDarkening = 0.3;
+				const float shadowDarkening = 0.2;
 				shadowed = clamp(
 					(shadowed - shadowDarkening) / (1.0 - shadowDarkening),
 					0.0,
@@ -118,7 +119,7 @@ SpotLight_SM = graph Light {
 				toLight = lightPos - position;
 				float distToLight = length(toLight);
 				float atten = distToLight / influenceRadius;
-				intensity = (1.0 - smoothstep(0.5, 1.0, atten)) * lumIntens / (0.5 + dot(toLight, toLight).xxxx);
+				intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
 				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 				toLight = normalize(toLight);
 
