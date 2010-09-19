@@ -96,30 +96,28 @@ DefaultPointCloudStructure = graph Structure {
 
 //TestSurface1 = surface Lambert {};
 
-/+TestSurface1 = surface ABg {
+/+TestSurface1 = surface CookTorrance {
+	fresnelR0 = 0.18;
+	roughness = 0.3;
+};+/
+
+TestSurface1 = surface ABg {
 	BRDF_A = 0.06;
 	BRDF_B = 0.001;
 	BRDF_g = 1.3;
-};+/
+};
 
 ParticleSurface = surface Uniform {};
 
 /+TestSurface1 = surface HenyeyGreenstein {
-	roughness = 0.1;
+	roughness = 0.5;
 };+/
 
-/*
-TestSurface1 = surface CookTorrance {
-	fresnelR0 = 0.18;
-	roughness = 0.3;
-};
-/*/
-TestSurface1 = surface ABC_area {
+/+TestSurface1 = surface ABC {
 	BRDF_A = 1;
-	BRDF_B = 30.0;
-	BRDF_C = 0.92;
-};
-//*/
+	BRDF_B = 7000.0;
+	BRDF_C = 0.7;
+};+/
 
 TestSurface4 = surface HalfLambert {
 };
@@ -495,7 +493,7 @@ TestPost = graph PostProcess {
 		) {
 			float2 off = cos(tex2D(distortSampler, uv * 3 + time.minute).xy * 27.123 + radians(time.second * 360)) * 0.005;
 			float2 meh = smoothstep(1, 0.9, saturate(2 * abs(uv - float2(0.5))));
-			output = baseColor.sample(saturate(uv + 0*off * meh));
+			output = baseColor.sample(saturate(uv + off * meh));
 		};
 	};
 

@@ -54,6 +54,97 @@ HenyeyGreenstein = graph Reflectance {
 };
 
 
+ABC_approx = graph Reflectance {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			BRDF_A <type float>,
+			BRDF_B <type float>,
+			BRDF_C <type float>
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Reflectance(
+			in BRDF_A <type float>,
+			in BRDF_B <type float>,
+			in BRDF_C <type float>
+		) {
+			float lsize = 0.2f;
+
+			float ldist = length(toLight);
+			float sratio = min(1.0f, lsize/ldist);
+
+			float3 vo = toEye;
+			float3 B = vo - dot(vo, normal).xxx * normal;
+
+			float BC = BRDF_B * BRDF_C;
+			float BC2 = BC * BC;
+			float CC = BRDF_C * BRDF_C;
+			float TIS = (pow(1+BC2, 1-CC)-1) / (BC2*(1-CC));
+			float AC = 1.0 / TIS;
+
+			float3 toLightN = toLight / ldist;
+
+			float3 R = reflect(-toLightN, normal);
+			float3 vs = normalize(R);
+			float3 B0 = vs - dot(vs, normal).x * normal;
+
+			float x = distance(B, B0);
+//			x /= sratio;
+			x /= 0.08;
+			float diff = AC / 50 / sratio;
+			x /= max(0.0001f, min(1.0, dot(R, normal).x));
+
+			float interp = smoothstep(7.5f, 7.99f, x);
+			float xmeh = x;
+			x = min(x, 7.99f);
+			float x2 = x*x;
+			float x3 = x*x2;
+			float x4 = x*x3;
+			float x5 = x*x4;
+			float x6 = x*x5;
+			float x7 = x*x6;
+			float x8 = x*x7;
+			float x9 = x*x8;
+			float x10 = x*x9;
+			float x11 = x*x10;
+			float x12 = x*x11;
+
+			float approx = (3.14159 + 61.5157 *x - 195.234 *x2 + 274.415 *x3 - 235.084 *x4 + 
+   144.573 *x5 - 69.8671 *x6 + 25.2546 *x7 - 0.732579 *x8 - 
+   0.316311 *x9 + 0.00283363 *x10)/(1 + 19.5811 *x - 61.942 *x2 + 
+   91.3211 *x3 - 87.31 *x4 + 66.0931 *x5 - 45.7811 *x6 + 
+   36.3551 *x7 - 33.8658 *x8 + 22.0028 *x9 - 2.13581 *x10 - 
+   0.0967361 *x11 + 0.00127675 *x12);
+
+			diff *= approx * (1.0f - interp) + interp * (1.43722f/(xmeh*xmeh));
+			
+			specular = intensity * diff;
+			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
+//			specular += intensity * saturate(dot(normalize(toLight), normal).x);
+
+/+			diffuse = 0;
+			specular = 0;+/
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n0 n2;
+	connect n1.BRDF_A n2.BRDF_A;
+	connect n1.BRDF_B n2.BRDF_B;
+	connect n1.BRDF_C n2.BRDF_C;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
+	connect n2 n3;
+};
+
+
 ABC_area = graph Reflectance {
 	n0 = node {
 		type = input;
@@ -73,10 +164,18 @@ ABC_area = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_C <type float>
 		) {
-			float metalness = 0.9f;
-			float lsize = 0.89f;
+			const bool sphere = true;
+
+			float lsize = 0.94f;//1.8f * 1.00000001;
+
+			if (!sphere) {
+				float ldist = length(toLight);
+				float sratio = lsize/ldist;
+				lsize /= pow(1.0 - min(0.5f, sratio*sratio), 1.0/3);
+			}
 
 			float spec = 0.0f;
+			float diff = 0.0f;
 			float wtotal = 0.0f;
 
 			float3 randSeed = normalize(toLight)*5120 + toEye*5120;
@@ -88,52 +187,73 @@ ABC_area = graph Reflectance {
 			float BC = BRDF_B * BRDF_C;
 			float BC2 = BC * BC;
 			float CC = BRDF_C * BRDF_C;
-			float TIS = (pow(1+BC*BC, 1-CC)-1) / (BC*BC*(1-CC));
+			float TIS = (pow(1+BC2, 1-CC)-1) / (BC2*(1-CC));
 			float AC = 1.0 / TIS;
 
-			int taps = min(16, max(1, 800.0f * lsize * lsize / length(toLight)));
+			float3 toLightN = normalize(toLight);
+
+			int taps = min(50, max(1, 80.0f * lsize * lsize / dot(toLight, toLight)));
 			for (int x = 0; x < taps; ++x) {
 				float3 rand = frac(randSeed+x*float3(230.118323274, 5.3970233, 1.325398233123));
+				float3 rpos;
 
-				float phi = rand.x * 2 * 3.14159265f;
-				float u = (rand.y - .5f) * 2.f;
-				float u2		= u*u;
-				float rt		= sqrt(1.f - u2);
-				float3 rpos = float3(rt * cos(phi), u, rt * sin(phi)) * pow(rand.z, 1.0/3);
+				if (sphere) {
+					float phi = rand.x * 2 * 3.14159265f;
+					float u = (rand.y - .5f) * 2.f;
+					float u2		= u*u;
+					float rt		= sqrt(1.f - u2);
+					rpos = float3(rt * cos(phi), u, rt * sin(phi)) * pow(rand.z, 1.0/3);
+				} else {
+					float theta = rand.x * 2 * 3.14159265f;
+					float2 uv = float2(cos(theta), sin(theta)) * pow(rand.z, 2.0f/3.0f);
+					float3 u = normalize(cross(toLightN, toLightN.x > 0.5 ? float3(0, 1, 0) : float3(1, 0, 0)));
+					float3 v = cross(toLightN, u);
+					u = cross(toLightN, v);
+					rpos = u * uv.x + v * uv.y;
+				}
 
-				float3 L = toLight + rpos * lsize;
+				float3 L = normalize(toLight + rpos * lsize);
 				float3 R = reflect(-L, normal);
 				float3 vs = normalize(R);
 				float3 B0 = vs - dot(vs, normal).x * normal;
 
 				float tmp = dot(B - B0, B - B0);
+				float tmp2 = tmp;
 				tmp = pow(1+BC2*tmp, -CC);
-				tmp *= saturate(dot(L, normal ).x);
+				tmp2 = pow(1+BC2*(tmp2+0.3), -CC);
+				tmp -= tmp2;
+
+				const float fresnelR0 = 0.8f;
+				float fresnel = pow(1.0f - saturate(dot(vo, normalize(L + vo)).x), 5.0f);
+				fresnel *= (1.0f - fresnelR0);
+				fresnel += fresnelR0;
+				tmp *= fresnel;
+
+				tmp *= saturate(dot(L, normal).x);
+				tmp2 *= saturate(dot(L, normal).x);
 
 				spec += tmp;
+				diff += tmp2;
 			}
-
-//			spec *= saturate(dot(normalize(toLight), normal).x);
 
 			spec *= AC;
 			spec /= taps;
 
-/+	float tmp = dot(B - B0, B - B0);
-	float tmp3 = max(0.0f, tmp-lsiz);
-	float tmp2 = dot(B - B0, B - B0);
-	tmp = AC * pow(1+BC*BC*tmp, -CC);
-	tmp3 = AC * pow(1+BC*BC*tmp3, -CC);
-	tmp = (tmp + tmp3) / 2;
-	tmp2 = AC * pow(1+BC*BC*tmp2+BRDF_C*BRDF_C*(1.0f / metalness - 1.0f), -CC);+/
-//tmp2 = 0;
+			diff *= AC;
+			diff /= taps;
 
-	//tmp -= tmp2;
+			specular = intensity * spec;
+//			diffuse = intensity * saturate(dot(normalize(toLight), normal).x);
+//			specular = lsize * 0.04f;
+			diffuse = intensity * diff;
 
-			specular = 3.14159265 * intensity * spec;
-			diffuse = 0;//3.14159265 * intensity * tmp2 * saturate(dot( toLight, normal ).x);
+/+			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
+			diffuse *= saturate(dot(normalize(toLight), normal).x + 0.15);
 
-			diffuse = specular; specular = 0;
-//			specular = taps / 10.0f;
+			diffuse = 0;+/
+
+/+			diffuse = 0;
+			specular = 0;+/
 		};
 	};
 	n3 = node {
@@ -169,23 +289,29 @@ ABC = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_C <type float>
 		) {
-			float3 R = reflect(-toLight,normal);
-			float3 vi = toLight;
+			float3 vi = normalize(toLight);
+			float3 R = reflect(-vi, normal);
 			float3 vo = toEye;
 			float3 vs = R;
 			float3 B = vo - dot(vo, normal).xxx * normal;
 			float3 B0 = vs - dot(vs, normal).xxx * normal;
 
-	float BC = BRDF_B * BRDF_C;
-	float CC = BRDF_C * BRDF_C;
-	float TIS = (pow(1+BC*BC, 1-CC)-1) / (BC*BC*(1-CC));
-	float AC = 1.0 / TIS;
+			float BC = BRDF_B * BRDF_C;
+			float CC = BRDF_C * BRDF_C;
+			float TIS = (pow(1+BC*BC, 1-CC)-1) / (BC*BC*(1-CC));
+			float AC = 1.0 / TIS;
 
-	float tmp = dot(B - B0, B - B0);
-	tmp = AC * pow(1+BC*BC*tmp, -CC);
+			float metalness = 0.9;
 
-			specular = 10 * intensity * tmp * saturate(dot( toLight, normal ).x);
-			diffuse = 0;//10 * intensity * tmp2 * saturate(dot( toLight, normal ).x);
+			float tmp = dot(B - B0, B - B0);
+			float tmp2 = tmp;
+			tmp = AC * pow(1+BC*BC*tmp, -CC);
+//			tmp2 = AC * pow(1+BC*BC*tmp2+BRDF_C*BRDF_C*(1.0f / metalness - 1.0f), -CC);
+			tmp2 = AC * pow(1+BC*BC*(tmp2+0.3), -CC);
+			tmp -= tmp2;
+
+			specular = intensity * tmp * saturate(dot( vi, normal ).x);
+			diffuse = intensity * tmp2 * saturate(dot( vi, normal ).x);
 		};
 	};
 	n3 = node {
@@ -434,6 +560,8 @@ CookTorrance = graph Reflectance {
 			in roughness <type float>,
 			in fresnelR0 <type float>
 		) {
+			toLight = normalize(toLight);
+
 			// Compute any aliases and intermediary values
 			// -------------------------------------------
 			float3 H	= normalize(toLight + toEye);
@@ -482,8 +610,8 @@ CookTorrance = graph Reflectance {
 			// -------------------------------------
 			float Rs = ( fresnel * geoTerm * roughnessTerm ) / NdotV;
 
-			specular = intensity * Rs * 0;
-			diffuse = intensity * (NdotL + Rs);
+			specular = intensity * Rs;
+			diffuse = 0;//intensity * (NdotL + Rs);
 		};
 	};
 	n3 = node {
