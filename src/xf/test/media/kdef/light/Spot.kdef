@@ -38,7 +38,7 @@ SpotLight_VSM = graph Light {
 				intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
 				//intensity = lumIntens * saturate(( 2.0 / (1.0 + atten*atten) ) - 1.0);
 				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
-				toLight = normalize(toLight);
+				//toLight = normalize(toLight);
 
 				float2 uv = (pointClipDiv) * 0.5 + 0.5;
 				float2 shadowSample = tex2D(depthSampler, uv).xy * 0.5 + 0.5;

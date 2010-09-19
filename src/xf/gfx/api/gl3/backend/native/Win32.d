@@ -344,7 +344,12 @@ class GLWindow : GLContext {
 
 						POINT pt;
 						GetCursorPos(&pt);
-						Input.mouseMove(_channel, _cursorX, _cursorY, deltaX, deltaY, pt.x, pt.y);
+
+						if (!_interceptCursor || !_ignoreNextMouseMove) {
+							Input.mouseMove(_channel, _cursorX, _cursorY, deltaX, deltaY, pt.x, pt.y);
+						}
+
+						_ignoreNextMouseMove = false;
 						
 						_prevCursorX = _cursorX;
 						_prevCursorY = _cursorY;
@@ -446,6 +451,9 @@ class GLWindow : GLContext {
 				case WM_SETFOCUS: {
 					if (_channel !is null) {
 						_channel << WindowEvent(WindowEvent.Type.GainedFocus);
+					}
+					if (!_hasFocus) {
+						_ignoreNextMouseMove = true;
 					}
 					_hasFocus = true;
 					forceShowCursor(_showingCursor);
@@ -946,6 +954,7 @@ class GLWindow : GLContext {
 
 		InputChannel	_channel;
 		bool			_interceptCursor;
+		bool			_ignoreNextMouseMove = true;
 
 		int				_cursorX	= 0;
 		int				_cursorY	= 0;

@@ -5,7 +5,7 @@ private {
 	import xf.core.JobHub;
 	import xf.omg.core.CoordSys;
 	import xf.omg.core.LinearAlgebra : mat4, vec3, vec3fi, vec2, quat;
-	import xf.omg.core.Misc : exp;
+	import xf.omg.core.Misc : exp, min, max, abs;
 	import xf.utils.Log;
 }
 
@@ -28,28 +28,61 @@ class SimpleCamera {
 	
 	private void update() {
 		float seconds = 1.0f / this.updateFrequency;
-		vec3 move = vec3.zero;
+		//vec3 move = vec3.zero;
+
+		float accel = seconds * 6;
+		bool zeroz = true, zerox = true;
 		
 		if (keyboard.keyDown(this.UpKey)) {
-			move.z -= 1.f * movementSpeed.z;
+			move.z -= movementSpeed.z * accel;
+			zeroz = false;
 		}
 		if (keyboard.keyDown(this.DownKey)) {
-			move.z += 1.f * movementSpeed.z;
+			move.z += movementSpeed.z * accel;
+			zeroz = false;
 		}
 		if (keyboard.keyDown(this.LeftKey)) {
-			move.x -= 1.f * movementSpeed.x;
+			move.x -= movementSpeed.x * accel;
+			zerox = false;
 		}
 		if (keyboard.keyDown(this.RightKey)) {
-			move.x += 1.f * movementSpeed.x;
+			move.x += movementSpeed.x * accel;
+			zerox = false;
 		}
+
+		if (move.z > movementSpeed.z) move.z = movementSpeed.z;
+		if (move.z < -movementSpeed.z) move.z = -movementSpeed.z;
+		if (move.x > movementSpeed.x) move.x = movementSpeed.x;
+		if (move.x < -movementSpeed.x) move.x = -movementSpeed.x;
+
+		if (zeroz) move.z = 0;
+		if (zerox) move.x = 0;
+		
 		if (keyboard.keyDown(KeySym.bracketleft)) {
 			this.movementSpeed *= 1.0f / exp(seconds);
 		}
 		if (keyboard.keyDown(KeySym.bracketright)) {
 			this.movementSpeed *= exp(seconds);
 		}
-		
-		pos += rot.xform(move) * seconds;
+
+		float angularDrift = 0.4f;
+
+		{
+			float t = min(1.0f, max(0.0f, 0.02*exp(seconds)));
+			moveSpeed = moveSpeed * (1.0f-t) + (1.f - angularDrift) * move * t;
+			driftMoveSpeed = driftMoveSpeed * (1.0f-t) + angularDrift * rot.xform(move) * t;
+			pos += rot.xform(moveSpeed * seconds);
+			pos += driftMoveSpeed * seconds;
+		}
+		{
+			float t = min(1.0f, max(0.0f, 0.02*exp(seconds)));
+			vec2 m = mouseSpeed * t;
+			mouseSpeed -= m;
+			pitch -= m.y * mouseSensitivity.y;
+			yaw -= m.x * mouseSensitivity.x;
+			rot = quat.yRotation(yaw) * quat.xRotation(pitch);
+			rot.normalize();
+		}
 
 		if (move != move.zero) {
 			utilsLog.info("camera pos: {}", this.pos);
@@ -83,12 +116,10 @@ class SimpleCamera {
 
 	class MouseReader : InputReader {
 		void handle(MouseInput* i) {
-			this.outer.pitch -= i.move.y * mouseSensitivity.y;
-			this.outer.yaw -= i.move.x * mouseSensitivity.x;
-			if (i.move != i.move.zero) {
+			this.outer.mouseSpeed += i.move;
+			/+if (i.move != i.move.zero) {
 				utilsLog.info("camera pitch: {}, yaw: {}", this.outer.pitch, this.outer.yaw);
-			}
-			this.outer.rot = quat.yRotation(this.outer.yaw) * quat.xRotation(this.outer.pitch);
+			}+/
 		}
 	   
 		this() {
@@ -108,6 +139,11 @@ class SimpleCamera {
 		vec3	pos = vec3.zero;
 		quat	rot = quat.identity;
 		int		updateFrequency;
+
+		vec3	move = vec3.zero;
+		vec3	moveSpeed = vec3.zero;
+		vec3	driftMoveSpeed = vec3.zero;
+		vec2	mouseSpeed = vec2.zero;
 
 		version (SimpleCameraQwerty) {
 			const KeySym UpKey = KeySym.w;

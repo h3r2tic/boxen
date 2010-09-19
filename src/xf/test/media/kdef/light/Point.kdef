@@ -28,7 +28,7 @@ PointLight = graph Light {
 //			intensity = lumIntens * max(0.0, (4.0 * exp(-6* atten) - 0.01));
 //			intensity = lumIntens / dot(toLight, toLight).xxxx;
 			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
-			toLight = normalize(toLight);
+//			toLight = normalize(toLight);
 		};
 	};
 	n3 = node {
