@@ -105,8 +105,9 @@ DefaultPointCloudStructure = graph Structure {
 ParticleSurface = surface Uniform {};
 
 /+TestSurface1 = surface HenyeyGreenstein {
-	roughness = 0.1;
+	roughness = 0.5;
 };+/
+
 
 /*
 TestSurface1 = surface CookTorrance {
@@ -114,12 +115,13 @@ TestSurface1 = surface CookTorrance {
 	roughness = 0.3;
 };
 /*/
-TestSurface1 = surface ABC_area {
+TestSurface1 = surface ABC_approx {
 	BRDF_A = 1;
-	BRDF_B = 30.0;
+	BRDF_B = 100.0;
 	BRDF_C = 0.92;
 };
 //*/
+
 
 TestSurface4 = surface HalfLambert {
 };
