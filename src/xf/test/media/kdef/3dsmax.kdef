@@ -50,7 +50,7 @@ MaxDefaultMaterial = graph Material {
 			if (maskImg.sample(texCoord * maskTexTile).x <= 0.01) discard;
 			out_albedo = albedoTint * albedoImg.sample(texCoord * albedoTexTile);
 			out_specular = specularTint * specularImg.sample(texCoord * specularTexTile);
-			out_specular *= out_albedo;
+//			out_specular *= out_albedo;
 			//out_albedo = 0;
 			//out_specular = 0;
 
