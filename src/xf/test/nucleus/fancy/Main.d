@@ -438,7 +438,7 @@ class TestApp : GfxApp {
 		rendererBackend.state.sRGB = true;
 
 		void renderTranslucent() {
-			final st = *rendererBackend.state;
+			/+final st = *rendererBackend.state;
 			with (rendererBackend.state.blend) {
 				enabled = true;
 				src = src.One;
@@ -448,7 +448,7 @@ class TestApp : GfxApp {
 				writeMask = false;
 			}
 			tnr.render(viewSettings, &tvsd, trlist);
-			*rendererBackend.state = st;
+			*rendererBackend.state = st;+/
 		}
 
 		if (wantPost) {

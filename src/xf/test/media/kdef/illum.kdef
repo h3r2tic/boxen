@@ -13,6 +13,8 @@ HenyeyGreenstein = graph Reflectance {
 		kernel = kernel Reflectance(
 			in roughness <type float>
 		) {
+			toLight = normalize(toLight);
+
 			float3 R = reflect(-toLight,normal);
 			float3 vi = toLight;
 			float3 vo = toEye;
@@ -55,6 +57,117 @@ HenyeyGreenstein = graph Reflectance {
 
 
 ABC_approx = graph Reflectance {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			BRDF_A <type float>,
+			BRDF_B <type float>,
+			BRDF_C <type float>
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Reflectance(
+			in BRDF_A <type float>,
+			in BRDF_B <type float>,
+			in BRDF_C <type float>
+		) {
+			float lsize = 1.8f;
+
+			float ldist = length(toLight);
+			float sratio = min(1.0f, lsize/ldist);
+
+			float3 vo = toEye;
+			float3 B = vo - dot(vo, normal).xxx * normal;
+
+			float BC = BRDF_B * BRDF_C;
+			float BB = BRDF_B * BRDF_B;
+			float BC2 = BC * BC;
+			float CC = BRDF_C * BRDF_C;
+			float TIS = (pow(1+BC2, 1-CC)-1) / (BC2*(1-CC));
+			float AC = 1.0 / TIS;
+
+			float3 toLightN = toLight / ldist;
+
+			float3 R = reflect(-toLightN, normal);
+			float3 vs = normalize(R);
+			float3 B0 = vs - dot(vs, normal).x * normal;
+
+			float d = dot(B-B0, B-B0);
+			float range = max(0.05, lsize/ldist);
+			float rangec = min(1.0, range);
+//			intensity *= smoothstep(1, 0, range);
+			float range2 = range*range;
+
+			float spec; {
+				spec = saturate((
+						+ (1.0/(BB * CC) + d)
+						* pow(1.0 + BB * CC * d, -CC)
+
+						+ ((-1.0)/(BB * CC) -(d + range*range))
+						* pow(1.0 + BB * CC * (d + range*range), -CC)
+				) / ((-1.0 + CC) * range*range));
+
+				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangec * rangec, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * rangec*rangec));
+				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.2, 0.25, range-sqrt(d)*1.5));
+				spec *= stepVal;
+				spec += edge * (1.0-stepVal);
+			}
+
+			float diff; {
+				d += 1.0;
+				diff = saturate((
+						+ (1.0/(BB * CC) + d)
+						* pow(1.0 + BB * CC * d, -CC)
+
+						+ ((-1.0)/(BB * CC) -(d + range*range))
+						* pow(1.0 + BB * CC * (d + range*range), -CC)
+				) / ((-1.0 + CC) * range*range));
+
+				/+float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangec * rangec, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * rangec*rangec));
+				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.2, 0.25, range-sqrt(d)*1.5));
+				diff *= stepVal;
+				diff += edge * (1.0-stepVal);+/
+			}
+
+			spec -= diff;
+
+			diffuse = diff * intensity;
+//			diffuse = 0;
+			specular = spec * intensity;
+//			specular = 0;
+
+			specular *= saturate(dot(normalize(toLight), normal).x);
+			specular /= TIS;
+
+			diffuse *= saturate(dot(normalize(toLight), normal).x + 0.15);
+			diffuse /= TIS;
+
+			diffuse *= 3.14159265;
+			specular *= 3.14159265;
+
+/+			diffuse = 0;
+			specular = 0;+/
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n0 n2;
+	connect n1.BRDF_A n2.BRDF_A;
+	connect n1.BRDF_B n2.BRDF_B;
+	connect n1.BRDF_C n2.BRDF_C;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
+	connect n2 n3;
+};
+
+
+/+ABC_approx = graph Reflectance {
 	n0 = node {
 		type = input;
 	};
@@ -127,6 +240,9 @@ ABC_approx = graph Reflectance {
 			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
 //			specular += intensity * saturate(dot(normalize(toLight), normal).x);
 
+			diffuse *= 3.14159265f;
+			specular *= 3.14159265f;
+
 /+			diffuse = 0;
 			specular = 0;+/
 		};
@@ -142,7 +258,7 @@ ABC_approx = graph Reflectance {
 	connect n2.diffuse n3.diffuse;
 	connect n2.specular n3.specular;
 	connect n2 n3;
-};
+};+/
 
 
 ABC_area = graph Reflectance {
@@ -166,7 +282,7 @@ ABC_area = graph Reflectance {
 		) {
 			const bool sphere = true;
 
-			float lsize = 0.94f;//1.8f * 1.00000001;
+			float lsize = 0.7f;//1.8f * 1.00000001;
 
 			if (!sphere) {
 				float ldist = length(toLight);
@@ -192,7 +308,7 @@ ABC_area = graph Reflectance {
 
 			float3 toLightN = normalize(toLight);
 
-			int taps = min(50, max(1, 80.0f * lsize * lsize / dot(toLight, toLight)));
+			int taps = 16*min(50, max(1, 80.0f * lsize * lsize / dot(toLight, toLight)));
 			for (int x = 0; x < taps; ++x) {
 				float3 rand = frac(randSeed+x*float3(230.118323274, 5.3970233, 1.325398233123));
 				float3 rpos;
@@ -221,7 +337,7 @@ ABC_area = graph Reflectance {
 				float tmp2 = tmp;
 				tmp = pow(1+BC2*tmp, -CC);
 				tmp2 = pow(1+BC2*(tmp2+0.3), -CC);
-				tmp -= tmp2;
+				//tmp -= tmp2;
 
 				const float fresnelR0 = 0.8f;
 				float fresnel = pow(1.0f - saturate(dot(vo, normalize(L + vo)).x), 5.0f);
@@ -247,10 +363,13 @@ ABC_area = graph Reflectance {
 //			specular = lsize * 0.04f;
 			diffuse = intensity * diff;
 
-/+			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
-			diffuse *= saturate(dot(normalize(toLight), normal).x + 0.15);
+			diffuse *= 3.14159265f;
+			specular *= 3.14159265f;
 
-			diffuse = 0;+/
+/+			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
+			diffuse *= saturate(dot(normalize(toLight), normal).x + 0.15);+/
+
+//			diffuse = 0;
 
 /+			diffuse = 0;
 			specular = 0;+/
@@ -312,6 +431,9 @@ ABC = graph Reflectance {
 
 			specular = intensity * tmp * saturate(dot( vi, normal ).x);
 			diffuse = intensity * tmp2 * saturate(dot( vi, normal ).x);
+
+			diffuse *= 3.14159265f;
+			specular *= 3.14159265f;
 		};
 	};
 	n3 = node {
