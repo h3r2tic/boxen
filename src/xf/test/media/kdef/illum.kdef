@@ -75,7 +75,7 @@ ABC_approx = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_C <type float>
 		) {
-			float lsize = 1.8f;
+			float lsize = 0.001f;
 
 			float ldist = length(toLight);
 			float sratio = min(1.0f, lsize/ldist);
@@ -98,7 +98,7 @@ ABC_approx = graph Reflectance {
 
 			float d = dot(B-B0, B-B0);
 			float range = max(0.05, lsize/ldist);
-			float rangec = min(1.0, range);
+			float rangec = min(range, 1.0);
 //			intensity *= smoothstep(1, 0, range);
 			float range2 = range*range;
 
@@ -111,7 +111,7 @@ ABC_approx = graph Reflectance {
 						* pow(1.0 + BB * CC * (d + range*range), -CC)
 				) / ((-1.0 + CC) * range*range));
 
-				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangec * rangec, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * rangec*rangec));
+				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangec * rangec, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * range*range));		// two regular 'range' intentional, yields better falloff in cases of geometry penetration
 				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.2, 0.25, range-sqrt(d)*1.5));
 				spec *= stepVal;
 				spec += edge * (1.0-stepVal);
@@ -127,13 +127,13 @@ ABC_approx = graph Reflectance {
 						* pow(1.0 + BB * CC * (d + range*range), -CC)
 				) / ((-1.0 + CC) * range*range));
 
-				/+float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangec * rangec, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * rangec*rangec));
+				/+float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * range*range, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * range*range));
 				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.2, 0.25, range-sqrt(d)*1.5));
 				diff *= stepVal;
 				diff += edge * (1.0-stepVal);+/
 			}
 
-			spec -= diff;
+			//spec -= diff;
 
 			diffuse = diff * intensity;
 //			diffuse = 0;
