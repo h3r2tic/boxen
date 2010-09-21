@@ -207,6 +207,7 @@ class SpotLight_VSM : Light {
 
 	override void setKernelData(KernelParamInterface kpi) {
 		kpi.bindUniform("lightPos", &position);
+		kpi.bindUniform("lightRadius", &radius);
 		kpi.bindUniform("lumIntens", &lumIntens);
 		kpi.bindUniform("influenceRadius", &influenceRadius);
 		kpi.bindUniform("depthSampler", &depthTex);

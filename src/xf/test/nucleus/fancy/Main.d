@@ -327,7 +327,7 @@ class TestApp : GfxApp {
 			lightScale /= 0.99f;
 		}
 
-		static float lightRad = 1.0f;
+		static float lightRad = 0.1f;
 		if (keyboard.keyDown(KeySym._3)) {
 			lightRad *= 0.99f;
 		}
@@ -347,7 +347,7 @@ class TestApp : GfxApp {
 		foreach (li, l; lights) {
 			l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
 			l.lumIntens = lightIllums[li] * lightScale;
-			//l.radius = lightRad;
+			l.radius = lightRad;
 		}
 
 		/+lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, 0) + vec3(0, 0, -2) * lightDist);

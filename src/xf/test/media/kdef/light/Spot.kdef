@@ -7,7 +7,7 @@ SpotLight_VSM = graph Light {
 		params = (
 			lightPos <type float3 + use lightPos> = 0 1 -2,
 			lumIntens <type float4 + use lumIntens> = 1 1 1 1,
-			radius <type float> = 5,
+			lightRadius <type float> = 5,
 			influenceRadius <type float>,
 			depthSampler <type sampler2D + use depth>,
 			spotlightMask <type sampler2D + use color>,
@@ -17,7 +17,7 @@ SpotLight_VSM = graph Light {
 	n2 = node {
 		type = kernel;
 		kernel = kernel Light(
-			radius <type float>,
+			lightRadius <type float>,
 			influenceRadius <type float>,
 			lightPos <type float3 + use lightPos>,
 			lumIntens <type float4 + use lumIntens>,
@@ -37,7 +37,7 @@ SpotLight_VSM = graph Light {
 				float atten = distToLight / influenceRadius;
 				intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
 				//intensity = lumIntens * saturate(( 2.0 / (1.0 + atten*atten) ) - 1.0);
-				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
+				lightSize = lightRadius;//max(0.02, min(2000.0, lightRadius*lightRadius*3.1415926 / dot(toLight, toLight).x));
 				//toLight = normalize(toLight);
 
 				float2 uv = (pointClipDiv) * 0.5 + 0.5;
@@ -74,7 +74,7 @@ SpotLight_VSM = graph Light {
 		type = output;
 	};
 
-	connect n1.radius n2.radius;
+	connect n1.lightRadius n2.lightRadius;
 	connect n1.influenceRadius n2.influenceRadius;
 	connect n0 n2;
 	connect n1 n2;
@@ -91,7 +91,7 @@ SpotLight_SM = graph Light {
 		params = (
 			lightPos <type float3 + use lightPos> = 0 1 -2,
 			lumIntens <type float4 + use lumIntens> = 1 1 1 1,
-			radius <type float> = 5,
+			lightRadius <type float> = 5,
 			influenceRadius <type float>,
 			depthSampler <type sampler2D + use depth>,
 			spotlightMask <type sampler2D + use color>,
@@ -101,7 +101,7 @@ SpotLight_SM = graph Light {
 	n2 = node {
 		type = kernel;
 		kernel = kernel Light(
-			radius <type float>,
+			lightRadius <type float>,
 			influenceRadius <type float>,
 			lightPos <type float3 + use lightPos>,
 			lumIntens <type float4 + use lumIntens>,
@@ -120,7 +120,7 @@ SpotLight_SM = graph Light {
 				float distToLight = length(toLight);
 				float atten = distToLight / influenceRadius;
 				intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
-				lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
+				lightSize = lightRadius;//max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
 				toLight = normalize(toLight);
 
 				float attenDDX = ddx(atten);
@@ -145,7 +145,7 @@ SpotLight_SM = graph Light {
 		type = output;
 	};
 
-	connect n1.radius n2.radius;
+	connect n1.lightRadius n2.lightRadius;
 	connect n1.influenceRadius n2.influenceRadius;
 	connect n0 n2;
 	connect n1 n2;

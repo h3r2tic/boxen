@@ -75,7 +75,7 @@ ABC_approx = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_C <type float>
 		) {
-			float lsize = 0.001f;
+			float lsize = lightSize;//0.001f;
 
 			float ldist = length(toLight);
 			float sratio = min(1.0f, lsize/ldist);
@@ -97,54 +97,51 @@ ABC_approx = graph Reflectance {
 			float3 B0 = vs - dot(vs, normal).x * normal;
 
 			float d = dot(B-B0, B-B0);
-			float range = max(0.05, lsize/ldist);
-			float rangec = min(range, 1.0);
+			float range = lsize / ldist;
+			float rangec = max(0.01, min(range, 1.0));
 //			intensity *= smoothstep(1, 0, range);
-			float range2 = range*range;
 
 			float spec; {
 				spec = saturate((
 						+ (1.0/(BB * CC) + d)
 						* pow(1.0 + BB * CC * d, -CC)
 
-						+ ((-1.0)/(BB * CC) -(d + range*range))
-						* pow(1.0 + BB * CC * (d + range*range), -CC)
-				) / ((-1.0 + CC) * range*range));
+						+ ((-1.0)/(BB * CC) -(d + rangec*rangec))
+						* pow(1.0 + BB * CC * (d + rangec*rangec), -CC)
+				) / ((-1.0 + CC) * rangec*rangec));
 
-				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangec * rangec, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * range*range));		// two regular 'range' intentional, yields better falloff in cases of geometry penetration
-				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.2, 0.25, range-sqrt(d)*1.5));
+				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * range * range, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * range*range));
+				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.1, 0.3, range-sqrt(d)*0.9));
 				spec *= stepVal;
 				spec += edge * (1.0-stepVal);
 			}
 
-			float diff; {
+			float diff = 0; {
 				d += 1.0;
 				diff = saturate((
 						+ (1.0/(BB * CC) + d)
 						* pow(1.0 + BB * CC * d, -CC)
 
-						+ ((-1.0)/(BB * CC) -(d + range*range))
-						* pow(1.0 + BB * CC * (d + range*range), -CC)
-				) / ((-1.0 + CC) * range*range));
-
-				/+float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * range*range, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * range*range));
-				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.2, 0.25, range-sqrt(d)*1.5));
-				diff *= stepVal;
-				diff += edge * (1.0-stepVal);+/
+						+ ((-1.0)/(BB * CC) -(d + rangec*rangec))
+						* pow(1.0 + BB * CC * (d + rangec*rangec), -CC)
+				) / ((-1.0 + CC) * rangec*rangec));
 			}
 
-			//spec -= diff;
+			spec -= diff;
 
 			diffuse = diff * intensity;
 //			diffuse = 0;
 			specular = spec * intensity;
 //			specular = 0;
 
-			specular *= saturate(dot(normalize(toLight), normal).x);
+			specular *= saturate(dot(normalize(toLight), normal).x + atan(range));
 			specular /= TIS;
 
-			diffuse *= saturate(dot(normalize(toLight), normal).x + 0.15);
+			diffuse *= saturate(dot(normalize(toLight), normal).x + atan(range));
 			diffuse /= TIS;
+
+/+			specular *= smoothstep(-0.01, 0.0, (normalize(toLight), normal).x);
+			diffuse *= dot(normalize(toLight), normal).x > 0.0;+/
 
 			diffuse *= 3.14159265;
 			specular *= 3.14159265;
@@ -186,7 +183,7 @@ ABC_approx = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_C <type float>
 		) {
-			float lsize = 0.2f;
+			float lsize = lightSize;//0.2f;
 
 			float ldist = length(toLight);
 			float sratio = min(1.0f, lsize/ldist);
@@ -282,7 +279,7 @@ ABC_area = graph Reflectance {
 		) {
 			const bool sphere = true;
 
-			float lsize = 0.7f;//1.8f * 1.00000001;
+			float lsize = lightSize;//0.7f;//1.8f * 1.00000001;
 
 			if (!sphere) {
 				float ldist = length(toLight);

@@ -18,6 +18,7 @@ private {
 abstract class Light {
 	vec3	position = { x: 0, y: 1, z: 2 };
 	vec4	lumIntens = vec4.one;		// uh oh, luminous intensity
+	float	radius = 1.0f;
 	float	influenceRadius = 0;
 	LightId	_id;
 

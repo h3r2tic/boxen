@@ -109,8 +109,8 @@ DefaultPointCloudStructure = graph Structure {
 
 TestSurface1 = surface ABC_approx {
 	BRDF_A = 1;
-	BRDF_B = 10.0;
-	BRDF_C = 0.92;
+	BRDF_B = 40.0;
+	BRDF_C = 0.99;
 };
 
 ParticleSurface = surface Uniform {};

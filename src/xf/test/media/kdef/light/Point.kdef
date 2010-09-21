@@ -7,14 +7,14 @@ PointLight = graph Light {
 		params = (
 			lightPos <type float3 + use lightPos> = 0 1 -2,
 			lumIntens <type float4 + use lumIntens> = 1 1 1 1,
-			radius <type float> = 5,
+			lightRadius <type float> = 5,
 			influenceRadius <type float>
 		);
 	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Light(
-			radius <type float>,
+			lightRadius <type float>,
 			influenceRadius <type float>,
 			lightPos <type float3 + use lightPos>,
 			lumIntens <type float4 + use lumIntens>
@@ -27,7 +27,7 @@ PointLight = graph Light {
 //			intensity = lumIntens / (0.5 + dot(toLight, toLight).xxxx);
 //			intensity = lumIntens * max(0.0, (4.0 * exp(-6* atten) - 0.01));
 //			intensity = lumIntens / dot(toLight, toLight).xxxx;
-			lightSize = max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
+			lightSize = lightRadius;// / length(toLight);
 //			toLight = normalize(toLight);
 		};
 	};
@@ -35,7 +35,7 @@ PointLight = graph Light {
 		type = output;
 	};
 
-	connect n1.radius n2.radius;
+	connect n1.lightRadius n2.lightRadius;
 	connect n1.influenceRadius n2.influenceRadius;
 	connect n0 n2;
 	connect n1 n2;

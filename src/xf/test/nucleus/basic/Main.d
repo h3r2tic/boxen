@@ -253,8 +253,8 @@ class TestApp : GfxApp {
 		foreach (li, l; lights) {
 			l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
 			l.lumIntens = lightIllums[li] * lightScale;
+			l.radius = lightRad;
 		}
-
 		// move some objects
 
 		// The various arrays for VSD must be updated as they may have been
