@@ -42,8 +42,8 @@ private {
 }
 
 
-//version = LightTest;
-version = Sponza;
+version = LightTest;
+//version = Sponza;
 //version = FixedTest
 
 
@@ -104,7 +104,7 @@ class TestApp : GfxApp {
 			const numLights = 50;
 			alias PointLight LightType;
 		} else {
-			const numLights = 50;
+			const numLights = 3;
 			alias PointLight LightType;
 		}
 		
@@ -128,7 +128,8 @@ class TestApp : GfxApp {
 			}
 
 			float h = cast(float)i / numLights;//Kiss.instance.fraction();
-			float s = 0.92f;
+			//float s = 0.92f;
+			float s = 0.7f;
 			float v = 1.0f;
 
 			vec4 rgba = vec4.zero;
