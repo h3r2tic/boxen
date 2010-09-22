@@ -42,8 +42,8 @@ private {
 }
 
 
-version = LightTest;
-//version = Sponza;
+//version = LightTest;
+version = Sponza;
 //version = FixedTest
 
 
@@ -104,7 +104,7 @@ class TestApp : GfxApp {
 			const numLights = 50;
 			alias PointLight LightType;
 		} else {
-			const numLights = 3;
+			const numLights = 30;
 			alias PointLight LightType;
 		}
 		
