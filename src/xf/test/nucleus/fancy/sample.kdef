@@ -109,8 +109,8 @@ DefaultPointCloudStructure = graph Structure {
 
 TestSurface1 = surface ABC_approx {
 	BRDF_A = 1;
-	BRDF_B = 32.0;
-	BRDF_C = 0.92;
+	BRDF_B = 30.0;
+	BRDF_C = 0.95;
 };
 
 ParticleSurface = surface Uniform {};
@@ -499,7 +499,7 @@ TestPost = graph PostProcess {
 		) {
 			float2 off = cos(tex2D(distortSampler, uv * 3 + time.minute).xy * 27.123 + radians(time.second * 360)) * 0.005;
 			float2 meh = smoothstep(1, 0.9, saturate(2 * abs(uv - float2(0.5))));
-			output = baseColor.sample(saturate(uv + off * meh));
+			output = baseColor.sample(saturate(uv + 0*off * meh));
 		};
 	};
 

@@ -117,7 +117,7 @@ TestSurface1 = surface CookTorrance {
 /*/
 TestSurface1 = surface ABC_approx {
 	BRDF_A = 1;
-	BRDF_B = 30.0;
+	BRDF_B = 50.0;
 	BRDF_C = 0.99;
 };
 //*/

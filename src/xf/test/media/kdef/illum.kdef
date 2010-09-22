@@ -76,11 +76,17 @@ ABC_approx = graph Reflectance {
 			in BRDF_C <type float>
 		) {
 			float lsize = lightSize;//0.001f;
-
 			float ldist = length(toLight);
 
+			float range = lsize / ldist;
+			float rangec = max(0.02, min(range, 0.3));
+			float rangecf = min(range, 1.0);
+
 			float3 vo = toEye;
-			float3 B = vo - dot(vo, normal).xxx * normal;
+			float enlongationReduction = min(1.0, atan(rangec)/(3.14159265/4));
+
+			float3 Bnormal = normalize(normal*(1.0-enlongationReduction)+toEye*enlongationReduction);
+			float3 B = vo - dot(vo, Bnormal).xxx * Bnormal;
 
 			float BC = BRDF_B * BRDF_C;
 			float BB = BRDF_B * BRDF_B;
@@ -93,12 +99,12 @@ ABC_approx = graph Reflectance {
 
 			float3 R = reflect(-toLightN, normal);
 			float3 vs = normalize(R);
-			float3 B0 = vs - dot(vs, normal).x * normal;
+			float3 B0 = vs - dot(vs, Bnormal).x * Bnormal;
 
-			float d = dot(B-B0, B-B0);
-			float range = lsize / ldist;
-			float rangec = max(0.02, min(range, 0.3));
-			float rangecf = min(range, 1.0);
+			float3 Bdiff = B-B0;
+//			Bdiff.y *= 2;
+
+			float d = dot(Bdiff, Bdiff);
 //			intensity *= smoothstep(1, 0, range);
 
 			float spec; {
@@ -115,6 +121,12 @@ ABC_approx = graph Reflectance {
 				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.1, hardness, rangecf-sqrt(d)*1.0));
 				spec *= stepVal;
 				spec += edge * (1.0-stepVal);
+
+				const float fresnelR0 = 0.8f;
+				float fresnel = pow(1.0f - saturate(dot(vo, normalize(toLightN + vo)).x), 5.0f);
+				fresnel *= (1.0f - fresnelR0);
+				fresnel += fresnelR0;
+				spec *= fresnel;
 			}
 
 			float diff = 0; {
@@ -336,7 +348,7 @@ ABC_area = graph Reflectance {
 				float tmp2 = tmp;
 				tmp = pow(1+BC2*tmp, -CC);
 				tmp2 = pow(1+BC2*(tmp2+0.3), -CC);
-				//tmp -= tmp2;
+				tmp -= tmp2;
 
 				const float fresnelR0 = 0.8f;
 				float fresnel = pow(1.0f - saturate(dot(vo, normalize(L + vo)).x), 5.0f);
