@@ -78,7 +78,6 @@ ABC_approx = graph Reflectance {
 			float lsize = lightSize;//0.001f;
 
 			float ldist = length(toLight);
-			float sratio = min(1.0f, lsize/ldist);
 
 			float3 vo = toEye;
 			float3 B = vo - dot(vo, normal).xxx * normal;
@@ -98,7 +97,8 @@ ABC_approx = graph Reflectance {
 
 			float d = dot(B-B0, B-B0);
 			float range = lsize / ldist;
-			float rangec = max(0.01, min(range, 1.0));
+			float rangec = max(0.02, min(range, 0.3));
+			float rangecf = min(range, 1.0);
 //			intensity *= smoothstep(1, 0, range);
 
 			float spec; {
@@ -110,8 +110,9 @@ ABC_approx = graph Reflectance {
 						* pow(1.0 + BB * CC * (d + rangec*rangec), -CC)
 				) / ((-1.0 + CC) * rangec*rangec));
 
-				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * range * range, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * range*range));
-				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.1, 0.3, range-sqrt(d)*0.9));
+				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangecf * rangecf, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * rangecf*rangecf));
+				float hardness = atan(1.0/(BRDF_B*BRDF_C*0.05))/(3.14159265/2);
+				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.1, hardness, rangecf-sqrt(d)*1.0));
 				spec *= stepVal;
 				spec += edge * (1.0-stepVal);
 			}
@@ -134,10 +135,11 @@ ABC_approx = graph Reflectance {
 			specular = spec * intensity;
 //			specular = 0;
 
-			specular *= saturate(dot(normalize(toLight), normal).x + atan(range));
+			float wrapAround = min(0.2, atan(range));
+			specular *= saturate(dot(normalize(toLight), normal).x + wrapAround);
 			specular /= TIS;
 
-			diffuse *= saturate(dot(normalize(toLight), normal).x + atan(range));
+			diffuse *= saturate(dot(normalize(toLight), normal).x + wrapAround);
 			diffuse /= TIS;
 
 /+			specular *= smoothstep(-0.01, 0.0, (normalize(toLight), normal).x);
