@@ -148,6 +148,7 @@ class TestApp : GfxApp {
 		// ----
 
 		cstring model = `mesh/nano.hsf`;
+		//cstring model = `mesh/spartan.hsf`;
 		float scale = 1.0f;
 		/+cstring model = `mesh/masha.hsf`;
 		//cstring model = `mesh/foo.hsf`;

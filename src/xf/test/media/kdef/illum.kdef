@@ -79,7 +79,7 @@ ABC_approx = graph Reflectance {
 			float ldist = length(toLight);
 
 			float range = lsize / ldist;
-			float rangec = max(0.02, min(range, 0.3));
+			float rangec = max(0.015, min(range, 0.3));
 			float rangecf = min(range, 1.0);
 
 			float3 vo = toEye;
@@ -121,16 +121,10 @@ ABC_approx = graph Reflectance {
 				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.1, hardness, rangecf-sqrt(d)*1.0));
 				spec *= stepVal;
 				spec += edge * (1.0-stepVal);
-
-				const float fresnelR0 = 0.8f;
-				float fresnel = pow(1.0f - saturate(dot(vo, normalize(toLightN + vo)).x), 5.0f);
-				fresnel *= (1.0f - fresnelR0);
-				fresnel += fresnelR0;
-				spec *= fresnel;
 			}
 
 			float diff = 0; {
-				d += 1.0;
+				d += 1.5;
 				diff = saturate((
 						+ (1.0/(BB * CC) + d)
 						* pow(1.0 + BB * CC * d, -CC)
@@ -141,6 +135,12 @@ ABC_approx = graph Reflectance {
 			}
 
 			spec -= diff;
+
+			const float fresnelR0 = 0.8f;
+			float fresnel = pow(1.0f - saturate(dot(vo, normalize(toLightN + vo)).x), 5.0f);
+			fresnel *= (1.0f - fresnelR0);
+			fresnel += fresnelR0;
+			spec *= fresnel;
 
 			diffuse = diff * intensity;
 //			diffuse = 0;
@@ -176,100 +176,6 @@ ABC_approx = graph Reflectance {
 	connect n2.specular n3.specular;
 	connect n2 n3;
 };
-
-
-/+ABC_approx = graph Reflectance {
-	n0 = node {
-		type = input;
-	};
-	n1 = node {
-		type = data;
-		params = (
-			BRDF_A <type float>,
-			BRDF_B <type float>,
-			BRDF_C <type float>
-		);
-	};
-	n2 = node {
-		type = kernel;
-		kernel = kernel Reflectance(
-			in BRDF_A <type float>,
-			in BRDF_B <type float>,
-			in BRDF_C <type float>
-		) {
-			float lsize = lightSize;//0.2f;
-
-			float ldist = length(toLight);
-			float sratio = min(1.0f, lsize/ldist);
-
-			float3 vo = toEye;
-			float3 B = vo - dot(vo, normal).xxx * normal;
-
-			float BC = BRDF_B * BRDF_C;
-			float BC2 = BC * BC;
-			float CC = BRDF_C * BRDF_C;
-			float TIS = (pow(1+BC2, 1-CC)-1) / (BC2*(1-CC));
-			float AC = 1.0 / TIS;
-
-			float3 toLightN = toLight / ldist;
-
-			float3 R = reflect(-toLightN, normal);
-			float3 vs = normalize(R);
-			float3 B0 = vs - dot(vs, normal).x * normal;
-
-			float x = distance(B, B0);
-//			x /= sratio;
-			x /= 0.08;
-			float diff = AC / 50 / sratio;
-			x /= max(0.0001f, min(1.0, dot(R, normal).x));
-
-			float interp = smoothstep(7.5f, 7.99f, x);
-			float xmeh = x;
-			x = min(x, 7.99f);
-			float x2 = x*x;
-			float x3 = x*x2;
-			float x4 = x*x3;
-			float x5 = x*x4;
-			float x6 = x*x5;
-			float x7 = x*x6;
-			float x8 = x*x7;
-			float x9 = x*x8;
-			float x10 = x*x9;
-			float x11 = x*x10;
-			float x12 = x*x11;
-
-			float approx = (3.14159 + 61.5157 *x - 195.234 *x2 + 274.415 *x3 - 235.084 *x4 + 
-   144.573 *x5 - 69.8671 *x6 + 25.2546 *x7 - 0.732579 *x8 - 
-   0.316311 *x9 + 0.00283363 *x10)/(1 + 19.5811 *x - 61.942 *x2 + 
-   91.3211 *x3 - 87.31 *x4 + 66.0931 *x5 - 45.7811 *x6 + 
-   36.3551 *x7 - 33.8658 *x8 + 22.0028 *x9 - 2.13581 *x10 - 
-   0.0967361 *x11 + 0.00127675 *x12);
-
-			diff *= approx * (1.0f - interp) + interp * (1.43722f/(xmeh*xmeh));
-			
-			specular = intensity * diff;
-			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
-//			specular += intensity * saturate(dot(normalize(toLight), normal).x);
-
-			diffuse *= 3.14159265f;
-			specular *= 3.14159265f;
-
-/+			diffuse = 0;
-			specular = 0;+/
-		};
-	};
-	n3 = node {
-		type = output;
-	};
-
-	connect n0 n2;
-	connect n1.BRDF_A n2.BRDF_A;
-	connect n1.BRDF_B n2.BRDF_B;
-	connect n1.BRDF_C n2.BRDF_C;
-	connect n2.diffuse n3.diffuse;
-	connect n2.specular n3.specular;
-	connect n2 n3;
-};+/
 
 
 ABC_area = graph Reflectance {
