@@ -128,7 +128,7 @@ class TestApp : GfxApp {
 			version (FixedTest) {
 				lightIllums ~= rgba * (1000.f / numLights);
 			} else {
-				lightIllums ~= 80 * rgba;// * (1000.f / numLights);
+				lightIllums ~= 40 * rgba;// * (1000.f / numLights);
 			}
 		}
 
