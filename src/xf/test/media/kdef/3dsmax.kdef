@@ -15,6 +15,8 @@ MaxDefaultMaterial = graph Material {
 			specularTexTile <type float2>,
 			maskTexTile <type float2>,
 			normalTexTile <type float2>,
+			albedoTexAmount <type float>,
+			specularTexAmount <type float>,
 		);
 	};
 	ns_albedo = node {
@@ -46,19 +48,34 @@ MaxDefaultMaterial = graph Material {
 			specularTexTile <type float2>,
 			maskTexTile <type float2>,
 			normalTexTile <type float2>,
+			albedoTexAmount <type float>,
+			specularTexAmount <type float>,
 		) {
 			if (maskImg.sample(texCoord * maskTexTile).x <= 0.01) discard;
-			out_albedo = albedoTint * albedoImg.sample(texCoord * albedoTexTile);
-			out_specular = specularTint * specularImg.sample(texCoord * specularTexTile);
+			out_albedo = albedoTint * (1.0 - albedoTexAmount) + albedoTexAmount * albedoImg.sample(texCoord * albedoTexTile);
+//			specularTexAmount = 0.99;
+			out_specular = specularTint * (1.0 - specularTexAmount) + specularTexAmount * specularImg.sample(texCoord * specularTexTile);
 //			out_specular *= out_albedo;
+			//out_specular = specularImg.sample(texCoord * specularTexTile);
 			//out_albedo = 0;
 			//out_specular = 0;
+			//out_specular = specularTexAmount;
 
 			float3 tnorm = normalImg.sample(texCoord * normalTexTile).xyz * 2.0 - 1.0;
 			out_normal = tnorm.z * normal + tnorm.x * tangent - tnorm.y * bitangent;
 			out_normal = normalize(out_normal);
-
 //			out_normal = normal;
+
+			const float fresnelR0 = 0.0f;
+
+			float3 toEye = -normalize(mul(worldToView, float4(position, 1.0)).xyz);
+			float3 eyeSpaceNormal = mul(worldToView, float4(normalize(out_normal+normal), 0.0)).xyz;
+
+			float fresnel = saturate(dot(eyeSpaceNormal, toEye).x);
+			fresnel = pow(1.0f - fresnel, 5.0f);
+			fresnel *= (1.0f - fresnelR0);
+			fresnel += fresnelR0;
+			out_emissive = fresnel * lerp(float4(1), out_specular, 0.5) * 0.2;
 
 //			out_albedo = 0.5 * tangent.xyzz + 0.5;
 //			out_albedo = 0.5 * out_normal.xyzz + 0.5;
@@ -73,6 +90,9 @@ MaxDefaultMaterial = graph Material {
 	connect n1.specularTexTile n2.specularTexTile;
 	connect n1.maskTexTile n2.maskTexTile;
 	connect n1.normalTexTile n2.normalTexTile;
+
+	connect n1.albedoTexAmount n2.albedoTexAmount;
+	connect n1.specularTexAmount n2.specularTexAmount;
 
 	// ----
 
@@ -103,6 +123,7 @@ MaxDefaultMaterial = graph Material {
 
 	connect n2.out_albedo n3.out_albedo;
 	connect n2.out_specular n3.out_specular;
+	connect n2.out_emissive n3.out_emissive;
 
 	connect n2 n3;
 };

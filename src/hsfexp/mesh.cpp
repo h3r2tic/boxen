@@ -50,13 +50,19 @@ void HSFExp::exportMeshes(int level) {
 		int deleteIt;
 		TriObject *triObject = GetTriObjectFromNode(mStart, node, deleteIt);
 		if (triObject) {
-			Indent(level++);
-			fprintf(mStream, _T("{\n"));
+			Mesh &mesh = triObject->GetMesh();
+			int numverts = mesh.getNumVerts();
+			int numfaces = mesh.getNumFaces();
 
-			exportMesh(node, triObject, level);
+			if (numfaces > 0 && numverts > 0) {
+				Indent(level++);
+				fprintf(mStream, _T("{\n"));
 
-			Indent(--level);
-			fprintf(mStream, _T("}\n"));
+				exportMesh(node, mesh, level);
+
+				Indent(--level);
+				fprintf(mStream, _T("}\n"));
+			}
 
 			if (deleteIt) triObject->DeleteMe();
 		}
@@ -66,19 +72,14 @@ void HSFExp::exportMeshes(int level) {
 }
 
 
-void HSFExp::exportMesh(INode* node, TriObject *const obj, int level) {
+void HSFExp::exportMesh(INode* node, Mesh &mesh, int level) {
     assert(obj);
 
-    Mesh &mesh = obj->GetMesh();
     int numverts = mesh.getNumVerts();
     int numtverts = mesh.getNumTVerts();
     int numfaces = mesh.getNumFaces();
 	int vx1 = 0, vx2 = 1, vx3 = 2;
     
-    if (numfaces == 0 || numverts == 0) {
-        return;
-    }
-
 	Matrix3 worldMat = node->GetObjTMAfterWSM(mStart);
 	Matrix3 rescaleMat = calcRescaleMatrix(worldMat);
 	Point3 scale; {

@@ -679,7 +679,25 @@ class ForwardRenderer : Renderer {
 			outRadiance.type = "float4";
 			outRadiance.semantic.addTrait("use", "color");
 
-			kg.flow.addDataFlow(sumTotalLight, "c", outRadianceNid, outRadiance.name);
+			auto addEmissive = kg.addFuncNode(addFunc);
+			{
+				GraphNodeId nid;
+				Param* par;
+				if (getOutputParamIndirect(
+					kg,
+					materialInfo.output,
+					"out_emissive",
+					&nid,
+					&par
+				)) {
+					kg.flow.addDataFlow(nid, par.name, addEmissive, "a");
+				} else {
+					error("Incoming flow to 'out_emissive' of the Material kernel not found.");
+				}
+			}
+
+			kg.flow.addDataFlow(sumTotalLight, "c", addEmissive, "b");
+			kg.flow.addDataFlow(addEmissive, "c", outRadianceNid, outRadiance.name);
 
 			convertGraphDataFlowExceptOutput(
 				kg,
@@ -690,6 +708,7 @@ class ForwardRenderer : Renderer {
 					if (int r = sink(mulSpecularNid)) return r;
 					if (int r = sink(sumTotalLight)) return r;
 					if (int r = sink(outRadianceNid)) return r;
+					if (int r = sink(addEmissive)) return r;
 					return 0;
 				}
 			);
@@ -697,7 +716,7 @@ class ForwardRenderer : Renderer {
 			removeNodeIfTypeMatches(materialInfo.output, NT.Output);
 
 			// For codegen below
-			materialInfo.output = outRadianceNid;
+			materialInfo.output = addEmissive;
 		} else {
 			assert (false); 	// TODO
 			

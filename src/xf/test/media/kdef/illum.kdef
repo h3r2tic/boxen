@@ -75,93 +75,304 @@ ABC_approx = graph Reflectance {
 			in BRDF_B <type float>,
 			in BRDF_C <type float>
 		) {
-			float lsize = lightSize;//0.001f;
-			float ldist = length(toLight);
+			float lsize = 0.8 * lightSize;		// it comes out larger due to various approximations ._.
+			float rldist = rsqrt(dot(toLight, toLight).x);
 
-			float range = lsize / ldist;
-			float rangec = max(0.015, min(range, 0.3));
-			float rangecf = min(range, 1.0);
+			float range = lsize * rldist;
+			float rangec = max(0.015, min(range, 0.7));
+			float rangecf = max(0.00000001, min(range, 1.0));
 
-			float3 vo = toEye;
-			float enlongationReduction = min(1.0, atan(rangec)/(3.14159265/4));
+			// yup, this is pretty arbitrary too :P
+			float elongationReduction = atan(rangec) / (3.14159265 / 4);
 
-			float3 Bnormal = normalize(normal*(1.0-enlongationReduction)+toEye*enlongationReduction);
-			float3 B = vo - dot(vo, Bnormal).xxx * Bnormal;
+			float3 Bnormal = normalize(lerp(normal, toEye, elongationReduction));
+			float3 B = toEye - dot(toEye, Bnormal).xxx * Bnormal;
 
 			float BC = BRDF_B * BRDF_C;
 			float BB = BRDF_B * BRDF_B;
 			float BC2 = BC * BC;
 			float CC = BRDF_C * BRDF_C;
-			float TIS = (pow(1+BC2, 1-CC)-1) / (BC2*(1-CC));
-			float AC = 1.0 / TIS;
+			float TIS_inv = (BC2 * (1.0 - CC)) / (pow(1.0 + BC2, 1.0 - CC) - 1.0);
 
-			float3 toLightN = toLight / ldist;
+			float3 toLightN = toLight * rldist;
 
 			float3 R = reflect(-toLightN, normal);
 			float3 vs = normalize(R);
 			float3 B0 = vs - dot(vs, Bnormal).x * Bnormal;
 
-			float3 Bdiff = B-B0;
-//			Bdiff.y *= 2;
+			float d = dot(B-B0, B-B0);
 
-			float d = dot(Bdiff, Bdiff);
-//			intensity *= smoothstep(1, 0, range);
+			float hardness = BRDF_C*pow(BRDF_B, 0.3)*2.0;
 
 			float spec; {
-				spec = saturate((
-						+ (1.0/(BB * CC) + d)
-						* pow(1.0 + BB * CC * d, -CC)
+				spec = (
+					+ (1.0 / (BC2) + d)
+					* pow(1.0 + BC2 * d, -CC)
 
-						+ ((-1.0)/(BB * CC) -(d + rangec*rangec))
-						* pow(1.0 + BB * CC * (d + rangec*rangec), -CC)
-				) / ((-1.0 + CC) * rangec*rangec));
+					- (1.0 / BC2 + (d + rangec * rangec))
+					* pow(1.0 + BC2 * (d + rangec * rangec), -CC)
+				) / ((-1.0 + CC) * rangec*rangec);
 
-				float edge = (-2 * (-1 + pow(1 + BRDF_B*BRDF_B * CC * rangecf * rangecf, 1.0 - CC))/(2 * BRDF_B*BRDF_B * CC * (-1 + CC) * rangecf*rangecf));
-				float hardness = atan(1.0/(BRDF_B*BRDF_C*0.05))/(3.14159265/2);
-				float stepVal = 1.0-smoothstep(0, 1, smoothstep(-0.1, hardness, rangecf-sqrt(d)*1.0));
-				spec *= stepVal;
-				spec += edge * (1.0-stepVal);
+				float edge = (
+					(1.0 - pow(1.0 + BC2 * rangecf * rangecf, 1.0 - CC))
+					/ (BC2 * (-1.0 + CC) * rangecf * rangecf)
+				);
+
+				// The pixie dust of the model - fade-out of the flat region of the
+				// highlight which just looks "good enough"
+
+				float x = (range - sqrt(d)) * hardness / (range + 8.0 / BRDF_B);
+				//float powx = pow(5.3, 2*x);
+				//spec = lerp(spec, edge, (0.5 + 0.5 * (powx - 1) / (powx + 1)));
+				spec = lerp(spec, edge, (0.5 + 0.5 * tanh(x)));
 			}
 
 			float diff = 0; {
-				d += 1.5;
-				diff = saturate((
-						+ (1.0/(BB * CC) + d)
-						* pow(1.0 + BB * CC * d, -CC)
+				// Don't yet know how to factor out the diffuse component properly.
+				// This one gives smooth transitions between specular and diffuse, but
+				// it's rather expensive
 
-						+ ((-1.0)/(BB * CC) -(d + rangec*rangec))
-						* pow(1.0 + BB * CC * (d + rangec*rangec), -CC)
-				) / ((-1.0 + CC) * rangec*rangec));
+				d += 1.2;
+
+				diff = (
+					+ (1.0 / BC2 + d)
+					* pow(1.0 + BC2 * d, -CC)
+
+					- (1.0 / BC2 + (d + rangec * rangec))
+					* pow(1.0 + BC2 * (d + rangec * rangec), -CC)
+				) / ((-1.0 + CC) * rangec * rangec);
 			}
 
 			spec -= diff;
 
-			const float fresnelR0 = 0.8f;
-			float fresnel = pow(1.0f - saturate(dot(vo, normalize(toLightN + vo)).x), 5.0f);
+/+			const float fresnelR0 = 0.8f;
+			float fresnel = pow(1.0f - saturate(dot(toEye, normalize(toLightN + toEye)).x), 5.0f);
 			fresnel *= (1.0f - fresnelR0);
 			fresnel += fresnelR0;
-			spec *= fresnel;
+			spec *= fresnel;+/
 
-			diffuse = diff * intensity;
-//			diffuse = 0;
-			specular = spec * intensity;
-//			specular = 0;
+			// Approximate cosine term for sub-hemispherical light sources due to John M. Snyder
+			float modCosTerm;
+			{
+				const float halfpi = 1.5707963268;
+				const float pi = 3.14159265;
 
-			float wrapAround = min(0.2, atan(range));
-			specular *= saturate(dot(normalize(toLight), normal).x + wrapAround);
-			specular /= TIS;
+				float alpha = atan(range);
+				float cosw = dot(toLightN, normal).x;
+				float sina = sin(alpha);
+				float cosa = cos(alpha);
+				float w = acos(cosw);
 
-			diffuse *= saturate(dot(normalize(toLight), normal).x + wrapAround);
-			diffuse /= TIS;
+				float knee1 = halfpi - alpha;
+				float knee2 = halfpi + alpha;
 
-/+			specular *= smoothstep(-0.01, 0.0, (normalize(toLight), normal).x);
-			diffuse *= dot(normalize(toLight), normal).x > 0.0;+/
+				if (w <= knee1) {
+					modCosTerm = cosw;
+				} else if (w <= halfpi) {
+					float y = (w - knee1) / alpha;
+					float g0 = sina;
+					float g1 = (1.0/pi * (alpha - cosa*sina)) / (sina*sina);
+					float g0d = (-cosa) * alpha;
+					float g1d = -0.5 * alpha;
+					float hermiteA = g1d + g0d - 2*(g1 - g0);
+					float hermiteB = 3*(g1-g0) - g1d - 2*g0d;
+					float hermiteC = g0d;
+					float hermiteD = g0;
+					modCosTerm =
+						hermiteA * y*y*y
+					+	hermiteB * y*y
+					+	hermiteC * y
+					+	hermiteD;
+				} else if (w < knee2) {
+					float y = (w - halfpi) / alpha;
+					float g0 = (1.0/pi * (alpha - cosa*sina)) / (sina*sina);
+					float g1 = 0;
+					float g0d = -0.5 * alpha;
+					float g1d = 0;
+					float hermiteA = g1d + g0d - 2*(g1 - g0);
+					float hermiteB = 3*(g1-g0) - g1d - 2*g0d;
+					float hermiteC = g0d;
+					float hermiteD = g0;
+					modCosTerm =
+						hermiteA * y*y*y
+					+	hermiteB * y*y
+					+	hermiteC * y
+					+	hermiteD;
+				} else {
+					modCosTerm = 0;
+				}
+			}
 
-			diffuse *= 3.14159265;
-			specular *= 3.14159265;
+			//modCosTerm = saturate(dot(toLightN, normal).x);
+			float normFactor = modCosTerm * TIS_inv;
 
-/+			diffuse = 0;
-			specular = 0;+/
+			specular = spec * intensity * normFactor;
+			diffuse = diff * intensity * normFactor;
+
+/+			specular = 0;
+			diffuse = intensity * modCosTerm;+/
+		};
+	};
+	n3 = node {
+		type = output;
+	};
+
+	connect n0 n2;
+	connect n1.BRDF_A n2.BRDF_A;
+	connect n1.BRDF_B n2.BRDF_B;
+	connect n1.BRDF_C n2.BRDF_C;
+	connect n2.diffuse n3.diffuse;
+	connect n2.specular n3.specular;
+	connect n2 n3;
+};
+
+
+ABC_approx2 = graph Reflectance {
+	n0 = node {
+		type = input;
+	};
+	n1 = node {
+		type = data;
+		params = (
+			BRDF_A <type float>,
+			BRDF_B <type float>,
+			BRDF_C <type float>
+		);
+	};
+	n2 = node {
+		type = kernel;
+		kernel = kernel Reflectance(
+			in BRDF_A <type float>,
+			in BRDF_B <type float>,
+			in BRDF_C <type float>
+		) {
+			float lsize = 0.8 * lightSize;		// it comes out larger due to various approximations ._.
+			float rldist = rsqrt(dot(toLight, toLight).x);
+
+			float range = lsize * rldist;
+			float rangec = max(0.015, min(range, 0.7));
+			float rangecf = max(0.00000001, min(range, 1.0));
+
+			// yup, this is pretty arbitrary too :P
+			float elongationReduction = 0.5*BRDF_C * BRDF_C;//atan(rangec) / (3.14159265 / 4);
+
+			float3 Bnormal = normalize(lerp(normal, toEye, elongationReduction));
+			float3 B = toEye - dot(toEye, normal).x * normal;
+			float3 Bx = toEye - dot(toEye, Bnormal).x * Bnormal;
+
+			float BC = BRDF_B * BRDF_C;
+			float BB = BRDF_B * BRDF_B;
+			float BC2 = BC * BC;
+			float CC = BRDF_C * BRDF_C;
+			float TIS_inv = (BC2 * (1.0 - CC)) / (pow(1.0 + BC2, 1.0 - CC) - 1.0);
+
+			float3 toLightN = toLight * rldist;
+
+			float3 R = reflect(-toLightN, normal);
+			float3 vs = normalize(R);
+			float3 B0 = vs - dot(vs, normal).x * normal;
+			float3 B0x = vs - dot(vs, Bnormal).x * Bnormal;
+
+			float d = dot(B-B0, B-B0);
+			float dx = dot(Bx-B0x, Bx-B0x);
+			dx = max(d, dx);
+
+			float hardness = BRDF_C*pow(BRDF_B, 0.3)*2.0;
+
+			float spec; {
+				spec = pow((d + 0.5*range*range)*BC2+1, -CC);
+
+				float edge = (
+					(1.0 - pow(1.0 + BC2 * rangecf * rangecf, 1.0 - CC))
+					/ (BC2 * (-1.0 + CC) * rangecf * rangecf)
+				);
+
+				// The pixie dust of the model - fade-out of the flat region of the
+				// highlight which just looks "good enough"
+
+				float x = (range - sqrt(dx)) * hardness / (range + 8.0 / BRDF_B);
+				float powx = pow(2.2, 2*x);
+				spec = lerp(spec, edge, (0.5 + 0.5 * (powx - 1) / (powx + 1)));
+				//spec = lerp(spec, edge, (0.5 + 0.5 * tanh(x)));
+			}
+
+			float diff = 0; {
+				// Don't yet know how to factor out the diffuse component properly.
+				// This one gives smooth transitions between specular and diffuse, but
+				// it's rather expensive
+
+				d += 1.2;
+				diff = pow((d + 0.5*range*range)*BC2+1, -CC);
+			}
+
+			spec -= diff;
+
+/+			const float fresnelR0 = 0.8f;
+			float fresnel = pow(1.0f - saturate(dot(toEye, normalize(toLightN + toEye)).x), 5.0f);
+			fresnel *= (1.0f - fresnelR0);
+			fresnel += fresnelR0;
+			spec *= fresnel;+/
+
+			// Approximate cosine term for sub-hemispherical light sources due to John M. Snyder
+			float modCosTerm;
+			{
+				const float halfpi = 1.5707963268;
+				const float pi = 3.14159265;
+
+				float alpha = atan(range);
+				float cosw = dot(toLightN, normal).x;
+				float sina = sin(alpha);
+				float cosa = cos(alpha);
+				float w = acos(cosw);
+
+				float knee1 = halfpi - alpha;
+				float knee2 = halfpi + alpha;
+
+				if (w <= knee1) {
+					modCosTerm = cosw;
+				} else if (w <= halfpi) {
+					float y = (w - knee1) / alpha;
+					float g0 = sina;
+					float g1 = (1.0/pi * (alpha - cosa*sina)) / (sina*sina);
+					float g0d = (-cosa) * alpha;
+					float g1d = -0.5 * alpha;
+					float hermiteA = g1d + g0d - 2*(g1 - g0);
+					float hermiteB = 3*(g1-g0) - g1d - 2*g0d;
+					float hermiteC = g0d;
+					float hermiteD = g0;
+					modCosTerm =
+						hermiteA * y*y*y
+					+	hermiteB * y*y
+					+	hermiteC * y
+					+	hermiteD;
+				} else if (w < knee2) {
+					float y = (w - halfpi) / alpha;
+					float g0 = (1.0/pi * (alpha - cosa*sina)) / (sina*sina);
+					float g1 = 0;
+					float g0d = -0.5 * alpha;
+					float g1d = 0;
+					float hermiteA = g1d + g0d - 2*(g1 - g0);
+					float hermiteB = 3*(g1-g0) - g1d - 2*g0d;
+					float hermiteC = g0d;
+					float hermiteD = g0;
+					modCosTerm =
+						hermiteA * y*y*y
+					+	hermiteB * y*y
+					+	hermiteC * y
+					+	hermiteD;
+				} else {
+					modCosTerm = 0;
+				}
+			}
+
+			//modCosTerm = saturate(dot(toLightN, normal).x);
+			float normFactor = modCosTerm * TIS_inv;
+
+			specular = spec * intensity * normFactor;// * (dot(toLight, toLight).x+1);
+			diffuse = diff * intensity * normFactor;
+
+/+			specular = 0;
+			diffuse = intensity * modCosTerm;+/
 		};
 	};
 	n3 = node {
@@ -253,14 +464,14 @@ ABC_area = graph Reflectance {
 				float tmp = dot(B - B0, B - B0);
 				float tmp2 = tmp;
 				tmp = pow(1+BC2*tmp, -CC);
-				tmp2 = pow(1+BC2*(tmp2+0.3), -CC);
+				tmp2 = pow(1+BC2*(tmp2+1.2), -CC);
 				tmp -= tmp2;
 
-				const float fresnelR0 = 0.8f;
+				/+const float fresnelR0 = 0.8f;
 				float fresnel = pow(1.0f - saturate(dot(vo, normalize(L + vo)).x), 5.0f);
 				fresnel *= (1.0f - fresnelR0);
 				fresnel += fresnelR0;
-				tmp *= fresnel;
+				tmp *= fresnel;+/
 
 				tmp *= saturate(dot(L, normal).x);
 				tmp2 *= saturate(dot(L, normal).x);
@@ -280,8 +491,8 @@ ABC_area = graph Reflectance {
 //			specular = lsize * 0.04f;
 			diffuse = intensity * diff;
 
-			diffuse *= 3.14159265f;
-			specular *= 3.14159265f;
+/+			diffuse *= 3.14159265f;
+			specular *= 3.14159265f;+/
 
 /+			specular *= saturate(dot(normalize(toLight), normal).x + 0.15);
 			diffuse *= saturate(dot(normalize(toLight), normal).x + 0.15);+/
@@ -343,14 +554,14 @@ ABC = graph Reflectance {
 			float tmp2 = tmp;
 			tmp = AC * pow(1+BC*BC*tmp, -CC);
 //			tmp2 = AC * pow(1+BC*BC*tmp2+BRDF_C*BRDF_C*(1.0f / metalness - 1.0f), -CC);
-			tmp2 = AC * pow(1+BC*BC*(tmp2+0.3), -CC);
+			tmp2 = AC * pow(1+BC*BC*(tmp2+1.2), -CC);
 			tmp -= tmp2;
 
 			specular = intensity * tmp * saturate(dot( vi, normal ).x);
 			diffuse = intensity * tmp2 * saturate(dot( vi, normal ).x);
 
-			diffuse *= 3.14159265f;
-			specular *= 3.14159265f;
+/+			diffuse *= 3.14159265f;
+			specular *= 3.14159265f;+/
 		};
 	};
 	n3 = node {
@@ -533,6 +744,7 @@ AshikhminShirley = graph Reflectance {
 			in roughness <type float>,
 			in fresnelR0 <type float>
 		) {
+			toLight = normalize(toLight);
 			float3 H	= normalize( toLight + toEye );
 		 
 			// Generate any useful aliases
@@ -565,7 +777,7 @@ AshikhminShirley = graph Reflectance {
 			Pd *= LdotN;
 			Ps *= LdotN;
 			
-			diffuse = intensity * Pd;
+			diffuse = 0.2*intensity * Pd;
 			specular = intensity * Ps;
 		};
 	};
@@ -649,8 +861,8 @@ CookTorrance = graph Reflectance {
 			// -------------------------------------
 			float Rs = ( fresnel * geoTerm * roughnessTerm ) / NdotV;
 
-			specular = intensity * Rs;
-			diffuse = 0;//intensity * (NdotL + Rs);
+			specular = 0.1 * intensity * Rs;
+			diffuse = 0.4 * intensity * (NdotL + Rs);
 		};
 	};
 	n3 = node {
@@ -681,9 +893,10 @@ BlinnPhong = graph Reflectance {
 		kernel = kernel Reflectance(
 			in specularPower <type float>
 		) {
+			toLight = normalize(toLight);
 			float NdotL = dot(normal, toLight).x;
 			float3 H = normalize(toEye + toLight);
-			diffuse = intensity * saturate(NdotL);
+			diffuse = intensity * saturate(NdotL) * 0.1;
 			specular = intensity * pow(saturate(dot(H, normal)), specularPower).xxxx;
 			specular = NdotL > 0.0 ? specular : float4(0, 0, 0, 0);
 		};
@@ -701,6 +914,7 @@ BlinnPhong = graph Reflectance {
 
 
 Lambert = kernel Reflectance {
+	toLight = normalize(toLight);
 	float NdotL = dot(normal, toLight).x;
 	diffuse = intensity * saturate(NdotL);
 	specular = 0;
@@ -714,6 +928,7 @@ Uniform = kernel Reflectance {
 
 
 HalfLambert = kernel Reflectance {
+	toLight = normalize(toLight);
 	float NdotL = dot(normal, toLight).x;
 	diffuse = NdotL * 0.5f + 0.5f;
 	diffuse *= diffuse * intensity;

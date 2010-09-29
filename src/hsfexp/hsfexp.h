@@ -117,10 +117,10 @@ private:
 
 	void exportMaterials(int level);
 	void exportMaterial(Mtl* mat, int level);
-	void exportMaterialMap(Mtl* mat, unsigned tmapId, int level);
+	void exportMaterialMap(StdMat* mat, unsigned tmapId, int level);
 
 	void exportMeshes(int level);
-	void exportMesh(INode* node, TriObject* mesh, int level);
+	void exportMesh(INode* node, Mesh &mesh, int level);
 	int  getNodeId(INode* node);
 	char* escapeName(char* name);
     

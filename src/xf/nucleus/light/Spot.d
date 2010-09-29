@@ -36,7 +36,7 @@ private {
 
 		void loadSpotlightMask() {
 			if (!spotlightMask.valid) {
-				cstring filePath = `img/spotlight.dds`;
+				cstring filePath = `img/fadeblack.png`;
 				final img = imgLoader.load(getResourcePath(filePath));
 				if (!img.valid) {
 					nucleusError("Could not load texture: '{}'", filePath);

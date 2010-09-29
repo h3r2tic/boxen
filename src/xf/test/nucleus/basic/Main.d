@@ -63,6 +63,13 @@ class TestApp : GfxApp {
 	vec4[]			lightIllums;
 
 
+	/+override void configureWindow(Window w) {
+		w.width = 1050;
+		w.height = 1680;
+		w.fullscreen = true;
+	}+/
+
+
 	override void initialize() {
 		version (FixedTest) {
 			Kiss.instance.seed(12345);
@@ -135,11 +142,11 @@ class TestApp : GfxApp {
 		lightIllums[0] *= 0.25;
 		lightIllums[1] *= 0.35;
 
-		lightAngles[0] = 90+45;
-		lightAngles[1] = 90+180-45;
-		lightAngles[2] = -30;
+		lightAngles[0] = 0;
+		lightAngles[1] = 120;
+		lightAngles[2] = 240;
 		
-		lightSpeeds[0..2] = 0.0f;
+		lightSpeeds[0..3] = 0.1f;
 
 		lightOffsets[0] = vec3.unitY * 4;
 		lightOffsets[1] = vec3.unitY * 4;
@@ -147,12 +154,17 @@ class TestApp : GfxApp {
 
 		// ----
 
-		cstring model = `mesh/nano.hsf`;
+		//cstring model = `mesh/bunny.hsf`;
+		//cstring model = `mesh/nano.hsf`;
+		//cstring model = `mesh/knot.hsf`;
+		//cstring model = `mesh/somefem.hsf`;
+		cstring model = `mesh/dragon.hsf`;
+		//cstring model = `mesh/buddha.hsf`;
 		//cstring model = `mesh/spartan.hsf`;
 		float scale = 1.0f;
 		/+cstring model = `mesh/masha.hsf`;
-		//cstring model = `mesh/foo.hsf`;
-		float scale = 0.02f;+/
+		//cstring model = `mesh/cia.hsf`;
+		float scale = 0.01f;+/
 
 		SceneAssetCompilationOptions opts;
 		opts.scale = scale;

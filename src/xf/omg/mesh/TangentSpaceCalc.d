@@ -206,7 +206,7 @@ void computeMeshTangents(TCType)(
 			validId = i2;
 		}
 		
-		if (validId != -1) {
+		/+if (validId != -1) {
 			if (!i0ok) {
 				tangents[i0] = tangents[validId];
 				bitangents[i0] = bitangents[validId];
@@ -219,7 +219,7 @@ void computeMeshTangents(TCType)(
 				tangents[i2] = tangents[validId];
 				bitangents[i2] = bitangents[validId];
 			}
-		} else {
+		} else +/{
 			vec3 e0 = positions[i1] - positions[i0];
 			vec3 e1 = positions[i2] - positions[i0];
 			vec2 te0 = vec2.from(texCoords[i1]) - vec2.from(texCoords[i0]);

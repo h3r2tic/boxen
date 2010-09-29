@@ -57,7 +57,7 @@ SpotLight_VSM = graph Light {
 					1.0
 				);
 
-				float4 mask = tex2Dlod(spotlightMask, float4(uv, 0, 0));
+				float4 mask = smoothstep(1, 0, length(pointClipDiv).x).xxxx;//tex2Dlod(spotlightMask, float4(uv, 0, 0));
 				
 				intensity *= shadowed * mask;
 				//intensity = float4(uv, 0, 0);

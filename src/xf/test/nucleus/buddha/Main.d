@@ -12,7 +12,6 @@ private {
 	import xf.nucleus.asset.compiler.SceneCompiler;
 	import xf.nucleus.asset.CompiledSceneAsset;
 	import xf.nucleus.post.PostProcessor;
-	import xf.nucleus.structure.PointCloud;
 
 	import xf.nucleus.Nucleus;
 	import xf.nucleus.Scene;
@@ -42,16 +41,11 @@ private {
 }
 
 
-//version = LightTest;
-version = Sponza;
-//version = FixedTest
-
 
 class TestApp : GfxApp {
 	Renderer		nr;
 	Renderer		nr2;
 	VSDRoot			vsd;
-	VSDRoot			tvsd;
 	SimpleCamera	camera;
 	
 	Texture			fbTex;
@@ -68,14 +62,13 @@ class TestApp : GfxApp {
 	float[]			lightAngles;
 	vec4[]			lightIllums;
 
-	PointCloud		pointCloud;
-	RenderableId	pointCloudRid;
 
-
-	override void configureWindow(Window wnd) {
-		wnd.width(1680).height(1050).fullscreen(true);
+	override void configureWindow(Window w) {
+		w.width = 1050;
+		w.height = 1680;
+		w.fullscreen = false;
 	}
-	
+
 
 	override void initialize() {
 		version (FixedTest) {
@@ -93,12 +86,12 @@ class TestApp : GfxApp {
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
-		tvsd = VSDRoot();
 
 		version (Sponza) {
 			camera = new SimpleCamera(vec3(-7.54, 2.9, 5.03), -7.00, 12.80, inputHub.mainChannel);
 		} else {
-			camera = new SimpleCamera(vec3(0, 3, 4), 0, 0, inputHub.mainChannel);
+			//camera = new SimpleCamera(vec3(0, 3, 4), 0, 0, inputHub.mainChannel);
+			camera = new SimpleCamera(vec3(0, 2, 1.7), -27, -3, inputHub.mainChannel);
 		}
 		window.interceptCursor = true;
 		window.showCursor = false;
@@ -109,21 +102,21 @@ class TestApp : GfxApp {
 			const numLights = 50;
 			alias PointLight LightType;
 		} else {
-			const numLights = 100;
-			alias PointLight LightType;
+			const numLights = 3;
+			alias SpotLight_VSM LightType;
 		}
 		
 		for (int i = 0; i < numLights; ++i) {
 			createLight((lights ~= new LightType)[$-1]);
 			version (Sponza) {
-				lightOffsets ~= vec3(0, 2 + Kiss.instance.fraction() * 2.0, 0);
+				lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 10.0, 0);
 				lightAngles ~= Kiss.instance.fraction() * 360.0f;
-				lightDists ~= Kiss.instance.fraction() - 0.5f;
+				lightDists ~= Kiss.instance.fraction() * 5;
 				lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
 			} else {
-				lightOffsets ~= vec3(0, 1.0 + Kiss.instance.fraction() * 3.0, 0);
+				lightOffsets ~= vec3(0, 2.0 + Kiss.instance.fraction() * 3.0, 0);
 				lightAngles ~= Kiss.instance.fraction() * 360.0f;
-				lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
+				lightDists ~= Kiss.instance.fraction() * 0.3f + 0.15f;
 				lightSpeeds ~= 0.2f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
 
 				/+lightOffsets ~= vec3(0, -2 + Kiss.instance.fraction() * 4, 0);
@@ -133,8 +126,7 @@ class TestApp : GfxApp {
 			}
 
 			float h = cast(float)i / numLights;//Kiss.instance.fraction();
-			//float s = 0.92f;
-			float s = 0.6f;
+			float s = 0.2f;
 			float v = 1.0f;
 
 			vec4 rgba = vec4.zero;
@@ -143,126 +135,50 @@ class TestApp : GfxApp {
 			version (FixedTest) {
 				lightIllums ~= rgba * (1000.f / numLights);
 			} else {
-				lightIllums ~= rgba;// * (1000.f / numLights);
+				lightIllums ~= 40 * rgba;// * (1000.f / numLights);
 			}
 		}
 
+		lightIllums[0] *= 0.25;
+		lightIllums[1] *= 0.35;
+
+		lightAngles[0] = 140+0;
+		lightAngles[1] = 140+120;
+		lightAngles[2] = 140+240;
+		
+		lightSpeeds[0..3] = 0.1f;
+
+		lightOffsets[0] = vec3.unitY * 4;
+		lightOffsets[1] = vec3.unitY * 4;
+		lightOffsets[2] = vec3.unitY * 3;
+
 		// ----
 
-		version (Sponza) {
-			cstring model = `mesh/csponza.hsf`;
-			float scale = 1f;
+		//cstring model = `mesh/bunny.hsf`;
+		//cstring model = `mesh/nano.hsf`;
+		//cstring model = `mesh/knot.hsf`;
+		//cstring model = `mesh/somefem.hsf`;
+		//cstring model = `mesh/dragon.hsf`;
+		cstring model = `mesh/buddha.hsf`;
+		//cstring model = `mesh/spartan.hsf`;
+		float scale = 1.0f;
+		/+cstring model = `mesh/masha.hsf`;
+		//cstring model = `mesh/cia.hsf`;
+		float scale = 0.01f;+/
 
-			SceneAssetCompilationOptions opts;
-			opts.scale = scale;
+		SceneAssetCompilationOptions opts;
+		opts.scale = scale;
 
-			final compiledScene = compileHSFSceneAsset(
-				model,
-				DgScratchAllocator(&mainHeap.allocRaw),
-				opts
-			);
-
-			assert (compiledScene !is null);
-
-			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, -3, 0]));
-		} else version (Sibenik) {
-			cstring model = `mesh/sibenik.hsf`;
-			float scale = 1f;
-
-			SceneAssetCompilationOptions opts;
-			opts.scale = scale;
-
-			final compiledScene = compileHSFSceneAsset(
-				model,
-				DgScratchAllocator(&mainHeap.allocRaw),
-				opts
-			);
-
-			assert (compiledScene !is null);
-
-			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, -3, 0]));
-		} else version (LightTest) {
-			cstring model = `mesh/lightTest.hsf`;
-			float scale = 0.01f;
-
-			SceneAssetCompilationOptions opts;
-			opts.scale = scale;
-
-			final compiledScene = compileHSFSceneAsset(
-				model,
-				DgScratchAllocator(&mainHeap.allocRaw),
-				opts
-			);
-
-			assert (compiledScene !is null);
-
-			loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 1, 0]));
-		} else {
-			cstring model = `mesh/soldier.hsf`;
-			float scale = 1.0f;
-			/+cstring model = `mesh/masha.hsf`;
-			//cstring model = `mesh/foo.hsf`;
-			float scale = 0.02f;+/
-
-			SceneAssetCompilationOptions opts;
-			opts.scale = scale;
-
-			final compiledScene = compileHSFSceneAsset(
-				model,
-				DgScratchAllocator(&mainHeap.allocRaw),
-				opts
-			);
-
-			assert (compiledScene !is null);
-
-			loadScene(compiledScene, &vsd, CoordSys(vec3fi[1, -2, 0]));
-			loadScene(compiledScene, &vsd, CoordSys(vec3fi[-1, -2, 0]));
-
-			/+loadScene(
-				model, scale, CoordSys(vec3fi[-2, 0, 0]),
-				"TestSurface1", "TestMaterialImpl"
-			);
-			
-			loadScene(
-				model, scale, CoordSys(vec3fi[0, 0, 2], quat.yRotation(90)),
-				"TestSurface2", "TestMaterialImpl"
-			);
-
-			loadScene(
-				model, scale, CoordSys(vec3fi[2, 0, 0], quat.yRotation(180)),
-				"TestSurface3", "TestMaterialImpl"
-			);
-
-			loadScene(
-				model, scale, CoordSys(vec3fi[0, 0, -2], quat.yRotation(-90)),
-				"TestSurface4", "TestMaterialImpl"
-			);+/
-
-			/+loadScene(
-				model, scale, CoordSys(vec3fi[0, -2, 0]),
-				"TestSurface3", "TestMaterialImpl"
-			);+/
-		}
-
-		/+kdefRegistry.dumpInfo();
-		for (uword rid = 0; rid < .renderables.length; ++rid) {
-			Stdout.formatln("rid{}: stct:{} matl:{} surf:{}",
-				rid,
-				renderables.structureKernel[rid],
-				materialNames[renderables.material[rid]],
-				surfaceNames[renderables.surface[rid]]
-			);
-		}+/
-
-		pointCloud = new PointCloud(100_000, vec3.one * 15, rendererBackend);
-		pointCloudRid = loadSceneObject(
-			pointCloud,
-			"ParticleSurface",
-			"TestParticleMaterial",
-			&tvsd,
-			CoordSys.identity
+		final compiledScene = compileHSFSceneAsset(
+			model,
+			DgScratchAllocator(&mainHeap.allocRaw),
+			opts
 		);
-		
+
+		assert (compiledScene !is null);
+
+		loadScene(compiledScene, &vsd, CoordSys(vec3fi[0, 0, 0]));
+
 		{
 			mainFb = rendererBackend.framebuffer;
 			
@@ -299,23 +215,17 @@ class TestApp : GfxApp {
 		version (FixedTest) {}
 		else {
 			if (keyboard.keyDown(KeySym.e)) {
-				/+for (int li = 0; li < lights.length; ++li) {
-					lightAngles[li] += lightSpeeds[li] * -0.01;
-				}+/
-			} else {
 				for (int li = 0; li < lights.length; ++li) {
 					lightAngles[li] += lightSpeeds[li];
 				}
 			}
 		}
 
-		renderables.transform[pointCloudRid].rotation *= quat.yRotation(0.01);
-
 		for (int li = 0; li < lights.length; ++li) {
 			lightAngles[li] = fmodf(lightAngles[li], 360.0);
 		}
 
-		static float lightDist = 1.0f;
+		static float lightDist = 1.5f;
 		if (keyboard.keyDown(KeySym._1)) {
 			lightDist *= 0.995f;
 		}
@@ -324,7 +234,7 @@ class TestApp : GfxApp {
 		}
 		
 		static float lightScale = 0.0f;
-		if (0 == lightScale) lightScale = 4.5f / lights.length;
+		if (0 == lightScale) lightScale = 2.0f / lights.length;
 		if (keyboard.keyDown(KeySym.Down)) {
 			lightScale *= 0.99f;
 		}
@@ -332,18 +242,7 @@ class TestApp : GfxApp {
 			lightScale /= 0.99f;
 		}
 
-		if (keyboard.keyDown(KeySym.equal)) {
-			foreach (ref ls; lightSpeeds) {
-				ls /= 0.99f;
-			}
-		}
-		if (keyboard.keyDown(KeySym.minus)) {
-			foreach (ref ls; lightSpeeds) {
-				ls *= 0.99f;
-			}
-		}
-
-		static float lightRad = 0.1f;
+		static float lightRad = 1.5f;
 		if (keyboard.keyDown(KeySym._3)) {
 			lightRad *= 0.99f;
 		}
@@ -351,7 +250,7 @@ class TestApp : GfxApp {
 			lightRad /= 0.99f;
 		}
 
-		static float bgColor = 0.005f;
+		static float bgColor = 0.4f;
 		
 		if (keyboard.keyDown(KeySym.Left)) {
 			bgColor *= 0.99f;
@@ -361,28 +260,10 @@ class TestApp : GfxApp {
 		}
 
 		foreach (li, l; lights) {
-			version (Sponza) {
-				vec3 posMult = vec3(12, 1, 4);
-				l.position = posMult * quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 1) * (lightDist + lightDists[li]));
-			} else {
-				l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
-			}
+			l.position = quat.yRotation(lightAngles[li]).xform(lightOffsets[li] + vec3(0, 0, 2) * (lightDist + lightDists[li]));
 			l.lumIntens = lightIllums[li] * lightScale;
 			l.radius = lightRad;
 		}
-
-		/+lights[0].position = quat.yRotation(lightRot).xform(vec3(0, 1, 0) + vec3(0, 0, -2) * lightDist);
-		lights[1].position = quat.yRotation(-lightRot*1.1).xform(vec3(0, 2, 0) + vec3(0, 0, 2) * lightDist);
-		lights[2].position = quat.yRotation(-lightRot*1.22).xform(vec3(0, 4, 0) + vec3(0, 0, 2) * lightDist);
-
-		lights[0].lumIntens = vec4(1, 0.1, 0.01, 0) * lightScale;
-		lights[1].lumIntens = vec4(0.1, 0.3, 1.0, 0) * lightScale;
-		lights[2].lumIntens = vec4(0.3, 1.0, 0.6, 0) * lightScale;
-		
-		lights[0].radius = lightRad;
-		lights[1].radius = lightRad;
-		lights[2].radius = lightRad;+/
-
 		// move some objects
 
 		// The various arrays for VSD must be updated as they may have been
@@ -391,8 +272,6 @@ class TestApp : GfxApp {
 		// Renderables as to reduce allocations and unnecessary copies of dta.
 		vsd.transforms = renderables.transform[0..renderables.length];
 		vsd.localHalfSizes = renderables.localHalfSize[0..renderables.length];
-		tvsd.transforms = vsd.transforms;
-		tvsd.localHalfSizes = vsd.localHalfSizes;
 		
 		// update vsd.enabledFlags
 		// update vsd.invalidationFlags
@@ -400,7 +279,6 @@ class TestApp : GfxApp {
 		//vsd.invalidateObject(rid);
 		
 		vsd.update();
-		tvsd.update();
 
 		static bool wantDeferred = true; {
 			static bool prevKeyDown = false;
@@ -436,7 +314,6 @@ class TestApp : GfxApp {
 		);
 
 		buildRenderList(&vsd, viewSettings, rlist);
-		buildRenderList(&tvsd, viewSettings, trlist);
 
 		static bool wantPost = true; {
 			static bool prevKeyDown = false;
@@ -459,20 +336,6 @@ class TestApp : GfxApp {
 
 		rendererBackend.state.sRGB = true;
 
-		void renderTranslucent() {
-			/+final st = *rendererBackend.state;
-			with (rendererBackend.state.blend) {
-				enabled = true;
-				src = src.One;
-				dst = dst.One;
-			}
-			with (rendererBackend.state.depth) {
-				writeMask = false;
-			}
-			tnr.render(viewSettings, &tvsd, trlist);
-			*rendererBackend.state = st;+/
-		}
-
 		if (wantPost) {
 			rendererBackend.framebuffer = texFb;
 
@@ -481,7 +344,6 @@ class TestApp : GfxApp {
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, &vsd, rlist);
-			renderTranslucent();
 
 			rendererBackend.framebuffer = mainFb;
 			rendererBackend.clearBuffers();
@@ -495,7 +357,6 @@ class TestApp : GfxApp {
 			rendererBackend.clearBuffers();
 
 			nr.render(viewSettings, &vsd, rlist);
-			renderTranslucent();
 		}
 
 

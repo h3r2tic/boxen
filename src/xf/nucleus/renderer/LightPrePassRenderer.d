@@ -1256,6 +1256,16 @@ class LightPrePassRenderer : Renderer {
 						);
 					}
 
+					case "emissive": {
+						return getOutputParamIndirect(
+							kg,
+							materialInfo.output,
+							"out_emissive",
+							srcNid,
+							srcParam
+						);
+					}
+
 					default: return false;
 				}
 			},
