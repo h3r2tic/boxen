@@ -31,7 +31,8 @@ Material = kernel(
 	in texCoord <type float2 + use uv>,
 	out out_albedo <type float4 + use color>,
 	out out_specular <type float4 + use color>,
-	out out_normal <type float3 + basis world + use normal + unit true>
+	out out_normal <type float3 + basis world + use normal + unit true>,
+	out out_emissive <type float4 + use color>
 );
 
 Rasterize = kernel(

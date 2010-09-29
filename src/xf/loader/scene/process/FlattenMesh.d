@@ -31,6 +31,7 @@ void flattenMeshArrays(Mesh[] meshes) {
 private void flattenSingleMesh(ref Mesh mesh) {
 	assert (mesh.tangents() is null);		// TODO
 	assert (mesh.bitangents() is null);		// TODO
+	assert (mesh.indices.length > 0);
 	
 	foreach (i; mesh.indices) assert (i < mesh.positions.length);
 
@@ -192,9 +193,9 @@ private void flattenSingleMesh(ref Mesh mesh) {
 
 
 private void remapIndices(uint[][] propertyIndices, uint[] finalIndices) {
+	assert (finalIndices.length > 0);
+	
 	assert (({
-		assert (finalIndices.length > 0);
-		
 		foreach (pi; propertyIndices) {
 			assert (pi.length == finalIndices.length);
 		}

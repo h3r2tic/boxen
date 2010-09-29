@@ -222,7 +222,8 @@ LightPrePassFinalOut = graph {
 		params = (
 			position <type float4 + use position + basis clip>,
 			albedo <type float4 + use color>,
-			specular <type float4 + use color>
+			specular <type float4 + use color>,
+			emissive <type float4 + use color>
 		);
 	};
 
@@ -240,6 +241,7 @@ LightPrePassFinalOut = graph {
 			in position <type float4 + use position + basis clip>,
 			in albedo <type float4 + use color>,
 			in specular <type float4 + use color>,
+			in emissive <type float4 + use color>,
 			in diffuseIlluminationSampler <type sampler2D + use diffuse>,
 			in specularIlluminationSampler <type sampler2D + use specular>,
 			out color <type float4 + use color>
@@ -247,7 +249,8 @@ LightPrePassFinalOut = graph {
 			float2 uv = (position.xy / position.w + float2(1)) * 0.5f;
 			color =
 				albedo * tex2D(diffuseIlluminationSampler, uv)
-			+	specular * tex2D(specularIlluminationSampler, uv);
+			+	specular * tex2D(specularIlluminationSampler, uv)
+			+	emissive;
 		};
 	};
 
@@ -260,6 +263,7 @@ LightPrePassFinalOut = graph {
 
 	connect input.albedo calc.albedo;
 	connect input.specular calc.specular;
+	connect input.emissive calc.emissive;
 	connect input calc;
 	connect data calc;
 	connect calc output;

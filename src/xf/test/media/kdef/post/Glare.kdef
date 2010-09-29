@@ -31,7 +31,7 @@ AddGlare = kernel(
 	}
 	{
 		float luma = max(0.0001, blurredLuma4);
-		float targetLuma = min(0.5, 0.2*pow(luma, 1.4));
+		float targetLuma = min(0.5, 0.15*pow(luma, 1.4));
 		output += lerp(max(float4(0), blurredColor4*targetLuma/luma), float4(targetLuma), 0.8);
 	}
 

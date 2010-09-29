@@ -149,6 +149,12 @@ protected:
 		}
 		lexer.consume();
 		lexer.skipWhite();
+
+		if ('}' == lexer.peek()) {
+			lexer.error("Empty mesh body.");
+		}
+
+		hsfLog.trace("Loading mesh {}.", meshIdx);
 		
 		final mesh = &meshes[meshIdx];
 		mesh.normalsIndexed = false;
@@ -293,6 +299,10 @@ protected:
 		
 		if (lexer.eof) {
 			lexer.error("End of file while parsing a mesh body.");
+		}
+
+		if (lexer.peek() != '}') {
+			lexer.error("Expected a '}' body. Got '{}'.", lexer.peek(0, 20));
 		}
 		
 		lexer.consume();		// eat the '}'
@@ -759,7 +769,6 @@ protected:
 		cstring mapType;
 		cstring mapFile;
 		
-		// TODO
 		map.amount = 1.0f;
 		
 		while (lexer.peek() != '}' && !lexer.eof) {
@@ -776,6 +785,12 @@ protected:
 						// TODO: mem
 						mapName ~= c;
 					})) {
+						lexer.error("The 'name' property must be a string.");
+					}
+				} break;
+
+				case "amount": {
+					if (!lexer.consumeFloat(&map.amount)) {
 						lexer.error("The 'name' property must be a string.");
 					}
 				} break;

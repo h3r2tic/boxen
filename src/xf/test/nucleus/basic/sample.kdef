@@ -112,10 +112,10 @@ ParticleSurface = surface Uniform {};
 /*
 TestSurface1 = surface CookTorrance {
 	fresnelR0 = 0.18;
-	roughness = 0.3;
+	roughness = 0.9;
 };
 /*/
-TestSurface1 = surface ABC_approx {
+TestSurface1 = surface ABC_approx2 {
 	BRDF_A = 1;
 	BRDF_B = 40.0;
 	BRDF_C = 0.9;
@@ -254,6 +254,7 @@ TestMaterial = graph Material {
 	connect n1.albedoTint n2.albedoTint;
 	connect n2.out_albedo n3.out_albedo;
 	connect n2.out_specular n3.out_specular;
+	connect n2.out_emissive n3.out_emissive;
 	connect n2 n3;
 };
 
@@ -304,6 +305,7 @@ TestParticleMaterial = graph Material {
 	connect n0 n2;
 	connect n2.out_albedo n3.out_albedo;
 	connect n2.out_specular n3.out_specular;
+	connect n2.out_emissive n3.out_emissive;
 	connect n2 n3;
 };
 
@@ -355,6 +357,7 @@ TestParticleMaterial = graph Material {
 	connect n0 n2;
 	connect n2.out_albedo n3.out_albedo;
 	connect n2.out_specular n3.out_specular;
+	connect n2.out_emissive n3.out_emissive;
 	connect n2 n3;
 };
 +/

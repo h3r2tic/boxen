@@ -191,7 +191,7 @@ void HSFExp::exportMaterial(Mtl* mat, int level) {
 	        fprintf(mStream, _T("maps %d\n"), numSubMaps);
 
 			for (int i = 0; i < numSubMaps; ++i) {
-				exportMaterialMap(mat, i, level);
+				exportMaterialMap(stdMat, i, level);
 			}
 		} else {
 			Indent(level);
@@ -204,11 +204,11 @@ void HSFExp::exportMaterial(Mtl* mat, int level) {
 }
 
 
-void HSFExp::exportMaterialMap(Mtl* mat, unsigned tmapId, int level) {
+void HSFExp::exportMaterialMap(StdMat* mat, unsigned tmapId, int level) {
 	assert (mat);
 
 	Texmap* tmap = mat->GetSubTexmap(tmapId);
-	if (!tmap) {
+	if (!tmap || !mat->SubTexmapOn(tmapId)) {
 		Indent(level);
 		fprintf(mStream, _T("null\n"));
 		return;
@@ -225,6 +225,11 @@ void HSFExp::exportMaterialMap(Mtl* mat, unsigned tmapId, int level) {
 	fflush(mStream);
 	delete[] mapName;
 
+	// TODO: time
+	float amount = mat->GetTexmapAmt(tmapId, 0);
+	Indent(level);
+	fprintf(mStream, _T("amount %f\n"), amount);
+	
 	CStr texDir = mExportName + _T("-tex");
 	TSTR newFilePath = mExportDir + _T("\\") + texDir + _T("\\");
 	TSTR hsfFilePath = texDir + _T("/");
