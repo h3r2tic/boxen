@@ -322,17 +322,16 @@ class Mesh {
 					auto h1 = hedge(hi1);
 					auto hi2_ = h1.nfhi;
 
-					uint numwut = 0;
+					/+uint numwut = 0;
 					iterCircular(hi2_, nvhiIter, (hedgeI hi2) {
 						++numwut;
 					});
 					if (numwut > 20) {
 						meshLog.trace("iterCircular: {}; num: {}", hi1_, numwut);
-					}
+					}+/
 
 					// find all hedges going out from the target of h1
 					iterCircular(hi2_, nvhiIter, (hedgeI hi2) {
-						++numwut;
 						auto h2 = hedge(hi2);
 						if (!done[hi2]) {
 							auto vi2 = h2.vi;

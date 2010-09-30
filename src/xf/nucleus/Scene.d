@@ -35,7 +35,7 @@ void loadScene(
 ) {
 	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
 
-	cstring surface = "TestSurface1";
+	cstring surface = "DefaultSurface";
 
 	// TODO: load materials
 

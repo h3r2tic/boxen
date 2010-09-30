@@ -75,7 +75,7 @@ MaxDefaultMaterial = graph Material {
 			fresnel = pow(1.0f - fresnel, 5.0f);
 			fresnel *= (1.0f - fresnelR0);
 			fresnel += fresnelR0;
-			out_emissive = fresnel * lerp(float4(1), out_specular, 0.5) * 0.2;
+//			out_emissive = fresnel * lerp(float4(1), out_specular, 0.5) * 0.1;
 
 //			out_albedo = 0.5 * tangent.xyzz + 0.5;
 //			out_albedo = 0.5 * out_normal.xyzz + 0.5;
