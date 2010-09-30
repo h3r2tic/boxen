@@ -255,7 +255,7 @@ private void buildKernelSubGraph(
 	}
 
 	foreach (nf; def.noAutoFlow) {
-		auto nodeId = findOutputId(nf.toNode);
+		auto nodeId = findInputId(nf.toNode);
 		auto node = kg.getNode(nodeId);
 		auto param = node.getInputParam(nf.to);
 		if (param is null) {

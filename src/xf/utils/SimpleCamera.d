@@ -85,7 +85,7 @@ class SimpleCamera {
 		}
 
 		if (move != move.zero) {
-			utilsLog.info("camera pos: {}", this.pos);
+			utilsLog.info("camera pos: {} pitch: {} yaw: {}", this.pos, this.pitch, this.yaw);
 		}
 	}
 	

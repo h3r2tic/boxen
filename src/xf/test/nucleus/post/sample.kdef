@@ -1,0 +1,543 @@
+PostGlareAcuityNoise = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	data = node {
+		type = data;
+		params = (
+			noiseScale <type float> = 0.005
+		);
+	};
+
+	clampInput = node {
+		type = kernel;
+		kernel = kernel(
+			in input <type float4 + use color>,
+			out output <type float4 + use color>
+		) {
+			output = min(input, float4(16));
+		};
+	};
+
+	blur1 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur2 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur3 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur4 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur5 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur6 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur7 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	blur8 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	blur9 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	blur10 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred2 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred3 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred4 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	glare = node {
+		type = kernel;
+		kernel = AddGlare;
+	};
+
+	animateNoiseUV = node {
+		type = kernel;
+		kernel = kernel (in uv <type float2 + use uv>, out uvAnim <type float2 + use uv>) {
+			uvAnim = uv + time.second;
+		};
+	};
+
+	scaleNoise = node {
+		type = kernel;
+		kernel = Mul;
+	};
+
+	noauto animateNoiseUV.uv;
+	connect animateNoiseUV.uvAnim noise.uv;
+
+	noise = node {
+		type = kernel;
+		kernel = SignedNoise2D;
+	};
+
+	connect noise.output scaleNoise.a;
+	connect data.noiseScale scaleNoise.b;
+
+	connect sampleOrig.sample clampInput.input;
+	connect clampInput.output blur1.input;
+	connect input.size blur1.inputSize;
+
+	connect blur1 blur2;
+	connect blur2 blur3;
+	connect blur3 blur4;
+	connect blur4 blur5;
+	connect blur5 blur6;
+	connect blur6 blur7;
+	connect blur7 blur8;
+	connect blur8 blur9;
+	connect blur9 blur10;
+
+	connect blur1 sampleBlurred;
+	connect blur2 sampleBlurred2;
+	connect blur3 sampleBlurred3;
+	connect blur9 sampleBlurred4;
+	connect input sampleOrig;
+
+	connect clampInput.output glare.baseColor;
+	connect sampleBlurred.sample glare.blurredColor;
+	connect sampleBlurred2.sample glare.blurredColor2;
+	connect sampleBlurred3.sample glare.blurredColor3;
+	connect sampleBlurred4.sample glare.blurredColor4;
+
+	addNoise = node {
+		type = kernel;
+		kernel = Add;
+	};
+
+	connect scaleNoise.c addNoise.a;
+	connect glare.output addNoise.b;
+	connect addNoise.c output.output;
+
+	noauto sampleOrig.uv;
+	noauto sampleBlurred.uv;
+	noauto sampleBlurred2.uv;
+	noauto sampleBlurred3.uv;
+	noauto sampleBlurred4.uv;
+};
+
+
+PostNegative = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	calc = node {
+		type = kernel;
+		kernel = kernel(
+			in input <type float4 + use color>,
+			out output <type float4 + use color>
+		) {
+			output = float4(float3(1.0) - input.xyz, input.w);
+		};
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	noauto sampleOrig.uv;
+	connect input sampleOrig;
+	connect sampleOrig.sample calc.input;
+	connect calc.output output.output;
+};
+
+
+PostDesaturate = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	calc = node {
+		type = kernel;
+		kernel = kernel(
+			in input <type float4 + use color>,
+			out output <type float4 + use color>
+		) {
+			output = float4(dot(float3(0.2126, 0.7152, 0.0722), input.xyz).xxx, input.w);
+		};
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	noauto sampleOrig.uv;
+	connect input sampleOrig;
+	connect sampleOrig.sample calc.input;
+	connect calc.output output.output;
+};
+
+
+PostBlur = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	calc = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	noauto sampleOrig.uv;
+	connect input sampleOrig;
+	connect input.size calc.inputSize;
+	connect sampleOrig.sample calc.input;
+	connect calc.output output.output;
+};
+
+
+PostBlurMore = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	calc1 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+	calc2 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+	calc3 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	noauto sampleOrig.uv;
+	connect input sampleOrig;
+	connect input.size calc1.inputSize;
+	connect input.size calc2.inputSize;
+	connect input.size calc3.inputSize;
+	connect sampleOrig.sample calc1.input;
+	connect calc1.output calc2.input;
+	connect calc2.output calc3.input;
+	connect calc3.output output.output;
+};
+
+
+PostGlareAcuity = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	clampInput = node {
+		type = kernel;
+		kernel = kernel(
+			in input <type float4 + use color>,
+			out output <type float4 + use color>
+		) {
+			output = min(input, float4(16));
+		};
+	};
+
+	blur1 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur2 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur3 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur4 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur5 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur6 = node {
+		type = kernel;
+		kernel = BlurAndDownsample;
+	};
+
+	blur7 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	blur8 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	blur9 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	blur10 = node {
+		type = kernel;
+		kernel = Blur4;
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred2 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred3 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sampleBlurred4 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	glare = node {
+		type = kernel;
+		kernel = AddGlare;
+	};
+
+	connect input blur1;
+	connect sampleOrig.sample clampInput.input;
+	connect clampInput.output blur1.input;
+	connect input.size blur1.inputSize;
+
+	connect blur1 blur2;
+	connect blur2 blur3;
+	connect blur3 blur4;
+	connect blur4 blur5;
+	connect blur5 blur6;
+	connect blur6 blur7;
+	connect blur7 blur8;
+	connect blur8 blur9;
+	connect blur9 blur10;
+
+	connect blur1 sampleBlurred;
+	connect blur2 sampleBlurred2;
+	connect blur3 sampleBlurred3;
+	connect blur9 sampleBlurred4;
+	connect input sampleOrig;
+
+	connect clampInput.output glare.baseColor;
+	connect sampleBlurred.sample glare.blurredColor;
+	connect sampleBlurred2.sample glare.blurredColor2;
+	connect sampleBlurred3.sample glare.blurredColor3;
+	connect sampleBlurred4.sample glare.blurredColor4;
+
+	connect glare.output output.output;
+
+	noauto sampleOrig.uv;
+	noauto sampleBlurred.uv;
+	noauto sampleBlurred2.uv;
+	noauto sampleBlurred3.uv;
+	noauto sampleBlurred4.uv;
+};
+
+
+PostDistort = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	data = node {
+		type = data;
+		params = (
+			distortSampler <type sampler2D + use color> = sampler {
+				texture = "img/noise.jpg";
+				minFilter = linear;
+				magFilter = linear;
+			},
+			noiseScale <type float> = 0.005
+		);
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	distort = node {
+		type = kernel;
+		kernel = kernel(
+			in baseColor <type Image>,
+			in distortSampler <type sampler2D + use color>,
+			in uv <type float2 + use uv>,
+			out output <type float4 + use color>
+		) {
+			float2 off = cos(tex2D(distortSampler, uv * 3 + time.minute).xy * 27.123 + radians(time.second * 360)) * 0.005;
+			float2 meh = smoothstep(1, 0.9, saturate(2 * abs(uv - float2(0.5))));
+			output = baseColor.sample(saturate(uv + off * meh));
+		};
+	};
+
+	connect input sampleOrig;
+	connect data.distortSampler distort.distortSampler;
+	connect sampleOrig.sample distort.baseColor;
+	connect distort.output output.output;
+	noauto sampleOrig.uv;
+	noauto distort.uv;
+};
+
+
+PostNoise = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	data = node {
+		type = data;
+		params = (
+			noiseScale <type float> = 0.005
+		);
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	animateNoiseUV = node {
+		type = kernel;
+		kernel = kernel (in uv <type float2 + use uv>, out uvAnim <type float2 + use uv>) {
+			uvAnim = uv + time.second;
+		};
+	};
+
+	scaleNoise = node {
+		type = kernel;
+		kernel = Mul;
+	};
+
+	noauto animateNoiseUV.uv;
+	connect animateNoiseUV.uvAnim noise.uv;
+
+	noise = node {
+		type = kernel;
+		kernel = SignedNoise2D;
+	};
+
+	addNoise = node {
+		type = kernel;
+		kernel = Add;
+	};
+
+	connect noise.output scaleNoise.a;
+	connect data.noiseScale scaleNoise.b;
+	connect input sampleOrig;
+
+	connect scaleNoise.c addNoise.a;
+	connect sampleOrig.sample addNoise.b;
+
+	connect addNoise.c output.output;
+
+	noauto sampleOrig.uv;
+};
+

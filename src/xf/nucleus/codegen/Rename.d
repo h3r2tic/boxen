@@ -56,10 +56,12 @@ void emitSourceParamName(
 	alias KernelGraph.NodeType NT;
 
 
+	assert (nid.isValid);
 	final node = graph.getNode(nid);
 
 	if (	NT.Bridge == node.type &&
 			node.bridge.type == node.bridge.Type.Input &&
+			nodeDomains !is null &&
 			nodeDomains[nid.id] == ctx.domain &&
 			({
 				// return true if no incoming connections

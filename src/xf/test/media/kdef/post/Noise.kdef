@@ -11,3 +11,46 @@ AddNoise = kernel(
 	output.xyz += (noise-0.5) / 400;
 };
 
+
+SignedNoise2D = graph {
+	input = node {
+		type = input;
+		params = (
+			uv <type float2 + use uv>
+		);
+	};	
+
+	data = node {
+		type = data;
+		params = (
+			randSampler <type sampler2D + use color> = sampler {
+				texture = "img/random.bmp";
+				minFilter = nearest;
+				magFilter = nearest;
+			}
+		);
+	};
+
+	calc = node {
+		type = kernel;
+		kernel = kernel(
+			in noiseSampler <type sampler2D + use color>,
+			in uv <type float2 + use uv>,
+			out output <type float4 + use color>
+		) {
+			output = tex2D(noiseSampler, uv * float2(13.3321, 17.9234) + uv.yx * float2(7.2341, 3.2435));
+		};
+	};
+
+	output = node {
+		type = output;
+		params = (
+			output <type float4 + use color>
+		);
+	};
+
+	connect input calc;
+	connect data calc;
+	connect calc output;
+};
+
