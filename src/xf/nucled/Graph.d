@@ -760,55 +760,53 @@ class GraphNode {
 	
 	
 	static class QuarkSciEditor : SciEditor {
-		/+void editorSaveHandler() {
-			auto sourceVfsFile = _outer.getVfsFile(quark);
+		// in the loaded source
+		uint		firstByte;
+		uint		lastByte;
+		KDefModule	kdefMod;
 
-			int from, to;
+		
+		void editorSaveHandler() {
+			if (kdefMod is null) {
+				return;
+			}
+			
+			auto sourceVfsFile = _outer.getVfsFile(kdefMod);
+
 			char[] text;
-			{
-				auto sourceFile = sourceVfsFile.input;
-				scope (exit) sourceFile.close;
-				text = cast(char[])sourceFile.load();
-				quark.findSourceRange(text, from, to);
-			}
-			
-			static bool startswith(char[] a, char[] b) { return a.length >= b.length && a[0..b.length] == b; }
-			static bool endswith(char[] a, char[] b) { return a.length >= b.length && a[$-b.length..$] == b; }
-			
-			// just a crude check
-			if (	text[from..$].startswith(quark.tokenRange.first.value) &&
-					text[0..to].endswith(quark.tokenRange.last.value)
-			) {
-				try {
-					if (sourceVfsFile.exists) {
-						sourceVfsFile.remove;
-					}
-				} catch {}		// we don't want failz here. better try to write the contents anyway when shit hits the fan
+			auto sourceFile = sourceVfsFile.input;
+			scope (exit) sourceFile.close;
+			text = cast(char[])sourceFile.load();
 
-				try {
-					sourceVfsFile.create;
-				} catch {}		// ditto
+			// TODO: check for potential external modifications to the file
+			
+			try {
+				if (sourceVfsFile.exists) {
+					sourceVfsFile.remove;
+				}
+			} catch {}		// we don't want failz here. better try to write the contents anyway when shit hits the fan
 
-				auto sourceFile = sourceVfsFile.output;
-				scope (exit) sourceFile.flush.close;
-				sourceFile.write(text[0..from] ~ this.text ~ text[to..$]);
-			} else {
-				throw new Exception("The file has been modified externally :(");
-			}
-		}+/
+			try {
+				sourceVfsFile.create;
+			} catch {}		// ditto
+
+			auto dstFile = sourceVfsFile.output;
+			scope (exit) dstFile.flush.close;
+			dstFile.write(text[0..firstByte] ~ this.text ~ text[lastByte..$]);
+		}
+		
 
 		override protected EventHandling handleKey(KeyboardEvent e) {
-			/+if (KeySym.s == e.keySym && (e.modifiers & e.modifiers.CTRL) != 0) {
+			if (KeySym.s == e.keySym && (e.modifiers & e.modifiers.CTRL) != 0) {
 				if (e.sinking && e.down) {
 					this.editorSaveHandler();
 				}
 				return EventHandling.Stop;
-			} else {+/
+			} else {
 				return super.handleKey(e);
-			//}
+			}
 		}
 		
-		//QuarkDef quark;
 		GraphNode _outer;
 		mixin MWidget;
 	}
@@ -833,8 +831,7 @@ class GraphNode {
 		//assert (quark !is null);
 		
 		auto sci = QuarkSciEditor();
-		//sci.quark = quark;
-		//sci._outer = this;
+		sci._outer = this;
 		
 		if (justOpened) {
 			if (auto kernel = kdefRegistry.getKernel(_kernelName).kernel) {
@@ -846,11 +843,23 @@ class GraphNode {
 								scope (exit) sourceFile.close;
 								
 								char[] text = cast(char[])sourceFile.load();
-								sci.text = text[
-									func.code._firstByte
-									..
-									func.code._firstByte + func.code._lengthBytes
-								];
+
+								uint first = func.code._firstByte;
+								uint last = first + func.code._lengthBytes;
+
+								// expand the range to include all the spaces and
+								// tabs preceding the first token in the code
+								char c;
+								while (
+									first > 0 &&
+									((c = text[first-1]) == ' ' || c == '\t')
+								) --first;
+								
+								sci.text = text[first..last];
+
+								sci.firstByte = first;
+								sci.lastByte = last;
+								sci.kdefMod = mod;
 							} else {
 								log.warn("Failed to load code for the kernel '{}': unable to load file.", _kernelName);
 							}
