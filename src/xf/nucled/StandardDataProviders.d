@@ -6,6 +6,7 @@ private {
 	import
 		xf.nucleus.Value,
 		xf.nucleus.Param,
+		xf.nucleus.SamplerDef,
 		xf.nucleus.kdef.Common;
 	import
 		xf.nucled.DataProvider,
@@ -15,6 +16,8 @@ private {
 	import
 		xf.omg.core.LinearAlgebra,
 		xf.omg.color.HSV;
+	import
+		xf.mem.ChunkQueue;
 	import
 		tango.core.Variant,
 		tango.text.convert.Format,
@@ -235,4 +238,56 @@ class ColorProvider : DataProvider {
 
 	override void dumpConfig(FormatOutput!(char) f) {
 	}
+}
+
+
+class SamplerProvider : DataProvider {
+	mixin MDataProvider!("sampler2D", "bitmap");
+
+	this() {
+		_mem.initialize();
+		sampler = new SamplerDef(&_mem.pushBack);
+	}
+	
+	protected override void _doGUI() {
+		HBox() [{
+			final input = Input();
+			input.userSize(vec2(100, 0));
+			if (resetGUI) {
+				input.text = this.path;
+			} else {
+				if (input.text != this.path) {
+					_changed = true;
+					final p = sampler.params.get("texture");
+					p.setValue(input.text);
+					this.path = input.text;
+				}
+			}
+			Button().text = "Browse";
+		}].icfg(`layout = { spacing = 5; }`);
+
+		resetGUI = false;
+	}
+	
+	override Variant getValue() {
+		return Variant(cast(Object)sampler);
+	}
+
+	override void setValue(Param* p) {
+		Object val;
+		p.getValue(&val);
+		sampler = cast(SamplerDef)val;
+		sampler.params.get("texture").getValue(&path);
+		resetGUI = true;
+	}
+	
+	override void configure(VarDef[]) {}
+
+	override void dumpConfig(FormatOutput!(char)) {}
+
+
+	SamplerDef	sampler;
+	ScratchFIFO	_mem;
+	cstring		path;
+	bool		resetGUI = true;
 }

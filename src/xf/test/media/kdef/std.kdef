@@ -18,6 +18,44 @@ OneMinus = kernel <linear> (in a, out b <in.a.actual>) {
 	b = 1 - a;
 };
 
+TangentToWorld = kernel (
+	in normal <type float3 + basis world + use normal + unit true>,
+	in tangent <type float3 + basis world + use tangent + unit true>,
+	in bitangent <type float3 + basis world + use bitangent + unit true>,
+	in input <type float3 + use normal + unit true>,
+	out output <in.input.actual + type float3 + basis world>
+) {
+	output = input.z * normal + input.x * tangent - input.y * bitangent;
+};
+
+ComputeToEye = kernel (
+	in position <type float3 + basis world + use position>,
+	out toEye <type float3 + basis world + use toEye>
+) {
+	toEye = eyePosition - position;
+};
+
+Reflect = kernel (
+	in input <type float3>,
+	in normal <type float3 + use normal>,
+	out output <type float3 + use reflection>
+) {
+	output = reflect(input, normal);
+};
+
+Fresnel = kernel (
+	in normal <type float3 + use normal + basis world + unit true>,
+	in toEye <type float3 + use toEye + basis world + unit true>,
+	out output <type float + use fresnel>
+) {
+	const float R0 = 0.2;
+	output = saturate(dot(normal, toEye).x);
+	output = pow(1.0f - output, 5.0f);
+	output *= (1.0f - R0);
+	output += R0;
+};
+
+
 Tex2D = kernel (
 	in texture <type sampler2D>,
 	in uv <type float2 + use uv>,

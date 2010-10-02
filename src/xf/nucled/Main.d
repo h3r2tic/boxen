@@ -217,26 +217,63 @@ class TestApp : GfxApp {
 		fwdRenderer = createRenderer("Forward");
 		defRenderer = createRenderer("LightPrePass");
 
-		const numLights = 3;
+		version (FixedTest) {
+			const numLights = 50;
+			alias PointLight LightType;
+		} else {
+			const numLights = 3;
+			alias SpotLight_VSM LightType;
+		}
+		
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new SpotLight_VSM)[$-1]);
-			lightOffsets ~= vec3(0, 2 + Kiss.instance.fraction(), 0);
-			lightAngles ~= Kiss.instance.fraction() * 360.0f;
-			lightDists ~= 2;// + Kiss.instance.fraction();
-			lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+			createLight((lights ~= new LightType)[$-1]);
+			version (Sponza) {
+				lightOffsets ~= vec3(0, 0.1 + Kiss.instance.fraction() * 10.0, 0);
+				lightAngles ~= Kiss.instance.fraction() * 360.0f;
+				lightDists ~= Kiss.instance.fraction() * 5;
+				lightSpeeds ~= 0.7f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+			} else {
+				lightOffsets ~= vec3(0, 2.0 + Kiss.instance.fraction() * 3.0, 0);
+				lightAngles ~= Kiss.instance.fraction() * 360.0f;
+				lightDists ~= Kiss.instance.fraction() * 0.3f + 0.15f;
+				lightSpeeds ~= 0.2f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);
+
+				/+lightOffsets ~= vec3(0, -2 + Kiss.instance.fraction() * 4, 0);
+				lightAngles ~= Kiss.instance.fraction() * 360.0f;
+				lightDists ~= Kiss.instance.fraction() * 0.3f - 0.15f;
+				lightSpeeds ~= 0.2f * (0.3f * Kiss.instance.fraction() + 0.7f) * (Kiss.instance.fraction() > 0.5f ? 1 : -1);+/
+			}
 
 			float h = cast(float)i / numLights;//Kiss.instance.fraction();
-			float s = 0.6f;
+			float s = 0.2f;
 			float v = 1.0f;
 
 			vec4 rgba = vec4.zero;
 			hsv2rgb(h, s, v, &rgba.r, &rgba.g, &rgba.b);
-			lightIllums ~= rgba;
+
+			version (FixedTest) {
+				lightIllums ~= rgba * (1000.f / numLights);
+			} else {
+				lightIllums ~= 40 * rgba;// * (1000.f / numLights);
+			}
 		}
 
+		lightIllums[0] *= 0.25;
+		lightIllums[1] *= 0.35;
+
+		lightAngles[0] = 0;
+		lightAngles[1] = 120;
+		lightAngles[2] = 240;
+		
+		lightSpeeds[0..3] = 0.1f;
+
+		lightOffsets[0] = vec3.unitY * 4;
+		lightOffsets[1] = vec3.unitY * 4;
+		lightOffsets[2] = vec3.unitY * 3;
+
 		{
-			cstring model = `mesh/tank.hsf`;
-			float scale = 0.02f;
+			cstring model = `mesh/ubot.hsf`;
+			float scale = 1.0f;
 
 			model = getResourcePath(model);			
 			scope loader = new HsfLoader;
@@ -339,7 +376,7 @@ class TestApp : GfxApp {
 
 		static float lightDist = 0.8f;
 		static float lightScale = 0.0f;
-		if (0 == lightScale) lightScale = 40f / lights.length;
+		if (0 == lightScale) lightScale = 4.5f / lights.length;
 
 		static float lightRad = 1.0f;
 

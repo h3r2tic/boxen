@@ -59,6 +59,16 @@ void loadMaterialSamplerParam(
 					default: log.error("Unrecognized texture mag filter: '{}'", val);
 				}
 			}
+
+			if ("colorSpace" == p.name) {
+				cstring val;
+				p.getValueIdent(&val);
+				switch (val) {
+					case "linear":	req.internalFormat = TextureInternalFormat.RGBA8; break;
+					case "sRGB":	req.internalFormat = TextureInternalFormat.SRGB8_ALPHA8; break;
+					default: log.error("Unrecognized sampler color space: '{}'", val);
+				}
+			}
 		}
 
 		*tex = backend.createTexture(
