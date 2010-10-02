@@ -1,0 +1,84 @@
+tmp = graph {
+node_0 = node {
+	type = input;
+	params = (
+		out position<basis world + type float3 + use position>,
+		out normal<basis world + type float3 + unit true + use normal>,
+		out tangent<basis world + type float3 + unit true + use tangent>,
+		out bitangent<basis world + type float3 + unit true + use bitangent>,
+		out texCoord<type float2 + use uv> @gui(
+widget = Slider;
+min = 0.00 0.00;
+max = 1.00 1.00;
+)
+	);
+	center = 58.00 263.00;
+	size = 142.00 201.00;
+};
+node_1 = node {
+	type = output;
+	params = (
+		in out_albedo<type float4 + use color>,
+		in out_specular<type float4 + use color>,
+		in out_emissive<type float4 + use color>,
+		in out_normal<basis world + type float3 + unit true + use normal>
+	);
+	center = 743.00 543.00;
+	size = 91.00 89.00;
+};
+node_2 = node {
+	type = kernel;
+	kernel = CheckerGen;
+	center = 277.00 515.00;
+	size = 142.00 175.00;
+};
+node_3 = node {
+	type = data;
+	params = (
+		out poop<type float2> = 11.85 1.83 @gui(
+widget = Slider;
+min = 0.00 0.00; max = 20.00 10.00;),
+		out meh<type float4> = 0.06 0.12 0.90 1.00 @gui(
+widget = Color;
+),
+		out emissive<type float4 + use color> = 0.00 0.00 0.00 1.00 @gui(
+widget = Color;
+)
+	);
+	center = 81.00 573.00;
+	size = 142.00 177.00;
+};
+node_4 = node {
+	type = kernel;
+	kernel = Mul;
+	center = 502.00 578.00;
+	size = 142.00 175.00;
+};
+connect node_0.normal node_1.out_normal;
+
+connect node_0.texCoord node_2.uv;
+
+connect node_2.sample node_4.a;
+
+connect node_3.poop node_2.size;
+
+connect node_3.meh node_4.b;
+
+connect node_3.emissive node_1.out_emissive;
+
+connect node_4.c node_1.out_albedo;
+
+connect node_4.c node_1.out_specular;
+
+};
+tmp_default = material tmp {
+		poop = 11.85 1.83 @gui(
+widget = Slider;
+min = 0.00 0.00; max = 20.00 10.00;);
+		meh = 0.06 0.12 0.90 1.00 @gui(
+widget = Color;
+);
+		emissive = 0.00 0.00 0.00 1.00 @gui(
+widget = Color;
+);
+};

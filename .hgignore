@@ -36,7 +36,7 @@ syntax: glob
 *.moduleDeps
 *.dot.png
 geany_run_script.bat
-src/xf/test/media/*
+src/xf/test/media/
 src/xf/havok/HavokC.cpp.i
 src/xf/havok/Havok.d
 src/xf/gfx/api/gl3/GL.d
