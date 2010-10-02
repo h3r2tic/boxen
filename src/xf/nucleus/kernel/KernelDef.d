@@ -13,6 +13,7 @@ final class KernelDef {
 	cstring				superKernel;
 	private DepTracker	_dependentOnThis;
 
+
 	this(DgAllocator allocator) {
 		_dependentOnThis = DepTracker(allocator);
 	}

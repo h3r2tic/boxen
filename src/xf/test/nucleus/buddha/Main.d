@@ -82,7 +82,7 @@ class TestApp : GfxApp {
 		nr2 = createRenderer("Forward");
 		
 		post = new PostProcessor(rendererBackend, kdefRegistry);
-		post.setKernel("TestPost");
+		post.setKernel("PostGlareAcuityNoise");
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();

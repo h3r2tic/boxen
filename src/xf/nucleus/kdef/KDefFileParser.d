@@ -23,6 +23,10 @@ class KDefFileParser : IKDefFileParser {
 	void setVFS(VfsFolder host) {
 		_vfs = host;
 	}
+
+	VfsFolder getVFS() {
+		return _vfs;
+	}
 	
 	
 	KDefModule parseFile(

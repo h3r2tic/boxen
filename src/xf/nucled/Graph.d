@@ -9,6 +9,8 @@ private {
 	import xf.nucleus.kdef.model.IKDefRegistry;
 	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
 	import xf.nucleus.Value;
+	import xf.nucleus.Function;
+	import xf.nucleus.Nucleus;
 	import xf.nucled.DataProvider;
 	
 	import xf.hybrid.Hybrid;
@@ -18,6 +20,7 @@ private {
 	import xf.nucled.Widgets;
 	import xf.nucled.Misc;
 	import xf.nucled.Settings;
+	import xf.nucled.Log : log = nucledLog;
 	import xf.nucled.DynamicGridInput;
 	import xf.utils.Array : arrayRemove = remove;
 
@@ -730,85 +733,7 @@ class GraphNode {
 	
 	void doEditorGUI(bool justOpened, bool closing) {
 		if (isKernelBased) {
-			/+if (justOpened) {
-				_choosingImpl = true;
-			}
-			
-			if (_choosingImpl) {
-				auto impls = _mngr._core.matcher.getKernelImpl(_kernelName);
-				
-				void onSelected(KernelImpl impl) {
-					if (impl.Type.Direct == impl.type) {
-						_choosingImpl = false;
-						_quarkBeingEdited = impl.quark;
-					} else {
-						Label().text = "TODO";
-					}
-				}
-
-				if (1 == impls.length) {
-					onSelected(impls[0]);
-				} else if (impls.length > 1) {
-					VBox().icfg(`layout={padding = 5 5;}`) [{
-						Label().text("Select implementation:");
-						Dummy().userSize = vec2(0, 10);
-						
-						{
-							int i = 0;
-							auto picker = Picker(); picker [{
-								foreach (impl; impls) {
-									auto label = Label(i++);
-									if (impl.Type.Direct == impl.type) {
-										label.text = Format("(direct) {} @ {}", impl.quark.name, impl.detail);
-									} else {
-										assert (impl.Type.Composite == impl.type);
-										label.text = Format("(direct) {} @ {}", impl.graph.label, impl.detail);
-									}
-								}
-							}];
-							if (picker.anythingPicked) {
-								int j = 0;
-								foreach (impl; impls) {
-									if (j++ == picker.pickedIdx) {
-										onSelected(impl);
-									}
-								}
-								/+foreach (kernel, graph; &core.iterCompositeKernels) {
-									if (tabDesc.kernelDef.name == kernel.name) {
-										if (j++ == picker.pickedIdx) {
-											tabDesc.compositeName = trim(graph.label).dup;
-											tabDesc.label = tabDesc.kernelDef.name ~ "( " ~ tabDesc.compositeName ~ " )";
-											tabDesc.graphEditor = new GraphEditor(tabDesc.kernelDef.name, core, new GraphMngr(core.root));
-
-											auto path = getCompositeKernelPath(tabDesc.kernelDef.name, tabDesc.compositeName, false);
-											KDefGraph graphDef = loadKDefGraph(path);
-											tabDesc.graphEditor.loadKernelGraph(graphDef);
-
-											tabDesc.role = TabDesc.Role.GraphEditor;
-											break;
-										}
-									}
-								}+/
-							}
-							
-							/+if (0 == i) {
-								Label().text("No composite kernels defined");
-							}+/
-						}
-					}];
-				}
-			}
-			
-			if (_quarkBeingEdited !is null) {
-				doCodeEditorGUI(_quarkBeingEdited, justOpened, closing);
-			}
-			/+if (quark.isValid && quark.tryGetQuark !is null) {
-				
-			} else {
-				padded(10) = {
-					Label().text("You must compile the graph to edit quarks");
-				};
-			}+/+/
+			doCodeEditorGUI(justOpened, closing);
 		} else {
 			doDataEditorGUI(justOpened, closing);
 		}
@@ -889,36 +814,62 @@ class GraphNode {
 	}
 	
 	
-	/+VfsFile getVfsFile(QuarkDef quark) {
-		auto r = quark.tokenRange;
-		auto sourceVfsFile = _mngr.vfs.file(r.first.filename);
-		Stdout.formatln("quark file: {} [ {} ]", sourceVfsFile.name, sourceVfsFile.toString);
-		return sourceVfsFile;
+	VfsFile getVfsFile(KDefModule mod) {
+		assert (mod !is null);
+		final vfs = kdefRegistry.kdefFileParser.getVFS();
+		assert (vfs !is null);
+		
+		if (auto sourceVfsFile = vfs.file(mod.filePath)) {
+			log.trace("mod file: {} [ {} ]", sourceVfsFile.name, sourceVfsFile.toString);
+			return sourceVfsFile;
+		} else {
+			log.error("Could not get load the source for module: '{}'.", mod.filePath);
+			return null;
+		}
 	}
 	
 	
-	void doCodeEditorGUI(QuarkDef quark, bool justOpened, bool closing) {
-		assert (quark !is null);
+	void doCodeEditorGUI(bool justOpened, bool closing) {
+		//assert (quark !is null);
 		
 		auto sci = QuarkSciEditor();
-		sci.quark = quark;
-		sci._outer = this;
+		//sci.quark = quark;
+		//sci._outer = this;
 		
 		if (justOpened) {
-			auto sourceVfsFile = getVfsFile(quark);
-			auto sourceFile = sourceVfsFile.input;
-			scope (exit) sourceFile.close;
-			
-			int from, to;
-			char[] text = cast(char[])sourceFile.load();
-			quark.findSourceRange(text, from, to);
-			sci.text = text[from..to];
+			if (auto kernel = kdefRegistry.getKernel(_kernelName).kernel) {
+				if (auto func = cast(Function)kernel.func) {
+					if (func.code._lengthBytes > 0) {
+						if (auto mod = cast(KDefModule)func.code._module) {
+							if (auto sourceVfsFile = getVfsFile(mod)) {
+								auto sourceFile = sourceVfsFile.input;
+								scope (exit) sourceFile.close;
+								
+								char[] text = cast(char[])sourceFile.load();
+								sci.text = text[
+									func.code._firstByte
+									..
+									func.code._firstByte + func.code._lengthBytes
+								];
+							} else {
+								log.warn("Failed to load code for the kernel '{}': unable to load file.", _kernelName);
+							}
+						} else {
+							log.warn("Failed to load code for the kernel '{}': _module is null.", _kernelName);
+						}
+					}
+				} else {
+					log.info("Can't edit kernel '{}': it is abstract.", _kernelName);
+				}
+			} else {
+				log.warn("Failed to get the kernel '{}' for a code editor.", _kernelName);
+			}
 
 			sci.grabKeyboardFocus();
 		}
 		
 		sci.userSize = vec2(400, 300);
-	}+/
+	}
 	
 	
 	void doDataEditorGUI(bool justOpened, bool closing) {

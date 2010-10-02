@@ -21,6 +21,7 @@ enum : uint {
 struct KDefToken {
 	char[]	filename;
 	char[]	value;
+	uint	byteNr;
 	ushort	line;
 	ubyte	column;
     ubyte	type;
@@ -103,22 +104,22 @@ struct KDefToken {
 void writeOutTokens(KDefToken[] tokens, void delegate(char[]) sink) {
 	if (0 != tokens.length) {
 		int lin = tokens[0].line;
-		int col = 0;
+		int col = 1;
 		
 		foreach (tok; tokens) {
 			char[] val = tok.verbatim;
-			col += val.length;
+
+			while (tok.line > lin) {
+				++lin;
+				sink("\n");
+				col = 1;
+			}
 			while (tok.column > col) {
 				++col;
 				sink(" ");
 			}
 			sink(val);
-
-			while (tok.line > lin) {
-				++lin;
-				sink("\n");
-				col = 0;
-			}
+			col += val.length;
 		}
 	}
 }

@@ -13,6 +13,11 @@ struct Code {
 		ScratchFixedRope _code;
 	}
 
+	void*	_module;	// KDefModule, after semantic analysis
+	uint	_firstByte;
+	uint	_lengthBytes;
+	
+
 	void append(cstring str, DgScratchAllocator mem) {
 		_code.append(str, mem);
 	}

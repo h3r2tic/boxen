@@ -72,9 +72,9 @@ class TestApp : GfxApp {
 	RenderableId	pointCloudRid;
 
 
-	override void configureWindow(Window wnd) {
+	/+override void configureWindow(Window wnd) {
 		wnd.width(1680).height(1050).fullscreen(true);
-	}
+	}+/
 	
 
 	override void initialize() {
@@ -89,7 +89,7 @@ class TestApp : GfxApp {
 		nr2 = createRenderer("Forward");
 		
 		post = new PostProcessor(rendererBackend, kdefRegistry);
-		post.setKernel("TestPost");
+		post.setKernel("PostGlareAcuityNoise");
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();

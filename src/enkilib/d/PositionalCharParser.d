@@ -28,7 +28,7 @@ import enkilib.d.Parser;
 import enkilib.d.ParserException;
 
 struct Position{
-	uint line,col;
+	uint line,col,byteNr;
 }
 
 // character lexeme stream with line/col support
@@ -49,37 +49,38 @@ class PositionalCharParser : Parser!(char){
 		}
 	}
 	
-	Position getPosition(){
+	Position getPosition(int offset){
 		Position position;
+		position.byteNr = pos+offset;
 		
 		// no newlines in file
 		if(newlines.length == 0){
 			position.line = 1;
-			position.col = pos+1;
+			position.col = pos+offset+1;
 			return position;
 		}
 		
 		// get the first newline position that follows the current position
 		foreach(i,newlinePos; newlines){		
-			if(newlinePos > pos){
+			if(newlinePos > pos+offset){
 				position.line = i+1;
 				if(i==0){
-					position.col = pos+1;
+					position.col = pos+offset+1;
 				}
 				else{
-					position.col = pos - newlines[i-1]+1;
+					position.col = pos+offset - newlines[i-1]+1;
 				}
 				return position;
 			}
 		}
 		//must be somewhere between the last newline and eoi
 		position.line = newlines.length+1;
-		position.col = pos - newlines[newlines.length-1]+1;
+		position.col = pos+offset - newlines[newlines.length-1]+1;
 		return position;
 	}
 			
 	void error(char[] message){
-		auto position = getPosition();
+		auto position = getPosition(0);
 		if(pos < data.length){
 			throw ParserException("{} ({},{}): {} (got '{}' instead)",filename,position.line,position.col,message,data[pos]);
 		}

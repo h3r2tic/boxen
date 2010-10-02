@@ -163,12 +163,12 @@ class Style {
 	float	deactivationTime	= 0.f;
 	const static tupleofIndexStart = 2;		// don't do magic with the two above fields
 	
-	Opt!(vec4)						color;
-	Opt!(BorderStyle)			border;
-	Opt!(FontStyle)				font;
+	Opt!(vec4)				color;
+	Opt!(BorderStyle)		border;
+	Opt!(FontStyle)			font;
 	Opt!(BackgroundStyle)	background;
-	Opt!(ImageStyle)			image;
-	Opt!(TextInputStyle)		textInput;
+	Opt!(ImageStyle)		image;
+	Opt!(TextInputStyle)	textInput;
 }
 
 
@@ -244,7 +244,9 @@ Style parseStyle(PropAssign[] cfg) {
 			} break;
 
 			case "border": {
-				auto b = s.border.value = BorderStyle.init;
+				s.border.value = BorderStyle.init;
+				auto b = s.border.value;
+				
 				assert (Value.Type.Complex == p.value.type);
 				foreach (item; p.value.Complex.items) {
 					switch (item.type) {
@@ -268,7 +270,8 @@ Style parseStyle(PropAssign[] cfg) {
 					auto		fargs = p.value.FuncCall.args;
 					
 					void makeGradient(GradientStyle.Type type) {
-						auto b = s.background.value = BackgroundStyle.init;
+						s.background.value = BackgroundStyle.init;
+						auto b = s.background.value;
 						b.type = BackgroundStyle.Type.Gradient;
 						auto g = &b.Gradient;
 						g.type = type;
@@ -286,7 +289,8 @@ Style parseStyle(PropAssign[] cfg) {
 						} break;
 						
 						case "solid": {
-							auto b = s.background.value = BackgroundStyle.init;
+							s.background.value = BackgroundStyle.init;
+							auto b = s.background.value;
 							b.type = BackgroundStyle.Type.Solid;
 							b.Solid = parseColor(fargs[0]);
 						} break;
@@ -347,7 +351,8 @@ Style parseStyle(PropAssign[] cfg) {
 							assert (fargs.length >= 3);
 							assert (fargs[0].type == Value.Type.String);
 							auto nis = new ImageStyle(fargs[0].String.dup);
-							auto img = s.image.value = nis;
+							s.image.value = nis;
+							auto img = s.image.value;
 							
 							foreach (fa; fargs[1..$]) {
 								assert (Value.Type.FuncCall == fa.type);

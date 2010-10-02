@@ -271,6 +271,14 @@ class KDefParserBase : Parser!(KDefToken) {
 			writeOutTokens(tokens, (string s) {
 				res.append(s, mem);
 			});
+			if (tokens.length > 0) {
+				res._firstByte = tokens[0].byteNr;
+				
+				res._lengthBytes = tokens[$-1].byteNr + tokens[$-1].toString.length;
+				res._lengthBytes -= res._firstByte;
+			} else {
+				res._lengthBytes = 0;
+			}
 			return res;
 		}
 

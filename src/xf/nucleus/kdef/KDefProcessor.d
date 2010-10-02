@@ -341,6 +341,13 @@ class KDefProcessor {
 							mod
 						);
 					}
+
+					if (KernelImpl.Type.Kernel == kimpl.type) {
+						if (auto func = cast(Function)kimpl.kernel.func) {
+							static assert (is(typeof(mod) == KDefModule));
+							func.code._module = cast(void*)mod;
+						}
+					}
 				}
 			}
 
