@@ -364,8 +364,8 @@ class FreeImageLoader : Loader {
 			cstring path,
 			void delegate(u8[] data) sink
 		) {
-			if (vfs) {
-				try {
+			try {
+				if (vfs) {
 					auto file = vfs.file(path);
 					if (file.exists) {
 						auto stream = file.input();
@@ -385,25 +385,27 @@ class FreeImageLoader : Loader {
 					} else {
 						log.error("Image file not found in vfs: '{}'.", path);
 					}
-				} catch (VfsException e) {
-					log.error(
-						"A vfs exception occured while loading an image: {}",
-						e.toString
-					);
+
+					return false;
+				} else {
+					if (!FilePath(path).exists) {
+						log.error("Image file not found: '{}'.", path);
+						return false;
+					}
+
+					scope fileData = new MappedFile(path, File.ReadShared);
+					scope (exit) fileData.close();
+
+					sink(fileData.map());
+					return true;
 				}
+			} catch (Exception e) {
+				log.error(
+					"A vfs exception occured while loading an image: {}",
+					e.toString
+				);
 
 				return false;
-			} else {
-				if (!FilePath(path).exists) {
-					log.error("Image file not found: '{}'.", path);
-					return false;
-				}
-
-				scope fileData = new MappedFile(path, File.ReadShared);
-				scope (exit) fileData.close();
-
-				sink(fileData.map());
-				return true;
 			}
 		}
 	}

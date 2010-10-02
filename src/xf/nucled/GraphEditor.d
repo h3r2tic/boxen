@@ -545,26 +545,26 @@ class GraphEditor {
 			graph.dump(graphDef, _registry);
 
 			if (n.contents is null) {
-			//try {
-				final sp = new GPUShaderPreview(
-					_backend,
-					_registry,
-					KernelImpl(graphDef),
-					n.label, con.name
-				);
-				n.contents = sp;
+				try {
+					final sp = new GPUShaderPreview(
+						_backend,
+						_registry,
+						KernelImpl(graphDef),
+						n.label, con.name
+					);
+					n.contents = sp;
 
-				sp.setObjects(_objectsForPreview);
-				sp.compileEffects();
+					sp.setObjects(_objectsForPreview);
+					sp.compileEffects();
 
-				break;
-			/+} catch (NucleusException e) {
-				e.writeOut((cstring s) {
-					Stdout(e);
-					Stdout.newline;
-				});
-				n.contents = null;
-			}+/
+					break;
+				} catch (NucleusException e) {
+					e.writeOut((cstring s) {
+						Stdout(e);
+						Stdout.newline;
+					});
+					n.contents = null;
+				}
 			} else if (auto gsp = cast(GPUShaderPreview)n.contents) {
 				gsp._renderer.materialToUse = KernelImpl(graphDef);
 				n.contents.refresh();

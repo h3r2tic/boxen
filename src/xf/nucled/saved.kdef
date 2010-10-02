@@ -8,11 +8,9 @@ node_0 = node {
 		out bitangent<basis world + type float3 + unit true + use bitangent>,
 		out texCoord<type float2 + use uv> @gui(
 widget = Slider;
-min = 0.00 0.00;
-max = 1.00 1.00;
-)
+min = 0.00 0.00; max = 1.00 1.00;)
 	);
-	center = 58.00 263.00;
+	center = -216.00 448.00;
 	size = 142.00 201.00;
 };
 node_1 = node {
@@ -23,62 +21,184 @@ node_1 = node {
 		in out_emissive<type float4 + use color>,
 		in out_normal<basis world + type float3 + unit true + use normal>
 	);
-	center = 743.00 543.00;
+	center = 1228.00 604.00;
 	size = 91.00 89.00;
 };
 node_2 = node {
 	type = kernel;
-	kernel = CheckerGen;
-	center = 277.00 515.00;
+	kernel = Tex2D;
+	center = 384.00 501.00;
 	size = 142.00 175.00;
 };
 node_3 = node {
 	type = data;
 	params = (
-		out poop<type float2> = 11.85 1.83 @gui(
-widget = Slider;
-min = 0.00 0.00; max = 20.00 10.00;),
-		out meh<type float4> = 0.06 0.12 0.90 1.00 @gui(
+		out reflStr<type float4> = 0.18 0.18 0.18 1.00 @gui(
 widget = Color;
 ),
 		out emissive<type float4 + use color> = 0.00 0.00 0.00 1.00 @gui(
 widget = Color;
+),
+		out diffTex<type sampler2D + use color> = sampler {texture = "mesh/ubot-tex/diff.jpg"; } @gui(
+widget = bitmap;
+),
+		out specTex<type sampler2D + use color> = sampler {texture = "mesh/ubot-tex/spec.png"; } @gui(
+widget = bitmap;
+),
+		out normTex<type sampler2D + use color> = sampler {texture = "mesh/ubot-tex/norm.png"; colorSpace = linear; } @gui(
+widget = bitmap;
+),
+		out illumTex<type sampler2D + use color> = sampler {texture = "mesh/ubot-tex/illum.jpg"; } @gui(
+widget = bitmap;
+),
+		out reflTex<type sampler2D + use color> = sampler {texture = "img/Ueno_Shrine/03-Ueno-Shrine_3k.hdr"; colorSpace = linear; } @gui(
+widget = bitmap;
 )
 	);
-	center = 81.00 573.00;
-	size = 142.00 177.00;
+	center = -219.00 686.00;
+	size = 142.00 225.00;
 };
 node_4 = node {
 	type = kernel;
-	kernel = Mul;
-	center = 502.00 578.00;
+	kernel = Tex2D;
+	center = 19.00 698.00;
 	size = 142.00 175.00;
 };
-connect node_0.normal node_1.out_normal;
+node_5 = node {
+	type = kernel;
+	kernel = TangentToWorld;
+	center = 194.00 661.00;
+	size = 142.00 199.00;
+};
+node_6 = node {
+	type = kernel;
+	kernel = ComputeToEye;
+	center = 183.00 888.00;
+	size = 142.00 163.00;
+};
+node_7 = node {
+	type = kernel;
+	kernel = Reflect;
+	center = 370.00 885.00;
+	size = 142.00 175.00;
+};
+node_8 = node {
+	type = kernel;
+	kernel = Tex2D;
+	center = 545.00 884.00;
+	size = 142.00 175.00;
+};
+node_9 = node {
+	type = kernel;
+	kernel = Mul;
+	center = 709.00 888.00;
+	size = 142.00 175.00;
+};
+node_10 = node {
+	type = kernel;
+	kernel = Fresnel;
+	center = 707.00 699.00;
+	size = 142.00 175.00;
+};
+node_11 = node {
+	type = kernel;
+	kernel = Mul;
+	center = 867.00 891.00;
+	size = 142.00 175.00;
+};
+node_12 = node {
+	type = kernel;
+	kernel = Tex2D;
+	center = 550.00 500.00;
+	size = 142.00 175.00;
+};
+node_13 = node {
+	type = kernel;
+	kernel = Add;
+	center = 1052.00 710.00;
+	size = 142.00 175.00;
+};
+node_14 = node {
+	type = kernel;
+	kernel = Tex2D;
+	center = 383.00 307.00;
+	size = 142.00 175.00;
+};
+connect node_0 node_5;
+
+connect node_0.texCoord node_4.uv;
+
+connect node_0.position node_6.position;
 
 connect node_0.texCoord node_2.uv;
 
-connect node_2.sample node_4.a;
+connect node_0.position node_10.toEye;
 
-connect node_3.poop node_2.size;
+connect node_0.texCoord node_12.uv;
 
-connect node_3.meh node_4.b;
+connect node_0.texCoord node_14.uv;
 
-connect node_3.emissive node_1.out_emissive;
+connect node_2.sample node_1.out_albedo;
 
-connect node_4.c node_1.out_albedo;
+connect node_3.normTex node_4.texture;
 
-connect node_4.c node_1.out_specular;
+connect node_3.diffTex node_2.texture;
+
+connect node_3.reflTex node_8.texture;
+
+connect node_3.reflStr node_9.b;
+
+connect node_3.illumTex node_12.texture;
+
+connect node_3.specTex node_14.texture;
+
+connect node_4.sample node_5.input;
+
+connect node_5.output node_1.out_normal;
+
+connect node_5.output node_7.normal;
+
+connect node_5.output node_10.normal;
+
+connect node_6.toEye node_7.input;
+
+connect node_7.output node_8.uv;
+
+connect node_8.sample node_9.a;
+
+connect node_9.c node_11.a;
+
+connect node_10.output node_11.b;
+
+connect node_11.c node_13.b;
+
+connect node_12.sample node_13.a;
+
+connect node_13.c node_1.out_emissive;
+
+connect node_14.sample node_1.out_specular;
 
 };
 tmp_default = material tmp {
-		poop = 11.85 1.83 @gui(
-widget = Slider;
-min = 0.00 0.00; max = 20.00 10.00;);
-		meh = 0.06 0.12 0.90 1.00 @gui(
+		reflStr = 0.18 0.18 0.18 1.00 @gui(
 widget = Color;
 );
 		emissive = 0.00 0.00 0.00 1.00 @gui(
 widget = Color;
+);
+		diffTex = sampler {texture = "mesh/ubot-tex/diff.jpg"; } @gui(
+widget = bitmap;
+);
+		specTex = sampler {texture = "mesh/ubot-tex/spec.png"; } @gui(
+widget = bitmap;
+);
+		normTex = sampler {texture = "mesh/ubot-tex/norm.png"; colorSpace = linear; } @gui(
+widget = bitmap;
+);
+		illumTex = sampler {texture = "mesh/ubot-tex/illum.jpg"; } @gui(
+widget = bitmap;
+);
+		reflTex = sampler {texture = "img/Ueno_Shrine/03-Ueno-Shrine_3k.hdr"; colorSpace = linear; } @gui(
+widget = bitmap;
 );
 };

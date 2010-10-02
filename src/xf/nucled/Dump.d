@@ -6,6 +6,7 @@ private {
 	import
 		xf.nucleus.Param,
 		xf.nucleus.Value,
+		xf.nucleus.SamplerDef,
 		xf.nucleus.kdef.Common;
 	
 	import
@@ -235,6 +236,29 @@ private void dumpParamValue(
 			cstring val;
 			param.getValueIdent(&val);
 			p.format("{}", val);
+		} break;
+		case ParamValueType.ObjectRef: {
+			Object objVal;
+			param.getValue(&objVal);
+			if (auto sampler = cast(SamplerDef)objVal) {
+				p("sampler {");
+				foreach (ref par; sampler.params) {
+					p.format("{} = ", par.name);
+					dumpParamValue(&par, p);
+					p("; ");
+				}
+				p("}");
+				/+mat.info[i].ptr = mem._new!(Texture)();
+				Texture* tex = cast(Texture*)mat.info[i].ptr;
+				loadMaterialSamplerParam(backend, sampler, tex);+/
+			} else {
+				error(
+					"Don't know what to do with"
+					" a {} material param ('{}').",
+					objVal.classinfo.name,
+					param.name
+				);
+			}
 		} break;
 		default: break;
 	}

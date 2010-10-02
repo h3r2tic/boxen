@@ -9,6 +9,20 @@ converter<linear>(20) normal2color (
 	b = float4((a + 1.0f) * 0.5f, 1.0f);
 }
 
+converter<linear>(20) color2normal (
+	in a <type float4 + use color>,
+	out b <in.a.actual + type float3 + use normal>
+) {
+	b = a.xyz * 2 - 1;
+}
+
+converter<linear>(20) color2normal (
+	in a <type float3 + use color>,
+	out b <in.a.actual + type float3 + use normal + unit true>
+) {
+	b = a.xyz * 2 - 1;
+}
+
 converter<linear>(10) vec4to3 (
 	in a <type float4>,
 	out b <in.a.actual + type float3>
@@ -72,3 +86,12 @@ converter<linear>(20) computeToEye (
 ) {
 	toEye = eyePosition - position;
 }
+
+converter(20) reflectionMapUV (
+	in reflection <type float3 + use reflection + unit true>,
+	out uv <type float2 + use uv>
+) {
+	uv.x = (atan2(reflection.z, reflection.x) / 3.14159265) * 0.5 + 0.5;
+	uv.y = reflection.y * 0.5 + 0.5;
+}
+

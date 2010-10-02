@@ -183,6 +183,9 @@ class ParametersRollout {
 			case "float4":
 				param.setValue(prov.getValue().get!(vec4).tuple);
 				break;
+			case "sampler2D":
+				param.setValue(prov.getValue().get!(Object));
+				break;
 			default:
 				assert (false, param.type);
 		}

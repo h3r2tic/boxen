@@ -228,8 +228,8 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	+ data node editing
 	+ automatic creation of input and output parameters for new kernel impls
 		* only Material for now
-	- editing of nodes
-		- code
+	~ editing of nodes
+		+ code
 		- graph
 	+ create kdef objects without saving to files
 	~ material data editing
