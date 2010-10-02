@@ -773,10 +773,11 @@ class GraphNode {
 			
 			auto sourceVfsFile = _outer.getVfsFile(kdefMod);
 
-			char[] text;
-			auto sourceFile = sourceVfsFile.input;
-			scope (exit) sourceFile.close;
-			text = cast(char[])sourceFile.load();
+			char[] text; {
+				auto sourceFile = sourceVfsFile.input;
+				scope (exit) sourceFile.close;
+				text = cast(char[])sourceFile.load();
+			}
 
 			// TODO: check for potential external modifications to the file
 			
