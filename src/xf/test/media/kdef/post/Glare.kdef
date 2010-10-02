@@ -17,17 +17,50 @@ AddGlare = kernel(
 	float blurredLuma4 = dot(grayWt, blurredColor4.xyz).x;
 
 	// Spatial acuity and color sunsitivity loss
-	float acuity = smoothstep(-0.005, 0.018, max(blurredLuma, max(blurredLuma4, blurredLuma3)));
-	output = min(float4(1.0), lerp(blurredColor, baseColor, acuity));
-	output = lerp(dot(float3(0.2126, 0.7152, 0.0722), output).xxxx, output, acuity);
+	//float acuity = smoothstep(-0.005, 0.0075, max(blurredLuma*0.3, max(blurredLuma3*0.5, blurredLuma4)));
+	//float acuity = tanh(10*saturate(max(blurredLuma*0.3, max(blurredLuma3*0.5, blurredLuma4))));
+	const float acuityThresh = 0.2;
+	const float acuityThresh2 = 50;
+	float acuity1 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*blurredLuma2)));
+	float acuity2 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*blurredLuma3)));
+	float acuity3 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*blurredLuma4)));
+	float acuity4 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*baseLuma)));
+/+	float acuity1 = smoothstep(0, 0.01, blurredLuma2);
+	float acuity2 = smoothstep(0, 0.01, blurredLuma3);
+	float acuity3 = smoothstep(0, 0.01, blurredLuma4);+/
+	float acuity = 1.0 - (1.0-acuity1) * (1.0-acuity2) * (1.0-acuity3) * (1.0-acuity4);//saturate(max(acuity1, acuity2));
+	//acuity = 0;
+//	acuity = acuity1;
+
+	float3 cdiff = blurredColor.xyz - blurredColor2.xyz;
+	const float eps = 0.000001;
+	cdiff *= (pow(abs(dot(cdiff, float3(1.0/3)).x), 1.0/1.15) + eps) / (abs(dot(cdiff, float3(1.0/3)).x) + eps);
+
+	float4 nightBlurredColor = float4(
+		saturate(blurredColor2.xyz + cdiff),
+		blurredColor.w
+	);
+
+	output = min(float4(1.0), lerp(nightBlurredColor, baseColor, acuity));
+
+	float3 scotopicXYZ = float3(
+		dot(float3(0.5149, 0.3244, 0.1607), output.xyz),
+		dot(float3(0.2654, 0.6704, 0.0642), output.xyz),
+		dot(float3(0.0248, 0.1248, 0.8504), output.xyz)
+	);
+
+	float scotopicLum = scotopicXYZ.y * 0.25 * (1.33 * (1.0 + (scotopicXYZ.y+scotopicXYZ.z+eps) / (scotopicXYZ.x+eps)) - 1.68);
+	float4 scotopicColor = float4(scotopicLum * float3(1.05, 0.97, 1.27), output.w);
+
+	output = lerp(scotopicColor, output, acuity);
 
 	{
 		//float luma = max(0.0001, blurredLuma);
 		//float targetLuma = 0.045*pow(luma, 1.7);
 		//output += max(float4(0), blurredColor*targetLuma/luma);
-		output += blurredColor * pow(blurredLuma, 0.3) * 0.07;
-		output += blurredColor2 * pow(blurredLuma2, 0.3) * 0.07;
-		output += blurredColor3 * pow(blurredLuma3, 0.3) * 0.07;
+		output += blurredColor * pow(blurredLuma, 0.3) * 0.05;
+		output += blurredColor2 * pow(blurredLuma2, 0.3) * 0.05;
+		output += blurredColor3 * pow(blurredLuma3, 0.3) * 0.04;
 	}
 	{
 		float luma = max(0.0001, blurredLuma4);
@@ -36,4 +69,6 @@ AddGlare = kernel(
 	}
 
 //	output = blurredColor;
+//	output = acuity;
+//	output = scotopicLum;
 };

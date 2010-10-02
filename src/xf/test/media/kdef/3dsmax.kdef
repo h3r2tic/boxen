@@ -9,14 +9,17 @@ MaxDefaultMaterial = graph Material {
 			albedoTex <type sampler2D + use color>,
 			maskTex <type sampler2D + use color>,
 			normalTex <type sampler2D + use color>,
+			emissiveTex <type sampler2D + use color>,
 			albedoTexTile <type float2>,
 			specularTint <type float4 + use color> = 1 1 1 1,
 			specularTex <type sampler2D + use color>,
 			specularTexTile <type float2>,
 			maskTexTile <type float2>,
 			normalTexTile <type float2>,
+			emissiveTexTile <type float2>,
 			albedoTexAmount <type float>,
 			specularTexAmount <type float>,
+			emissiveTexAmount <type float>,
 		);
 	};
 	ns_albedo = node {
@@ -35,6 +38,10 @@ MaxDefaultMaterial = graph Material {
 		type = kernel;
 		kernel = Tex2D;		
 	};
+	ns_emissive = node {
+		type = kernel;
+		kernel = Tex2D;		
+	};
 	n2 = node {
 		type = kernel;
 		kernel = kernel Material(
@@ -44,12 +51,15 @@ MaxDefaultMaterial = graph Material {
 			specularImg <type Image>,
 			maskImg <type Image>,
 			normalImg <type Image>,
+			emissiveImg <type Image>,
 			albedoTexTile <type float2>,
 			specularTexTile <type float2>,
 			maskTexTile <type float2>,
 			normalTexTile <type float2>,
+			emissiveTexTile <type float2>,
 			albedoTexAmount <type float>,
 			specularTexAmount <type float>,
+			emissiveTexAmount <type float>,
 		) {
 			if (maskImg.sample(texCoord * maskTexTile).x <= 0.01) discard;
 			out_albedo = albedoTint * (1.0 - albedoTexAmount) + albedoTexAmount * albedoImg.sample(texCoord * albedoTexTile);
@@ -71,11 +81,14 @@ MaxDefaultMaterial = graph Material {
 			float3 toEye = -normalize(mul(worldToView, float4(position, 1.0)).xyz);
 			float3 eyeSpaceNormal = mul(worldToView, float4(normalize(out_normal+normal), 0.0)).xyz;
 
+			out_emissive = 0;
+
 			float fresnel = saturate(dot(eyeSpaceNormal, toEye).x);
 			fresnel = pow(1.0f - fresnel, 5.0f);
 			fresnel *= (1.0f - fresnelR0);
 			fresnel += fresnelR0;
-//			out_emissive = fresnel * lerp(float4(1), out_specular, 0.5) * 0.1;
+			out_emissive += fresnel * lerp(float4(1), out_specular, 0.5) * 0.02;
+			out_emissive += emissiveTexAmount * emissiveImg.sample(texCoord * emissiveTexTile);
 
 //			out_albedo = 0.5 * tangent.xyzz + 0.5;
 //			out_albedo = 0.5 * out_normal.xyzz + 0.5;
@@ -90,9 +103,11 @@ MaxDefaultMaterial = graph Material {
 	connect n1.specularTexTile n2.specularTexTile;
 	connect n1.maskTexTile n2.maskTexTile;
 	connect n1.normalTexTile n2.normalTexTile;
+	connect n1.emissiveTexTile n2.emissiveTexTile;
 
 	connect n1.albedoTexAmount n2.albedoTexAmount;
 	connect n1.specularTexAmount n2.specularTexAmount;
+	connect n1.emissiveTexAmount n2.emissiveTexAmount;
 
 	// ----
 
@@ -108,12 +123,16 @@ MaxDefaultMaterial = graph Material {
 	connect n1.normalTex ns_normal.texture;
 	connect ns_normal.sample n2.normalImg;
 
+	connect n1.emissiveTex ns_emissive.texture;
+	connect ns_emissive.sample n2.emissiveImg;
+
 	// ----
 
 	noauto ns_albedo.uv;
 	noauto ns_specular.uv;
 	noauto ns_mask.uv;
 	noauto ns_normal.uv;
+	noauto ns_emissive.uv;
 
 	// ----
 

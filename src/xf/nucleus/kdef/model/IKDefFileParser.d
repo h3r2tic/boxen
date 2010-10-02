@@ -11,4 +11,5 @@ private {
 interface IKDefFileParser {
 	KDefModule parseFile(string sourcePath);
 	void setVFS(VfsFolder);
+	VfsFolder getVFS();
 }

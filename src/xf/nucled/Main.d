@@ -27,7 +27,8 @@ import
 	xf.nucleus.Scene,
 	xf.nucleus.KernelImpl,
 	xf.nucleus.IStructureData,
-	xf.nucleus.light.TestLight,
+	xf.nucleus.light.Point,
+	xf.nucleus.light.Spot,
 	xf.nucleus.asset.CompiledSceneAsset,
 	xf.nucleus.asset.compiler.SceneCompiler,
 	xf.nucleus.structure.MeshStructure,
@@ -60,8 +61,19 @@ import tango.util.log.Trace;		// TMP
 	
 
 
-void main() {
-	(new TestApp).run;
+import tango.stdc.stdio : getchar;
+import tango.stdc.stdlib : exit;
+
+void main(cstring[] args) {
+	try {
+		(new TestApp).run;
+	} catch (Exception e) {
+		e.writeOut((cstring s) { Stdout(s); });
+		Stdout.newline();
+		Stdout.formatln("Hit me with like an Enter.");
+		getchar();
+		exit(1);
+	}
 }
 
 
@@ -121,12 +133,12 @@ class TestApp : GfxApp {
 
 	VSDRoot		vsd;
 
-	TestLight[]		lights;
-	vec3[]			lightOffsets;
-	float[]			lightDists;
-	float[]			lightSpeeds;
-	float[]			lightAngles;
-	vec4[]			lightIllums;
+	Light[]		lights;
+	vec3[]		lightOffsets;
+	float[]		lightDists;
+	float[]		lightSpeeds;
+	float[]		lightAngles;
+	vec4[]		lightIllums;
 
 	IStructureData[]	previewObjects;
 	Array!(TrayRacer)	trayRacers;
@@ -207,7 +219,7 @@ class TestApp : GfxApp {
 
 		const numLights = 3;
 		for (int i = 0; i < numLights; ++i) {
-			createLight((lights ~= new TestShadowedLight)[$-1]);
+			createLight((lights ~= new SpotLight_VSM)[$-1]);
 			lightOffsets ~= vec3(0, 2 + Kiss.instance.fraction(), 0);
 			lightAngles ~= Kiss.instance.fraction() * 360.0f;
 			lightDists ~= 2;// + Kiss.instance.fraction();

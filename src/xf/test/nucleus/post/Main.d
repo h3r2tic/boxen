@@ -63,11 +63,11 @@ class TestApp : GfxApp {
 	vec4[]			lightIllums;
 
 
-	/+override void configureWindow(Window w) {
-		w.width = 1050;
-		w.height = 1680;
+	override void configureWindow(Window w) {
+		w.width = 1680;
+		w.height = 1050;
 		w.fullscreen = true;
-	}+/
+	}
 
 
 	override void initialize() {
@@ -82,7 +82,6 @@ class TestApp : GfxApp {
 		nr2 = createRenderer("Forward");
 		
 		post = new PostProcessor(rendererBackend, kdefRegistry);
-		post.setKernel("PostGlareAcuityNoise");
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
@@ -335,6 +334,32 @@ class TestApp : GfxApp {
 			}
 			prevKeyDown = keyDown;
 		}
+
+		const cstring[] postKernels = [
+			`PostGlareAcuityNoise`,
+			`PostNegative`,
+			`PostDesaturate`,
+			`PostBlur`,
+			`PostBlurMore`,
+			`PostGlareAcuity`,
+			`PostDistort`,
+			`PostNoise`,
+		];
+
+		static int curPost = 0; {
+			static bool prevKeyDown = false;
+			bool keyDown = keyboard.keyDown(KeySym.Tab);
+			if (keyDown && !prevKeyDown) {
+				++curPost;
+				curPost %= postKernels.length;
+				Stdout.formatln(
+					"Post-processing kernel: {}.", postKernels[curPost]
+				);
+			}
+			prevKeyDown = keyDown;
+		}
+		
+		post.setKernel(postKernels[curPost]);
 
 		with (rendererBackend.state.cullFace) {
 			enabled = false;

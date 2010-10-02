@@ -51,7 +51,8 @@ class Icon : Widget {
 		this.style.image.value = _styles[i];
 		this.style.color.value = vec4(1, 1, 1, 1);
 
-		auto b = style.background.value = BackgroundStyle.init;
+		style.background.value = BackgroundStyle.init;
+		auto b = *style.background.value;
 		b.type = BackgroundStyle.Type.Solid;
 		b.Solid = vec4(1, 1, 1, 1);
 

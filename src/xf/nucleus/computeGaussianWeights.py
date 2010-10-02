@@ -2,8 +2,8 @@ from scipy.stats import norm
 from math import *
 from functools import reduce
 
-numSamples = 5
-sigma = 1
+numSamples = 25
+sigma = 4
 weights = []
 offsets = []
 
@@ -13,9 +13,9 @@ for sample in range(numSamples):
     xl = float(sample) - 0.5*numSamples
     xc = (0.5 + sample) - 0.5*numSamples
     xr = (1.0 + sample) - 0.5*numSamples
-    #weights.append(distrib.cdf(xr) - distrib.cdf(xl))
+    weights.append(distrib.cdf(xr) - distrib.cdf(xl))
     offsets.append(xc)
-    weights.append(distrib.pdf(xc))
+    #weights.append(distrib.pdf(xc))
 
 norm = reduce(lambda x,y:x+y, weights, 0.0)
 weights /= norm

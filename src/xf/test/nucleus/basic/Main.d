@@ -82,7 +82,7 @@ class TestApp : GfxApp {
 		nr2 = createRenderer("Forward");
 		
 		post = new PostProcessor(rendererBackend, kdefRegistry);
-		post.setKernel("TestPost");
+		post.setKernel("PostGlareAcuityNoise");
 
 		// TODO: configure the VSD spatial subdivision
 		vsd = VSDRoot();
@@ -158,7 +158,8 @@ class TestApp : GfxApp {
 		//cstring model = `mesh/nano.hsf`;
 		//cstring model = `mesh/knot.hsf`;
 		//cstring model = `mesh/somefem.hsf`;
-		cstring model = `mesh/dragon.hsf`;
+		//cstring model = `mesh/dragon.hsf`;
+		cstring model = `mesh/ubot.hsf`;
 		//cstring model = `mesh/buddha.hsf`;
 		//cstring model = `mesh/spartan.hsf`;
 		float scale = 1.0f;
@@ -254,7 +255,7 @@ class TestApp : GfxApp {
 			lightRad /= 0.99f;
 		}
 
-		static float bgColor = 0.005f;
+		static float bgColor = 0.01f;
 		
 		if (keyboard.keyDown(KeySym.Left)) {
 			bgColor *= 0.99f;

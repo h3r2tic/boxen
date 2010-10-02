@@ -30,14 +30,14 @@ class SimpleCamera {
 		float seconds = 1.0f / this.updateFrequency;
 		//vec3 move = vec3.zero;
 
-		float accel = seconds * 6;
-		bool zeroz = true, zerox = true;
+		float accel = seconds * 3.5;
+		bool zeroz = true, zerox = true, zeroy = true;
 		
-		if (keyboard.keyDown(this.UpKey)) {
+		if (keyboard.keyDown(this.FwdKey)) {
 			move.z -= movementSpeed.z * accel;
 			zeroz = false;
 		}
-		if (keyboard.keyDown(this.DownKey)) {
+		if (keyboard.keyDown(this.BckKey)) {
 			move.z += movementSpeed.z * accel;
 			zeroz = false;
 		}
@@ -49,14 +49,25 @@ class SimpleCamera {
 			move.x += movementSpeed.x * accel;
 			zerox = false;
 		}
+		if (keyboard.keyDown(this.UpKey)) {
+			move.y += movementSpeed.y * accel;
+			zeroy = false;
+		}
+		if (keyboard.keyDown(this.DownKey)) {
+			move.y -= movementSpeed.y * accel;
+			zeroy = false;
+		}
 
 		if (move.z > movementSpeed.z) move.z = movementSpeed.z;
 		if (move.z < -movementSpeed.z) move.z = -movementSpeed.z;
 		if (move.x > movementSpeed.x) move.x = movementSpeed.x;
 		if (move.x < -movementSpeed.x) move.x = -movementSpeed.x;
+		if (move.y > movementSpeed.y) move.y = movementSpeed.y;
+		if (move.y < -movementSpeed.y) move.y = -movementSpeed.y;
 
 		if (zeroz) move.z = 0;
 		if (zerox) move.x = 0;
+		if (zeroy) move.y = 0;
 		
 		if (keyboard.keyDown(KeySym.bracketleft)) {
 			this.movementSpeed *= 1.0f / exp(seconds);
@@ -146,15 +157,19 @@ class SimpleCamera {
 		vec2	mouseSpeed = vec2.zero;
 
 		version (SimpleCameraQwerty) {
-			const KeySym UpKey = KeySym.w;
-			const KeySym DownKey = KeySym.s;
+			const KeySym FwdKey = KeySym.w;
+			const KeySym BckKey = KeySym.s;
 			const KeySym LeftKey = KeySym.a;
 			const KeySym RightKey = KeySym.d;
+			const KeySym UpKey = KeySym.e;
+			const KeySym DownKey = KeySym.q;
 		} else {	// Colemak :D
-			const KeySym UpKey = KeySym.w;
-			const KeySym DownKey = KeySym.r;
+			const KeySym FwdKey = KeySym.w;
+			const KeySym BckKey = KeySym.r;
 			const KeySym LeftKey = KeySym.a;
 			const KeySym RightKey = KeySym.s;
+			const KeySym UpKey = KeySym.f;
+			const KeySym DownKey = KeySym.q;
 		}
 		
 		SimpleKeyboardReader	keyboard;
