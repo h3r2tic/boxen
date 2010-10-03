@@ -119,20 +119,21 @@ SpotLight_SM = graph Light {
 				toLight = lightPos - position;
 				float distToLight = length(toLight);
 				float atten = distToLight / influenceRadius;
-				intensity = lumIntens * ((1.0 - smoothstep(0.0, 1.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
+				intensity = lumIntens * ((smoothstep(1.0, 0.0, atten*atten)) / (1.0 + dot(toLight, toLight).x));
 				lightSize = lightRadius;//max(0.02, min(2000.0, radius*radius*3.1415926 / dot(toLight, toLight).x));
-				toLight = normalize(toLight);
+//				toLight = normalize(toLight);
 
 				float attenDDX = ddx(atten);
 				float attenDDY = ddy(atten);
 
 //				atten -= 10.0 * max(0.0f, min(0.00002f, (abs(attenDDX) + abs(attenDDY))));
-				atten -= 0.001;
+				atten -= 0.00012;
 
 				float2 uv = (pointClipDiv) * 0.5 + 0.5;
 				float smDepth = tex2D(depthSampler, uv).x;
 				float shadowed = atten <= smDepth;
-				float4 mask = tex2Dlod(spotlightMask, float4(uv, 0, 0));
+				float4 mask = smoothstep(1, 0, length(pointClipDiv).x).xxxx;
+
 				intensity *= shadowed * mask;
 			} else {
 				intensity = 0;

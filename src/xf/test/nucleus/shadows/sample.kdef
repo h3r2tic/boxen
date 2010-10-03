@@ -1,0 +1,62 @@
+//TestSurface1 = surface Lambert {};
+
+/+TestSurface1 = surface ABg {
+	BRDF_A = 0.06;
+	BRDF_B = 0.001;
+	BRDF_g = 1.3;
+};+/
+
+ParticleSurface = surface Uniform {};
+
+/+TestSurface1 = surface HenyeyGreenstein {
+	roughness = 0.5;
+};+/
+
+
+/*
+TestSurface1 = surface CookTorrance {
+	fresnelR0 = 0.18;
+	roughness = 0.9;
+};
+/*/
+TestSurface1 = surface ABC_approx2 {
+	BRDF_A = 1;
+	BRDF_B = 40.0;
+	BRDF_C = 0.9;
+};
+//*/
+
+
+TestSurface4 = surface HalfLambert {
+};
+
+TestSurface2 = surface ABg_h {
+	BRDF_A = 0.0025;
+	BRDF_B = 0.0001;
+	BRDF_g = 1.8;
+};
+
+TestSurface3 = surface ABg_h {
+	BRDF_A = 0.06;
+	BRDF_B = 0.001;
+	BRDF_g = 1.3;
+};
+
+/+TestSurface3 = surface ABC {
+	BRDF_A = 1;
+	BRDF_B = 33333;
+	BRDF_C = 0.37;
+};+/
+
+/+TestSurface1 = surface ABg_h {
+	BRDF_A = 0.0025;
+	BRDF_B = 0.0001;
+	BRDF_g = 1.8;
+};
+
+TestSurface4 = surface ABg_h {
+	BRDF_A = 0.06;
+	BRDF_B = 0.001;
+	BRDF_g = 1.3;
+};+/
+

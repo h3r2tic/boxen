@@ -8,9 +8,11 @@ node_0 = node {
 		out bitangent<basis world + type float3 + unit true + use bitangent>,
 		out texCoord<type float2 + use uv> @gui(
 widget = Slider;
-min = 0.00 0.00; max = 1.00 1.00;)
+min = 0.00 0.00;
+max = 1.00 1.00;
+)
 	);
-	center = -216.00 448.00;
+	center = -283.00 448.00;
 	size = 142.00 201.00;
 };
 node_1 = node {
@@ -21,13 +23,13 @@ node_1 = node {
 		in out_emissive<type float4 + use color>,
 		in out_normal<basis world + type float3 + unit true + use normal>
 	);
-	center = 1228.00 604.00;
+	center = 893.00 514.00;
 	size = 91.00 89.00;
 };
 node_2 = node {
 	type = kernel;
 	kernel = Tex2D;
-	center = 384.00 501.00;
+	center = 201.00 500.00;
 	size = 142.00 175.00;
 };
 node_3 = node {
@@ -55,73 +57,73 @@ widget = bitmap;
 widget = bitmap;
 )
 	);
-	center = -219.00 686.00;
+	center = -62.00 655.00;
 	size = 142.00 225.00;
 };
 node_4 = node {
 	type = kernel;
 	kernel = Tex2D;
-	center = 19.00 698.00;
+	center = 201.00 687.00;
 	size = 142.00 175.00;
 };
 node_5 = node {
 	type = kernel;
 	kernel = TangentToWorld;
-	center = 194.00 661.00;
+	center = 411.00 638.00;
 	size = 142.00 199.00;
 };
 node_6 = node {
 	type = kernel;
 	kernel = ComputeToEye;
-	center = 183.00 888.00;
+	center = 153.00 892.00;
 	size = 142.00 163.00;
 };
 node_7 = node {
 	type = kernel;
 	kernel = Reflect;
-	center = 370.00 885.00;
+	center = 462.00 900.00;
 	size = 142.00 175.00;
 };
 node_8 = node {
 	type = kernel;
 	kernel = Tex2D;
-	center = 545.00 884.00;
+	center = 663.00 901.00;
 	size = 142.00 175.00;
 };
 node_9 = node {
 	type = kernel;
 	kernel = Mul;
-	center = 709.00 888.00;
+	center = 826.00 900.00;
 	size = 142.00 175.00;
 };
 node_10 = node {
 	type = kernel;
 	kernel = Fresnel;
-	center = 707.00 699.00;
+	center = 668.00 711.00;
 	size = 142.00 175.00;
 };
 node_11 = node {
 	type = kernel;
 	kernel = Mul;
-	center = 867.00 891.00;
+	center = 881.00 713.00;
 	size = 142.00 175.00;
 };
 node_12 = node {
 	type = kernel;
 	kernel = Tex2D;
-	center = 550.00 500.00;
+	center = 410.00 442.00;
 	size = 142.00 175.00;
 };
 node_13 = node {
 	type = kernel;
 	kernel = Add;
-	center = 1052.00 710.00;
+	center = 1048.00 718.00;
 	size = 142.00 175.00;
 };
 node_14 = node {
 	type = kernel;
 	kernel = Tex2D;
-	center = 383.00 307.00;
+	center = 202.00 309.00;
 	size = 142.00 175.00;
 };
 connect node_0 node_5;
@@ -154,15 +156,15 @@ connect node_3.specTex node_14.texture;
 
 connect node_4.sample node_5.input;
 
-connect node_5.output node_1.out_normal;
+connect node_5 node_7;
 
-connect node_5.output node_7.normal;
+connect node_5.output node_1.out_normal;
 
 connect node_5.output node_10.normal;
 
-connect node_6.toEye node_7.input;
+connect node_6 node_7;
 
-connect node_7.output node_8.uv;
+connect node_7 node_8;
 
 connect node_8.sample node_9.a;
 
