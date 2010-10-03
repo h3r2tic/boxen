@@ -148,9 +148,13 @@ class TestApp : GfxApp {
 	
 	override void configureWindow(Window wnd) {
 		super.configureWindow(wnd);
-		wnd.width = 1040;
+/+		wnd.width = 1040;
 		//wnd.height = 650;
-		wnd.height = 900;
+		wnd.height = 900;+/
+
+		wnd.width = 1040;
+		wnd.height = 1200;
+
 		wnd.title = "Nucled";
 		this.exitOnEscape = false;
 	}

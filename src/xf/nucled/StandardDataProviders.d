@@ -252,7 +252,7 @@ class SamplerProvider : DataProvider {
 	protected override void _doGUI() {
 		HBox() [{
 			final input = Input();
-			input.userSize(vec2(100, 0));
+			input.userSize(vec2(150, 0));
 			if (resetGUI) {
 				input.text = this.path;
 			} else {

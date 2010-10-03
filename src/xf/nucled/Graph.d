@@ -878,7 +878,7 @@ class GraphNode {
 			sci.grabKeyboardFocus();
 		}
 		
-		sci.userSize = vec2(400, 300);
+		sci.userSize = vec2(300, 80);
 	}
 	
 	
