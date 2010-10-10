@@ -151,9 +151,11 @@ class TestApp : GfxApp {
 		
 		scope imgLoader = new FreeImageLoader;
 
-		Texture loadTex(cstring path) {
+		Texture loadTex(cstring path, TextureRequest req = TextureRequest.init) {
 			return renderer.createTexture(
-				imgLoader.load(path)
+				imgLoader.load(path),
+				TextureCacheKey.path(path),
+				req
 			);
 		}
 
@@ -162,10 +164,7 @@ class TestApp : GfxApp {
 		
 		TextureRequest req;
 		req.internalFormat = TextureInternalFormat.RGBA8;
-		detail = renderer.createTexture(
-			imgLoader.load(mediaDir ~ "terrain/detail.jpg"),
-			req
-		);
+		detail = loadTex(mediaDir ~ "terrain/detail.jpg", req);
 
 		terrainEffect = renderer.createEffect(
 			"terrain",

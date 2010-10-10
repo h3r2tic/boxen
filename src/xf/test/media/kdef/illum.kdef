@@ -121,10 +121,10 @@ ABC_approx = graph Reflectance {
 				// The pixie dust of the model - fade-out of the flat region of the
 				// highlight which just looks "good enough"
 
-				float x = (range - sqrt(d)) * hardness / (range + 8.0 / BRDF_B);
+/+				float x = (range - sqrt(d)) * hardness / (range + 8.0 / BRDF_B);
 				//float powx = pow(5.3, 2*x);
 				//spec = lerp(spec, edge, (0.5 + 0.5 * (powx - 1) / (powx + 1)));
-				spec = lerp(spec, edge, (0.5 + 0.5 * tanh(x)));
+				spec = lerp(spec, edge, (0.5 + 0.5 * tanh(x)));+/
 			}
 
 			float diff = 0; {
@@ -274,10 +274,13 @@ ABC_approx2 = graph Reflectance {
 			float3 B0x = vs - dot(vs, Bnormal).x * Bnormal;
 
 			float d = dot(B-B0, B-B0);
-			float dx = dot(Bx-B0x, Bx-B0x);
-			dx = max(d, dx);
+			//d = max(0.0, d-range*range);
 
-			float hardness = BRDF_C*pow(BRDF_B, 0.3)*2.0;
+//			d *= smoothstep(0.0, 0.1, d - rangec*rangec);
+			float dx = dot(Bx-B0x, Bx-B0x);
+//			dx = max(d, dx);
+
+			float hardness = BRDF_C*1.5*pow(BRDF_B, 0.2);
 
 			float spec; {
 				spec = pow((d + 0.5*range*range)*BC2+1, -CC);
@@ -290,10 +293,12 @@ ABC_approx2 = graph Reflectance {
 				// The pixie dust of the model - fade-out of the flat region of the
 				// highlight which just looks "good enough"
 
-				float x = (range - sqrt(dx)) * hardness / (range + 8.0 / BRDF_B);
-				float powx = pow(2.2, 2*x);
+				float x = (range - sqrt(dx)) * hardness / (range + 0.0 / BRDF_B);
+				float powx = pow(2.0, 2*x);
 				spec = lerp(spec, edge, (0.5 + 0.5 * (powx - 1) / (powx + 1)));
 				//spec = lerp(spec, edge, (0.5 + 0.5 * tanh(x)));
+
+				//spec = edge;
 			}
 
 			float diff = 0; {

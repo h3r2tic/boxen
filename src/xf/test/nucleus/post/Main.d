@@ -337,6 +337,7 @@ class TestApp : GfxApp {
 
 		const cstring[] postKernels = [
 			`PostGlareAcuityNoise`,
+			`PostMRT`,
 			`PostNegative`,
 			`PostDesaturate`,
 			`PostBlur`,

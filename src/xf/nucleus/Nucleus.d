@@ -178,7 +178,7 @@ Material loadMaterial(CompiledMaterialAsset asset) {
 }
 
 
-private void reloadSurfMats() {
+void reloadSurfMats() {
 	nextSurfaceId = nextSurfaceId.init;
 	nextMaterialId = nextMaterialId.init;
 

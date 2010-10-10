@@ -335,7 +335,11 @@ TestPostNop = graph {
 
 DefaultSurface = surface ABC_approx2 {
 	BRDF_A = 1;
-	BRDF_B = 40.0;
-	BRDF_C = 0.9;
+	BRDF_B = 70;
+	BRDF_C = 0.99;
 };
+
+/+DefaultSurface = surface BlinnPhong {
+	specularPower = 100;
+};+/
 

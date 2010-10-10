@@ -32,30 +32,32 @@ class SimpleCamera {
 
 		float accel = seconds * 3.5;
 		bool zeroz = true, zerox = true, zeroy = true;
-		
-		if (keyboard.keyDown(this.FwdKey)) {
-			move.z -= movementSpeed.z * accel;
-			zeroz = false;
-		}
-		if (keyboard.keyDown(this.BckKey)) {
-			move.z += movementSpeed.z * accel;
-			zeroz = false;
-		}
-		if (keyboard.keyDown(this.LeftKey)) {
-			move.x -= movementSpeed.x * accel;
-			zerox = false;
-		}
-		if (keyboard.keyDown(this.RightKey)) {
-			move.x += movementSpeed.x * accel;
-			zerox = false;
-		}
-		if (keyboard.keyDown(this.UpKey)) {
-			move.y += movementSpeed.y * accel;
-			zeroy = false;
-		}
-		if (keyboard.keyDown(this.DownKey)) {
-			move.y -= movementSpeed.y * accel;
-			zeroy = false;
+
+		if (inputEnabled) {
+			if (keyboard.keyDown(this.FwdKey)) {
+				move.z -= movementSpeed.z * accel;
+				zeroz = false;
+			}
+			if (keyboard.keyDown(this.BckKey)) {
+				move.z += movementSpeed.z * accel;
+				zeroz = false;
+			}
+			if (keyboard.keyDown(this.LeftKey)) {
+				move.x -= movementSpeed.x * accel;
+				zerox = false;
+			}
+			if (keyboard.keyDown(this.RightKey)) {
+				move.x += movementSpeed.x * accel;
+				zerox = false;
+			}
+			if (keyboard.keyDown(this.UpKey)) {
+				move.y += movementSpeed.y * accel;
+				zeroy = false;
+			}
+			if (keyboard.keyDown(this.DownKey)) {
+				move.y -= movementSpeed.y * accel;
+				zeroy = false;
+			}
 		}
 
 		if (move.z > movementSpeed.z) move.z = movementSpeed.z;
@@ -127,10 +129,12 @@ class SimpleCamera {
 
 	class MouseReader : InputReader {
 		void handle(MouseInput* i) {
-			this.outer.mouseSpeed += i.move;
-			/+if (i.move != i.move.zero) {
-				utilsLog.info("camera pitch: {}, yaw: {}", this.outer.pitch, this.outer.yaw);
-			}+/
+			if (this.outer.inputEnabled) {
+				this.outer.mouseSpeed += i.move;
+				/+if (i.move != i.move.zero) {
+					utilsLog.info("camera pitch: {}, yaw: {}", this.outer.pitch, this.outer.yaw);
+				}+/
+			}
 		}
 	   
 		this() {
@@ -142,6 +146,7 @@ class SimpleCamera {
 	public {
 		vec2	mouseSensitivity = { x: 0.2f, y: 0.2f };
 		vec3	movementSpeed = { x: 3.0f, y: 3.0f, z: 3.0f };
+		bool	inputEnabled = true;
 	}
 	
 	private {

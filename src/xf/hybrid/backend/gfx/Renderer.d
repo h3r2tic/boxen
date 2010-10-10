@@ -694,6 +694,9 @@ class Renderer : BaseRenderer, FontRenderer, TextureMngr {
 
 		// TODO: set whatnot for effect instances
 
+		final stateBk = *_r.state();
+		scope (exit) *_r.state() = stateBk;
+		
 		final state = _r.state();
 		state.blend.enabled = true;
 		state.blend.src = Gfx.RenderState.Blend.Factor.One;

@@ -52,7 +52,7 @@ class Icon : Widget {
 		this.style.color.value = vec4(1, 1, 1, 1);
 
 		style.background.value = BackgroundStyle.init;
-		auto b = *style.background.value;
+		auto b = style.background.value;
 		b.type = BackgroundStyle.Type.Solid;
 		b.Solid = vec4(1, 1, 1, 1);
 

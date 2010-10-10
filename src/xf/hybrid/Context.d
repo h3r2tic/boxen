@@ -629,7 +629,7 @@ class GuiContext {
 			foreach (root; &iterRootWidgets) {
 				bool cont = true;
 				
-				foreach (w; iterTopBottom(root).filter((IWidget w) {
+				foreach (w; iterBottomTop(root).filter((IWidget w) {
 					return w.containsGlobal(pt);
 				})) {
 					cont = false;
