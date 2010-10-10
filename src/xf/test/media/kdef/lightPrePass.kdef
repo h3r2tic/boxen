@@ -251,6 +251,7 @@ LightPrePassFinalOut = graph {
 				albedo * tex2D(diffuseIlluminationSampler, uv)
 			+	specular * tex2D(specularIlluminationSampler, uv)
 			+	emissive;
+//			color = tex2D(specularIlluminationSampler, uv);
 		};
 	};
 

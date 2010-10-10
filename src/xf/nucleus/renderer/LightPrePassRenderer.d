@@ -160,7 +160,6 @@ class LightPrePassRenderer : Renderer {
 				_mem.dispose();
 				info = null;
 				kernelId = KernelImplId.invalid;
-				reflIdx = 0;
 			}
 		}
 
@@ -175,6 +174,7 @@ class LightPrePassRenderer : Renderer {
 
 			void dispose() {
 				disposeKernelGraph(graph);
+				dataNodeParams = null;
 				// TODO(?)
 			}
 
@@ -229,6 +229,7 @@ class LightPrePassRenderer : Renderer {
 	// TODO
 	override void registerSurface(SurfaceDef def) {
 		auto surf = &_surfaces[def.id];
+		if (surf.info) surf.dispose();
 
 		surf._mem.initialize();
 		final mem = DgScratchAllocator(&surf._mem.pushBack);
@@ -254,6 +255,10 @@ class LightPrePassRenderer : Renderer {
 		bool reflFound = false;
 		foreach (ubyte i, ref refl; _reflData) {
 			if (refl.kernelId == surf.kernelId) {
+				if (surf.reflIdx != i) {
+					// when updating the surface with a new kernel
+					_invalidateLightEffect = true;
+				}
 				surf.reflIdx = i;
 				reflFound = true;
 				break;
@@ -261,6 +266,8 @@ class LightPrePassRenderer : Renderer {
 		}
 
 		if (!reflFound) {
+			_invalidateLightEffect = true;
+			
 			{
 				uint idx = _numReflData++;
 				assert (idx < 256);
@@ -417,13 +424,7 @@ class LightPrePassRenderer : Renderer {
 		}
 
 
-		if (lightEffectInfo.isValid) {
-			foreach (ref ei; lightEI) {
-				ei.dispose();
-			}
-			_backend.disposeEffect(lightEffectInfo.effect);
-			lightEffectInfo.dispose();
-		}
+		_invalidateLightEffect = true;
 	}
 
 
@@ -1658,6 +1659,7 @@ class LightPrePassRenderer : Renderer {
 
 	EffectInstance[]	lightEI;
 	EffectInfo			lightEffectInfo;
+	bool				_invalidateLightEffect = false;
 
 
 	VertexBuffer	_vb;
@@ -1666,6 +1668,18 @@ class LightPrePassRenderer : Renderer {
 	
 
 	void renderLights(Light[] lights) {
+		if (_invalidateLightEffect) {
+			if (lightEffectInfo.isValid) {
+				_invalidateLightEffect = false;
+				
+				foreach (ref ei; lightEI) {
+					ei.dispose();
+				}
+				_backend.disposeEffect(lightEffectInfo.effect);
+				lightEffectInfo.dispose();
+			}
+		}
+		
 		if (lightEffectInfo.effect is null) {
 			lightEffectInfo = buildLightEffect(lights[0].kernelName);
 		}

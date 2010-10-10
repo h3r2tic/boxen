@@ -41,6 +41,8 @@ private {
 }
 
 
+//version = LightTest2;
+
 
 class TestApp : GfxApp {
 	Renderer		nr;
@@ -63,11 +65,11 @@ class TestApp : GfxApp {
 	vec4[]			lightIllums;
 
 
-	/+override void configureWindow(Window w) {
-		w.width = 1050;
-		w.height = 1680;
-		w.fullscreen = true;
-	}+/
+	override void configureWindow(Window w) {
+		w.width = 1050/2;
+		w.height = 1680/2;
+		//w.fullscreen = true;
+	}
 
 
 	override void initialize() {
@@ -91,7 +93,13 @@ class TestApp : GfxApp {
 			camera = new SimpleCamera(vec3(-7.54, 2.9, 5.03), -7.00, 12.80, inputHub.mainChannel);
 		} else {
 			//camera = new SimpleCamera(vec3(0, 3, 4), 0, 0, inputHub.mainChannel);
-			camera = new SimpleCamera(vec3(0, 1, 2), 0, 0, inputHub.mainChannel);
+
+			version (LightTest2) {
+				camera = new SimpleCamera(vec3(-9.85, 7.32, 9.65), -22.40, -12.60, inputHub.mainChannel);
+			} else {
+				//camera = new SimpleCamera(vec3(0, 1, 2), 0, 0, inputHub.mainChannel);
+				camera = new SimpleCamera(vec3(-0.44, 2.22, 1.5), -32.80, -17.80, inputHub.mainChannel);
+			}
 		}
 		window.interceptCursor = true;
 		window.showCursor = false;
@@ -103,7 +111,12 @@ class TestApp : GfxApp {
 			alias PointLight LightType;
 		} else {
 			const numLights = 3;
-			alias SpotLight_VSM LightType;
+
+			version (LightTest2) {
+				alias PointLight LightType;
+			} else {
+				alias SpotLight_VSM LightType;
+			}
 		}
 		
 		for (int i = 0; i < numLights; ++i) {
@@ -139,8 +152,10 @@ class TestApp : GfxApp {
 			}
 		}
 
-		lightIllums[0] *= 0.25;
-		lightIllums[1] *= 0.35;
+		version (LightTest2) {} else {
+			lightIllums[0] *= 0.25;
+			lightIllums[1] *= 0.35;
+		}
 
 		lightAngles[0] = 0;
 		lightAngles[1] = 120;
@@ -152,20 +167,27 @@ class TestApp : GfxApp {
 		lightOffsets[1] = vec3.unitY * 4;
 		lightOffsets[2] = vec3.unitY * 3;
 
+		lightOffsets[] = vec3.unitY * 6;
+
 		// ----
 
-		//cstring model = `mesh/bunny.hsf`;
-		//cstring model = `mesh/nano.hsf`;
-		//cstring model = `mesh/knot.hsf`;
-		//cstring model = `mesh/somefem.hsf`;
-		//cstring model = `mesh/dragon.hsf`;
-		cstring model = `mesh/ubot.hsf`;
-		//cstring model = `mesh/buddha.hsf`;
-		//cstring model = `mesh/spartan.hsf`;
-		float scale = 1.0f;
-		/+cstring model = `mesh/masha.hsf`;
-		//cstring model = `mesh/cia.hsf`;
-		float scale = 0.01f;+/
+		version (LightTest2) {
+			cstring model = `mesh/lightTest2.hsf`;
+			float scale = 1.0f;
+		} else {
+			//cstring model = `mesh/bunny.hsf`;
+			//cstring model = `mesh/nano.hsf`;
+			//cstring model = `mesh/knot.hsf`;
+			//cstring model = `mesh/somefem.hsf`;
+			//cstring model = `mesh/dragon.hsf`;
+			cstring model = `mesh/ubot.hsf`;
+			//cstring model = `mesh/buddha.hsf`;
+			//cstring model = `mesh/spartan.hsf`;
+			float scale = 1.0f;
+			/+cstring model = `mesh/masha.hsf`;
+			//cstring model = `mesh/cia.hsf`;
+			float scale = 0.01f;+/
+		}
 
 		SceneAssetCompilationOptions opts;
 		opts.scale = scale;
@@ -216,10 +238,10 @@ class TestApp : GfxApp {
 		version (FixedTest) {}
 		else {
 			if (keyboard.keyDown(KeySym.e)) {
-				/+for (int li = 0; li < lights.length; ++li) {
+/+				/+for (int li = 0; li < lights.length; ++li) {
 					lightAngles[li] += lightSpeeds[li] * -0.01;
 				}+/
-			} else {
+			} else {+/
 				for (int li = 0; li < lights.length; ++li) {
 					lightAngles[li] += lightSpeeds[li];
 				}
@@ -239,7 +261,7 @@ class TestApp : GfxApp {
 		}
 		
 		static float lightScale = 0.0f;
-		if (0 == lightScale) lightScale = 4.5f / lights.length;
+		if (0 == lightScale) lightScale = 8.0f / lights.length;
 		if (keyboard.keyDown(KeySym.Down)) {
 			lightScale *= 0.99f;
 		}
@@ -255,7 +277,7 @@ class TestApp : GfxApp {
 			lightRad /= 0.99f;
 		}
 
-		static float bgColor = 0.01f;
+		static float bgColor = 0.1f;
 		
 		if (keyboard.keyDown(KeySym.Left)) {
 			bgColor *= 0.99f;

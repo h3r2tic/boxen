@@ -123,6 +123,21 @@ class GLWindow : GLContext {
 	
 	
 	GLWindow	interceptCursor(bool b) {
+		if (b && !_interceptCursor) {
+			_ignoreNextMouseMove = true;
+			_cursorXAtInterception = _cursorX;
+			_cursorYAtInterception = _cursorY;
+		} else if (!b && _interceptCursor) {
+			_cursorX = _cursorXAtInterception;
+			_cursorY = _cursorYAtInterception;
+			if (_hwnd) {
+				POINT point;
+				point.x = _cursorX;
+				point.y = _cursorY;
+				ClientToScreen(_hwnd, &point);
+				SetCursorPos(point.x, point.y);
+			}
+		}
 		_interceptCursor = b;
 		return this;
 	}
@@ -960,6 +975,9 @@ class GLWindow : GLContext {
 		int				_cursorY	= 0;
 		int				_prevCursorX	= 0;
 		int				_prevCursorY	= 0;
+
+		int				_cursorXAtInterception = 0;
+		int				_cursorYAtInterception = 0;
 	}
 
 

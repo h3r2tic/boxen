@@ -16,6 +16,9 @@ private {
 
 
 abstract class Light {
+	static	bool g_conservativeRange = true;
+
+	
 	vec3	position = { x: 0, y: 1, z: 2 };
 	vec4	lumIntens = vec4.one;		// uh oh, luminous intensity
 	float	radius = 1.0f;
@@ -25,7 +28,12 @@ abstract class Light {
 	void	calcInfluenceRadius() {
 		// cuts off at 0.01 intens luma assuming 1/(1+r2) attenuation
 		// hrm, actually luma-based looks wrong
-		float meh = dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) * 100.0f + 1.0;
+		float meh;
+		if (g_conservativeRange) {
+			meh = (dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) + 1.0) * 100.0f;
+		} else {
+			meh = dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) * 100.0f + 1.0;
+		}
 		influenceRadius = meh <= 0 ? 0 : sqrt(meh);
 	}
 

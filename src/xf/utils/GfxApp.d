@@ -61,7 +61,7 @@ abstract class GfxApp {
 		jobHub.addRepeatableJob({
 			if (exitOnEscape) {
 				if (keyboard.keyDown(KeySym.Escape)) {
-					exitApp();
+					onEscape();
 				}
 			}
 			
@@ -90,7 +90,7 @@ abstract class GfxApp {
 	}
 
 
-	void exitApp() {
+	void onEscape() {
 		messageHub.sendMessage(new QuitMessage);
 	}
 	

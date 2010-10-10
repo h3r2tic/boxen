@@ -57,7 +57,7 @@ struct GradientStyle {
 
 
 struct TextInputStyle {
-	vec4	caretColor				= { r:1, g:0, b:0, a:1 };
+	vec4	caretColor			= { r:1, g:0, b:0, a:1 };
 	vec4	selectionBgColor	= { r:1, g:1, b:1, a:.5f };
 	vec4	selectionFgColor	= { r:0, g:0, b:0, a:1 };
 	float	caretBlinkFreq		= 1.3f;

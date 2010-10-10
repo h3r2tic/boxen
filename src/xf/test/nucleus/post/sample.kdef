@@ -29,6 +29,81 @@ PostNegative = graph PostProcess {
 };
 
 
+PostMRT = graph PostProcess {
+	input = node {
+		type = input;
+	};
+
+	calc1 = node {
+		type = kernel;
+		kernel = kernel(
+			in input <type float4 + use color>,
+			out output <type float4 + use color>
+		) {
+			output = float4(float3(1.0) - input.xyz, input.w);
+		};
+	};
+
+	blit1 = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	calc2 = node {
+		type = kernel;
+		kernel = kernel(
+			in input <type float4 + use color>,
+			out output <type float4 + use color>
+		) {
+			output = float4(2 * input.x, 0, 0, input.w);
+		};
+	};
+
+	blit2 = node {
+		type = kernel;
+		kernel = Blit;
+	};
+
+	sampleOrig = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sample1 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	sample2 = node {
+		type = kernel;
+		kernel = SampleImage;
+	};
+
+	calc3 = node {
+		type = kernel;
+		kernel = Mul;
+	};
+
+	output = node {
+		type = output;
+	};
+
+	noauto sampleOrig.uv;
+	noauto sample1.uv;
+	noauto sample2.uv;
+	connect input sampleOrig;
+	connect sampleOrig.sample calc1.input;
+	connect sampleOrig.sample calc2.input;
+	connect calc1.output blit1.input;
+	connect calc2.output blit2.input;
+	connect blit1.output sample1.image;
+	connect blit2.output sample2.image;
+	connect sample1.sample calc3.a;
+	connect sample2.sample calc3.b;
+	connect calc3.c output.output;
+};
+
+
 PostDesaturate = graph PostProcess {
 	input = node {
 		type = input;

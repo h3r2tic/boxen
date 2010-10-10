@@ -56,9 +56,11 @@ class Spinner(T) : CustomWidget {
 
 
 	EventHandling handleButton1Click(ClickEvent e) {
-		if (e.bubbling && !e.handled && _repeatDt < _maxClickDelay) {
-			_changeValue(-_baseIncrement);
-			_repeatDt = 0;
+		if (e.bubbling && !e.handled) {
+			if (_repeatDt < _maxClickDelay) {
+				_changeValue(-_baseIncrement);
+				_repeatDt = 0;
+			}
 			return EventHandling.Stop;
 		}
 		return EventHandling.Continue;
@@ -66,9 +68,11 @@ class Spinner(T) : CustomWidget {
 	
 
 	EventHandling handleButton2Click(ClickEvent e) {
-		if (e.bubbling && !e.handled && _repeatDt < _maxClickDelay) {
-			_changeValue(_baseIncrement);
-			_repeatDt = 0;
+		if (e.bubbling && !e.handled) {
+			if (_repeatDt < _maxClickDelay) {
+				_changeValue(_baseIncrement);
+				_repeatDt = 0;
+			}
 			return EventHandling.Stop;
 		}
 		return EventHandling.Continue;
@@ -218,9 +222,9 @@ class Spinner(T) : CustomWidget {
 /**
 	The basic instances of the Spinner widget template
 */
-alias Spinner!(ubyte)		UbyteSpinner;
-alias Spinner!(int)			IntSpinner;		/// ditto
-alias Spinner!(float)		FloatSpinner;		/// ditto
+alias Spinner!(ubyte)	UbyteSpinner;
+alias Spinner!(int)		IntSpinner;		/// ditto
+alias Spinner!(float)	FloatSpinner;		/// ditto
 alias Spinner!(double)	DoubleSpinner;	/// ditto
 
 
@@ -256,6 +260,11 @@ class InputSpinner(T) : CustomWidget {
 		try {
 			_input.text = to!(char[])(_spinner.value);
 		} catch {}
+	}
+
+
+	Spinner!(T) spinner() {
+		return _spinner;
 	}
 	
 
