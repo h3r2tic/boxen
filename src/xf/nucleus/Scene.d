@@ -31,11 +31,10 @@ void loadScene(
 	CompiledSceneAsset asset,
 	VSDRoot* vsd,
 	CoordSys coordSys,
-	void delegate(uword, RenderableId) assetRenderableMapWatcher = null
+	void delegate(uword, RenderableId) assetRenderableMapWatcher = null,
+	cstring surface = "DefaultSurface"
 ) {
 	final allocator = DgScratchAllocator(&mainHeap.allocRaw);
-
-	cstring surface = "DefaultSurface";
 
 	// TODO: load materials
 

@@ -423,7 +423,7 @@ class SceneView : Widget {
 	
 	
 	HybridEventHandling mouseHandler(MouseEvent e) {
-		if (!e.handled && e.sinking) {
+		if (!e.handled) {
 			if (auto move = cast(MouseMoveEvent)e) {
 				vec2 delta = move.pos - istate.cursorPos;
 				istate.cursorPos = move.pos;
@@ -442,24 +442,27 @@ class SceneView : Widget {
 					handleEvent(EventType.Drag, istate.toModifiers, istate.buttons, this.selection, istate.cursorPos, delta);
 				}
 			} else if (auto bttn = cast(MouseButtonEvent)e) {
-				if (!isWheelInput(bttn.button)) {
-					if (0 == istate.buttons) {
-						if (bttn.down) {
-							istate.buttons |= bttn.button;
-							istate.dragging = false;
-							istate.dragFrom = bttn.pos;
-							gui.addGlobalHandler(&this.globalMouseButtonHandler);
-						}
-					} else {
-						if (bttn.down) {
-							istate.buttons |= bttn.button;
+				if (e.bubbling) {
+						if (!isWheelInput(bttn.button)) {
+						if (0 == istate.buttons) {
+							if (bttn.down) {
+								istate.buttons |= bttn.button;
+								istate.dragging = false;
+								istate.dragFrom = bttn.pos;
+								gui.addGlobalHandler(&this.globalMouseButtonHandler);
+							}
+						} else {
+							if (bttn.down) {
+								istate.buttons |= bttn.button;
+							}
 						}
 					}
+
+					return HybridEventHandling.Stop;
 				}
 			}
-			
-			return HybridEventHandling.Stop;
 		}
+		
 		return HybridEventHandling.Continue;
 	}
 

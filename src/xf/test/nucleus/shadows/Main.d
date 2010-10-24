@@ -63,11 +63,11 @@ class TestApp : GfxApp {
 	vec4[]			lightIllums;
 
 
-	/+override void configureWindow(Window w) {
-		w.width = 1050;
-		w.height = 1680;
+	override void configureWindow(Window w) {
+		w.width = 1680/2;
+		w.height = 1050/2;
 		w.fullscreen = true;
-	}+/
+	}
 
 
 	override void initialize() {
@@ -75,8 +75,13 @@ class TestApp : GfxApp {
 			Kiss.instance.seed(12345);
 		}
 		
-		setMediaDir(`../../media`);
-		initializeNucleus(this.renderer, "../../media/kdef", ".");
+		version (Demo) {
+			setMediaDir(`media`);
+			initializeNucleus(this.renderer, "media/kdef", ".");
+		} else {
+			setMediaDir(`../../media`);
+			initializeNucleus(this.renderer, "../../media/kdef", ".");
+		}
 		
 		nr = createRenderer("LightPrePass");
 		nr2 = createRenderer("Forward");
@@ -94,7 +99,7 @@ class TestApp : GfxApp {
 		// ----
 
 		{
-			createLight((lights ~= new SpotLight_SM)[$-1]);
+			createLight((lights ~= new SpotLight_VSM)[$-1]);
 			lightOffsets ~= vec3(0, 4, 0);
 			lightAngles ~= 110;
 			lightDists ~= 2;

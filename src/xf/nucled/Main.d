@@ -499,7 +499,7 @@ class TestApp : GfxApp {
 				menuGroup("File",
 					menuLeaf("Save", onSave() ),
 					menuLeaf("Load", onLoad() ),
-					menuLeaf("Exit", exitApp())
+					menuLeaf("Exit", exit(0))
 				),
 				menuGroup("Implement",
 					menuLeaf("Material", onImplementMaterial()),

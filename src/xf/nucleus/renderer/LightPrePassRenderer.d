@@ -325,16 +325,20 @@ class LightPrePassRenderer : Renderer {
 			&texel.x
 		);
 
-		foreach (i, p; def.params) {
-			assert (p.valueSize < 16);
-			memcpy(&texel.x, p.value, p.valueSize);
+		auto refl = &_reflData[surf.reflIdx];
 
-			_backend.updateTexture(
-				_surfaceParamTex,
-				vec2i(i+1, def.id),
-				vec2i(1, 1),
-				&texel.x
-			);
+		if (refl.dataNodeParams) foreach (i, dnp; *refl.dataNodeParams) {
+			if (auto p = def.params.get(dnp.name)) {
+				assert (p.valueSize < 16);
+				memcpy(&texel.x, p.value, p.valueSize);
+
+				_backend.updateTexture(
+					_surfaceParamTex,
+					vec2i(i+1, def.id),
+					vec2i(1, 1),
+					&texel.x
+				);
+			}
 		}
 	}
 

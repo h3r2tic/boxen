@@ -86,7 +86,7 @@ class GenericMenu : CustomWidget {
 	
 	
 	protected EventHandling handleMouseButton(MouseButtonEvent e) {
-		if (MouseButton.Left == e.button && e.down && e.sinking) {
+		if (MouseButton.Left == e.button && e.down && e.bubbling) {
 			//Trace.formatln("Menu : mouse button 0");
 			_isOpen ^= true;
 			if (_isOpen) {
@@ -94,9 +94,11 @@ class GenericMenu : CustomWidget {
 			} else {
 				_contextJustClosed = false;
 			}
+
+			return EventHandling.Stop;
+		} else {
+			return EventHandling.Continue;
 		}
-		
-		return e.sinking ? EventHandling.Continue : EventHandling.Stop;
 	}
 	
 
@@ -108,8 +110,9 @@ class GenericMenu : CustomWidget {
 	protected EventHandling handleClick(ClickEvent e) {
 		if (e.bubbling && !e.handled) {
 			return EventHandling.Stop;
+		} else {
+			return EventHandling.Continue;
 		}
-		return EventHandling.Continue;
 	}
 	
 	
@@ -280,7 +283,7 @@ class GenericMenuItem : CustomWidget {
 		enableStyle("active");
 		_hover = true;
 		_active = true;
-		//Trace.formatln("MenuItem : mouse enter");
+		Trace.formatln("MenuItem : mouse enter");
 		installGlobalButtonHandler();
 		return EventHandling.Continue;
 	}
@@ -294,12 +297,12 @@ class GenericMenuItem : CustomWidget {
 
 
 	protected EventHandling handleClick(ClickEvent e) {
-		/+if (/+e.bubbling && +/!e.handled) {
-			this._clicked = true;
-			//return EventHandling.Stop;
-		}+/
-		return EventHandling.Stop;
-		//return EventHandling.Continue;
+		if (e.bubbling && !e.handled) {
+			//this._clicked = true;
+			return EventHandling.Stop;
+		}
+		//return EventHandling.Stop;
+		return EventHandling.Continue;
 	}
 	
 

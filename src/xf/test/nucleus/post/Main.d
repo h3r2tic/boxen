@@ -64,8 +64,8 @@ class TestApp : GfxApp {
 
 
 	override void configureWindow(Window w) {
-		w.width = 1680;
-		w.height = 1050;
+		w.width = 1680/2;
+		w.height = 1050/2;
 		w.fullscreen = true;
 	}
 
@@ -75,8 +75,13 @@ class TestApp : GfxApp {
 			Kiss.instance.seed(12345);
 		}
 		
-		setMediaDir(`../../media`);
-		initializeNucleus(this.renderer, "../../media/kdef", ".");
+		version (Demo) {
+			setMediaDir(`media`);
+			initializeNucleus(this.renderer, "media/kdef", ".");
+		} else {
+			setMediaDir(`../../media`);
+			initializeNucleus(this.renderer, "../../media/kdef", ".");
+		}
 		
 		nr = createRenderer("LightPrePass");
 		nr2 = createRenderer("Forward");

@@ -117,7 +117,7 @@ class WidgetSlider(bool horizontal) : Widget {
 
 	
 	EventHandling handleMouseButton(MouseButtonEvent e) {
-		if (MouseButton.Left == e.button) {
+		if (MouseButton.Left == e.button && e.bubbling && !e.handled) {
 			if (v0(this.size) > 0) {
 				vec2 mpoint = e.pos;
 				float mpos = v0(mpoint) / v0(this.size);
@@ -162,6 +162,7 @@ class WidgetSlider(bool horizontal) : Widget {
 		if (_dragging) {
 			float mpos = v0(e.pos) / v0(this.size);
 
+			float prevP = _position;
 			_position = (mpos - _realHandleSize * _dragPos);
 			if (_position < 0.f) {
 				_position = 0.f;
@@ -169,6 +170,11 @@ class WidgetSlider(bool horizontal) : Widget {
 			if (_position + _realHandleSize > 1.f) {
 				_position = 1.f - _realHandleSize;
 			}
+
+			if (prevP != _position) {
+				_changed = true;
+			}
+
 			if(onSlide)
 				_onSlide(_position);
 		}		
@@ -177,7 +183,11 @@ class WidgetSlider(bool horizontal) : Widget {
 	
 
 	EventHandling handleClick(ClickEvent e) {
-		return EventHandling.Stop;
+		if (e.bubbling && !e.handled) {
+			return EventHandling.Stop;
+		} else {
+			return EventHandling.Continue;
+		}
 	}
 
 
@@ -186,6 +196,8 @@ class WidgetSlider(bool horizontal) : Widget {
 			return super.handleTimeUpdate(e);
 		
 		if(_repeating && e.sinking) {
+			float prevP = _position;
+			
 			_repeatDt += e.delta;
 			if(_repeatDt < _repeatInterval)
 				return super.handleTimeUpdate(e);
@@ -202,10 +214,27 @@ class WidgetSlider(bool horizontal) : Widget {
 					_position = 1.f - _realHandleSize;
 				else
 					_position += delta;
+
+			if (prevP != _position) {
+				_changed = true;
+			}
+					
 			if(onSlide)
 				_onSlide(_position);
 		}
 		return super.handleTimeUpdate(e);
+	}
+
+
+
+	override void onGuiStructureBuilt() {
+		this._changed = false;
+		super.onGuiStructureBuilt();
+	}
+
+
+	bool changed() {
+		return _changed;
 	}
 
 
@@ -225,11 +254,12 @@ class WidgetSlider(bool horizontal) : Widget {
 	
 	protected {
 		Widget	_child;
-		float		_realHandleSize = 0.f;
-		float		_handleSize;
-		bool		_dragging;
-		float		_dragPos;
-		float		_position;
+		float	_realHandleSize = 0.f;
+		float	_handleSize;
+		bool	_dragging;
+		float	_dragPos;
+		float	_position;
+		bool	_changed = false;
 
 		bool _repeating, _repeatDirNeg;
 		float _repeatDt = 0.f;
@@ -237,12 +267,16 @@ class WidgetSlider(bool horizontal) : Widget {
 	
 	
 	typeof(this) position(float f) {
+		float prevP = _position;
 		_position = f;
 		if (_position < 0.f) {
 			_position = 0.f;
 		}
 		if (_position + _realHandleSize > 1.f) {
 			_position = 1.f - _realHandleSize;
+		}
+		if (prevP != _position) {
+			_changed = true;
 		}
 		return this;
 	}
@@ -258,7 +292,11 @@ class WidgetSlider(bool horizontal) : Widget {
 		} else if (f <= 0.f) {
 			position = 0.f;
 		} else {
+			float prevP = _position;
 			_position = f * (1.f - _realHandleSize);
+			if (prevP != _position) {
+				_changed = true;
+			}
 		}
 		
 		return this;
@@ -274,6 +312,9 @@ class WidgetSlider(bool horizontal) : Widget {
 	}
 	
 	typeof(this) handleSize(float f) {
+		if (_handleSize != f) {
+			_changed = true;
+		}
 		_handleSize = f;
 		return this;
 	}

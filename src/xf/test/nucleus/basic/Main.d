@@ -66,8 +66,8 @@ class TestApp : GfxApp {
 
 
 	override void configureWindow(Window w) {
-		w.width = 1050/2;
-		w.height = 1680/2;
+		w.width = 1680/2;
+		w.height = 1050/2;
 		//w.fullscreen = true;
 	}
 
@@ -76,9 +76,14 @@ class TestApp : GfxApp {
 		version (FixedTest) {
 			Kiss.instance.seed(12345);
 		}
-		
-		setMediaDir(`../../media`);
-		initializeNucleus(this.renderer, "../../media/kdef", ".");
+
+		version (Demo) {
+			setMediaDir(`media`);
+			initializeNucleus(this.renderer, "media/kdef", ".");
+		} else {
+			setMediaDir(`../../media`);
+			initializeNucleus(this.renderer, "../../media/kdef", ".");
+		}
 		
 		nr = createRenderer("LightPrePass");
 		nr2 = createRenderer("Forward");
@@ -99,6 +104,9 @@ class TestApp : GfxApp {
 			} else {
 				//camera = new SimpleCamera(vec3(0, 1, 2), 0, 0, inputHub.mainChannel);
 				camera = new SimpleCamera(vec3(-0.44, 2.22, 1.5), -32.80, -17.80, inputHub.mainChannel);
+				//camera = new SimpleCamera(vec3(-0.4, 1.93, 1.77), -27.80, -4.20, inputHub.mainChannel);
+				//camera = new SimpleCamera(vec3(0.43, 2.11, 1.34), -31.00, 20.20, inputHub.mainChannel);
+				//camera = new SimpleCamera(vec3(-0.08, 0.02, 0.81), 0.80, 1.20, inputHub.mainChannel);
 			}
 		}
 		window.interceptCursor = true;
@@ -115,7 +123,8 @@ class TestApp : GfxApp {
 			version (LightTest2) {
 				alias PointLight LightType;
 			} else {
-				alias SpotLight_VSM LightType;
+				//alias SpotLight_VSM LightType;
+				alias PointLight LightType;
 			}
 		}
 		
@@ -180,6 +189,7 @@ class TestApp : GfxApp {
 			//cstring model = `mesh/knot.hsf`;
 			//cstring model = `mesh/somefem.hsf`;
 			//cstring model = `mesh/dragon.hsf`;
+			//cstring model = `mesh/maskedPlane.hsf`;
 			cstring model = `mesh/ubot.hsf`;
 			//cstring model = `mesh/buddha.hsf`;
 			//cstring model = `mesh/spartan.hsf`;
@@ -252,7 +262,7 @@ class TestApp : GfxApp {
 			lightAngles[li] = fmodf(lightAngles[li], 360.0);
 		}
 
-		static float lightDist = 0.8f;
+		static float lightDist = 1.5f;
 		if (keyboard.keyDown(KeySym._1)) {
 			lightDist *= 0.995f;
 		}
@@ -261,7 +271,7 @@ class TestApp : GfxApp {
 		}
 		
 		static float lightScale = 0.0f;
-		if (0 == lightScale) lightScale = 8.0f / lights.length;
+		if (0 == lightScale) lightScale = 10.0f / lights.length;
 		if (keyboard.keyDown(KeySym.Down)) {
 			lightScale *= 0.99f;
 		}
@@ -269,7 +279,7 @@ class TestApp : GfxApp {
 			lightScale /= 0.99f;
 		}
 
-		static float lightRad = 1.0f;
+		static float lightRad = 2.0f;
 		if (keyboard.keyDown(KeySym._3)) {
 			lightRad *= 0.99f;
 		}
@@ -277,7 +287,7 @@ class TestApp : GfxApp {
 			lightRad /= 0.99f;
 		}
 
-		static float bgColor = 0.1f;
+		static float bgColor = 0.01f;
 		
 		if (keyboard.keyDown(KeySym.Left)) {
 			bgColor *= 0.99f;

@@ -298,8 +298,8 @@ void emitGraphCompositesAndFuncs(
 			uword	overloadIndex = 0;
 
 			overloadSearch: foreach (f; ctx.emittedFuncs) {
-				if (f.func is funcNode.func) {
-					if (f.params.length != funcNode.params.length) {
+				if (f.func.name == funcNode.func.name) {
+					if (f.func !is funcNode.func || f.params.length != funcNode.params.length) {
 						++overloadIndex;
 						continue overloadSearch;
 					}

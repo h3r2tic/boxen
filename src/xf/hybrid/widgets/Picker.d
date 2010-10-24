@@ -15,26 +15,30 @@ class Picker : CustomWidget {
 
 	
 	EventHandling handleClick(ClickEvent e) {
-		_lastClick = e.pos;
-		_justClicked = true;
-		return EventHandling.Stop;
+		if (e.bubbling) {
+			_lastClick = e.pos;
+			_justClicked = true;
+			return EventHandling.Stop;
+		} else {
+			return EventHandling.Continue;
+		}
 	}
 
 
 	EventHandling handleMouseMove(MouseMoveEvent e) {
 		_lastMousePos = e.pos;
-		return EventHandling.Stop;
+		return EventHandling.Continue;
 	}
 
 
 	EventHandling handleMouseLeave(MouseLeaveEvent e) {
 		_lastMousePos = vec2.init;
-		return EventHandling.Stop;
+		return EventHandling.Continue;
 	}
 	
 
 	EventHandling handleMouseButton(MouseButtonEvent e) {
-		if (MouseButton.Left == e.button) {
+		if (MouseButton.Left == e.button && e.bubbling) {
 			return EventHandling.Stop;
 		} else {
 			return EventHandling.Continue;

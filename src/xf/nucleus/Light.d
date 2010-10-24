@@ -30,7 +30,8 @@ abstract class Light {
 		// hrm, actually luma-based looks wrong
 		float meh;
 		if (g_conservativeRange) {
-			meh = (dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) + 1.0) * 100.0f;
+			// TODO: tmp: changed to 0.1%
+			meh = (dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) + 1.0) * 1000.0f;
 		} else {
 			meh = dot(vec4(1./3, 1./3, 1./3, 0), lumIntens) * 100.0f + 1.0;
 		}

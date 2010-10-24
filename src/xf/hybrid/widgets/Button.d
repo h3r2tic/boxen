@@ -28,7 +28,7 @@ class GenericButton : CustomWidget {
 	}
 	
 	EventHandling handleMouseButton(MouseButtonEvent e) {
-		if (MouseButton.Left == e.button) {
+		if (MouseButton.Left == e.button && e.bubbling && !e.handled) {
 			if (e.down) {
 				gui.addGlobalHandler(&this.globalHandleMouseButton);
 				enableStyle("active");

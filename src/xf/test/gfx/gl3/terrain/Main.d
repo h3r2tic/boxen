@@ -147,7 +147,7 @@ class TestApp : GfxApp {
 		terrain.addChunkHandler(chunkData);
 		terrain.scale = vec3(100.f, 30.f, 100.f);
 
-		camera = new SimpleCamera(vec3.zero, 0.0f, 0.0f, inputHub.mainChannel);
+		camera = new SimpleCamera(vec3[27.36, 15.38, 12.15], -16.13, -128.62, inputHub.mainChannel);
 		
 		scope imgLoader = new FreeImageLoader;
 
