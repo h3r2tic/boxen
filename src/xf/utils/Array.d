@@ -1212,3 +1212,14 @@ bool remove(T, I)(ref T arr, I item, bool crashOnFail = true) {
 	
 	return false;
 }
+
+
+void removeKeepOrder(T)(ref T arr, size_t idx) {
+	if (arr.length != idx+1 && arr.length > 0) {
+		size_t l = arr.length-1;
+		for (size_t i = idx; i < l; ++i) {
+			arr[i] = arr[i+1];
+		}
+		arr = arr[0..l];
+	} else assert (false);
+}

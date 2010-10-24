@@ -24,7 +24,7 @@ node_1 = node {
 		in out_normal<basis world + type float3 + unit true + use normal>
 	);
 	center = 893.00 514.00;
-	size = 91.00 89.00;
+	size = 83.00 89.00;
 };
 node_2 = node {
 	type = kernel;
@@ -55,10 +55,11 @@ widget = bitmap;
 ),
 		out reflTex<type sampler2D + use color> = sampler {texture = "img/Ueno_Shrine/03-Ueno-Shrine_3k.hdr"; colorSpace = linear; } @gui(
 widget = bitmap;
-)
+),
+		out meh<type float>
 	);
 	center = -62.00 655.00;
-	size = 142.00 225.00;
+	size = 142.00 237.00;
 };
 node_4 = node {
 	type = kernel;
