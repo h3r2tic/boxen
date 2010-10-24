@@ -48,7 +48,7 @@ Fresnel = kernel (
 	in toEye <type float3 + use toEye + basis world + unit true>,
 	out output <type float + use fresnel>
 ) {
-	const float R0 = 0.2;
+	const float R0 = 0.3;
 	output = saturate(dot(normal, toEye).x);
 	output = pow(1.0f - output, 5.0f);
 	output *= (1.0f - R0);

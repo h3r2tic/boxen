@@ -375,7 +375,7 @@ class GraphNode {
 		if (!this.isKernelBased) {
 			this.data.params.add(p).dir = ParamDirection.In;
 		}
-		// TODO: ParamValueInfo
+		paramValueInfo ~= ParamValueInfo();
 	}
 		
 
@@ -385,7 +385,7 @@ class GraphNode {
 		if (!this.isKernelBased) {
 			this.data.params.add(p).dir = ParamDirection.Out;
 		}
-		// TODO: ParamValueInfo
+		paramValueInfo ~= ParamValueInfo();
 	}
 
 	
@@ -912,6 +912,7 @@ class GraphNode {
 				p.type = "void";
 				outputs ~= new ConnectorInfo(*p, this);
 			}
+			paramValueInfo ~= ParamValueInfo();
 		};
 		model.onRemoveRow = (int i) {
 			grid.popupMsg = null;
@@ -924,6 +925,8 @@ class GraphNode {
 			grid.popupMsg = null;
 			
 			bool semanticChanged = false;
+
+			// TODO: paramValueInfo
 			
 			switch (column) {
 				case 0:
@@ -1067,6 +1070,9 @@ class GraphNode {
 	
 	
 	void onDeleteParam(char[] name) {
+		final i = data.params.indexOf(name);
+		xf.utils.Array.removeKeepOrder(paramValueInfo, i);
+		
 		data.params.remove(name);
 		removeOutgoingConnectionsFrom(name);
 		removeIncomingConnectionsTo(name);

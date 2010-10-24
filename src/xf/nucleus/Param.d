@@ -476,6 +476,11 @@ struct ParamList {
 		return p - _params.ptr;
 	}
 
+
+	uword indexOf(cstring name) {
+		return indexOf(get(name));
+	}
+
 	
 	int opApply(int delegate(ref Param) dg) {
 		foreach (ref p; _params) {
