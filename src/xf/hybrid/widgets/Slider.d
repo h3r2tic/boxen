@@ -122,7 +122,11 @@ class Slider(bool horizontal) : CustomWidget {
 		disableStyle("hover");
 		return EventHandling.Continue;
 	}
-	
+
+
+	bool changed() {
+		return _wslider.changed;
+	}
 	
 	mixin(defineProperties("float position, inline float minValue, inline float maxValue, inline float snapIncrement, inline float delegate(float) outputMap, inline float delegate(float) inputMap, inline void delegate(float) onSlide"));
 	mixin MWidget;

@@ -84,6 +84,10 @@ struct WidgetChain {
 	void add(IWidget w) {
 		widgets ~= w;
 	}
+
+	void reverse() {
+		widgets.reverse;
+	}
 	
 	void copyFrom(ref WidgetChain ch) {
 		widgets.length = ch.widgets.length;
@@ -629,7 +633,7 @@ class GuiContext {
 			foreach (root; &iterRootWidgets) {
 				bool cont = true;
 				
-				foreach (w; iterBottomTop(root).filter((IWidget w) {
+				foreach (w; iterTopBottom(root).filter((IWidget w) {
 					return w.containsGlobal(pt);
 				})) {
 					cont = false;
@@ -638,6 +642,8 @@ class GuiContext {
 				
 				if (!cont) break;
 			}
+
+			ch.reverse();
 		}
 	}
 	
@@ -770,8 +776,8 @@ class GuiContext {
 					void detectEnterLeave(ref WidgetChain prev, ref WidgetChain cur) {
 						{
 							scope evt = new MouseLeaveEvent;
-							leaveIter: foreach (pw; prev.widgets) {
-								foreach (cw; cur.widgets) {
+							leaveIter: foreach_reverse (pw; prev.widgets) {
+								foreach_reverse (cw; cur.widgets) {
 									if (cw is pw) {
 										continue leaveIter;
 									}
@@ -785,8 +791,8 @@ class GuiContext {
 
 						{
 							scope evt = new MouseEnterEvent;
-							enterIter: foreach (cw; cur.widgets) {
-								foreach (pw; prev.widgets) {
+							enterIter: foreach_reverse (cw; cur.widgets) {
+								foreach_reverse (pw; prev.widgets) {
 									if (cw is pw) {
 										if (cw.blockEventProcessing(evt)) {
 											break enterIter;
@@ -897,7 +903,12 @@ class GuiContext {
 							if (w is w2) {
 								to = i+1;
 							} else {
-								break;
+								//break;
+
+								// NOTE: should prevent overzealous click detection
+								// but will not report clicks if the widget chain
+								// differs
+								return;
 							}
 						}
 						
@@ -916,7 +927,7 @@ class GuiContext {
 							evt.pos = mousePos - w.globalOffset;
 							if (EventHandling.Stop == w.handleEvent(evt)) {
 								evt.handled = true;
-								to = i;
+								to = from+i;
 								break;
 							}
 						}

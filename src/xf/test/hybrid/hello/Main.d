@@ -16,6 +16,8 @@ import
 import xf.hybrid.Hybrid;
 import xf.hybrid.WidgetConfig : HybridConfig = Config;
 import xf.hybrid.backend.Gfx : HybridRenderer = Renderer, TopLevelWidget = TopLevel;
+
+import tango.stdc.stdlib : exit;
 	
 
 
@@ -79,7 +81,7 @@ class TestApp : GfxApp {
 					menuLeaf("Open", Stdout.formatln("file.open")),
 					menuLeaf("Close", Stdout.formatln("file.close")),
 					menuLeaf("Save", Stdout.formatln("file.save")),
-					menuLeaf("Exit", exitApp())
+					menuLeaf("Exit", exit(0))
 				),
 				menuGroup("Edit",
 					menuLeaf("Undo", Stdout.formatln("edit.undo")),
