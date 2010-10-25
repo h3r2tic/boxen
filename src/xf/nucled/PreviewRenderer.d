@@ -79,6 +79,29 @@ class MaterialPreviewRenderer {
 		_backend = backend;
 	}
 
+
+	void dispose() {
+		_materialData.dispose();
+
+		Effect ef;
+
+		foreach (ref ei; _renderableEI) {
+			if (ei.isValid) {
+				final e = ei.getEffect;
+				if (ef !is null) {
+					assert (e is ef);
+				}
+				ef = e;
+				ei.dispose();
+			}
+		}
+
+		if (ef) {
+			_backend.disposeEffect(ef);
+		}
+	}
+	
+
 	KernelImpl		structureToUse;
 	KernelImpl		materialToUse;
 	ParamList		materialParams;	// TODO
@@ -90,8 +113,9 @@ class MaterialPreviewRenderer {
 
 
 	void updateMaterialData() {
-		// BUG: leaks memory
+		_materialData.dispose();
 		_materialData = MaterialData.init;
+
 		createMaterialData(_backend, materialParams, &_materialData);
 
 		foreach (efInst; _renderableEI) {

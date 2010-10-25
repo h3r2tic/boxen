@@ -395,7 +395,7 @@ class GraphEditor {
 		RendererBackend backend,
 		GraphMngr graphMngr
 	) {
-		_kernelName = kernelName;
+		_kernelName = kernelName.dup;
 		_graph = new Graph(graphMngr);
 		_graph.loadObservers ~= &this.onGraphLoad;
 		_background = new Background;

@@ -7,6 +7,7 @@ private {
 		xf.nucleus.SurfaceDef,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.kdef.model.KDefInvalidation,
 		xf.nucleus.IStructureData,
 		xf.nucleus.Param,
 		xf.nucleus.KernelImpl,
@@ -31,10 +32,39 @@ private {
 
 
 
-class SurfaceBrowser {
+class SurfaceBrowser : IKDefInvalidationObserver {
 	this (IKDefRegistry reg, RendererBackend backend) {
 		_reg = reg;
 		_backend = backend;
+	}
+
+
+	// implements IKDefInvalidationObserver
+	void onKDefInvalidated(KDefInvalidationInfo info) {
+		if (info.anyConverters) {
+			foreach (mname, miniature; _miniatures) {
+				miniature.dispose();
+				delete miniature;
+			}
+
+			_miniatures = null;
+		}
+
+		cstring[] invalid;
+
+		foreach (mname, miniature; _miniatures) {
+			// TODO
+			/+if (!miniature.surfDef.isValid) {
+				invalid ~= mname;
+			}+/
+		}
+
+		foreach (n; invalid) {
+			SurfaceMiniature mm = _miniatures[n];
+			mm.dispose();
+			delete mm;
+			_miniatures.remove(n);
+		}
 	}
 
 
@@ -116,6 +146,11 @@ class SurfaceMiniature {
 		vs.nearPlaneDistance = 0.1f;
 		vs.farPlaneDistance = 100.0f;
 		_renderer.render(vs);+/
+	}
+
+
+	void dispose() {
+		// TODO
 	}
 
 
