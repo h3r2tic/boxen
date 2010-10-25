@@ -179,7 +179,7 @@ class Graph {
 		foreach (nname, kdefNode; source.nodes) {
 			auto node = new GraphNode(kdefNode);
 			def2node[kdefNode] = node;
-			node.label = nname;
+			node.label = nname.dup;
 			addNode(node);
 			Stdout.formatln("loading a graph node");
 		}
@@ -196,7 +196,7 @@ class Graph {
 			new Connection(
 				def2node[nfcon.fromNode],
 				def2node[nfcon.toNode],
-				DataFlow(nfcon.from, nfcon.to)
+				DataFlow(nfcon.from.dup, nfcon.to.dup)
 			);
 		}
 		
@@ -226,7 +226,7 @@ class ConnectorInfo {
 	
 	
 	this(Param param, GraphNode node) {
-		this.name = param.name;
+		this.name = param.name.dup;
 		this.node = node;
 	}
 }
@@ -352,7 +352,7 @@ class GraphNode {
 		// there's also the size, but we'll ignore it for now
 		
 		if (this.isKernelBased) {
-			this._kernelName = identVal("kernel");
+			this._kernelName = identVal("kernel").dup;
 			// TODO: ParamValueInfo
 		} else {
 			foreach (param; cfg.params) {
@@ -632,49 +632,6 @@ class GraphNode {
 			assert (this.CPU);
 		}+/
 
-		if (Type.Calc == this.type || Type.GPUWrap == this.type || Type.Demux == this.type) {
-			box.open(`bottom2`);
-			//QuarkDef q;
-			Label implInfo = Label().fontSize(9);
-			
-			/+if (quark.isValid && (q = quark.tryGetQuark) !is null) {
-				implInfo.text = q.name;
-			} else {
-				if (isTemplate) {
-					implInfo.text = "<template>";
-				} else {
-					implInfo.text = "<no impl>";
-				}
-			}+/
-			
-			
-			/+HBox() [{
-				Label().text = "Zomg: ";
-				
-				auto zomg = Combo();
-				if (!zomg.initialized) {
-					zomg.addItem("Foo");
-					zomg.addItem("Bar");
-					zomg.addItem("Baz");
-				}
-			}];
-			
-			
-			HBox() [{
-				Label().text = "Lololol: ";
-				
-				auto zomg = Combo();
-				if (!zomg.initialized) {
-					zomg.addItem("Foo");
-					zomg.addItem("Bar");
-					zomg.addItem("Baz");
-				}
-			}];+/
-
-			
-			gui.close;
-		}
-		
 		bool wasEditingProps = _editingProps;
 		if (box.doubleClicked) {
 			_editingProps = true;
@@ -1188,9 +1145,10 @@ class DataConnector : CustomWidget {
 	//bool		_dragHandlerRegistered = false;
 	mixin	MWidget;
 	
-	bool					input;
+	EventHandling delegate(bool input, ConnectorInfo ci, MouseButtonEvent e)
+					mouseButtonHandler;
 	ConnectorInfo	ci;
-	EventHandling delegate(bool input, ConnectorInfo ci, MouseButtonEvent e) mouseButtonHandler;
+	bool			input;
 	
 	EventHandling handleMouseButton(MouseButtonEvent e) {
 		assert (mouseButtonHandler !is null);
@@ -1383,10 +1341,10 @@ class GraphMngr {
 	
 	private {
 		ConnectorInfo	_connectingFrom;
-		bool					_connecting;
-		bool					_connectingFromInput;
-		Graph[]				_graphs;
-		VfsFolder			_vfs;
+		bool			_connecting;
+		bool			_connectingFromInput;
+		Graph[]			_graphs;
+		VfsFolder		_vfs;
 		//INucleus			_core;
 	}
 }

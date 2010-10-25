@@ -39,9 +39,7 @@ class DraggableView : ClipView {
 			//Stdout.formatln("DraggableView: drag start");
 			gui.addGlobalHandler(&this.globalHandleMouseButton);
 			
-			if (e.bubbling) {
-				return EventHandling.Stop;
-			}
+			return EventHandling.Stop;
 		}
 		
 		return EventHandling.Continue;
@@ -93,8 +91,10 @@ class GraphNodeBox : CustomWidgetT!(Draggable) {
 				_doubleClicked = true;
 			}
 			lastClicked = time;
+			return EventHandling.Stop;
+		} else {
+			return EventHandling.Continue;
 		}
-		return EventHandling.Continue;
 	}
 	
 	

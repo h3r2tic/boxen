@@ -7,6 +7,7 @@ private {
 		xf.nucleus.MaterialDef,
 		xf.nucleus.kdef.Common,
 		xf.nucleus.kdef.model.IKDefRegistry,
+		xf.nucleus.kdef.model.KDefInvalidation,
 		xf.nucleus.IStructureData,
 		xf.nucleus.Param,
 		xf.nucleus.KernelImpl,
@@ -31,10 +32,39 @@ private {
 
 
 
-class MaterialBrowser {
+class MaterialBrowser : IKDefInvalidationObserver {
 	this (IKDefRegistry reg, RendererBackend backend) {
 		_reg = reg;
 		_backend = backend;
+		reg.registerObserver(this);
+	}
+
+
+	// implements IKDefInvalidationObserver
+	void onKDefInvalidated(KDefInvalidationInfo info) {
+		if (info.anyConverters) {
+			foreach (mname, miniature; _miniatures) {
+				miniature.dispose();
+				delete miniature;
+			}
+
+			_miniatures = null;
+		}
+
+		cstring[] invalid;
+
+		foreach (mname, miniature; _miniatures) {
+			if (!miniature._matDef.isValid) {
+				invalid ~= mname;
+			}
+		}
+
+		foreach (n; invalid) {
+			MaterialMiniature mm = _miniatures[n];
+			mm.dispose();
+			delete mm;
+			_miniatures.remove(n);
+		}
 	}
 
 
@@ -95,7 +125,7 @@ class MaterialBrowser {
 }
 
 
-class MaterialMiniature {
+private class MaterialMiniature {
 	void doGUI() {
 		auto w = CustomDrawWidget();
 		w.layoutAttribs = "hexpand hfill";
@@ -125,7 +155,9 @@ class MaterialMiniature {
 		MaterialDef mat,
 		IStructureData[] obj
 	) {
-		this._backend = backend;
+		_backend = backend;
+
+		_matDef = mat;
 
 		_renderer = new MaterialPreviewRenderer(
 			backend,
@@ -147,8 +179,14 @@ class MaterialMiniature {
 		_renderer.updateMaterialData();
 		_renderer.materialParams = ParamList.init;
 	}
+
+
+	void dispose() {
+		_renderer.dispose();
+	}
 	
 
 	RendererBackend			_backend;
 	MaterialPreviewRenderer _renderer;
+	MaterialDef				_matDef;
 }
