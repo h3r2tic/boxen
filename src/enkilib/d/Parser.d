@@ -47,6 +47,9 @@ abstract class Parser(AtomType){
     public alias AtomType Atom;
 	public size_t pos;
 	public Atom[] data;
+
+	public size_t startPos_this;
+	public size_t endPos_this;
 	
 	void initialize(Atom[] data){
 		this.data = data;

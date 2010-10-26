@@ -27,7 +27,7 @@ module enki.generator.BootstrapGenerator;
 import enki.types;
 import enki.generator.TextGenerator;
 
-import tango.io.model.IBuffer;
+//import tango.io.model.IBuffer;
 import tango.text.Util;
 
 class BootstrapGenerator: TextGenerator{

@@ -50,7 +50,7 @@ abstract class EnkiLexerBase : PositionalCharParser{
 	}
 	
 	EnkiToken CreateToken(String text,uint TOK){
-		Position pos = getPosition();		
+		Position pos = getPosition(0);
 		EnkiToken tok;
 		tok.type = TOK;
 		tok.line = pos.line;

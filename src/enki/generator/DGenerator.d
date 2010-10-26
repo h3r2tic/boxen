@@ -29,7 +29,7 @@ import enki.generator.TextGenerator;
 import enki.generator.BNFGenerator;
 import enkilib.d.ParserException;
 
-import tango.io.model.IBuffer;
+//import tango.io.model.IBuffer;
 import tango.text.Util;
 
 debug private import tango.io.Stdout;
@@ -304,6 +304,7 @@ abstract void cull_WS();
 			}
 			emitln("){{");
 			indent;
+				emitln("size_t startPos_{0} = pos;", name);
 				emitln("debug Stdout(\"parse_{0}\").newline;",name);
 				if(useAST){
 					emitln("auto __astNode = createASTNode(\"{0}\");",name);
@@ -322,6 +323,9 @@ abstract void cull_WS();
 				emitln("// Rule");
 				emitId(passId);
 				indent;
+					emitln("startPos_this = startPos_{0};", name);
+					emitln("endPos_this = pos;");
+					
 					auto fnPred = cast(FunctionPredicate)pred;
 					if(fnPred && fnPred.decl.type == "void"){
 						visit(pred);

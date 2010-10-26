@@ -27,7 +27,7 @@ module enki.enki;
 private import enki.frontend.all;
 private import enki.generator.all;
 
-private import tango.util.ArgParser;
+private import enki.ArgParser;
 private import tango.io.device.File;
 private import tango.io.FilePath;
 private import tango.io.Stdout;

@@ -18,6 +18,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken[] value_Syntax;
 	bool parse_Syntax(){
+		size_t startPos_Syntax = pos;
 		debug Stdout("parse_Syntax").newline;
 		KDefToken[] var_tokens;
 
@@ -99,6 +100,8 @@ class KDefLexer:KDefLexerBase{
 		end3:
 		// Rule
 		pass0:
+			startPos_this = startPos_Syntax;
+			endPos_this = pos;
 			value_Syntax = var_tokens;
 			debug Stdout.format("\tparse_Syntax passed: {0}",value_Syntax).newline;
 			return true;
@@ -115,6 +118,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	bool value_Whitespace;
 	bool parse_Whitespace(){
+		size_t startPos_Whitespace = pos;
 		debug Stdout("parse_Whitespace").newline;
 		// Iterator
 		size_t counter5 = 0;
@@ -156,6 +160,8 @@ class KDefLexer:KDefLexerBase{
 				}
 		// Rule
 		pass0:
+			startPos_this = startPos_Whitespace;
+			endPos_this = pos;
 			debug Stdout("passed").newline;
 			return true;
 		fail1:
@@ -171,6 +177,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	bool value_SlashStarComment;
 	bool parse_SlashStarComment(){
+		size_t startPos_SlashStarComment = pos;
 		debug Stdout("parse_SlashStarComment").newline;
 		String var_err = "Expected closing */";
 
@@ -205,6 +212,8 @@ class KDefLexer:KDefLexerBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_SlashStarComment;
+			endPos_this = pos;
 			debug Stdout("passed").newline;
 			return true;
 		fail1:
@@ -220,6 +229,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	bool value_SlashSlashComment;
 	bool parse_SlashSlashComment(){
+		size_t startPos_SlashSlashComment = pos;
 		debug Stdout("parse_SlashSlashComment").newline;
 		String var_err = "Expected terminating newline";
 
@@ -260,6 +270,8 @@ class KDefLexer:KDefLexerBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_SlashSlashComment;
+			endPos_this = pos;
 			debug Stdout("passed").newline;
 			return true;
 		fail1:
@@ -275,6 +287,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	bool value_NestingComment;
 	bool parse_NestingComment(){
+		size_t startPos_NestingComment = pos;
 		debug Stdout("parse_NestingComment").newline;
 		String var_err = "Expected closing +/";
 
@@ -315,6 +328,8 @@ class KDefLexer:KDefLexerBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_NestingComment;
+			endPos_this = pos;
 			debug Stdout("passed").newline;
 			return true;
 		fail1:
@@ -331,6 +346,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_StringLiteral;
 	bool parse_StringLiteral(){
+		size_t startPos_StringLiteral = pos;
 		debug Stdout("parse_StringLiteral").newline;
 		String var_err2 = "Expected closing \"";
 		String var_text;
@@ -367,6 +383,8 @@ class KDefLexer:KDefLexerBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_StringLiteral;
+			endPos_this = pos;
 			value_StringLiteral = StringToken(var_text);
 			debug Stdout.format("\tparse_StringLiteral passed: {0}",value_StringLiteral).newline;
 			return true;
@@ -384,6 +402,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_VerbatimStringLiteral;
 	bool parse_VerbatimStringLiteral(){
+		size_t startPos_VerbatimStringLiteral = pos;
 		debug Stdout("parse_VerbatimStringLiteral").newline;
 		String var_text;
 
@@ -416,6 +435,8 @@ class KDefLexer:KDefLexerBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_VerbatimStringLiteral;
+			endPos_this = pos;
 			value_VerbatimStringLiteral = VerbatimStringToken(var_text);
 			debug Stdout.format("\tparse_VerbatimStringLiteral passed: {0}",value_VerbatimStringLiteral).newline;
 			return true;
@@ -433,6 +454,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	String value_StringChar;
 	bool parse_StringChar(){
+		size_t startPos_StringChar = pos;
 		debug Stdout("parse_StringChar").newline;
 		String var_ch;
 
@@ -542,6 +564,8 @@ class KDefLexer:KDefLexerBase{
 			smartAssign(var_ch,value_any);
 		// Rule
 		pass0:
+			startPos_this = startPos_StringChar;
+			endPos_this = pos;
 			value_StringChar = var_ch;
 			debug Stdout.format("\tparse_StringChar passed: {0}",value_StringChar).newline;
 			return true;
@@ -559,6 +583,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_Number;
 	bool parse_Number(){
+		size_t startPos_Number = pos;
 		debug Stdout("parse_Number").newline;
 		String var_text;
 
@@ -601,6 +626,8 @@ class KDefLexer:KDefLexerBase{
 				}
 		// Rule
 		pass0:
+			startPos_this = startPos_Number;
+			endPos_this = pos;
 			value_Number = NumberToken(var_text);
 			debug Stdout.format("\tparse_Number passed: {0}",value_Number).newline;
 			return true;
@@ -618,6 +645,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_Identifier;
 	bool parse_Identifier(){
+		size_t startPos_Identifier = pos;
 		debug Stdout("parse_Identifier").newline;
 		String var_text;
 
@@ -679,6 +707,8 @@ class KDefLexer:KDefLexerBase{
 			smartAssign(var_text,slice(position2,pos));
 		// Rule
 		pass0:
+			startPos_this = startPos_Identifier;
+			endPos_this = pos;
 			value_Identifier = IdentifierToken(var_text);
 			debug Stdout.format("\tparse_Identifier passed: {0}",value_Identifier).newline;
 			return true;
@@ -696,6 +726,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_LeftCurly;
 	bool parse_LeftCurly(){
+		size_t startPos_LeftCurly = pos;
 		debug Stdout("parse_LeftCurly").newline;
 		String var_text;
 
@@ -706,6 +737,8 @@ class KDefLexer:KDefLexerBase{
 		smartAssign(var_text,__match);
 		// Rule
 		pass0:
+			startPos_this = startPos_LeftCurly;
+			endPos_this = pos;
 			value_LeftCurly = LeftCurly(var_text);
 			debug Stdout.format("\tparse_LeftCurly passed: {0}",value_LeftCurly).newline;
 			return true;
@@ -723,6 +756,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_RightCurly;
 	bool parse_RightCurly(){
+		size_t startPos_RightCurly = pos;
 		debug Stdout("parse_RightCurly").newline;
 		String var_text;
 
@@ -733,6 +767,8 @@ class KDefLexer:KDefLexerBase{
 		smartAssign(var_text,__match);
 		// Rule
 		pass0:
+			startPos_this = startPos_RightCurly;
+			endPos_this = pos;
 			value_RightCurly = RightCurly(var_text);
 			debug Stdout.format("\tparse_RightCurly passed: {0}",value_RightCurly).newline;
 			return true;
@@ -750,6 +786,7 @@ class KDefLexer:KDefLexerBase{
 	*/
 	KDefToken value_LiteralToken;
 	bool parse_LiteralToken(){
+		size_t startPos_LiteralToken = pos;
 		debug Stdout("parse_LiteralToken").newline;
 		String var_text;
 
@@ -784,6 +821,8 @@ class KDefLexer:KDefLexerBase{
 			smartAssign(var_text,slice(position2,pos));
 		// Rule
 		pass0:
+			startPos_this = startPos_LiteralToken;
+			endPos_this = pos;
 			value_LiteralToken = LiteralToken(var_text);
 			debug Stdout.format("\tparse_LiteralToken passed: {0}",value_LiteralToken).newline;
 			return true;

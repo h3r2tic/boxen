@@ -31,7 +31,8 @@ import enki.frontend.Frontend;
 //import tango.io.Print;
 import tango.io.stream.Format;
 import tango.io.device.File;
-import tango.io.Buffer;
+import tango.io.device.Array;
+//import tango.io.Buffer;
 import tango.io.Stdout;
 
 import tango.text.convert.Layout;
@@ -48,7 +49,7 @@ abstract class TextGenerator: FormatOutput!(char){
     }
 
 	public this(){
-		super(new Layout!(char),new GrowBuffer());
+		super(new Layout!(char),new Array(2, 8192));
 		this.tabs = "";
 		startLine = true;
 	}
@@ -124,7 +125,7 @@ abstract class TextGenerator: FormatOutput!(char){
 	}	
 }
 
-unittest{
+/+unittest{
     class TestGenerator : TextGenerator{
         public this(IBuffer buf){
             super(buf);
@@ -145,3 +146,4 @@ unittest{
     test.flush();
     Stdout(buffer.getContent());
 }
++/

@@ -38,6 +38,18 @@ void dumpGraph(Graph graph, cstring label, OutputStream cond) {
 }
 
 
+void dumpGraph(Graph graph, OutputStream cond) {
+	scope layout = new TextLayout!(char);
+	scope print = new FormatOutput!(char)(layout, cond, "\n");
+	
+	print.formatln(`graph {{`);
+	dumpGraph(graph, print);
+	print.formatln(`};`);
+	print.flush;
+	cond.flush;
+}
+
+
 void dumpMaterial(Graph graph, cstring matName, cstring kernelName, OutputStream cond) {
 	scope layout = new TextLayout!(char);
 	scope p = new FormatOutput!(char)(layout, cond, "\n");
