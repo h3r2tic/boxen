@@ -347,6 +347,8 @@ class KDefProcessor {
 							static assert (is(typeof(mod) == KDefModule));
 							func.code._module = cast(void*)mod;
 						}
+					} else {
+						GraphDef(kimpl.graph)._module = cast(void*)mod;
 					}
 				}
 			}
@@ -693,6 +695,8 @@ class KDefProcessor {
 		
 		void dumpInfo(GraphDef graph) {
 			Stdout("graph {").newline;
+			Stdout.formatln("file:  {}", (cast(KDefModule)graph._module).filePath);
+			Stdout.formatln("bytes: {}..{}", graph._firstByte, graph._firstByte + graph._lengthBytes);
 			foreach (nodeName, _node; graph.nodes) {
 				Stdout.formatln("\tnode: {}", nodeName);
 			}

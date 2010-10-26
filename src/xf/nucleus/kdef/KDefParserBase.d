@@ -194,6 +194,12 @@ class KDefParserBase : Parser!(KDefToken) {
 			res.graphDef = mem._new!(GraphDef)(mem.dupArray(stmts), mem._allocator);
 			res.graphDef.superKernel = mem.dupString(superKernel);
 			//res.graphDef.tags = dupStringArray(tags);
+
+			res.graphDef._firstByte = data[startPos_this].byteNr;
+			final lastTok = data[endPos_this-1];
+			res.graphDef._lengthBytes = lastTok.byteNr + lastTok.toString.length;
+			res.graphDef._lengthBytes -= res.graphDef._firstByte;
+
 			return res;
 		}
 

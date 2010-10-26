@@ -50,6 +50,8 @@ import
 	tango.io.Stdout,
 	tango.io.device.File,
 	tango.text.convert.Format,
+	tango.text.Util,
+	tango.stdc.ctype,
 	tango.math.random.Kiss;
 
 import xf.hybrid.Hybrid;
@@ -419,19 +421,19 @@ class TestApp : GfxApp {
 
 
 	void onImplementMaterial() {
-		final editor = createGraphEditor(`NewMaterial`);
-		editor.workspaceSize = graphEdTabView.size;
+		/+final editor = createGraphEditor(`NewMaterial`);
+		editor.workspaceSize = graphEdTabView.size;+/
 		final tab = addTab();
 		graphEdTabView.activeTab = activeTab = tab;
 		
 		tabs[tab] = TabDesc(
 			"New Material",
-			TabDesc.Role.GraphEditor,
-			editor,
+			TabDesc.Role.KernelImplNameSelector,
+			null,
 			null
 		);
 
-		editor.createIONodes(kdefRegistry.getKernel("Material").kernel.func.params);
+		//editor.createIONodes(kdefRegistry.getKernel("Material").kernel.func.params);
 	}
 
 
@@ -501,8 +503,12 @@ class TestApp : GfxApp {
 					menuLeaf("Load", onLoad() ),
 					menuLeaf("Exit", exit(0))
 				),
-				menuGroup("Implement",
-					menuLeaf("Material", onImplementMaterial()),
+				menuGroup("New",
+					menuLeaf("Material", onImplementMaterial() ),
+					menuLeaf("Surface", {} )
+				),
+				menuGroup("Edit",
+					menuLeaf("Material", {}),
 					menuLeaf("Surface", {})
 				),
 				menuGroup("Help",
@@ -604,94 +610,77 @@ class TestApp : GfxApp {
 		gui.open;
 		activeTab = graphEdTabView.activeTab;
 		auto layers = Group(activeTab) [{
-			if (auto tabDesc = activeTab in tabs) {
-				switch (tabDesc.role) {
-					case TabDesc.Role.SceneView: {
-						if (viewportTab is null) {
-							viewportTab = new ViewportTab(fwdRenderer, &vsd, &trayRacers);
-						}
-						viewportTab.doGUI();
-					} break;
+			if (auto tabDesc = activeTab in tabs)
+			switch (tabDesc.role) {
+				case TabDesc.Role.SceneView: {
+					if (viewportTab is null) {
+						viewportTab = new ViewportTab(fwdRenderer, &vsd, &trayRacers);
+					}
+					viewportTab.doGUI();
+				} break;
+				
+				case TabDesc.Role.GraphEditor: {
+					tabDesc.graphEditor.doGUI();
+				} break;
 					
-					case TabDesc.Role.GraphEditor: {
-						tabDesc.graphEditor.doGUI();
-					} break;
-						
-					/+case TabDesc.Role.KernelImplSelector:
-						KernelDef	kernel;
-						char[]		funcName;
-						if (tabDesc.kernelSelector.doGUI(
-							(KernelDef kernel, char[] funcName) {
-								return true;
-							},
-							kernel,
-							funcName
-						)) {
-							tabDesc.label = "new Impl!( " ~ kernel.name ~ " )";
-							tabDesc.role = TabDesc.Role.KernelImplNameSelector;
-							tabDesc.kernelDef = kernel;
-							tabDesc.kernelFuncName = funcName;
-						}
-						break;
-						
-					case TabDesc.Role.KernelImplNameSelector:
-						VBox().icfg(`layout = { spacing = 5; }`) [{
-							char[256] buf;
-							Label().text(buf[0..sprintf(buf.ptr, "Select a composite to edit for kernel %.*s", "TODO")]);
-							
-							{
-								int i = 0;
-								auto picker = Picker(); picker [{
-									foreach (kernel, graph; &core.iterCompositeKernels) {
-										assert (kernel !is null, "kernel is null");
-										assert (graph !is null, "graph is null");
-										if (tabDesc.kernelDef.name == kernel.name) {
-											Label(i++).text = trim(graph.label).length > 0 ? trim(graph.label) : "no name o_O";
-										}
-									}
-								}];
-								if (picker.anythingPicked) {
-									int j = 0;
-									foreach (kernel, graph; &core.iterCompositeKernels) {
-										if (tabDesc.kernelDef.name == kernel.name) {
-											if (j++ == picker.pickedIdx) {
-												tabDesc.compositeName = trim(graph.label).dup;
-												tabDesc.label = tabDesc.kernelDef.name ~ "( " ~ tabDesc.compositeName ~ " )";
-												tabDesc.graphEditor = new GraphEditor(tabDesc.kernelDef.name, core, new GraphMngr(core));
+				/+case TabDesc.Role.KernelImplSelector:
+					KernelDef	kernel;
+					char[]		funcName;
+					if (tabDesc.kernelSelector.doGUI(
+						(KernelDef kernel, char[] funcName) {
+							return true;
+						},
+						kernel,
+						funcName
+					)) {
+						tabDesc.label = "new Impl!( " ~ kernel.name ~ " )";
+						tabDesc.role = TabDesc.Role.KernelImplNameSelector;
+						tabDesc.kernelDef = kernel;
+						tabDesc.kernelFuncName = funcName;
+					}
+					break;+/
+					
+				case TabDesc.Role.KernelImplNameSelector:
+					VBox().icfg(`layout = { spacing = 5; attribs = "hexpand"; }`) [{
+						char[256] buf;
+						Label().text("Enter the name for the new material kernel:");
 
-												auto path = getCompositeKernelPath(tabDesc.kernelDef.name, tabDesc.compositeName, false);
-												KDefGraph graphDef = loadKDefGraph(path);
-												tabDesc.graphEditor.loadKernelGraph(graphDef);
+						bool isValid = true;
+						
+						HBox().icfg(`layout = { spacing = 5; }`) [{
+							char[] name = trim(Input().icfg(`size = 200 0;`).text);
+							auto okButton = Button().text("OK");
 
-												tabDesc.role = TabDesc.Role.GraphEditor;
-												break;
-											}
-										}
-									}
-								}
-								
-								if (0 == i) {
-									Label().text("No composite kernels defined");
-								}
-							}
-							
-							HBox() [{
-								char[] name = trim(Input().icfg(`size = 100 0;`).text);
-								if (Button().text("New").clicked && name.length > 0) {
+							if (name.length > 0) {
+								isValid = isValidIdentifier(name);
+
+								if (isValid && okButton.clicked) {
+									final editor = createGraphEditor(name.dup);
+									editor.workspaceSize = graphEdTabView.size;
+									editor.createIONodes(kdefRegistry.getKernel("Material").kernel.func.params);
+
 									tabDesc.compositeName = name.dup;
-									tabDesc.label = tabDesc.kernelDef.name ~ "( " ~ tabDesc.compositeName ~ " )";
-									tabDesc.graphEditor = new GraphEditor(tabDesc.kernelDef.name, core, new GraphMngr(core)),
-									createKernelImplIONodes(tabDesc.kernelDef, tabDesc.kernelFuncName, tabDesc.graphEditor);
+									tabDesc.label = "mat " ~ tabDesc.compositeName;
+									tabDesc.graphEditor = editor;
 									tabDesc.role = TabDesc.Role.GraphEditor;
 								}
-							}];
+							}
 						}];
-						break;+/
 
-					default: assert (false);
-				}
-			} else {
-				// blah
+						if (!isValid) {
+							Label().icfg(`style.normal = { color = red; }`).text("This name is not valid.");
+						}
+
+						Dummy().userSize = vec2(0, 20);
+
+						VBox() [{
+							Label().text("(The name must only contain alphanumeric characters");
+							Label().text("and underscores, and cannot start with a number)");
+						}];
+					}];
+					break;
+
+				default: assert (false);
 			}
 
 			GraphEditor curEditor = null;
@@ -718,4 +707,16 @@ class TestApp : GfxApp {
 		}
 		gui.close;
 	}
+}
+
+bool isValidIdentifier(cstring str) {
+	if (0 == str.length || (!isalpha(str[0]) && str[0] != '_')) {
+		return false;
+	}
+	foreach (c; str[1..$]) {
+		if (!isalnum(c) && c != '_') {
+			return false;
+		}
+	}
+	return true;
 }

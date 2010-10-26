@@ -25,6 +25,7 @@ class KDefParser:KDefParserBase{
 	*/
 	bool value_Syntax;
 	bool parse_Syntax(){
+		size_t startPos_Syntax = pos;
 		debug Stdout("parse_Syntax").newline;
 		Statement[] var_statements;
 
@@ -46,6 +47,8 @@ class KDefParser:KDefParserBase{
 		end3:
 		// Rule
 		pass0:
+			startPos_this = startPos_Syntax;
+			endPos_this = pos;
 			parseSyntax(var_statements);
 			debug Stdout("passed").newline;
 			return true;
@@ -62,6 +65,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Statement value_Statement;
 	bool parse_Statement(){
+		size_t startPos_Statement = pos;
 		debug Stdout("parse_Statement").newline;
 		Statement var_st;
 
@@ -97,6 +101,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_st,value_ConverterDeclStatement);
 		// Rule
 		pass0:
+			startPos_this = startPos_Statement;
+			endPos_this = pos;
 			value_Statement = var_st;
 			debug Stdout.format("\tparse_Statement passed: {0}",value_Statement).newline;
 			return true;
@@ -114,6 +120,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ConnectStatement value_ConnectStatement;
 	bool parse_ConnectStatement(){
+		size_t startPos_ConnectStatement = pos;
 		debug Stdout("parse_ConnectStatement").newline;
 		string var_from;
 		string var_to;
@@ -146,6 +153,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ConnectStatement;
+			endPos_this = pos;
 			value_ConnectStatement = createConnectStatement(var_from,var_to);
 			debug Stdout.format("\tparse_ConnectStatement passed: {0}",value_ConnectStatement).newline;
 			return true;
@@ -163,6 +172,7 @@ class KDefParser:KDefParserBase{
 	*/
 	NoAutoFlowStatement value_NoAutoFlowStatement;
 	bool parse_NoAutoFlowStatement(){
+		size_t startPos_NoAutoFlowStatement = pos;
 		debug Stdout("parse_NoAutoFlowStatement").newline;
 		string var_to;
 
@@ -188,6 +198,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_NoAutoFlowStatement;
+			endPos_this = pos;
 			value_NoAutoFlowStatement = createNoAutoFlowStatement(var_to);
 			debug Stdout.format("\tparse_NoAutoFlowStatement passed: {0}",value_NoAutoFlowStatement).newline;
 			return true;
@@ -205,6 +217,7 @@ class KDefParser:KDefParserBase{
 	*/
 	AssignStatement value_AssignStatement;
 	bool parse_AssignStatement(){
+		size_t startPos_AssignStatement = pos;
 		debug Stdout("parse_AssignStatement").newline;
 		Value var_value;
 		string var_name;
@@ -240,6 +253,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_AssignStatement;
+			endPos_this = pos;
 			value_AssignStatement = createAssignStatement(var_name,var_value);
 			debug Stdout.format("\tparse_AssignStatement passed: {0}",value_AssignStatement).newline;
 			return true;
@@ -257,6 +272,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ImportStatement value_ImportStatement;
 	bool parse_ImportStatement(){
+		size_t startPos_ImportStatement = pos;
 		debug Stdout("parse_ImportStatement").newline;
 		string var_name;
 		string[] var_what;
@@ -323,6 +339,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ImportStatement;
+			endPos_this = pos;
 			value_ImportStatement = createImportStatement(var_name,var_what);
 			debug Stdout.format("\tparse_ImportStatement passed: {0}",value_ImportStatement).newline;
 			return true;
@@ -340,6 +358,7 @@ class KDefParser:KDefParserBase{
 	*/
 	string value_WildcardIdentifier;
 	bool parse_WildcardIdentifier(){
+		size_t startPos_WildcardIdentifier = pos;
 		debug Stdout("parse_WildcardIdentifier").newline;
 		string var_name;
 
@@ -371,6 +390,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_name,value_Identifier);
 		// Rule
 		pass0:
+			startPos_this = startPos_WildcardIdentifier;
+			endPos_this = pos;
 			value_WildcardIdentifier = var_name;
 			debug Stdout.format("\tparse_WildcardIdentifier passed: {0}",value_WildcardIdentifier).newline;
 			return true;
@@ -388,6 +409,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ConverterDeclStatement value_ConverterDeclStatement;
 	bool parse_ConverterDeclStatement(){
+		size_t startPos_ConverterDeclStatement = pos;
 		debug Stdout("parse_ConverterDeclStatement").newline;
 		string var_name;
 		double var_cost;
@@ -463,6 +485,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ConverterDeclStatement;
+			endPos_this = pos;
 			value_ConverterDeclStatement = createConverter(var_name,var_tags,var_params,var_code,var_cost);
 			debug Stdout.format("\tparse_ConverterDeclStatement passed: {0}",value_ConverterDeclStatement).newline;
 			return true;
@@ -480,6 +504,7 @@ class KDefParser:KDefParserBase{
 	*/
 	KernelDefValue value_KernelDefValue;
 	bool parse_KernelDefValue(){
+		size_t startPos_KernelDefValue = pos;
 		debug Stdout("parse_KernelDefValue").newline;
 		KernelDefValue var_value;
 
@@ -497,6 +522,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_value,value_AbstractKernelDefValue);
 		// Rule
 		pass0:
+			startPos_this = startPos_KernelDefValue;
+			endPos_this = pos;
 			value_KernelDefValue = var_value;
 			debug Stdout.format("\tparse_KernelDefValue passed: {0}",value_KernelDefValue).newline;
 			return true;
@@ -514,6 +541,7 @@ class KDefParser:KDefParserBase{
 	*/
 	KernelDefValue value_ConcreteKernelDefValue;
 	bool parse_ConcreteKernelDefValue(){
+		size_t startPos_ConcreteKernelDefValue = pos;
 		debug Stdout("parse_ConcreteKernelDefValue").newline;
 		string[] var_tags;
 		ParamDef[] var_params;
@@ -573,6 +601,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ConcreteKernelDefValue;
+			endPos_this = pos;
 			value_ConcreteKernelDefValue = createKernelDefValue(var_superKernel,var_params,var_code,var_tags);
 			debug Stdout.format("\tparse_ConcreteKernelDefValue passed: {0}",value_ConcreteKernelDefValue).newline;
 			return true;
@@ -590,6 +620,7 @@ class KDefParser:KDefParserBase{
 	*/
 	KernelDefValue value_AbstractKernelDefValue;
 	bool parse_AbstractKernelDefValue(){
+		size_t startPos_AbstractKernelDefValue = pos;
 		debug Stdout("parse_AbstractKernelDefValue").newline;
 		string[] var_tags;
 		ParamDef[] var_params;
@@ -642,6 +673,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_AbstractKernelDefValue;
+			endPos_this = pos;
 			value_AbstractKernelDefValue = createKernelDefValue(var_superKernel,var_params,var_code,var_tags);
 			debug Stdout.format("\tparse_AbstractKernelDefValue passed: {0}",value_AbstractKernelDefValue).newline;
 			return true;
@@ -659,6 +692,7 @@ class KDefParser:KDefParserBase{
 	*/
 	GraphDefValue value_GraphDefValue;
 	bool parse_GraphDefValue(){
+		size_t startPos_GraphDefValue = pos;
 		debug Stdout("parse_GraphDefValue").newline;
 		Statement[] var_stmts;
 		string var_superKernel;
@@ -704,6 +738,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_GraphDefValue;
+			endPos_this = pos;
 			value_GraphDefValue = createGraphDefValue(var_superKernel,var_stmts);
 			debug Stdout.format("\tparse_GraphDefValue passed: {0}",value_GraphDefValue).newline;
 			return true;
@@ -721,6 +757,7 @@ class KDefParser:KDefParserBase{
 	*/
 	GraphDefNodeValue value_GraphDefNodeValue;
 	bool parse_GraphDefNodeValue(){
+		size_t startPos_GraphDefNodeValue = pos;
 		debug Stdout("parse_GraphDefNodeValue").newline;
 		VarDef[] var_vars;
 
@@ -758,6 +795,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_GraphDefNodeValue;
+			endPos_this = pos;
 			value_GraphDefNodeValue = createGraphDefNodeValue(var_vars);
 			debug Stdout.format("\tparse_GraphDefNodeValue passed: {0}",value_GraphDefNodeValue).newline;
 			return true;
@@ -775,6 +814,7 @@ class KDefParser:KDefParserBase{
 	*/
 	TraitDefValue value_TraitDefValue;
 	bool parse_TraitDefValue(){
+		size_t startPos_TraitDefValue = pos;
 		debug Stdout("parse_TraitDefValue").newline;
 		string[] var_values;
 		string var_defaultValue;
@@ -844,6 +884,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_TraitDefValue;
+			endPos_this = pos;
 			value_TraitDefValue = createTraitDefValue(var_values,var_defaultValue);
 			debug Stdout.format("\tparse_TraitDefValue passed: {0}",value_TraitDefValue).newline;
 			return true;
@@ -861,6 +903,7 @@ class KDefParser:KDefParserBase{
 	*/
 	SurfaceDefValue value_SurfaceDefValue;
 	bool parse_SurfaceDefValue(){
+		size_t startPos_SurfaceDefValue = pos;
 		debug Stdout("parse_SurfaceDefValue").newline;
 		string var_reflKernel;
 		VarDef[] var_vars;
@@ -905,6 +948,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_SurfaceDefValue;
+			endPos_this = pos;
 			value_SurfaceDefValue = createSurfaceDefValue(var_reflKernel,var_vars);
 			debug Stdout.format("\tparse_SurfaceDefValue passed: {0}",value_SurfaceDefValue).newline;
 			return true;
@@ -922,6 +967,7 @@ class KDefParser:KDefParserBase{
 	*/
 	MaterialDefValue value_MaterialDefValue;
 	bool parse_MaterialDefValue(){
+		size_t startPos_MaterialDefValue = pos;
 		debug Stdout("parse_MaterialDefValue").newline;
 		VarDef[] var_vars;
 		string var_materialKernel;
@@ -966,6 +1012,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_MaterialDefValue;
+			endPos_this = pos;
 			value_MaterialDefValue = createMaterialDefValue(var_materialKernel,var_vars);
 			debug Stdout.format("\tparse_MaterialDefValue passed: {0}",value_MaterialDefValue).newline;
 			return true;
@@ -983,6 +1031,7 @@ class KDefParser:KDefParserBase{
 	*/
 	SamplerDefValue value_SamplerDefValue;
 	bool parse_SamplerDefValue(){
+		size_t startPos_SamplerDefValue = pos;
 		debug Stdout("parse_SamplerDefValue").newline;
 		VarDef[] var_vars;
 
@@ -1020,6 +1069,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_SamplerDefValue;
+			endPos_this = pos;
 			value_SamplerDefValue = createSamplerDefValue(var_vars);
 			debug Stdout.format("\tparse_SamplerDefValue passed: {0}",value_SamplerDefValue).newline;
 			return true;
@@ -1037,6 +1088,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Code value_Code;
 	bool parse_Code(){
+		size_t startPos_Code = pos;
 		debug Stdout("parse_Code").newline;
 		Atom[] var_tokens;
 
@@ -1062,6 +1114,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_Code;
+			endPos_this = pos;
 			value_Code = createCode(var_tokens);
 			debug Stdout.format("\tparse_Code passed: {0}",value_Code).newline;
 			return true;
@@ -1079,6 +1133,7 @@ class KDefParser:KDefParserBase{
 	*/
 	string[] value_KernelTagList;
 	bool parse_KernelTagList(){
+		size_t startPos_KernelTagList = pos;
 		debug Stdout("parse_KernelTagList").newline;
 		string[] var_tags;
 
@@ -1099,6 +1154,8 @@ class KDefParser:KDefParserBase{
 		end3:
 		// Rule
 		pass0:
+			startPos_this = startPos_KernelTagList;
+			endPos_this = pos;
 			value_KernelTagList = var_tags;
 			debug Stdout.format("\tparse_KernelTagList passed: {0}",value_KernelTagList).newline;
 			return true;
@@ -1116,6 +1173,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Atom[] value_OpaqueCodeBlock;
 	bool parse_OpaqueCodeBlock(){
+		size_t startPos_OpaqueCodeBlock = pos;
 		debug Stdout("parse_OpaqueCodeBlock").newline;
 		Atom[] var_tokens;
 
@@ -1184,6 +1242,8 @@ class KDefParser:KDefParserBase{
 		end3:
 		// Rule
 		pass0:
+			startPos_this = startPos_OpaqueCodeBlock;
+			endPos_this = pos;
 			value_OpaqueCodeBlock = var_tokens;
 			debug Stdout.format("\tparse_OpaqueCodeBlock passed: {0}",value_OpaqueCodeBlock).newline;
 			return true;
@@ -1201,6 +1261,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamDef[] value_ParamList;
 	bool parse_ParamList(){
+		size_t startPos_ParamList = pos;
 		debug Stdout("parse_ParamList").newline;
 		ParamDef[] var_params;
 
@@ -1254,6 +1315,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamList;
+			endPos_this = pos;
 			value_ParamList = var_params;
 			debug Stdout.format("\tparse_ParamList passed: {0}",value_ParamList).newline;
 			return true;
@@ -1271,6 +1334,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamDef value_Param;
 	bool parse_Param(){
+		size_t startPos_Param = pos;
 		debug Stdout("parse_Param").newline;
 		string var_name;
 		string var_dir = "in";
@@ -1344,6 +1408,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_Param;
+			endPos_this = pos;
 			value_Param = createParamDef(var_dir,var_type,var_semantic,var_name,var_defaultValue,var_annotations);
 			debug Stdout.format("\tparse_Param passed: {0}",value_Param).newline;
 			return true;
@@ -1361,6 +1427,7 @@ class KDefParser:KDefParserBase{
 	*/
 	string value_ParamDirection;
 	bool parse_ParamDirection(){
+		size_t startPos_ParamDirection = pos;
 		debug Stdout("parse_ParamDirection").newline;
 		string var_dir;
 
@@ -1390,6 +1457,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_dir,__match);
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamDirection;
+			endPos_this = pos;
 			value_ParamDirection = var_dir;
 			debug Stdout.format("\tparse_ParamDirection passed: {0}",value_ParamDirection).newline;
 			return true;
@@ -1407,6 +1476,7 @@ class KDefParser:KDefParserBase{
 	*/
 	string value_ParamType;
 	bool parse_ParamType(){
+		size_t startPos_ParamType = pos;
 		debug Stdout("parse_ParamType").newline;
 		string var_type;
 
@@ -1463,6 +1533,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_type,slice(position2,pos));
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamType;
+			endPos_this = pos;
 			value_ParamType = var_type;
 			debug Stdout.format("\tparse_ParamType passed: {0}",value_ParamType).newline;
 			return true;
@@ -1480,6 +1552,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamSemanticExp value_ParamSemantic;
 	bool parse_ParamSemantic(){
+		size_t startPos_ParamSemantic = pos;
 		debug Stdout("parse_ParamSemantic").newline;
 		ParamSemanticExp var_value;
 
@@ -1523,6 +1596,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_value,value_ParamSemanticTrait);
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamSemantic;
+			endPos_this = pos;
 			value_ParamSemantic = var_value;
 			debug Stdout.format("\tparse_ParamSemantic passed: {0}",value_ParamSemantic).newline;
 			return true;
@@ -1540,6 +1615,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamSemanticExp value_ParamSemanticSum;
 	bool parse_ParamSemanticSum(){
+		size_t startPos_ParamSemanticSum = pos;
 		debug Stdout("parse_ParamSemanticSum").newline;
 		ParamSemanticExp var_b;
 		ParamSemanticExp var_a;
@@ -1589,6 +1665,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamSemanticSum;
+			endPos_this = pos;
 			value_ParamSemanticSum = createParamSemanticSum(var_a,var_b);
 			debug Stdout.format("\tparse_ParamSemanticSum passed: {0}",value_ParamSemanticSum).newline;
 			return true;
@@ -1606,6 +1684,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamSemanticExp value_ParamSemanticExclusion;
 	bool parse_ParamSemanticExclusion(){
+		size_t startPos_ParamSemanticExclusion = pos;
 		debug Stdout("parse_ParamSemanticExclusion").newline;
 		ParamSemanticExp var_b;
 		ParamSemanticExp var_a;
@@ -1655,6 +1734,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamSemanticExclusion;
+			endPos_this = pos;
 			value_ParamSemanticExclusion = createParamSemanticExclusion(var_a,var_b);
 			debug Stdout.format("\tparse_ParamSemanticExclusion passed: {0}",value_ParamSemanticExclusion).newline;
 			return true;
@@ -1672,6 +1753,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamSemanticExp value_ParamSemanticTrait;
 	bool parse_ParamSemanticTrait(){
+		size_t startPos_ParamSemanticTrait = pos;
 		debug Stdout("parse_ParamSemanticTrait").newline;
 		Value var_value;
 		string var_name;
@@ -1750,6 +1832,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamSemanticTrait;
+			endPos_this = pos;
 			value_ParamSemanticTrait = parseParamSemanticTrait(var_name,var_value);
 			debug Stdout.format("\tparse_ParamSemanticTrait passed: {0}",value_ParamSemanticTrait).newline;
 			return true;
@@ -1767,6 +1851,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Annotation[] value_AnnotationList;
 	bool parse_AnnotationList(){
+		size_t startPos_AnnotationList = pos;
 		debug Stdout("parse_AnnotationList").newline;
 		Annotation[] var_value;
 
@@ -1787,6 +1872,8 @@ class KDefParser:KDefParserBase{
 		end3:
 		// Rule
 		pass0:
+			startPos_this = startPos_AnnotationList;
+			endPos_this = pos;
 			value_AnnotationList = var_value;
 			debug Stdout.format("\tparse_AnnotationList passed: {0}",value_AnnotationList).newline;
 			return true;
@@ -1804,6 +1891,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Annotation value_Annotation;
 	bool parse_Annotation(){
+		size_t startPos_Annotation = pos;
 		debug Stdout("parse_Annotation").newline;
 		string var_name;
 		VarDef[] var_vars;
@@ -1854,6 +1942,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_Annotation;
+			endPos_this = pos;
 			value_Annotation = createAnnotation(var_name,var_vars);
 			debug Stdout.format("\tparse_Annotation passed: {0}",value_Annotation).newline;
 			return true;
@@ -1871,6 +1961,7 @@ class KDefParser:KDefParserBase{
 	*/
 	VarDef value_VarDef;
 	bool parse_VarDef(){
+		size_t startPos_VarDef = pos;
 		debug Stdout("parse_VarDef").newline;
 		Value var_value;
 		string var_name;
@@ -1910,6 +2001,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_VarDef;
+			endPos_this = pos;
 			value_VarDef = parseVarDef(var_name,var_value,var_annotations);
 			debug Stdout.format("\tparse_VarDef passed: {0}",value_VarDef).newline;
 			return true;
@@ -1927,6 +2020,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Value value_Value;
 	bool parse_Value(){
+		size_t startPos_Value = pos;
 		debug Stdout("parse_Value").newline;
 		Value var_value;
 
@@ -2022,6 +2116,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_value,value_IdentifierValue);
 		// Rule
 		pass0:
+			startPos_this = startPos_Value;
+			endPos_this = pos;
 			value_Value = var_value;
 			debug Stdout.format("\tparse_Value passed: {0}",value_Value).newline;
 			return true;
@@ -2039,6 +2135,7 @@ class KDefParser:KDefParserBase{
 	*/
 	BooleanValue value_BooleanValue;
 	bool parse_BooleanValue(){
+		size_t startPos_BooleanValue = pos;
 		debug Stdout("parse_BooleanValue").newline;
 		string var_value;
 
@@ -2058,6 +2155,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_value,slice(position2,pos));
 		// Rule
 		pass0:
+			startPos_this = startPos_BooleanValue;
+			endPos_this = pos;
 			value_BooleanValue = createBooleanValue(var_value);
 			debug Stdout.format("\tparse_BooleanValue passed: {0}",value_BooleanValue).newline;
 			return true;
@@ -2075,6 +2174,7 @@ class KDefParser:KDefParserBase{
 	*/
 	IdentifierValue value_IdentifierValue;
 	bool parse_IdentifierValue(){
+		size_t startPos_IdentifierValue = pos;
 		debug Stdout("parse_IdentifierValue").newline;
 		string var_value;
 
@@ -2085,6 +2185,8 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,value_Identifier);
 		// Rule
 		pass0:
+			startPos_this = startPos_IdentifierValue;
+			endPos_this = pos;
 			value_IdentifierValue = createIdentifierValue(var_value);
 			debug Stdout.format("\tparse_IdentifierValue passed: {0}",value_IdentifierValue).newline;
 			return true;
@@ -2102,6 +2204,7 @@ class KDefParser:KDefParserBase{
 	*/
 	NumberValue value_NumberValue;
 	bool parse_NumberValue(){
+		size_t startPos_NumberValue = pos;
 		debug Stdout("parse_NumberValue").newline;
 		double var_value;
 
@@ -2112,6 +2215,8 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,value_Number);
 		// Rule
 		pass0:
+			startPos_this = startPos_NumberValue;
+			endPos_this = pos;
 			value_NumberValue = createNumberValue(var_value);
 			debug Stdout.format("\tparse_NumberValue passed: {0}",value_NumberValue).newline;
 			return true;
@@ -2129,6 +2234,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Vector2Value value_Vector2Value;
 	bool parse_Vector2Value(){
+		size_t startPos_Vector2Value = pos;
 		debug Stdout("parse_Vector2Value").newline;
 		double var_x;
 		double var_y;
@@ -2151,6 +2257,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_Vector2Value;
+			endPos_this = pos;
 			value_Vector2Value = createVector2Value(var_x,var_y);
 			debug Stdout.format("\tparse_Vector2Value passed: {0}",value_Vector2Value).newline;
 			return true;
@@ -2168,6 +2276,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Vector3Value value_Vector3Value;
 	bool parse_Vector3Value(){
+		size_t startPos_Vector3Value = pos;
 		debug Stdout("parse_Vector3Value").newline;
 		double var_z;
 		double var_x;
@@ -2197,6 +2306,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_Vector3Value;
+			endPos_this = pos;
 			value_Vector3Value = createVector3Value(var_x,var_y,var_z);
 			debug Stdout.format("\tparse_Vector3Value passed: {0}",value_Vector3Value).newline;
 			return true;
@@ -2214,6 +2325,7 @@ class KDefParser:KDefParserBase{
 	*/
 	Vector4Value value_Vector4Value;
 	bool parse_Vector4Value(){
+		size_t startPos_Vector4Value = pos;
 		debug Stdout("parse_Vector4Value").newline;
 		double var_z;
 		double var_w;
@@ -2250,6 +2362,8 @@ class KDefParser:KDefParserBase{
 			goto fail1;
 		// Rule
 		pass0:
+			startPos_this = startPos_Vector4Value;
+			endPos_this = pos;
 			value_Vector4Value = createVector4Value(var_x,var_y,var_z,var_w);
 			debug Stdout.format("\tparse_Vector4Value passed: {0}",value_Vector4Value).newline;
 			return true;
@@ -2267,6 +2381,7 @@ class KDefParser:KDefParserBase{
 	*/
 	StringValue value_StringValue;
 	bool parse_StringValue(){
+		size_t startPos_StringValue = pos;
 		debug Stdout("parse_StringValue").newline;
 		char[] var_value;
 
@@ -2277,6 +2392,8 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,__match);
 		// Rule
 		pass0:
+			startPos_this = startPos_StringValue;
+			endPos_this = pos;
 			value_StringValue = createStringValue(var_value);
 			debug Stdout.format("\tparse_StringValue passed: {0}",value_StringValue).newline;
 			return true;
@@ -2294,6 +2411,7 @@ class KDefParser:KDefParserBase{
 	*/
 	ParamListValue value_ParamListValue;
 	bool parse_ParamListValue(){
+		size_t startPos_ParamListValue = pos;
 		debug Stdout("parse_ParamListValue").newline;
 		ParamDef[] var_params;
 
@@ -2304,6 +2422,8 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_params,value_ParamList);
 		// Rule
 		pass0:
+			startPos_this = startPos_ParamListValue;
+			endPos_this = pos;
 			value_ParamListValue = createParamListValue(var_params);
 			debug Stdout.format("\tparse_ParamListValue passed: {0}",value_ParamListValue).newline;
 			return true;
@@ -2321,6 +2441,7 @@ class KDefParser:KDefParserBase{
 	*/
 	string value_Identifier;
 	bool parse_Identifier(){
+		size_t startPos_Identifier = pos;
 		debug Stdout("parse_Identifier").newline;
 		Atom[] var_value;
 
@@ -2360,6 +2481,8 @@ class KDefParser:KDefParserBase{
 			smartAssign(var_value,slice(position2,pos));
 		// Rule
 		pass0:
+			startPos_this = startPos_Identifier;
+			endPos_this = pos;
 			value_Identifier = concatTokens(var_value);
 			debug Stdout.format("\tparse_Identifier passed: {0}",value_Identifier).newline;
 			return true;
@@ -2377,6 +2500,7 @@ class KDefParser:KDefParserBase{
 	*/
 	double value_Number;
 	bool parse_Number(){
+		size_t startPos_Number = pos;
 		debug Stdout("parse_Number").newline;
 		char[] var_value;
 
@@ -2387,6 +2511,8 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,__match);
 		// Rule
 		pass0:
+			startPos_this = startPos_Number;
+			endPos_this = pos;
 			value_Number = parseDouble(var_value);
 			debug Stdout.format("\tparse_Number passed: {0}",value_Number).newline;
 			return true;
@@ -2404,6 +2530,7 @@ class KDefParser:KDefParserBase{
 	*/
 	string value_String;
 	bool parse_String(){
+		size_t startPos_String = pos;
 		debug Stdout("parse_String").newline;
 		string var_value;
 
@@ -2414,6 +2541,8 @@ class KDefParser:KDefParserBase{
 		smartAssign(var_value,__match);
 		// Rule
 		pass0:
+			startPos_this = startPos_String;
+			endPos_this = pos;
 			value_String = var_value;
 			debug Stdout.format("\tparse_String passed: {0}",value_String).newline;
 			return true;

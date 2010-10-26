@@ -238,6 +238,11 @@ final class GraphDef : Scope, IGraphDef {
 	string		superKernel;
 	DepTracker	_dependentOnThis;
 
+	void*	_module;	// KDefModule, after semantic analysis
+	uint	_firstByte;
+	uint	_lengthBytes;
+	
+
 	this (Statement[] statements, DgAllocator allocator) {
 		super (allocator);
 		this.statements = statements;

@@ -32,7 +32,7 @@ public import enki.generator.DGenerator;
 //public import enki.generator.JavascriptGenerator;
 
 private import enki.generator.TextGenerator;
-private import tango.io.Buffer;
+//private import tango.io.Buffer;
 
 TextGenerator[char[]] registeredGenerators;
 

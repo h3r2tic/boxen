@@ -123,8 +123,8 @@ class TestApp : GfxApp {
 			version (LightTest2) {
 				alias PointLight LightType;
 			} else {
-				//alias SpotLight_VSM LightType;
-				alias PointLight LightType;
+				alias SpotLight_VSM LightType;
+				//alias PointLight LightType;
 			}
 		}
 		

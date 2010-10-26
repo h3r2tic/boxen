@@ -27,7 +27,7 @@ module enki.generator.BNFGenerator;
 import enki.types;
 import enki.generator.TextGenerator;
 
-import tango.io.model.IBuffer;
+//import tango.io.model.IBuffer;
 import tango.text.Util;
 
 debug import tango.io.Stdout;

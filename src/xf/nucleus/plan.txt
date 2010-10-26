@@ -296,5 +296,5 @@ MeshStructureData connected to Renderables upon compilation, the pointers create
 	- uh, animation of some sorts so it looks real-time :P
 
 -	recursive rendering
--	thesis
++	thesis
 -	party hard

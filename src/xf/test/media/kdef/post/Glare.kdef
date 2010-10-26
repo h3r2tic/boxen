@@ -19,8 +19,8 @@ AddGlare = kernel(
 	// Spatial acuity and color sunsitivity loss
 	//float acuity = smoothstep(-0.005, 0.0075, max(blurredLuma*0.3, max(blurredLuma3*0.5, blurredLuma4)));
 	//float acuity = tanh(10*saturate(max(blurredLuma*0.3, max(blurredLuma3*0.5, blurredLuma4))));
-	const float acuityThresh = 0.2;
-	const float acuityThresh2 = 50;
+	const float acuityThresh = 0.3;
+	const float acuityThresh2 = 80;
 	float acuity1 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*blurredLuma2)));
 	float acuity2 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*blurredLuma3)));
 	float acuity3 = saturate(acuityThresh2 * tanh(saturate(acuityThresh*blurredLuma4)));
