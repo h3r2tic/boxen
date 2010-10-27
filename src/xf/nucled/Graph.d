@@ -6,8 +6,9 @@ private {
 	import xf.nucleus.Param;
 	import xf.nucleus.TypeSystem;
 	import xf.nucleus.kdef.model.IKDefUtilParser;
+	import xf.nucleus.kdef.model.KDefInvalidation;
 	import xf.nucleus.kdef.model.IKDefRegistry;
-	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue;
+	import xf.nucleus.kdef.Common : KDefGraph = GraphDef, KDefGraphNode = GraphDefNode, ParamListValue, GraphDefValue, KernelDefValue, KernelDef, KernelImpl;
 	import xf.nucleus.Value;
 	import xf.nucleus.Function;
 	import xf.nucleus.Nucleus;
@@ -167,18 +168,37 @@ class Graph {
 			});
 		}
 
-		// TODO: no-auto
+		{
+			alias GraphDef.NoAutoFlow NAF;
+
+			gatherArrays!(NAF)(kdef.mem,
+			(void delegate(lazy NAF) gen) {
+				foreach (ni, n; nodes) {
+					foreach (i; n.inputs) {
+						if (i.noAutoFlow) {
+							gen(NAF(
+								kdef._nodes[ni],
+								kdef.mem.dupString(i.name)
+							));
+						}
+					}
+				}
+			},
+			(NAF[] noAutoFlow) {
+				kdef.noAutoFlow = noAutoFlow;
+			});
+		}
 	}
 	
 	
 	void load(KDefGraph source) {
 		Stdout.formatln("Graph.load() called");
 		
-		GraphNode[KDefGraphNode]	def2node;
+		GraphNode[void*] def2node;
 		
 		foreach (nname, kdefNode; source.nodes) {
 			auto node = new GraphNode(kdefNode);
-			def2node[kdefNode] = node;
+			def2node[cast(void*)kdefNode] = node;
 			node.label = nname.dup;
 			addNode(node);
 			Stdout.formatln("loading a graph node");
@@ -186,18 +206,27 @@ class Graph {
 		
 		foreach (ncon; source.nodeConnections) {
 			new Connection(
-				def2node[ncon.from],
-				def2node[ncon.to],
+				def2node[cast(void*)ncon.from],
+				def2node[cast(void*)ncon.to],
 				DataFlow(depOutputConnectorName, depInputConnectorName)
 			);
 		}
 		
 		foreach (nfcon; source.nodeFieldConnections) {
 			new Connection(
-				def2node[nfcon.fromNode],
-				def2node[nfcon.toNode],
+				def2node[cast(void*)nfcon.fromNode],
+				def2node[cast(void*)nfcon.toNode],
 				DataFlow(nfcon.from.dup, nfcon.to.dup)
 			);
+		}
+
+		foreach (naf; source.noAutoFlow) {
+			final node = def2node[cast(void*)naf.toNode];
+			foreach (ref input; node.inputs) {
+				if (naf.to == input.name) {
+					input.noAutoFlow = true;
+				}
+			}
 		}
 		
 		foreach (lo; loadObservers) {
@@ -223,6 +252,7 @@ class ConnectorInfo {
 	char[]		name;
 	GraphNode	node;
 	vec2		windowPos = vec2.zero;
+	bool		noAutoFlow = false;
 	
 	
 	this(Param param, GraphNode node) {
@@ -333,11 +363,46 @@ class GraphNode {
 	this(Type t, char[] kernelName) {
 		this(t);
 		this._kernelName = kernelName;
+		if (isKernelBased) {
+			createKernelNodeInputs();
+		}
+	}
+
+
+	private void createKernelNodeInputs() {
+		auto impl = getKernel();
+		
+		if (KernelImpl.Type.Kernel == impl.type) {
+			final kernel = impl.kernel;
+			final func = kernel.func;
+
+			foreach (param; func.params) {
+				Stdout.formatln(`Creating a param '{}'`, param.name);
+				if (param.isInput) {
+					inputs ~= new ConnectorInfo(param, this);
+				} else {
+					outputs ~= new ConnectorInfo(param, this);
+				}
+			}
+		} else {
+			final graph = cast(GraphDef)impl.graph;
+			foreach (name, n; graph.nodes) {
+				if ("input" == n.type) {
+					foreach (param; n.params) {
+						inputs ~= new ConnectorInfo(param, this);
+					}
+				} else if ("output" == n.type) {
+					foreach (param; n.params) {
+						outputs ~= new ConnectorInfo(param, this);
+					}
+				}
+			}
+		}
 	}
 	
 	
 	this (KDefGraphNode cfg) {
-		_mem.initialize();
+		//_mem.initialize();
 
 		char[] identVal(char[] name) {
 			return cfg.getVar(name).as!(IdentifierValue).value;
@@ -352,7 +417,22 @@ class GraphNode {
 		// there's also the size, but we'll ignore it for now
 		
 		if (this.isKernelBased) {
-			this._kernelName = identVal("kernel").dup;
+			final val = cfg.getVar("kernel");
+			if (auto kd = cast(KernelDefValue)val) {
+				_kernelName = "inline";
+				_isInline = true;
+				_inlineKernel = kd.kernelDef;
+				//assert (false, "TODO: inline kernels");
+			} else if (auto gd = cast(GraphDefValue)val) {
+				_kernelName = "inline";
+				_isInline = true;
+				_inlineGraph = gd.graphDef;
+				//assert (false, "TODO: inline graphs");
+			} else {
+				_kernelName = identVal("kernel").dup;
+			}
+
+			createKernelNodeInputs();
 			// TODO: ParamValueInfo
 		} else {
 			foreach (param; cfg.params) {
@@ -473,7 +553,7 @@ class GraphNode {
 	
 	void dump(KDefGraphNode kdef, IKDefRegistry reg) {
 		if (this.isKernelBased) {
-			kdef.kernelImpl = reg.getKernel(_kernelName);
+			kdef.kernelImpl = getKernel();
 		} else {
 			kdef.params = data.params;
 		}
@@ -536,20 +616,32 @@ class GraphNode {
 			}
 			
 			HBox(i) [{
-				auto con = DataConnector();
-				con.layoutAttribs("vexpand");
+				DataConnector con;
+				if (!data.noAutoFlow) {
+					con = DataConnector();
+					con.layoutAttribs("vexpand");
+				}
+				
 				if (showDataNames) {
-					Label().text(data.name).fontSize(10).valign(1).layoutAttribs("vexpand vfill");
+					final label = Label().text(data.name).fontSize(10).valign(1).layoutAttribs("vexpand vfill");
+					if (con) {
+						label.style.color.value = vec4(1, 1, 1, 1);
+					} else {
+						label.style.color.value = vec4(1, 1, 1, 0.2);
+					}
 					auto brk = ConnectionBreaker();
 					brk.layoutAttribs("vexpand");
 					if (brk.clicked) {
 						inputToRemove = i;
 					}
 				}
-				con.input = true;
-				con.ci = data;
-				con.mouseButtonHandler = &_mngr.handleMouseButton;
-				data.windowPos = con.globalOffset + con.size * 0.5f;
+
+				if (con) {
+					con.input = true;
+					con.ci = data;
+					con.mouseButtonHandler = &_mngr.handleMouseButton;
+					data.windowPos = con.globalOffset + con.size * 0.5f;
+				}
 			}].layoutAttribs = "hexpand hfill";
 		}
 		gui.close;
@@ -574,6 +666,7 @@ class GraphNode {
 					}
 					Label().text(data.name).fontSize(10).valign(1).layoutAttribs("vexpand vfill");
 				}
+
 				auto con = DataConnector();
 				con.layoutAttribs("vexpand");
 				con.input = false;
@@ -585,7 +678,10 @@ class GraphNode {
 		gui.close;
 		
 		if (inputToRemove != -1) {
-			removeIncomingConnectionsTo(inputs[inputToRemove].name);
+			bool removed = removeIncomingConnectionsTo(inputs[inputToRemove].name);
+			if (!removed) {
+				inputs[inputToRemove].noAutoFlow ^= true;
+			}
 		}
 		if (outputToRemove != -1) {
 			removeOutgoingConnectionsFrom(outputs[outputToRemove].name);
@@ -683,6 +779,17 @@ class GraphNode {
 			default: assert (false);
 		}
 	}
+
+
+	KernelImpl getKernel() {
+		if (_isInline) {
+			return _inlineGraph
+				? KernelImpl(_inlineGraph)
+				: KernelImpl(_inlineKernel);
+		} else {
+			return kdefRegistry.getKernel(kernelName);
+		}
+	}
 	
 	
 	bool		_choosingImpl;
@@ -690,7 +797,11 @@ class GraphNode {
 	
 	void doEditorGUI(bool justOpened, bool closing) {
 		if (isKernelBased) {
-			doCodeEditorGUI(justOpened, closing);
+			if (!_inlineGraph) {
+				doCodeEditorGUI(justOpened, closing);
+			} else {
+				// TODO: graph editor
+			}
 		} else {
 			doDataEditorGUI(justOpened, closing);
 		}
@@ -792,7 +903,11 @@ class GraphNode {
 		sci._outer = this;
 		
 		if (justOpened) {
-			if (auto kernel = kdefRegistry.getKernel(_kernelName).kernel) {
+			KernelDef kernel = _isInline
+				? _inlineKernel
+				: kdefRegistry.getKernel(_kernelName).kernel;
+			
+			if (kernel) {
 				if (auto func = cast(Function)kernel.func) {
 					if (func.code._lengthBytes > 0) {
 						if (auto mod = cast(KDefModule)func.code._module) {
@@ -1005,7 +1120,9 @@ class GraphNode {
 	}
 	
 	
-	void removeIncomingConnectionsTo(char[] name) {
+	bool removeIncomingConnectionsTo(char[] name) {
+		bool res = false;
+		
 		for (int i = 0; i < incoming.length;) {
 			auto con = incoming[i];
 			for (int j = 0; j < con.flow.length;) {
@@ -1013,16 +1130,20 @@ class GraphNode {
 				if (fl.to == name) {
 					*fl = con.flow[$-1];
 					con.flow = con.flow[0..$-1];
+					res = true;
 				} else {
 					++j;
 				}
 			}
 			if (0 == con.flow.length) {
 				con.unlink;
+				res = true;
 			} else {
 				++i;
 			}
 		}
+
+		return res;
 	}
 	
 	
@@ -1130,6 +1251,9 @@ class GraphNode {
 	private {
 		uint			_id;
 		char[]			_kernelName;
+		bool			_isInline;
+		KernelDef		_inlineKernel;
+		GraphDef		_inlineGraph;
 		bool			_editingProps;
 		GraphMngr		_mngr;
 		GraphNodeBox	_widget;

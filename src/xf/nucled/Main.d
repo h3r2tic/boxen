@@ -24,6 +24,7 @@ import
 	xf.loader.Common,
 
 	xf.nucleus.Nucleus,
+	xf.nucleus.kdef.Common,
 	xf.nucleus.Scene,
 	xf.nucleus.KernelImpl,
 	xf.nucleus.IStructureData,
@@ -206,15 +207,15 @@ class TestApp : GfxApp {
 
 		paramsRollout = new ParametersRollout(kdefRegistry);
 
-		tabs[0] = TabDesc(
+		/+tabs[0] = TabDesc(
 			"Top-level pipeline",
 			TabDesc.Role.GraphEditor,
 			createGraphEditor(`RenderViewport`),
 			null/+,
 			core.kregistry[`RenderViewport`]+/
-		);
+		);+/
 
-		tabs[1] = TabDesc(
+		tabs[0] = TabDesc(
 			"Scene view",
 			TabDesc.Role.SceneView
 		);
@@ -420,9 +421,20 @@ class TestApp : GfxApp {
 	}
 
 
+	void onEditMaterialKernel() {
+		final tab = addTab();
+		graphEdTabView.activeTab = activeTab = tab;
+		
+		tabs[tab] = TabDesc(
+			"Edit Material",
+			TabDesc.Role.KernelImplSelector,
+			null,
+			null
+		);
+	}
+
+
 	void onImplementMaterial() {
-		/+final editor = createGraphEditor(`NewMaterial`);
-		editor.workspaceSize = graphEdTabView.size;+/
 		final tab = addTab();
 		graphEdTabView.activeTab = activeTab = tab;
 		
@@ -432,8 +444,6 @@ class TestApp : GfxApp {
 			null,
 			null
 		);
-
-		//editor.createIONodes(kdefRegistry.getKernel("Material").kernel.func.params);
 	}
 
 
@@ -508,7 +518,7 @@ class TestApp : GfxApp {
 					menuLeaf("Surface", {} )
 				),
 				menuGroup("Edit",
-					menuLeaf("Material", {}),
+					menuLeaf("Material", onEditMaterialKernel() ),
 					menuLeaf("Surface", {})
 				),
 				menuGroup("Help",
@@ -558,8 +568,9 @@ class TestApp : GfxApp {
 					//sv.userSize = vec2(480, 300);
 					sv.userSize = vec2(384, 300);
 					with (sv) {
-						shiftView(vec3(0, -0.3, 2));
+						shiftView(vec3(-0.2, 1.2, 2));
 						rotatePitch(-30);
+						rotateYaw(-30);
 						displayMode = DisplayMode.Solid;
 						viewType = ViewType.Perspective;
 					}
@@ -623,8 +634,24 @@ class TestApp : GfxApp {
 					tabDesc.graphEditor.doGUI();
 				} break;
 					
-				/+case TabDesc.Role.KernelImplSelector:
-					KernelDef	kernel;
+				case TabDesc.Role.KernelImplSelector: {
+					matBrowser.doGUI();
+					if (auto mat = matBrowser.selected) {
+						final kernel = kdefRegistry.getKernel(mat.materialKernelName);
+						if (KernelImpl.Type.Graph == kernel.type) {
+							final editor = createGraphEditor(mat.materialKernelName.dup);
+							editor.workspaceSize = graphEdTabView.size;
+							editor.loadKernelGraph(GraphDef(kernel.graph));
+							//editor.createIONodes(kdefRegistry.getKernel("Material").kernel.func.params);
+
+							tabDesc.compositeName = mat.materialKernelName.dup;
+							tabDesc.label = "mat " ~ tabDesc.compositeName;
+							tabDesc.graphEditor = editor;
+							tabDesc.role = TabDesc.Role.GraphEditor;
+						}
+					}
+
+					/+KernelDef	kernel;
 					char[]		funcName;
 					if (tabDesc.kernelSelector.doGUI(
 						(KernelDef kernel, char[] funcName) {
@@ -637,8 +664,8 @@ class TestApp : GfxApp {
 						tabDesc.role = TabDesc.Role.KernelImplNameSelector;
 						tabDesc.kernelDef = kernel;
 						tabDesc.kernelFuncName = funcName;
-					}
-					break;+/
+					}+/
+				} break;
 					
 				case TabDesc.Role.KernelImplNameSelector:
 					VBox().icfg(`layout = { spacing = 5; attribs = "hexpand"; }`) [{
