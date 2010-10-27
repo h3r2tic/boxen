@@ -30,9 +30,8 @@ void dumpGraph(Graph graph, cstring label, OutputStream cond) {
 	scope layout = new TextLayout!(char);
 	scope print = new FormatOutput!(char)(layout, cond, "\n");
 	
-	print.formatln(`{} = graph {{`, label);
+	print.formatln(`{} = `, label);
 	dumpGraph(graph, print);
-	print.formatln(`};`);
 	print.flush;
 	cond.flush;
 }
@@ -42,9 +41,7 @@ void dumpGraph(Graph graph, OutputStream cond) {
 	scope layout = new TextLayout!(char);
 	scope print = new FormatOutput!(char)(layout, cond, "\n");
 	
-	print.formatln(`graph {{`);
 	dumpGraph(graph, print);
-	print.formatln(`};`);
 	print.flush;
 	cond.flush;
 }
@@ -81,6 +78,8 @@ void dumpMaterial(Graph graph, cstring matName, cstring kernelName, OutputStream
 
 
 private void dumpGraph(Graph graph, FormatOutput!(char) p) {
+	p.formatln(`graph {{`);
+	
 	foreach (n; graph.nodes) {
 		dumpGraphNode(n, p);
 	}
@@ -96,7 +95,41 @@ private void dumpGraph(Graph graph, FormatOutput!(char) p) {
 			}
 		}
 	}
+
+	p.formatln(`};`);
 }
+
+
+/+private void dumpGraph(GraphDef graph, FormatOutput!(char) p) {
+	p.formatln(`graph {} {{`, graph.superKernel);
+	
+	foreach (nname, n; graph.nodes) {
+		dumpGraphNode(nname, n, p);
+	}
+
+	cstring nodeName(GraphDefNode n) {
+		foreach (nname, nd; graph.nodes) {
+			if (nd is n) {
+				return nname;
+			}
+		}
+		assert (false);
+	}
+
+	foreach (con; graph.nodeConnections) {
+		p.formatln(`connect {} {};`\n, nodeName(con.from), nodeName(con.to));
+	}
+
+	foreach (con; graph.nodeFieldConnections) {
+		p.formatln(`connect {}.{} {}.{};`\n, nodeName(con.fromNode), con.from, nodeName(con.toNode), con.to);
+	}
+
+	foreach (naf; graph.noAutoFlow) {
+		p.formatln(`noauto {}.{};`\n, nodeName(naf.toNode), naf.to);
+	}
+
+	p.formatln(`};`);
+}+/
 
 
 private void dumpGraphNode(GraphNode n, FormatOutput!(char) p) {
@@ -104,7 +137,38 @@ private void dumpGraphNode(GraphNode n, FormatOutput!(char) p) {
 		p.formatln(\t`type = {};`, n.typeName);
 		
 		if (n.isKernelBased) {
-			p.formatln(\t`kernel = {};`, n.kernelName);
+			if (n._isInline) {
+				p(\t`kernel = `);
+
+				KDefModule	mod;
+				size_t		start;
+				size_t		bytes;
+				
+				if (n._inlineGraph) {
+					mod = cast(KDefModule)n._inlineGraph._module;
+					start = n._inlineGraph._firstByte;
+					bytes = n._inlineGraph._lengthBytes;
+					//dumpGraph(n._inlineGraph, p);
+				} else {
+					assert (n._inlineKernel);
+					mod = cast(KDefModule)n._inlineKernel._module;
+					start = n._inlineKernel._firstByte;
+					bytes = n._inlineKernel._lengthBytes;
+					//dumpKernel(n._inlineKernel, p);
+				}
+
+				assert (mod !is null);
+
+				auto input = .xf.nucleus.Nucleus.vfs.file(mod.filePath).input();
+				scope(exit) input.close;
+				cstring data = cast(cstring)input.load();
+
+				p(data[start..start+bytes]);
+
+				p(`;`);
+			} else {
+				p.formatln(\t`kernel = {};`, n.kernelName);
+			}
 		} else {
 			if (n.data.params.length > 0) {
 				p(\t`params = (`\n);
@@ -141,6 +205,47 @@ private void dumpGraphNode(GraphNode n, FormatOutput!(char) p) {
 	p(`};`\n);
 }
 
+
+/+private void dumpKernel(KernelDef k, FormatOutput!(char) p) {
+	// TODO
+}
+
+
+private void dumpGraphNode(cstring nname, GraphDefNode n, FormatOutput!(char) p) {
+	p.formatln(`{} = node {{`, nname);
+		p.formatln(\t`type = {};`, n.type);
+		
+		if ("kernel" == n.type) {
+			// TODO
+		} else {
+			if (n.params.length > 0) {
+				p(\t`params = (`\n);
+				int i = 0;
+				foreach (paramI, ref param; n.params) {
+					p.format(\t\t`{}`, param.toString);
+
+					if (++i != n.params.length) {
+						p(",\n");
+					} else {
+						p("\n");
+					}
+				}
+				p(\t`);`\n);
+			}
+		}
+		
+		if (n.spawnPosition.ok) {
+			p.formatln(\t`center = {} {};`, n.spawnPosition.x, n.spawnPosition.y);
+		}
+		
+		if (n.currentSize.ok) {
+			p.formatln(\t`size = {} {};`, n.currentSize.x, n.currentSize.y);
+		}
+		
+		//p.formatln(\t`primLevel = "{}";`, n.primLevelStr);
+	p(`};`\n);
+}
++/
 
 private void dumpParamValueInfo(
 	Param* param,

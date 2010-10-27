@@ -176,6 +176,11 @@ class KDefParserBase : Parser!(KDefToken) {
 			auto res = mem._new!(KernelDefValue)();
 			res.kernelDef = mem._new!(KernelDef)(mem._allocator);
 			
+			res.kernelDef._firstByte = data[startPos_this].byteNr;
+			final lastTok = data[endPos_this-1];
+			res.kernelDef._lengthBytes = lastTok.byteNr + lastTok.toString.length;
+			res.kernelDef._lengthBytes -= res.kernelDef._firstByte;
+
 			if (code != code.init) {
 				final func = createFunction(null, tags, params, code);
 				res.kernelDef.func = func;

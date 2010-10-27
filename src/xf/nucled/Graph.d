@@ -1243,6 +1243,13 @@ class GraphNode {
 		vec2			spawnPosition = vec2.zero;
 		vec2			currentCenter = vec2.zero;
 		vec2			currentSize = vec2.zero;
+
+		bool			_isInline;
+
+		// TODO: reload these on kdef refresh
+		static assert (false);
+		KernelDef		_inlineKernel;
+		GraphDef		_inlineGraph;
 		
 		Type			type;
 		char[]			label;
@@ -1251,9 +1258,6 @@ class GraphNode {
 	private {
 		uint			_id;
 		char[]			_kernelName;
-		bool			_isInline;
-		KernelDef		_inlineKernel;
-		GraphDef		_inlineGraph;
 		bool			_editingProps;
 		GraphMngr		_mngr;
 		GraphNodeBox	_widget;
