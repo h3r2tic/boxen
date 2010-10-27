@@ -580,14 +580,14 @@ class GraphEditor {
 		_graph.load(source);
 
 		foreach (n; _graph.nodes) {
-			if (n.isKernelBased) {
-				auto kernel = _registry.getKernel(n.kernelName);
+			/+if (n.isKernelBased) {
+				auto kernel = n.getKernel();
 				if (!kernel.isValid) {
 					throw new Exception("loadKernelGraph(): could not find a kernel named '" ~ n.kernelName ~ "' in the registry");
 				} else {
 					createKernelNodeInputs(n, kernel);
 				}
-			}
+			}+/
 
 			refreshContents(n);
 		}
@@ -616,7 +616,7 @@ class GraphEditor {
 	}
 
 
-	void createKernelNodeInputs(GraphNode node, KernelImpl impl) {
+	/+void createKernelNodeInputs(GraphNode node, KernelImpl impl) {
 		if (KernelImpl.Type.Kernel == impl.type) {
 			final kernel = impl.kernel;
 			final func = kernel.func;
@@ -643,7 +643,7 @@ class GraphEditor {
 				}
 			}
 		}
-	}
+	}+/
 
 	
 	void dismissable(void delegate() dg) {
@@ -744,7 +744,7 @@ class GraphEditor {
 						auto node = new GraphNode(spawningType, kernel.name);
 						node.spawnPosition = spawnPosition;
 						//node.CPU = kernel.type == KernelDef.Type.CPU;
-						createKernelNodeInputs(node, kernel);
+						//createKernelNodeInputs(node, kernel);
 						node.label = Format("node_{}", node.id);
 													
 						/+auto func = kernel.getFunction(funcName);

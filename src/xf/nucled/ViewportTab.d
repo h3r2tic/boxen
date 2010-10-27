@@ -96,6 +96,7 @@ class ViewportTab {
 
 		with (view) switch (i) {
 			case 0: {
+				shiftView(vec3(0, 1, 2));
 				displayMode = DisplayMode.Wireframe;
 				viewType = ViewType.Perspective;
 				rotationEnabled = false;
@@ -104,6 +105,7 @@ class ViewportTab {
 
 			case 1: {
 				rotateYaw(90);
+				shiftView(vec3(0, 1, 2));
 				displayMode = DisplayMode.Wireframe;
 				viewType = ViewType.Perspective;
 				rotationEnabled = false;
@@ -112,6 +114,7 @@ class ViewportTab {
 
 			case 2: {
 				rotatePitch(-90);
+				shiftView(vec3(0, 0, 3));
 				displayMode = DisplayMode.Wireframe;
 				viewType = ViewType.Perspective;
 				rotationEnabled = false;
@@ -119,8 +122,9 @@ class ViewportTab {
 			} break;
 
 			case 3: {
-				shiftView(vec3(0, 1, 2));
-				rotatePitch(30);
+				shiftView(vec3(0, 1.2, 2));
+				rotatePitch(-30);
+				rotateYaw(-30);
 				displayMode = DisplayMode.Solid;
 				viewType = ViewType.Perspective;
 			} break;
