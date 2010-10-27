@@ -347,6 +347,8 @@ class KDefProcessor {
 							static assert (is(typeof(mod) == KDefModule));
 							func.code._module = cast(void*)mod;
 						}
+						
+						kimpl.kernel._module = cast(void*)mod;
 					} else {
 						GraphDef(kimpl.graph)._module = cast(void*)mod;
 					}
@@ -368,6 +370,7 @@ class KDefProcessor {
 			
 
 			foreach (n, ref k; kernels) {
+				_curSemModule = k.mod;
 				doKernelSemantics(*k.impl, modAlloc(k.mod), processed);
 			}
 		}
@@ -549,6 +552,7 @@ class KDefProcessor {
 							doKernelSemantics(literal.kernelDef, allocator, processed);
 							node.kernelImpl = KernelImpl(literal.kernelDef);
 							node.kernelImpl.kernel.func.name = "literal";
+							node.kernelImpl.kernel._module = cast(void*)_curSemModule;
 						}
 						else {
 							error(
@@ -872,5 +876,7 @@ class KDefProcessor {
 		
 		// indexed by path
 		KDefModule[string]	_modules;
+
+		KDefModule			_curSemModule;
 	}
 }

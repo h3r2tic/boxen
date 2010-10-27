@@ -13,6 +13,10 @@ final class KernelDef {
 	cstring				superKernel;
 	private DepTracker	_dependentOnThis;
 
+	void*	_module;	// KDefModule, after semantic analysis
+	uint	_firstByte;
+	uint	_lengthBytes;
+
 
 	this(DgAllocator allocator) {
 		_dependentOnThis = DepTracker(allocator);
